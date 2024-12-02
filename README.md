@@ -6,6 +6,16 @@ This repository contains a collection of powerful plugins designed to enhance [P
 
 ## Plugins
 
+### Geocoding Plugin
+
+[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-geocoding-plugin)](https://www.npmjs.com/package/@jhb.software/payload-geocoding-plugin)
+
+The geocoding plugin simplifies location management in your content by adding a autocomplete search field that allows you to easily populate coordinates in a [Payload Point Field](https://payloadcms.com/docs/fields/point) by entering an address powered by the Google Places API.
+
+![Screenshot showing the added autocomplete select field](https://github.com/user-attachments/assets/13e0b9f8-dc69-47de-9691-384ebf1d0868)
+
+[Learn more about the Geocoding plugin →](./geocoding)
+
 ### Pages Plugin
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-pages-plugin)](https://www.npmjs.com/package/@jhb.software/payload-pages-plugin)

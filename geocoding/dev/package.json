@@ -1,0 +1,35 @@
+{
+  "name": "payload-plugin-test-app",
+  "description": "A test app for the plugin",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev",
+    "devturbo": "pnpm dev --turbo",
+    "devsafe": "rm -rf .next && pnpm dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "payload": "payload",
+    "generate:types": "payload generate:types",
+    "generate:schema": "payload-graphql generate:schema",
+    "generate:importmap": "payload generate:importmap"
+  },
+  "dependencies": {
+    "@payloadcms/db-mongodb": "^3.2.2",
+    "@payloadcms/db-postgres": "^3.2.2",
+    "@payloadcms/next": "^3.2.2",
+    "@payloadcms/ui": "^3.2.2",
+    "next": "15.0.0",
+    "payload": "^3.2.2",
+    "@jhb.software/payload-geocoding-plugin": "workspace:*",
+    "react": "19.0.0-rc-3edc000d-20240926",
+    "react-dom": "19.0.0-rc-3edc000d-20240926"
+  },
+  "devDependencies": {
+    "copyfiles": "^2.4.1",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5",
+    "typescript": "5.7.2"
+  }
+}

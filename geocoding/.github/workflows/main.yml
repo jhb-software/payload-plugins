@@ -1,0 +1,66 @@
+name: Build
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - main
+      - beta
+
+env:
+  NODE_VERSION: 22.6.0
+  PNPM_VERSION: 9.7.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node@${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        timeout-minutes: 720
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
+            pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - run: pnpm install
+
+      - run: pnpm build
+        name: Build package
+        env:
+          DO_NOT_TRACK: 1 # Disable Turbopack telemetry
+
+      - run: pnpm build:app
+        name: Build dev dir app
+
+      - name: Cache build
+        uses: actions/cache@v4
+        timeout-minutes: 10
+        with:
+          path: ./*
+          key: ${{ github.sha }}-${{ github.run_number }}
