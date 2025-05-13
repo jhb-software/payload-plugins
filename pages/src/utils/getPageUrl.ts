@@ -6,11 +6,7 @@ export function getPageUrl({
   path: string
   preview?: boolean
 }): string | undefined {
-  const domain = process.env.NEXT_PUBLIC_FRONTEND_URL
-
-  if (!domain) {
-    throw new Error('NEXT_PUBLIC_FRONTEND_URL environment variable is not set.')
-  }
+  const domain = process.env.NEXT_PUBLIC_FRONTEND_URL!
 
   if (!path) {
     console.error('getPageUrl received an empty path: ' + path)

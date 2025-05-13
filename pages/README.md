@@ -61,9 +61,12 @@ import { createRedirectsCollectionConfig } from '@jhb.software/payload-pages-plu
 const redirectsCollection = createRedirectsCollectionConfig({})
 ```
 
-In order for the official payload SEO plugin to use the generated URL, you need to pass the `generateUrl` function to the `generateUrl` field in the `seo` plugin config inside your payload config. Also add the `alternatePathsField` field to the fields array.
+In order for the official payload SEO plugin to use the generated URL, you need to pass the `getPageUrl` function provided by this plugin to the `generateURL` field in the `seo` plugin config inside your payload config. 
+If your collections are localized, you also need to pass the `alternatePathsField` field to the `fields` array.
 
 ```ts
+import { alternatePathsField, getPageUrl } from '@jhb.software/payload-pages-plugin'
+
 export default buildConfig({
   // ...
   plugins: [

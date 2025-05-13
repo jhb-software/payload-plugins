@@ -1,4 +1,4 @@
 packages:
   - './'
   - './dev'
-  - './dev_single_locale'
+  - './dev_unlocalized'

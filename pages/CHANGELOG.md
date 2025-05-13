@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+- add support for unlocalized page collections
+- add admin panel i18n (currently only German and English)
+
 ## 0.4.1
 
 - fix: resolve issue with not selected fields in sub-queries (c333598)

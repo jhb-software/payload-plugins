@@ -461,17 +461,13 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
           en: [
             {
               id: nestedPage.breadcrumbs['en'][0]?.id,
-              label: {
-                de: rootPageDataDe.title,
-              },
+              label: undefined,
               path: '/en',
               slug: undefined,
             },
             {
               id: nestedPage.breadcrumbs['en'][1]?.id,
-              label: {
-                de: nestedPageDataDe.title,
-              },
+              label: undefined,
               path: '/en',
               slug: undefined,
             },

@@ -5,23 +5,25 @@ import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 /**
  * Validates the breadcrumbs and throws an error if invalid.
  */
-export function validateBreadcrumbs(locale: Locale, breadcrumbs: Breadcrumb[]) {
+export function validateBreadcrumbs(locale: Locale | undefined, breadcrumbs: Breadcrumb[]) {
   if (!breadcrumbs) {
-    throw new Error('No breadcrumbs found for locale ' + locale)
+    throw new Error(locale ? 'No breadcrumbs found for locale ' + locale : 'No breadcrumbs found')
   }
 
   if (breadcrumbs.length === 0) {
-    throw new Error('Empty breadcrumbs found for locale ' + locale)
+    throw new Error(
+      locale ? 'Empty breadcrumbs found for locale ' + locale : 'Empty breadcrumbs found',
+    )
   }
 
   if (
     pathFromBreadcrumbs({ locale: locale, breadcrumbs: breadcrumbs }) !== breadcrumbs.at(-1)?.path
   ) {
     throw new Error(
-      'Path generated from breadcrumbs is not equal to the path of the last breadcrumb: ' +
-        pathFromBreadcrumbs({ locale: locale, breadcrumbs: breadcrumbs }) +
-        ' !== ' +
-        breadcrumbs.at(-1)?.path,
+      `Path generated from breadcrumbs (${pathFromBreadcrumbs({
+        locale: locale,
+        breadcrumbs: breadcrumbs,
+      })}) is not equal to the path of the last breadcrumb: ${breadcrumbs.at(-1)?.path}`,
     )
   }
 }

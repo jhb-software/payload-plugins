@@ -7,12 +7,12 @@ export function pathFromBreadcrumbs({
   breadcrumbs,
   additionalSlug,
 }: {
-  locale: Locale
+  locale: Locale | undefined
   breadcrumbs: Breadcrumb[]
   additionalSlug?: string
 }): string {
   return [
-    `/${locale}`,
+    locale ? `/${locale}` : '',
     ...[...breadcrumbs.map(({ slug }) => slug), additionalSlug].filter(Boolean),
   ].join('/')
 }

@@ -1,9 +1,10 @@
-import { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payload'
+import { CollectionAfterChangeHook, CollectionBeforeReadHook, PayloadRequest } from 'payload'
 import { asPageCollectionConfigOrThrow } from '../collections/PageCollectionConfig.js'
 import { Locale } from '../types/Locale.js'
 import { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
+import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
 
 /**
  * Returns the fields that are necessary for the setVirtualFields hook to correctly generate the virtual fields.
@@ -28,7 +29,6 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   collection,
   context,
 }) => {
-  const locale = req.locale as Locale | 'all'
   const pageConfig = asPageCollectionConfigOrThrow(collection)
 
   // #### Validate selected fields (if any) and return if no virtual fields are selected
@@ -92,12 +92,13 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
     }
   }
 
-  const locales = (req?.payload.config.localization! as any).localeCodes as Locale[]
+  const locale = localeFromRequest(req)
+  const locales = localesFromRequest(req)
 
   if (doc.isRootPage) {
     const docWithVirtualFields = setRootPageDocumentVirtualFields({
       doc,
-      locale: 'all', // The CollectionBeforeReadHook should always return the field values for all locales
+      locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
       breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
     })
@@ -105,11 +106,11 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
     return docWithVirtualFields
   } else {
     // When the slug is not (yet) set, it is not possible to generate the path and breadcrumbs
-    if ((locale !== 'all' && !doc.slug?.[locale]) || (locale === 'all' && !doc.slug)) {
+    if ((locale && locale !== 'all' && !doc.slug?.[locale]) || !doc.slug) {
       return doc
     }
 
-    if (typeof doc.slug !== 'object') {
+    if (locales && typeof doc.slug !== 'object') {
       throw new Error(
         'The slug must be an object with all available locales. Is the slug field set to be localized?',
       )
@@ -118,7 +119,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
     const docWithVirtualFields = await setPageDocumentVirtualFields({
       req,
       doc,
-      locale: 'all', // The CollectionBeforeReadHook should always return the field values for all locales
+      locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
       pageConfigAttributes: pageConfig.page,
     })
@@ -137,9 +138,9 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   req,
   collection,
 }) => {
-  // This type of hook is only called for one locale.
-  const locale = req.locale as Locale
-  const locales = (req?.payload.config.localization! as any).localeCodes as Locale[]
+  // This type of hook is only called for one locale (therefore the locale cannot be set to 'all')
+  const locale = localeFromRequest(req) as Locale | undefined
+  const locales = localesFromRequest(req)
 
   const pageConfig = asPageCollectionConfigOrThrow(collection)
 

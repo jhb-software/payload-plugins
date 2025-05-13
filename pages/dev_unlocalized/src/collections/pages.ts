@@ -1,28 +1,20 @@
 import { createPageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 import { CollectionConfig } from 'payload'
 
-export const CountryTravelTips: CollectionConfig = createPageCollectionConfig({
-  slug: 'country-travel-tips',
+export const Pages: CollectionConfig = createPageCollectionConfig({
+  slug: 'pages',
   admin: {
     useAsTitle: 'title',
   },
   page: {
     parent: {
-      collection: 'countries',
-      name: 'country',
+      collection: 'pages',
+      name: 'parent',
     },
-    slug: {
-      unique: false,
-      staticValue: {
-        de: 'reisetipps',
-        en: 'travel-tips',
-      },
-    },
+    isRootCollection: true,
   },
   versions: {
-    drafts: {
-      autosave: true,
-    },
+    drafts: true,
   },
   fields: [
     {

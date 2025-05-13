@@ -1,6 +1,6 @@
 {
-  "name": "payload-plugin-test-app",
-  "description": "A test app for the plugin",
+  "name": "pages-plugin-unlocalized-test-app",
+  "description": "A test app for the pages plugin with unlocalized pages",
   "version": "0.0.1",
   "license": "MIT",
   "type": "module",
@@ -19,19 +19,19 @@
   },
   "dependencies": {
     "@jhb.software/payload-pages-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "3.31.0",
-    "@payloadcms/next": "3.31.0",
-    "@payloadcms/ui": "3.31.0",
-    "next": "15.2.4",
-    "payload": "3.31.0",
+    "@payloadcms/db-mongodb": "3.37.0",
+    "@payloadcms/next": "3.37.0",
+    "@payloadcms/ui": "3.37.0",
+    "next": "15.3.2",
+    "payload": "3.37.0",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
   "devDependencies": {
     "copyfiles": "^2.4.1",
     "cross-env": "^7.0.3",
-    "dotenv": "^16.4.7",
-    "vite": "^6.2.3",
-    "vitest": "^3.0.9"
+    "dotenv": "^16.5.0",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.3"
   }
 }

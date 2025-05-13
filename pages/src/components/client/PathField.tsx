@@ -1,13 +1,5 @@
 'use client'
-import {
-  TextField,
-  useAllFormFields,
-  useConfig,
-  useField,
-  useForm,
-  useFormFields,
-  useLocale,
-} from '@payloadcms/ui'
+import { TextField, useConfig, useField, useFormFields, useLocale } from '@payloadcms/ui'
 import { TextFieldClientComponent } from 'payload'
 import { Breadcrumb } from '../../types/Breadcrumb.js'
 import { Locale } from '../../types/Locale.js'
@@ -15,70 +7,7 @@ import { getBreadcrumbs as getBreadcrumbsForDoc } from '../../utils/getBreadcrum
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useDidUpdateEffect } from '../../utils/useDidUpdateEffect.js'
 import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConfigAtrributes.js'
-
-// useFormFields is not used for the breadcrumbs because of the following payload issue:
-// see https://github.com/payloadcms/payload/issues/8146
-const useBreadcrumbs = () => {
-  const [fields, dispatchFields] = useAllFormFields()
-  const { getData } = useForm()
-
-  const getBreadcrumbs = (): Breadcrumb[] => {
-    return getData().breadcrumbs || []
-  }
-
-  const setBreadcrumbs = (newBreadcrumbs: Breadcrumb[]) => {
-    const existingRowCount = fields.breadcrumbs?.rows?.length || 0
-
-    newBreadcrumbs.forEach((breadcrumb, index) => {
-      if (index < existingRowCount) {
-        // Update existing row
-        // NOTE: it is necessary to update each field individually
-        dispatchFields({
-          type: 'UPDATE',
-          path: `breadcrumbs.${index}.label`,
-          value: breadcrumb.label,
-        })
-        dispatchFields({
-          type: 'UPDATE',
-          path: `breadcrumbs.${index}.slug`,
-          value: breadcrumb.slug,
-        })
-
-        dispatchFields({
-          type: 'UPDATE',
-          path: `breadcrumbs.${index}.path`,
-          value: breadcrumb.path,
-        })
-      } else {
-        // Add new row
-        dispatchFields({
-          type: 'ADD_ROW',
-          path: 'breadcrumbs',
-          rowIndex: index,
-          subFieldState: {
-            label: { value: breadcrumb.label, initialValue: breadcrumb.label, valid: true },
-            slug: { value: breadcrumb.slug, initialValue: breadcrumb.slug, valid: true },
-            path: { value: breadcrumb.path, initialValue: breadcrumb.path, valid: true },
-          },
-        })
-      }
-    })
-
-    // Remove any extra rows
-    for (let i = newBreadcrumbs.length; i < existingRowCount; i++) {
-      dispatchFields({
-        type: 'REMOVE_ROW',
-        path: 'breadcrumbs',
-        rowIndex: newBreadcrumbs.length,
-      })
-    }
-  }
-
-  return {
-    getBreadcrumbs,
-    setBreadcrumbs,
-  }
-}
+import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 
 export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, schemaPath }) => {
   const { config } = useConfig()
@@ -86,8 +15,8 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
     parent: { name: parentField, collection: parentCollection },
     breadcrumbs: { labelField: breadcrumbLabelFieldName },
   } = usePageCollectionConfigAttributes()
-  const { code: locale } = useLocale() as unknown as { code: Locale }
-  const { getBreadcrumbs, setBreadcrumbs: setBreadcrumbsRaw } = useBreadcrumbs()
+  const { code: locale } = useLocale() as unknown as { code: Locale | undefined }
+  const { getBreadcrumbs, setBreadcrumbs } = useBreadcrumbs()
   const { setValue: setPathRaw, value: path } = useField<string>({ path: fieldPath! })
   const { setValue: setSlugRaw, value: slug } = useField<string>({ path: 'slug' })
   const breadcrumbLabel = useFormFields(([fields, _]) => fields[breadcrumbLabelFieldName])
@@ -116,40 +45,6 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
   }
 
   /**
-   * Sets the breadcrumbs, but only if the new breadcrumbs are different from the current breadcrumbs.
-   * This prevents the "leave without saving" warning from being shown every time a document is opened without it being actually modified.
-   */
-  const setBreadcrumbs = (newBreadcrumbs: Breadcrumb[]) => {
-    let breadcrumbs = getBreadcrumbs() as Breadcrumb[]
-
-    // Compare breadcrumbs ignoring id field since it's not relevant for equality
-    const areBreadcrumbsEqual = (a: Breadcrumb[], b: Breadcrumb[]) => {
-      if (a.length !== b.length) return false
-      return a.every((breadcrumb, i) => {
-        // Sort keys to ensure consistent order when comparing
-        const sortObject = (obj: any) => {
-          return Object.keys(obj)
-            .sort()
-            .reduce((result: any, key) => {
-              result[key] = obj[key]
-              return result
-            }, {})
-        }
-
-        const aWithoutId = sortObject({ ...breadcrumb, id: undefined })
-        const bWithoutId = sortObject({ ...b[i], id: undefined })
-
-        return JSON.stringify(aWithoutId) === JSON.stringify(bWithoutId)
-      })
-    }
-
-    // Only update if breadcrumbs have actually changed
-    if (!areBreadcrumbsEqual(breadcrumbs, newBreadcrumbs)) {
-      setBreadcrumbsRaw(newBreadcrumbs)
-    }
-  }
-
-  /**
    * Fetches the the full list of breadcrumbs for the current document.
    */
   async function fetchBreadcrumbs(): Promise<Breadcrumb[]> {
@@ -163,7 +58,10 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
 
     const fechtchedBreadcrumbs = (await getBreadcrumbsForDoc({
       req: undefined, // payload req is not available here
-      locales: (config.localization as { localeCodes: Locale[] }).localeCodes,
+      locales:
+        typeof config.localization === 'object' && config.localization.localeCodes
+          ? config.localization.localeCodes
+          : undefined,
       breadcrumbLabelField: breadcrumbLabelFieldName,
       parentField: parentField,
       parentCollection: parentCollection,
@@ -284,7 +182,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
     if (isRootPage === true) {
       setSlug('')
       setPath('/' + locale + '/')
-      setBreadcrumbs([{ label: breadcrumbLabel ?? '', slug: '', path: '/' + locale }])
+      setBreadcrumbs([{ label: breadcrumbLabel ?? '', slug: '', path: '/' + (locale ?? '') }])
     }
 
     // this effect should only be executed when the slug or the breadcrumb label changes:
