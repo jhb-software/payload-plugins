@@ -16,6 +16,7 @@ import {
 } from '../types/PageCollectionConfig.js'
 import { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import { getPageUrl } from '../utils/getPageUrl.js'
+import { PagesPluginConfig } from 'src/types/PagesPluginConfig.js'
 
 /**
  * Creates a collection config for a page-like collection by adding:
@@ -24,30 +25,40 @@ import { getPageUrl } from '../utils/getPageUrl.js'
  * - Hidden breadcrumbs array field
  * - Hooks for managing virtual fields and page duplication
  */
-export const createPageCollectionConfig = (
-  config: IncomingPageCollectionConfig,
-): PageCollectionConfig => {
+export const createPageCollectionConfig = ({
+  collectionConfig: incomingCollectionConfig,
+  pluginConfig,
+}: {
+  collectionConfig: IncomingPageCollectionConfig
+  pluginConfig: PagesPluginConfig
+}): PageCollectionConfig => {
   const pageConfig: PageCollectionConfigAttributes = {
-    isRootCollection: config.page.isRootCollection ?? false,
+    isRootCollection: incomingCollectionConfig.page.isRootCollection ?? false,
     parent: {
-      collection: config.page.parent.collection,
-      name: config.page.parent.name,
-      sharedDocument: config.page.parent.sharedDocument ?? false,
+      collection: incomingCollectionConfig.page.parent.collection,
+      name: incomingCollectionConfig.page.parent.name,
+      sharedDocument: incomingCollectionConfig.page.parent.sharedDocument ?? false,
     },
     breadcrumbs: {
-      labelField: config.page.breadcrumbs?.labelField ?? config.admin?.useAsTitle ?? 'title',
+      labelField:
+        incomingCollectionConfig.page.breadcrumbs?.labelField ??
+        incomingCollectionConfig.admin?.useAsTitle ??
+        'title',
     },
     slug: {
-      fallbackField: config.page?.slug?.fallbackField ?? config.admin?.useAsTitle ?? 'title',
-      unique: config.page?.slug?.unique ?? true,
-      staticValue: config.page?.slug?.staticValue,
+      fallbackField:
+        incomingCollectionConfig.page?.slug?.fallbackField ??
+        incomingCollectionConfig.admin?.useAsTitle ??
+        'title',
+      unique: incomingCollectionConfig.page?.slug?.unique ?? true,
+      staticValue: incomingCollectionConfig.page?.slug?.staticValue,
     },
   }
 
   return {
-    ...config,
+    ...incomingCollectionConfig,
     admin: {
-      ...config.admin,
+      ...incomingCollectionConfig.admin,
       preview: (data) =>
         getPageUrl({
           path: data.path as string,
@@ -62,19 +73,25 @@ export const createPageCollectionConfig = (
       },
     },
     custom: {
-      ...config.custom,
+      ...incomingCollectionConfig.custom,
       // This makes the page attributes available in hooks etc.
       pageConfig,
     },
     page: pageConfig,
     hooks: {
-      ...config.hooks,
+      ...incomingCollectionConfig.hooks,
       beforeOperation: [
-        ...(config.hooks?.beforeOperation || []),
+        ...(incomingCollectionConfig.hooks?.beforeOperation || []),
         ensureSelectedFieldsBeforeOperation,
       ],
-      beforeRead: [...(config.hooks?.beforeRead || []), setVirtualFieldsBeforeRead],
-      afterChange: [...(config.hooks?.afterChange || []), setVirtualFieldsAfterChange],
+      beforeRead: [
+        ...(incomingCollectionConfig.hooks?.beforeRead || []),
+        setVirtualFieldsBeforeRead,
+      ],
+      afterChange: [
+        ...(incomingCollectionConfig.hooks?.afterChange || []),
+        setVirtualFieldsAfterChange,
+      ],
     },
     fields: [
       ...(pageConfig.isRootCollection ? ([isRootPageField()] satisfies Field[]) : []),
@@ -83,15 +100,15 @@ export const createPageCollectionConfig = (
         unique: pageConfig.slug.unique,
         staticValue: pageConfig.slug.staticValue,
       }),
-      parentField(pageConfig, config.slug),
+      parentField(pageConfig, incomingCollectionConfig.slug),
       pathField(),
       breadcrumbsField(),
       // add the user defined fields below the fields defined by the plugin to ensure a correct order in the sidebar
 
       // add the beforeDuplicate hook to the title field
-      ...config.fields.map((field) =>
+      ...incomingCollectionConfig.fields.map((field) =>
         'name' in field &&
-        field.name === (config.admin?.useAsTitle ?? 'title') &&
+        field.name === (incomingCollectionConfig.admin?.useAsTitle ?? 'title') &&
         field.type === 'text'
           ? {
               ...field,

@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.6.0 (Unreleased)
+
+- feat!: add new collection config creation approach using `PageCollectionConfig` and `RedirectsCollectionConfig` types instead of `createPageCollectionConfig` and `createRedirectsCollectionConfig` functions.
+
+### Migration Guide
+
+**Old approach:**
+```ts
+import { createPageCollectionConfig, createRedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
+
+const Pages: CollectionConfig = createPageCollectionConfig({
+  slug: 'pages',
+  page: { /* config */ },
+  fields: [/* fields */],
+})
+
+const Redirects = createRedirectsCollectionConfig({})
+```
+
+**New approach:**
+```ts
+import { PageCollectionConfig, RedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
+
+const Pages: PageCollectionConfig = {
+  slug: 'pages',
+  page: { /* config */ },
+  fields: [/* fields */],
+}
+
+const Redirects: RedirectsCollectionConfig = {
+  slug: 'redirects',
+  redirects: {},
+  fields: [],
+}
+```
+
 ## 0.5.1
 
 - fix: ensure compatibility with sqlite db adapter (4a2efdc)

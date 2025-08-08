@@ -1,5 +1,10 @@
 import { CollectionConfig } from 'payload'
 import { validateRedirect } from '../hooks/validateRedirect.js'
+import { PagesPluginConfig } from 'src/types/PagesPluginConfig.js'
+import {
+  IncomingRedirectsCollectionConfig,
+  RedirectsCollectionConfig,
+} from 'src/types/RedirectsCollectionConfig.js'
 
 // TODO: Consider the potential benefits of storing the destination page in a relationship field.
 //       Note: The destination path should still be explicitly defined to ensure the redirect path remains consistent,
@@ -10,109 +15,101 @@ import { validateRedirect } from '../hooks/validateRedirect.js'
  * In contrast to the official redirects plugin, this collection supports validation rules and a reason field.
  */
 export const createRedirectsCollectionConfig = ({
-  labels,
-  versions,
-  access,
-  overrides = {
-    admin: {},
-  },
+  collectionConfig: incomingCollectionConfig,
+  pluginConfig,
 }: {
-  labels?: CollectionConfig['labels']
-  versions?: CollectionConfig['versions']
-  access?: CollectionConfig['access']
-  overrides?: {
-    admin?: CollectionConfig['admin']
+  collectionConfig: IncomingRedirectsCollectionConfig
+  pluginConfig: PagesPluginConfig
+}): CollectionConfig => {
+  const redirectsCollectionConfig: RedirectsCollectionConfig = {
+    ...incomingCollectionConfig,
   }
-}): CollectionConfig => ({
-  slug: 'redirects',
-  versions: versions ?? undefined, // fallback to undefined (e.g. when an empty object is passed) to use the default versions settings
-  admin: {
-    defaultColumns: ['sourcePath', 'destinationPath', 'permanent', 'createdAt'],
-    listSearchableFields: ['sourcePath', 'destinationPath'],
-    ...overrides.admin,
-  },
-  labels: labels ?? undefined, // fallback to undefined (e.g. when an empty object is passed) to use the default labels
-  access: access ?? {},
-  hooks: {
-    beforeValidate: [validateRedirect],
-  },
-  fields: [
-    {
-      name: 'sourcePath',
-      type: 'text',
-      required: true,
-      admin: {
-        placeholder: '/',
-      },
-      // @ts-ignore
-      validate: (value, { siblingData }) => {
-        const destinationPath = siblingData.destinationPath
 
-        if (!value) {
-          return 'A source path is required'
-        } else if (destinationPath === value) {
-          return 'The provided path must be different from the destination path'
-        } else if (value && !value.startsWith('/')) {
-          return 'A path must start with a forward slash (/)'
-        }
+  return {
+    ...incomingCollectionConfig,
+    hooks: {
+      ...incomingCollectionConfig.hooks,
+      beforeValidate: [...(incomingCollectionConfig.hooks?.beforeValidate || []), validateRedirect],
+    },
+    fields: [
+      {
+        name: 'sourcePath',
+        type: 'text',
+        required: true,
+        admin: {
+          placeholder: '/',
+        },
+        // @ts-ignore
+        validate: (value, { siblingData }) => {
+          const destinationPath = siblingData.destinationPath
 
-        return true
+          if (!value) {
+            return 'A source path is required'
+          } else if (destinationPath === value) {
+            return 'The provided path must be different from the destination path'
+          } else if (value && !value.startsWith('/')) {
+            return 'A path must start with a forward slash (/)'
+          }
+
+          return true
+        },
+        hooks: {
+          beforeDuplicate: [
+            // append "-copy" to the value to ensure that the validation succeeds when duplicating a redirect
+            ({ value }) => value + '-copy',
+          ],
+        },
       },
-      hooks: {
-        beforeDuplicate: [
-          // append "-copy" to the value to ensure that the validation succeeds when duplicating a redirect
-          ({ value }) => value + '-copy',
+      {
+        name: 'destinationPath',
+        type: 'text',
+        required: true,
+        admin: {
+          placeholder: '/',
+        },
+        // @ts-ignore
+        validate: (value: string, { siblingData }) => {
+          const sourcePath = siblingData.sourcePath
+
+          if (!value) {
+            return 'A destination path is required'
+          } else if (sourcePath === value) {
+            return 'The provided path must be different from the source path'
+          } else if (value && !value.startsWith('/')) {
+            return 'A path must start with a forward slash (/)'
+          }
+
+          return true
+        },
+        hooks: {
+          beforeDuplicate: [
+            // append "-copy" to the value to ensure that the validation succeeds when duplicating a redirect
+            ({ value }) => value + '-copy',
+          ],
+        },
+      },
+      {
+        name: 'type',
+        type: 'select',
+        required: true,
+        defaultValue: 'permanent',
+        options: [
+          {
+            label: 'Permanent',
+            value: 'permanent',
+          },
+          {
+            label: 'Temporary',
+            value: 'temporary',
+          },
         ],
       },
-    },
-    {
-      name: 'destinationPath',
-      type: 'text',
-      required: true,
-      admin: {
-        placeholder: '/',
+      {
+        name: 'reason',
+        type: 'textarea',
+        required: false,
       },
-      // @ts-ignore
-      validate: (value: string, { siblingData }) => {
-        const sourcePath = siblingData.sourcePath
-
-        if (!value) {
-          return 'A destination path is required'
-        } else if (sourcePath === value) {
-          return 'The provided path must be different from the source path'
-        } else if (value && !value.startsWith('/')) {
-          return 'A path must start with a forward slash (/)'
-        }
-
-        return true
-      },
-      hooks: {
-        beforeDuplicate: [
-          // append "-copy" to the value to ensure that the validation succeeds when duplicating a redirect
-          ({ value }) => value + '-copy',
-        ],
-      },
-    },
-    {
-      name: 'type',
-      type: 'select',
-      required: true,
-      defaultValue: 'permanent',
-      options: [
-        {
-          label: 'Permanent',
-          value: 'permanent',
-        },
-        {
-          label: 'Temporary',
-          value: 'temporary',
-        },
-      ],
-    },
-    {
-      name: 'reason',
-      type: 'textarea',
-      required: false,
-    },
-  ],
-})
+      ...incomingCollectionConfig.fields,
+    ],
+  }
+}

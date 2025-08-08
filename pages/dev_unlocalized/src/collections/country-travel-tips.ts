@@ -1,7 +1,6 @@
-import { createPageCollectionConfig } from '@jhb.software/payload-pages-plugin'
-import { CollectionConfig } from 'payload'
+import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
-export const CountryTravelTips: CollectionConfig = createPageCollectionConfig({
+export const CountryTravelTips: PageCollectionConfig = {
   slug: 'country-travel-tips',
   admin: {
     useAsTitle: 'title',
@@ -33,4 +32,4 @@ export const CountryTravelTips: CollectionConfig = createPageCollectionConfig({
       required: true,
     },
   ],
-})
+}

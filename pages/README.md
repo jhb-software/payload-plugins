@@ -6,59 +6,85 @@ The Payload Pages plugin simplifies website building by adding essential fields 
 
 ## Setup
 
-Add the plugin to your payload config as follows:
+First, add the plugin to your payload config as follows:
 
 ```ts
 plugins: [payloadPagesPlugin({})]
 ```
 
-Use the `createPagesCollectionConfig` function to create a collection config for the Pages collection. This adds all necessary fields and hooks to the collection. The `page` field must be specified as follows:
+Next, create a page collections using the `PageCollectionConfig` type. This type extends Payload's `CollectionConfig` type with a `page` field that contains configurations for the page collection. The `page` field must be specified as follows:
 
-- `parentCollection`: The slug of the collection that will be used as the parent of the current collection.
-- `parentField`: The name of the field on the parent collection that will be used to relate to the current collection.
+- `parent.collection`: The slug of the collection that will be used as the parent of the current collection.
+- `parent.name`: The name of the field on the parent collection that will be used to relate to the current collection.
 - `isRootCollection`: Whether the collection is the root collection (collection which contains the root page). If true, the parent field is optional. Defaults to `false`.
-- `sharedParentDocument` (optional, defaults to `false`): If true, the parent document will be shared between all documents in the collection.
-- `breadcrumbLabelField` (optional, defaults to `admin.useAsTitle`): The name of the field that will be used to label the document in the breadcrumb.
-- `slugFallbackField` (optional, defaults to `title`): The name of the field that will be used as the fallback for the slug.
+- `parent.sharedDocument` (optional, defaults to `false`): If true, the parent document will be shared between all documents in the collection.
+- `breadcrumbs.labelField` (optional, defaults to `admin.useAsTitle`): The name of the field that will be used to label the document in the breadcrumb.
+- `slug.fallbackField` (optional, defaults to `title`): The name of the field that will be used as the fallback for the slug.
 
-First, the root collection must be created. This is the collection that will contain the root page.
+Here is an example of the page collection config of the root collection:
 
 ```ts
-import { createPagesCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
-const Pages: CollectionConfig = createPageCollectionConfig({
+const Pages: PageCollectionConfig = {
   slug: 'pages',
+  admin: {
+    useAsTitle: 'title',
+  },
   page: {
-    parentCollection: 'pages',
-    parentField: 'parent',
+    parent: {
+      collection: 'pages',
+      name: 'parent',
+    },
     isRootCollection: true,
   },
-  // configure the rest as normal
-})
+  fields: [
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+    },
+    // other fields
+  ],
+}
 ```
 
 Then additional collections can be created. Documents in these collections will be nested under documents in the root collection.
 
 ```ts
-import { createPagesCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
-const Projects: CollectionConfig = createPageCollectionConfig({
-  slug: 'projects',
+const Posts: PageCollectionConfig = {
+  slug: 'posts',
   page: {
-    parentCollection: 'pages',
-    parentField: 'parent',
-    sharedParentDocument: true,
+    parent: {
+      collection: 'pages',
+      name: 'parent',
+      sharedDocument: true,
+    },
   },
-  // configure the rest as normal
-})
+  fields: [
+    // your fields
+  ],
+}
 ```
 
-Additionally create the redirect collection:
+The plugin also includes a `RedirectsCollectionConfig` type that can be used to create a redirects collection. This type extends Payload's `CollectionConfig` type with a `redirects` field that contains configurations for the redirects collection.
 
 ```ts
-import { createRedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import { RedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
-const redirectsCollection = createRedirectsCollectionConfig({})
+const Redirects: RedirectsCollectionConfig = {
+  slug: 'redirects',
+  admin: {
+    defaultColumns: ['sourcePath', 'destinationPath', 'permanent', 'createdAt'],
+    listSearchableFields: ['sourcePath', 'destinationPath'],
+  },
+  redirects: {},
+  fields: [
+    // the fields are added by the plugin automatically
+  ],
+}
 ```
 
 In order for the official payload SEO plugin to use the generated URL, you need to pass the `getPageUrl` function provided by this plugin to the `generateURL` field in the `seo` plugin config inside your payload config. 
