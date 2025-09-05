@@ -1,4 +1,4 @@
-import { adminSearchPlugin } from '../../src/plugin.js'
+import { adminSearchPlugin } from '@jhb.software/payload-admin-search'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { searchPlugin } from '@payloadcms/plugin-search'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
@@ -65,7 +65,7 @@ export default buildConfig({
   },
 
   plugins: [
-    adminSearchPlugin({headerSearchComponentStyle: 'bar'}),
+    adminSearchPlugin({ headerSearchComponentStyle: 'bar' }),
     searchPlugin({
       beforeSync: ({ originalDoc, searchDoc }) => {
         return {
