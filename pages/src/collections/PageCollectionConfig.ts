@@ -6,6 +6,7 @@ import { pathField } from '../fields/pathField.js'
 import { pageSlugField } from '../fields/slugField.js'
 import { beforeDuplicateTitle } from '../hooks/beforeDuplicate.js'
 import { ensureSelectedFieldsBeforeOperation } from '../hooks/ensureSelectedFieldsBeforeOperation.js'
+import { preventParentDeletion } from '../hooks/preventParentDeletion.js'
 import {
   setVirtualFieldsAfterChange,
   setVirtualFieldsBeforeRead,
@@ -92,6 +93,10 @@ export const createPageCollectionConfig = ({
       afterChange: [
         ...(incomingCollectionConfig.hooks?.afterChange || []),
         setVirtualFieldsAfterChange,
+      ],
+      beforeDelete: [
+        ...(incomingCollectionConfig.hooks?.beforeDelete || []),
+        ...(pluginConfig.preventParentDeletion !== false ? [preventParentDeletion] : []),
       ],
     },
     fields: [
