@@ -14,9 +14,9 @@ jobs:
 
       - name: Copy environment variables to dev apps
         run: |
-          echo "${{ secrets.DEV_ENV_FILE }}" > pages/dev/.env
-          echo "${{ secrets.DEV_ENV_FILE }}" > pages/dev_unlocalized/.env
-          echo "${{ secrets.DEV_ENV_FILE }}" > pages/dev_multi_tenant/.env
+          echo "${{ secrets.PAGES_DEV_ENV_FILE }}" > pages/dev/.env
+          echo "${{ secrets.PAGES_DEV_UNLOCALIZED_ENV_FILE }}" > pages/dev_unlocalized/.env
+          echo "${{ secrets.PAGES_DEV_MULTI_TENANT_ENV_FILE }}" > pages/dev_multi_tenant/.env
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
