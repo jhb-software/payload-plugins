@@ -37,6 +37,11 @@ export type IncomingPageCollectionConfigAttributes = {
     /** Defines a static slug value for all documents in the collection. This will make the slug field readonly. */
     staticValue?: string | Record<Locale, string>
   }
+
+  path?: {
+    /** Optional global prefix prepended to every computed path for this collection. Example: "/members" */
+    pathPrefix?: string
+  }
 }
 
 /** The attributes for the page collection config after they have been processed using the incoming config attributes. */
@@ -69,5 +74,10 @@ export type PageCollectionConfigAttributes = {
 
     /** The static slug value for all documents in the collection. */
     staticValue?: string | Record<Locale, string>
+  }
+
+  path?: {
+    /** Optional global prefix prepended to every computed path for this collection. */
+    pathPrefix?: string
   }
 }

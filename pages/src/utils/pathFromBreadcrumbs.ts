@@ -6,13 +6,25 @@ export function pathFromBreadcrumbs({
   locale,
   breadcrumbs,
   additionalSlug,
+  pathPrefix,
 }: {
   locale: Locale | undefined
   breadcrumbs: Breadcrumb[]
   additionalSlug?: string
+  pathPrefix?: string
 }): string {
-  return [
+  const computedPath = [
     locale ? `/${locale}` : '',
     ...[...breadcrumbs.map(({ slug }) => slug), additionalSlug].filter(Boolean),
   ].join('/')
+
+  if (pathPrefix) {
+    // Normalize prefix: remove trailing slashes, ensure leading slash
+    const normalizedPrefix = pathPrefix.replace(/\/+$/, '')
+    const prefix = normalizedPrefix.startsWith('/') ? normalizedPrefix : `/${normalizedPrefix}`
+    
+    return computedPath === '' ? prefix : `${prefix}${computedPath}`
+  }
+
+  return computedPath
 }

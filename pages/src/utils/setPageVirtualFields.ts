@@ -32,6 +32,7 @@ export async function setPageDocumentVirtualFields({
       data: doc,
       // For localized pages, we need to fetch the breadcrumbs for all locales in order to correctly set the alternate paths
       locale: 'all',
+      pathPrefix: pageConfigAttributes.path?.pathPrefix,
     })) as Record<Locale, Breadcrumb[]>
 
     const paths: Record<Locale, string> = locales.reduce(
@@ -59,7 +60,7 @@ export async function setPageDocumentVirtualFields({
       // TODO: remove these validations in favor of more unit tests?
       Object.entries(paths).forEach(([_, path]) => validatePath(path, doc.id, 'all'))
       Object.entries(paths).forEach(([locale, _]) =>
-        validateBreadcrumbs(locale as Locale, breadcrumbs[locale as Locale]),
+        validateBreadcrumbs(locale as Locale, breadcrumbs[locale as Locale], pageConfigAttributes.path?.pathPrefix),
       )
 
       return {
@@ -74,7 +75,7 @@ export async function setPageDocumentVirtualFields({
     } else {
       // TODO: remove these validations in favor of more unit tests?
       validatePath(paths[locale], doc.id, locale)
-      validateBreadcrumbs(locale, breadcrumbs[locale])
+      validateBreadcrumbs(locale, breadcrumbs[locale], pageConfigAttributes.path?.pathPrefix)
 
       return {
         ...doc,
@@ -95,11 +96,12 @@ export async function setPageDocumentVirtualFields({
       parentCollection: pageConfigAttributes.parent.collection,
       data: doc,
       locale: undefined,
+      pathPrefix: pageConfigAttributes.path?.pathPrefix,
     })) as Breadcrumb[]
 
     // TODO: remove these validations in favor of more unit tests?
     validatePath(breadcrumbs.at(-1)!.path, doc.id, locale)
-    validateBreadcrumbs(locale, breadcrumbs)
+    validateBreadcrumbs(locale, breadcrumbs, pageConfigAttributes.path?.pathPrefix)
 
     return {
       ...doc,
