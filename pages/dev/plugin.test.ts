@@ -1,4 +1,4 @@
-import payload, { ValidationError } from 'payload'
+import payload, { CollectionSlug, ValidationError } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, test } from 'vitest'
 import config from './src/payload.config'
 
@@ -7,11 +7,9 @@ beforeAll(async () => {
     config: config,
   })
 
+  // clear all collections except users
   for (const collection of (await config).collections.filter((c) => c.slug !== 'users')) {
-    await payload.delete({
-      collection: collection.slug,
-      where: {},
-    })
+    await deleteCollection(collection.slug)
   }
 })
 
@@ -25,12 +23,7 @@ afterAll(async () => {
 
 describe('Path and breadcrumb virtual fields are returned correctly for find operation.', () => {
   describe('The root page document', () => {
-    beforeEach(async () => {
-      await payload.delete({
-        collection: 'pages',
-        where: {},
-      })
-    })
+    beforeEach(async () => await deleteCollection('pages'))
 
     test('has the correct virtual fields when only one locale is present', async () => {
       const locale = 'de'
@@ -63,15 +56,17 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       expect(removeIdsFromArray(rootPage.breadcrumbs)).toEqual(
         removeIdsFromArray([
           {
+            id: undefined,
             path,
             label: rootPageData.title,
             slug: rootPageData.slug,
           },
         ]),
       )
-      expect(removeIdsFromArray(rootPage.meta.alternatePaths)).toEqual(
+      expect(removeIdsFromArray(rootPage.meta?.alternatePaths)).toEqual(
         removeIdsFromArray([
           {
+            id: undefined,
             hreflang: locale,
             path,
           },
@@ -184,10 +179,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
     let nestedPageId: string | number | undefined // will be set in the beforeEach hook
 
     beforeAll(async () => {
-      await payload.delete({
-        collection: 'pages',
-        where: {},
-      })
+      await deleteCollection('pages')
 
       // ################# Seed the database for the tests of this group #################
 
@@ -399,10 +391,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
     let nestedPageId: string | undefined // will be set in the beforeEach hook
 
     beforeAll(async () => {
-      await payload.delete({
-        collection: 'pages',
-        where: {},
-      })
+      await deleteCollection('pages')
 
       // ################# Seed the database for the tests of this group #################
 
@@ -814,12 +803,9 @@ describe('Slug field behaves as expected for create and update operations', () =
 
 describe('Parent deletion prevention hook', () => {
   beforeEach(async () => {
-    // Clean up all collections before each test
+    // Clean up all collections except users before each test
     for (const collection of (await config).collections.filter((c) => c.slug !== 'users')) {
-      await payload.delete({
-        collection: collection.slug,
-        where: {},
-      })
+      await deleteCollection(collection.slug)
     }
   })
 
@@ -1097,11 +1083,7 @@ describe('Parent deletion prevention hook', () => {
       })
 
       try {
-        // Clear existing pages first
-        const existingPages = await payload.find({ collection: 'pages', limit: 0, select: {} })
-        for (const page of existingPages.docs) {
-          await payload.delete({ collection: 'pages', id: page.id })
-        }
+        await deleteCollection('pages')
 
         // Create parent page
         const parentPage = await payload.create({
@@ -1257,4 +1239,15 @@ describe('Parent deletion prevention hook', () => {
  */
 const removeIdsFromArray = <T extends { id?: any }>(array: T[]): Omit<T, 'id'>[] => {
   return array.map(({ id, ...rest }) => rest)
+}
+
+/**
+ * Helper function to delete all documents from a collection.
+ */
+const deleteCollection = async (collection: CollectionSlug) => {
+  // use db.deleteMany instead of payload.delete to avoid running hooks
+  await payload.db.deleteMany({
+    collection: collection,
+    where: {},
+  })
 }

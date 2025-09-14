@@ -1,4 +1,4 @@
-import payload, { ValidationError } from 'payload'
+import payload, { CollectionSlug, ValidationError } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
 
@@ -7,11 +7,9 @@ beforeAll(async () => {
     config: config,
   })
 
+  // clear all collections except users
   for (const collection of (await config).collections.filter((c) => c.slug !== 'users')) {
-    await payload.delete({
-      collection: collection.slug,
-      where: {},
-    })
+    await deleteCollection(collection.slug)
   }
 })
 
@@ -25,7 +23,7 @@ afterAll(async () => {
 
 describe('Path and breadcrumb virtual fields are returned correctly for find operation.', () => {
   describe('The root page document', () => {
-    beforeEach(async () => await deletePagesCollection())
+    beforeEach(async () => await deleteCollection('pages'))
 
     test('has the correct virtual fields', async () => {
       const rootPageData = {
@@ -55,6 +53,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       expect(removeIdsFromArray(rootPage.breadcrumbs)).toEqual(
         removeIdsFromArray([
           {
+            id: undefined,
             path,
             label: rootPageData.title,
             slug: rootPageData.slug,
@@ -79,7 +78,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
     let nestedPageId: string | number | undefined // will be set in the beforeEach hook
 
     beforeAll(async () => {
-      await deletePagesCollection()
+      await deleteCollection('pages')
 
       // ################# Seed the database for the tests of this group #################
 
@@ -173,7 +172,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
     let nestedPageId: string | number | undefined // will be set in the beforeEach hook
 
     beforeAll(async () => {
-      await deletePagesCollection()
+      await deleteCollection('pages')
 
       // ################# Seed the database for the tests of this group #################
 
@@ -354,6 +353,7 @@ describe('Slug field behaves as expected for create and update operations', () =
 
     const page = await payload.create({
       collection: 'pages',
+      // @ts-expect-error
       data: initialData,
     })
 
@@ -383,6 +383,7 @@ describe('Slug field behaves as expected for create and update operations', () =
     try {
       await payload.create({
         collection: 'pages',
+        // @ts-expect-error
         data: pageData,
       })
     } catch (error) {
@@ -401,6 +402,7 @@ describe('Slug field behaves as expected for create and update operations', () =
     try {
       await payload.create({
         collection: 'pages',
+        // @ts-expect-error
         data: pageData,
       })
     } catch (error) {
@@ -419,6 +421,7 @@ describe('Slug field behaves as expected for create and update operations', () =
     try {
       await payload.create({
         collection: 'pages',
+        // @ts-expect-error
         data: initialData,
       })
     } catch (error) {
@@ -431,7 +434,7 @@ describe('Slug field behaves as expected for create and update operations', () =
     await payload.delete({
       collection: 'pages',
       where: {
-        slug: '',
+        slug: { equals: '' },
       },
     })
 
@@ -445,6 +448,7 @@ describe('Slug field behaves as expected for create and update operations', () =
 
     const rootPage = await payload.create({
       collection: 'pages',
+      // @ts-expect-error
       data: initialData,
     })
 
@@ -475,17 +479,12 @@ const removeIdsFromArray = <T extends { id?: any }>(array: T[]): Omit<T, 'id'>[]
 }
 
 /**
- * Helper function to delete all pages from the database.
+ * Helper function to delete all documents from a collection.
  */
-const deletePagesCollection = async () => {
-  // Call payload.delete twice to ensure complete cleanup
-  // (First delete may fail for root page due to deletion prevention hook)
-  await payload.delete({
-    collection: 'pages',
-    where: {},
-  })
-  await payload.delete({
-    collection: 'pages',
+const deleteCollection = async (collection: CollectionSlug) => {
+  // use db.deleteMany instead of payload.delete to avoid running hooks
+  await payload.db.deleteMany({
+    collection: collection,
     where: {},
   })
 }
