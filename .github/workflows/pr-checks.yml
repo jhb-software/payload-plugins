@@ -14,9 +14,17 @@ jobs:
 
       - name: Copy environment variables to dev apps
         run: |
-          echo "${{ secrets.PAGES_DEV_ENV_FILE }}" > pages/dev/.env
-          echo "${{ secrets.PAGES_DEV_UNLOCALIZED_ENV_FILE }}" > pages/dev_unlocalized/.env
-          echo "${{ secrets.PAGES_DEV_MULTI_TENANT_ENV_FILE }}" > pages/dev_multi_tenant/.env
+          cat << 'EOF' > pages/dev/.env
+          ${{ secrets.PAGES_DEV_ENV_FILE }}
+          EOF
+          
+          cat << 'EOF' > pages/dev_unlocalized/.env
+          ${{ secrets.PAGES_DEV_UNLOCALIZED_ENV_FILE }}
+          EOF
+          
+          cat << 'EOF' > pages/dev_multi_tenant/.env
+          ${{ secrets.PAGES_DEV_MULTI_TENANT_ENV_FILE }}
+          EOF
           
           echo "Debugging .env files (GitHub will redact actual values):"
           echo "pages/dev/.env file size: $(wc -c < pages/dev/.env) bytes"
