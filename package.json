@@ -4,14 +4,19 @@
   "private": true,
   "scripts": {
     "build:all": "pnpm build:cloudinary && pnpm build:pages && pnpm build:seo && pnpm build:geocoding",
-    "publish:all": "pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:seo && pnpm publish:geocoding",
     "build:cloudinary": "cd ./cloudinary && pnpm build",
+    "build:geocoding": "cd ./geocoding && pnpm build", 
     "build:pages": "cd ./pages && pnpm build",
     "build:seo": "cd ./seo && pnpm build",
+    "publish:all": "pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:seo && pnpm publish:geocoding",
     "publish:cloudinary": "cd ./cloudinary && pnpm publish",
+    "publish:geocoding": "cd ./geocoding && pnpm publish",
     "publish:pages": "cd ./pages && pnpm publish",
     "publish:seo": "cd ./seo && pnpm publish",
-    "build:geocoding": "cd ./geocoding && pnpm build",
-    "publish:geocoding": "cd ./geocoding && pnpm publish"
+    "format:all": "pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:seo",
+    "format:cloudinary": "cd ./cloudinary && pnpm format",
+    "format:geocoding": "cd ./geocoding && pnpm format",
+    "format:pages": "cd ./pages && pnpm format",
+    "format:seo": "cd ./seo && pnpm format"
   }
 }
