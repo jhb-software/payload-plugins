@@ -1,0 +1,55 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  format-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy environment variables to dev apps
+        run: |
+          cat << 'EOF' > pages/dev/.env
+          ${{ secrets.PAGES_DEV_ENV_FILE }}
+          EOF
+          
+          cat << 'EOF' > pages/dev_unlocalized/.env
+          ${{ secrets.PAGES_DEV_UNLOCALIZED_ENV_FILE }}
+          EOF
+          
+          cat << 'EOF' > pages/dev_multi_tenant/.env
+          ${{ secrets.PAGES_DEV_MULTI_TENANT_ENV_FILE }}
+          EOF
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ^9.0.0
+          
+      - name: Install dependencies in all packages
+        run: pnpm install:all
+        
+      - name: Run format
+        run: pnpm format:all
+        
+      - name: Check for formatting changes in all packages
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Code formatting changes detected. Please run 'pnpm format' locally and commit the changes."
+            git status
+            git diff
+            exit 1
+          fi
+          
+      - name: Run tests in all packages
+        run: pnpm test:all

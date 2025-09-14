@@ -6,7 +6,7 @@
   "trailingComma": "all",
   "overrides": [
     {
-      "files": ["**/importMap.js", "**/payload-types.ts", "**/**.yaml"],
+      "files": ["**/importMap.js", "**/payload-types.ts", "**/**.yaml", "**/translation-schema.json"],
       "options": {
         "requirePragma": true
       }
