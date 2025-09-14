@@ -5,7 +5,8 @@ export default defineConfig(({ mode }) => {
   return {
     test: {
       env: loadEnv(mode, process.cwd(), ''), // Load environment variables
-      hookTimeout: 60000, // Increase hook timeout to 60 seconds
+      hookTimeout: 30000, // Increase hook timeout to 30 seconds
+      testTimeout: 30000, // Increase test timeout to 30 seconds
     },
   }
 })
