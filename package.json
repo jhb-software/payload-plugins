@@ -8,15 +8,26 @@
     "build:geocoding": "cd ./geocoding && pnpm build", 
     "build:pages": "cd ./pages && pnpm build",
     "build:seo": "cd ./seo && pnpm build",
+    
     "publish:all": "pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:seo && pnpm publish:geocoding",
     "publish:cloudinary": "cd ./cloudinary && pnpm publish",
     "publish:geocoding": "cd ./geocoding && pnpm publish",
     "publish:pages": "cd ./pages && pnpm publish",
     "publish:seo": "cd ./seo && pnpm publish",
+   
     "format:all": "pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:seo",
     "format:cloudinary": "cd ./cloudinary && pnpm format",
     "format:geocoding": "cd ./geocoding && pnpm format",
     "format:pages": "cd ./pages && pnpm format",
-    "format:seo": "cd ./seo && pnpm format"
+    "format:seo": "cd ./seo && pnpm format",
+    
+    "install:all": "pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:seo",
+    "install:cloudinary": "cd ./cloudinary && pnpm install --frozen-lockfile",
+    "install:geocoding": "cd ./geocoding && pnpm install --frozen-lockfile",
+    "install:pages": "cd ./pages && pnpm install --frozen-lockfile",
+    "install:seo": "cd ./seo && pnpm install --frozen-lockfile",
+    
+    "test:all": "pnpm test:pages",
+    "test:pages": "cd ./pages && pnpm test"
   }
 }

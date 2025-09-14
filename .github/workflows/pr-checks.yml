@@ -22,13 +22,13 @@ jobs:
         with:
           version: 8
           
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies in all packages
+        run: pnpm install:all
         
       - name: Run format
         run: pnpm format:all
         
-      - name: Check for formatting changes
+      - name: Check for formatting changes in all packages
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             echo "Code formatting changes detected. Please run 'pnpm format' locally and commit the changes."
@@ -37,5 +37,5 @@ jobs:
             exit 1
           fi
           
-      - name: Run tests
-        run: pnpm test
+      - name: Run tests in all packages
+        run: pnpm test:all
