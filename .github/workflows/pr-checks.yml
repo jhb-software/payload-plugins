@@ -25,28 +25,6 @@ jobs:
           cat << 'EOF' > pages/dev_multi_tenant/.env
           ${{ secrets.PAGES_DEV_MULTI_TENANT_ENV_FILE }}
           EOF
-          
-          echo "Debugging .env files (GitHub will redact actual values):"
-          echo "pages/dev/.env file size: $(wc -c < pages/dev/.env) bytes"
-          echo "pages/dev/.env line count: $(wc -l < pages/dev/.env) lines"
-          echo "pages/dev/.env contains MONGODB_URL: $(grep -c 'MONGODB_URL' pages/dev/.env || echo 0)"
-          echo "pages/dev/.env contains PAYLOAD_SECRET: $(grep -c 'PAYLOAD_SECRET' pages/dev/.env || echo 0)"
-          
-          echo "pages/dev_unlocalized/.env file size: $(wc -c < pages/dev_unlocalized/.env) bytes"
-          echo "pages/dev_unlocalized/.env line count: $(wc -l < pages/dev_unlocalized/.env) lines"
-          echo "pages/dev_unlocalized/.env contains MONGODB_URL: $(grep -c 'MONGODB_URL' pages/dev_unlocalized/.env || echo 0)"
-          
-          echo "pages/dev_multi_tenant/.env file size: $(wc -c < pages/dev_multi_tenant/.env) bytes"
-          echo "pages/dev_multi_tenant/.env line count: $(wc -l < pages/dev_multi_tenant/.env) lines"
-          echo "pages/dev_multi_tenant/.env contains MONGODB_URL: $(grep -c 'MONGODB_URL' pages/dev_multi_tenant/.env || echo 0)"
-          
-          echo "Variable names in each file (values will be redacted):"
-          echo "pages/dev/.env variables:"
-          grep -o '^[^=]*' pages/dev/.env || echo "No variables found"
-          echo "pages/dev_unlocalized/.env variables:"
-          grep -o '^[^=]*' pages/dev_unlocalized/.env || echo "No variables found"
-          echo "pages/dev_multi_tenant/.env variables:"
-          grep -o '^[^=]*' pages/dev_multi_tenant/.env || echo "No variables found"
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
