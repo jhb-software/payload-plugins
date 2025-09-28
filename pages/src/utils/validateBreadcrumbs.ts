@@ -5,7 +5,7 @@ import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 /**
  * Validates the breadcrumbs and throws an error if invalid.
  */
-export function validateBreadcrumbs(locale: Locale | undefined, breadcrumbs: Breadcrumb[]) {
+export function validateBreadcrumbs(locale: Locale | undefined, breadcrumbs: Breadcrumb[], pathPrefix?: string) {
   if (!breadcrumbs) {
     throw new Error(locale ? 'No breadcrumbs found for locale ' + locale : 'No breadcrumbs found')
   }
@@ -17,12 +17,13 @@ export function validateBreadcrumbs(locale: Locale | undefined, breadcrumbs: Bre
   }
 
   if (
-    pathFromBreadcrumbs({ locale: locale, breadcrumbs: breadcrumbs }) !== breadcrumbs.at(-1)?.path
+    pathFromBreadcrumbs({ locale: locale, breadcrumbs: breadcrumbs, pathPrefix }) !== breadcrumbs.at(-1)?.path
   ) {
     throw new Error(
       `Path generated from breadcrumbs (${pathFromBreadcrumbs({
         locale: locale,
         breadcrumbs: breadcrumbs,
+        pathPrefix,
       })}) is not equal to the path of the last breadcrumb: ${breadcrumbs.at(-1)?.path}`,
     )
   }

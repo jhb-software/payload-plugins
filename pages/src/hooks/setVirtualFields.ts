@@ -102,6 +102,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
       breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+      pathPrefix: pageConfig.page.path?.pathPrefix,
     })
 
     return docWithVirtualFields
@@ -151,6 +152,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
       locale,
       locales,
       breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+      pathPrefix: pageConfig.page.path?.pathPrefix,
     })
 
     return docWithVirtualFields

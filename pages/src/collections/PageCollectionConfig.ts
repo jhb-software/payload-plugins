@@ -54,6 +54,9 @@ export const createPageCollectionConfig = ({
       unique: incomingCollectionConfig.page?.slug?.unique ?? true,
       staticValue: incomingCollectionConfig.page?.slug?.staticValue,
     },
+    path: incomingCollectionConfig.page?.path?.pathPrefix ? {
+      pathPrefix: incomingCollectionConfig.page.path.pathPrefix
+    } : undefined,
   }
 
   return {

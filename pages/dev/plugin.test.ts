@@ -615,10 +615,10 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
     expect(author).toBeDefined()
     expect(author.parent).toBe(authorOverviewPageId)
 
-    // Verify path is correctly set
-    expect(author.path).toBe(`/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`)
+    // Verify path is correctly set with pathPrefix
+    expect(author.path).toBe(`/authors/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`)
 
-    // Verify breadcrumbs are correctly set
+    // Verify breadcrumbs are correctly set with pathPrefix
     expect(author.breadcrumbs).toBeDefined()
     expect(removeIdsFromArray(author.breadcrumbs)).toEqual([
       {
@@ -628,17 +628,17 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       },
       {
         label: authorPageData.name,
-        path: `/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`,
+        path: `/authors/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`,
         slug: authorPageData.slug,
       },
     ])
 
-    // Verify alternatePaths are correctly set
+    // Verify alternatePaths are correctly set with pathPrefix
     expect(author.meta.alternatePaths).toBeDefined()
     expect(author.meta.alternatePaths).toEqual([
       {
         hreflang: locale,
-        path: `/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`,
+        path: `/authors/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`,
       },
     ])
   })
@@ -1258,3 +1258,135 @@ describe('Parent deletion prevention hook', () => {
 const removeIdsFromArray = <T extends { id?: any }>(array: T[]): Omit<T, 'id'>[] => {
   return array.map(({ id, ...rest }) => rest)
 }
+
+describe('PathPrefix functionality (minimal)', () => {
+  beforeEach(async () => {
+    await payload.delete({
+      collection: 'authors',
+      where: {},
+    })
+  })
+
+  test('Author with pathPrefix resolves correctly', async () => {
+    const locale = 'de'
+    
+    // Use unique test data for pathPrefix test
+    const authorOverviewPageData = {
+      title: 'Author Pages Test',
+      slug: 'author-pages-test',
+      content: 'Author pages test content',
+    }
+    const authorPageData = {
+      name: 'PathPrefix Test Author',
+      slug: 'pathprefix-test-author',
+      content: 'PathPrefix test author content',
+    }
+
+    const authorOverviewPageId = (
+      await payload.create({
+        collection: 'pages',
+        locale,
+        data: authorOverviewPageData,
+      })
+    ).id
+
+    const authorPageId = (
+      await payload.create({
+        collection: 'authors',
+        locale,
+        data: { ...authorPageData, parent: authorOverviewPageId },
+      })
+    ).id
+
+    const author = await payload.findByID({
+      collection: 'authors',
+      depth: 0,
+      id: authorPageId,
+    })
+
+    // Verify the pathPrefix is applied to the author's path
+    expect(author.path).toBe(`/authors/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`)
+  })
+
+  test('PathPrefix configuration preserved backward compatibility', async () => {
+    // This test ensures that collections without pathPrefix work as before
+    const locale = 'de'
+    
+    // Test pages collection (no pathPrefix)
+    const pageData = {
+      title: 'Unique Regular Page',
+      slug: 'unique-regular-page',
+      content: 'Unique regular content',
+    }
+
+    const pageId = (
+      await payload.create({
+        collection: 'pages',
+        locale,
+        data: pageData,
+      })
+    ).id
+
+    const page = await payload.findByID({
+      collection: 'pages',
+      id: pageId,
+      locale: locale,
+    })
+
+    // Regular pages should not have pathPrefix applied
+    expect(page.path).toBe(`/${locale}/${pageData.slug}`)
+    
+    // Now test that authors collection DOES have pathPrefix
+    const authorData = {
+      name: 'Unique Simple Author',
+      slug: 'unique-simple-author',
+      content: 'Unique simple author content',
+      parent: pageId, // Use the page as parent
+    }
+
+    const authorId = (
+      await payload.create({
+        collection: 'authors',
+        locale,
+        data: authorData,
+      })
+    ).id
+
+    const author = await payload.findByID({
+      collection: 'authors',
+      id: authorId,
+      locale: locale,
+    })
+
+    // Author should have pathPrefix applied
+    expect(author.path).toBe(`/authors/${locale}/${pageData.slug}/${authorData.slug}`)
+  })
+
+  test('Collections without pathPrefix unchanged', async () => {
+    const locale = 'de'
+    const regularPageData = {
+      title: 'Regular Page DE',
+      slug: 'regular-page',
+      content: 'Regular Page DE',
+    }
+
+    const regularPageId = (
+      await payload.create({
+        collection: 'pages', // This collection has no pathPrefix
+        locale,
+        // @ts-ignore
+        data: regularPageData,
+      })
+    ).id
+
+    const regularPage = await payload.findByID({
+      collection: 'pages',
+      id: regularPageId,
+      locale: locale,
+    })
+
+    // Regular collection should maintain original behavior: '/de/regular-page'
+    expect(regularPage.path).toBe('/de/regular-page')
+    expect(regularPage.breadcrumbs[0].path).toBe('/de/regular-page')
+  })
+})

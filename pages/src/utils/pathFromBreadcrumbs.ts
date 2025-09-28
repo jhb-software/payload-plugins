@@ -6,13 +6,21 @@ export function pathFromBreadcrumbs({
   locale,
   breadcrumbs,
   additionalSlug,
+  pathPrefix,
 }: {
   locale: Locale | undefined
   breadcrumbs: Breadcrumb[]
   additionalSlug?: string
+  pathPrefix?: string
 }): string {
-  return [
+  const computedPath = [
     locale ? `/${locale}` : '',
     ...[...breadcrumbs.map(({ slug }) => slug), additionalSlug].filter(Boolean),
   ].join('/')
+
+  if (pathPrefix) {
+    return computedPath === '' ? pathPrefix : `${pathPrefix}${computedPath}`
+  }
+
+  return computedPath
 }

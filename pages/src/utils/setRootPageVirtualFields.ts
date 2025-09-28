@@ -18,11 +18,13 @@ export function setRootPageDocumentVirtualFields({
   locale,
   locales,
   breadcrumbLabelField,
+  pathPrefix,
 }: {
   doc: Record<string, any>
   locale: Locale | undefined
   locales: Locale[] | undefined
   breadcrumbLabelField: string
+  pathPrefix?: string
 }) {
   if (locales && locale) {
     const paths = locales.reduce(
@@ -32,7 +34,8 @@ export function setRootPageDocumentVirtualFields({
           (typeof doc.slug === 'object' && doc.slug[locale] === ROOT_PAGE_SLUG) ||
           (typeof doc.slug === 'string' && doc.slug === ROOT_PAGE_SLUG)
         ) {
-          acc[locale] = `/${locale}`
+          const basePath = `/${locale}`
+          acc[locale] = pathPrefix ? `${pathPrefix}${basePath}` : basePath
         }
         return acc
       },
@@ -71,12 +74,14 @@ export function setRootPageDocumentVirtualFields({
         },
       }
     } else {
+      const singleLocalePath = `/${locale}`
+      const pathWithPrefix = pathPrefix ? `${pathPrefix}${singleLocalePath}` : singleLocalePath
       return {
         ...doc,
         path: paths[locale],
         breadcrumbs: [
           {
-            path: `/${locale}`,
+            path: pathWithPrefix,
             label: doc[breadcrumbLabelField],
             slug: ROOT_PAGE_SLUG,
           },
@@ -88,12 +93,13 @@ export function setRootPageDocumentVirtualFields({
       }
     }
   } else {
+    const rootPath = pathPrefix || '/'
     return {
       ...doc,
-      path: '/',
+      path: rootPath,
       breadcrumbs: [
         {
-          path: '/',
+          path: rootPath,
           label: doc[breadcrumbLabelField],
           slug: ROOT_PAGE_SLUG,
         },

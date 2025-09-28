@@ -15,6 +15,7 @@ export async function getBreadcrumbs({
   parentCollection,
   data,
   locale,
+  pathPrefix,
 }: {
   req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
   locales: Locale[] | undefined
@@ -23,6 +24,7 @@ export async function getBreadcrumbs({
   parentCollection: CollectionSlug
   data: Record<string, any>
   locale: Locale | 'all' | undefined
+  pathPrefix?: string
 }): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
   const getCurrentDocBreadcrumb = (locale: Locale | undefined, parentBreadcrumbs: Breadcrumb[]) =>
     docToBreadcrumb(
@@ -32,6 +34,7 @@ export async function getBreadcrumbs({
           locale,
           breadcrumbs: parentBreadcrumbs,
           additionalSlug: data.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(data.slug, locale),
+          pathPrefix,
         }),
       },
       locale,

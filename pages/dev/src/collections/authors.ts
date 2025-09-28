@@ -14,6 +14,9 @@ export const Authors: PageCollectionConfig = {
     breadcrumbs: {
       labelField: 'name',
     },
+    path: {
+      pathPrefix: '/authors',
+    },
   },
   fields: [
     {
