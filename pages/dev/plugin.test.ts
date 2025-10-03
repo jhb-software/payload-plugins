@@ -347,7 +347,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
         expect(nestedPage.meta.alternatePaths).toBeDefined()
         expect(Array.isArray(nestedPage.meta.alternatePaths)).toBe(true)
 
-        expect(nestedPage.meta.alternatePaths).toStrictEqual([
+        expect(removeIdsFromArray(nestedPage.meta.alternatePaths)).toStrictEqual([
           {
             hreflang: 'de',
             path: `/de/${rootPageDataDe.slug}/${nestedPageDataDe.slug}`,
@@ -370,16 +370,18 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
         expect(nestedPage.meta.alternatePaths).toBeDefined()
         expect(Array.isArray(nestedPage.meta.alternatePaths)).toBe(true)
 
-        expect(nestedPage.meta.alternatePaths).toStrictEqual([
-          {
-            hreflang: 'de',
-            path: `/de/${rootPageDataDe.slug}/${nestedPageDataDe.slug}`,
-          },
-          {
-            hreflang: 'en',
-            path: `/en/${rootPageDataEn.slug}/${nestedPageDataEn.slug}`,
-          },
-        ])
+        expect(removeIdsFromArray(nestedPage.meta.alternatePaths)).toStrictEqual(
+          removeIdsFromArray([
+            {
+              hreflang: 'de',
+              path: `/de/${rootPageDataDe.slug}/${nestedPageDataDe.slug}`,
+            },
+            {
+              hreflang: 'en',
+              path: `/en/${rootPageDataEn.slug}/${nestedPageDataEn.slug}`,
+            },
+          ]),
+        )
       })
     })
   })
@@ -547,12 +549,14 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
         expect(nestedPage.meta.alternatePaths).toBeDefined()
         expect(Array.isArray(nestedPage.meta.alternatePaths)).toBe(true)
 
-        expect(nestedPage.meta.alternatePaths).toStrictEqual([
-          {
-            hreflang: 'de',
-            path: `/de/${rootPageDataDe.slug}/${nestedPageDataDe.slug}`,
-          },
-        ])
+        expect(removeIdsFromArray(nestedPage.meta.alternatePaths)).toStrictEqual(
+          removeIdsFromArray([
+            {
+              hreflang: 'de',
+              path: `/de/${rootPageDataDe.slug}/${nestedPageDataDe.slug}`,
+            },
+          ]),
+        )
       })
 
       test('One locale requested.', async () => {
@@ -566,12 +570,14 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
         expect(nestedPage.meta.alternatePaths).toBeDefined()
         expect(Array.isArray(nestedPage.meta.alternatePaths)).toBe(true)
 
-        expect(nestedPage.meta.alternatePaths).toStrictEqual([
-          {
-            hreflang: 'de',
-            path: `/de/${rootPageDataDe.slug}/${nestedPageDataDe.slug}`,
-          },
-        ])
+        expect(removeIdsFromArray(nestedPage.meta.alternatePaths)).toStrictEqual(
+          removeIdsFromArray([
+            {
+              hreflang: 'de',
+              path: `/de/${rootPageDataDe.slug}/${nestedPageDataDe.slug}`,
+            },
+          ]),
+        )
       })
     })
   })
@@ -635,12 +641,14 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
 
     // Verify alternatePaths are correctly set
     expect(author.meta.alternatePaths).toBeDefined()
-    expect(author.meta.alternatePaths).toEqual([
-      {
-        hreflang: locale,
-        path: `/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`,
-      },
-    ])
+    expect(removeIdsFromArray(author.meta.alternatePaths)).toEqual(
+      removeIdsFromArray([
+        {
+          hreflang: locale,
+          path: `/${locale}/${authorOverviewPageData.slug}/${authorPageData.slug}`,
+        },
+      ]),
+    )
   })
 })
 
@@ -665,7 +673,9 @@ describe('Path and breadcrumb virtual fields are set correctly for find operatio
       select: {
         path: true,
         breadcrumbs: true,
-        alternatePaths: true,
+        meta: {
+          alternatePaths: true,
+        },
       },
     })
 
@@ -692,7 +702,9 @@ describe('Path and breadcrumb virtual fields are set correctly for find operatio
     expect(pageWithSelect.meta.alternatePaths).toBeDefined()
 
     // AlternatePaths must match homePage alternatePaths
-    expect(pageWithSelect.meta.alternatePaths).toEqual(pageWithoutSelect.meta.alternatePaths)
+    expect(removeIdsFromArray(pageWithSelect.meta.alternatePaths)).toEqual(
+      removeIdsFromArray(pageWithoutSelect.meta.alternatePaths),
+    )
   })
 })
 
@@ -1397,6 +1409,8 @@ describe('Select during read operation', () => {
 /**
  * Helper function to remove id field from objects in an array
  */
-const removeIdsFromArray = <T extends { id?: any }>(array: T[]): Omit<T, 'id'>[] => {
+const removeIdsFromArray = <T extends { id?: any; [key: string]: any }>(
+  array: T[],
+): Omit<T, 'id'>[] => {
   return array.map(({ id, ...rest }) => rest)
 }
