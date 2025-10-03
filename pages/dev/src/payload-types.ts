@@ -148,6 +148,13 @@ export interface Page {
   breadcrumbs: Breadcrumbs;
   title: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -356,6 +363,17 @@ export interface PagesSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;

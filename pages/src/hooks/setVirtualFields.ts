@@ -1,8 +1,7 @@
-import { CollectionAfterChangeHook, CollectionBeforeReadHook, PayloadRequest } from 'payload'
+import { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payload'
 import { asPageCollectionConfigOrThrow } from '../collections/PageCollectionConfig.js'
 import { Locale } from '../types/Locale.js'
 import { PageCollectionConfig } from '../types/PageCollectionConfig.js'
-import { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
@@ -40,7 +39,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
     if (
       !selectedFields.includes('path') &&
       !selectedFields.includes('breadcrumbs') &&
-      !selectedFields.includes('alternatePaths')
+      !selectedFields.includes('meta') // the alternatePaths field is part of the meta group
     ) {
       return doc
     }

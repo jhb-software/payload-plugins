@@ -17,7 +17,8 @@ import {
 } from '../types/PageCollectionConfig.js'
 import { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import { getPageUrl } from '../utils/getPageUrl.js'
-import { PagesPluginConfig } from 'src/types/PagesPluginConfig.js'
+import { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+import { deleteUnselectedFieldsAfterRead } from '../hooks/deleteUnselectedFieldsAfterRead.js'
 
 /**
  * Creates a collection config for a page-like collection by adding:
@@ -89,6 +90,10 @@ export const createPageCollectionConfig = ({
       beforeRead: [
         ...(incomingCollectionConfig.hooks?.beforeRead || []),
         setVirtualFieldsBeforeRead,
+      ],
+      afterRead: [
+        ...(incomingCollectionConfig.hooks?.afterRead || []),
+        deleteUnselectedFieldsAfterRead,
       ],
       afterChange: [
         ...(incomingCollectionConfig.hooks?.afterChange || []),

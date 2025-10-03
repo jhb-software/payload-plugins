@@ -1252,6 +1252,148 @@ describe('Parent deletion prevention hook', () => {
   })
 })
 
+describe('Select during read operation', () => {
+  beforeAll(async () => {
+    await payload.delete({
+      collection: 'pages',
+      where: {},
+    })
+  })
+
+  test('Only selected virtual fields are returned', async () => {
+    // Create root page
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      // @ts-expect-error
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+      },
+    })
+
+    // Create child page
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      // @ts-expect-error
+      data: {
+        title: 'Child Page',
+        slug: 'child-page',
+        content: 'Child content',
+        parent: rootPage.id,
+      },
+    })
+
+    // Test path only
+    const fetchedWithPath = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        path: true,
+      },
+    })
+
+    expect(fetchedWithPath).toBeDefined()
+    expect(fetchedWithPath.path).toBe('/de/child-page')
+    expect(Object.keys(fetchedWithPath)).toEqual(['id', 'path'])
+
+    // Test slug only
+    const fetchedWithSlug = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        slug: true,
+      },
+    })
+
+    expect(fetchedWithSlug).toBeDefined()
+    expect(fetchedWithSlug.slug).toBe('child-page')
+    expect(Object.keys(fetchedWithSlug).sort()).toEqual(['id', 'slug'].sort())
+
+    // Test breadcrumbs only
+    const fetchedWithBreadcrumbs = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        breadcrumbs: true,
+      },
+    })
+
+    expect(fetchedWithBreadcrumbs).toBeDefined()
+    expect(fetchedWithBreadcrumbs.breadcrumbs).toEqual([
+      {
+        id: fetchedWithBreadcrumbs.breadcrumbs.at(0)?.id,
+        label: 'Root Page',
+        path: '/de',
+        slug: '',
+      },
+      {
+        id: fetchedWithBreadcrumbs.breadcrumbs.at(1)?.id,
+        label: 'Child Page',
+        path: '/de/child-page',
+        slug: 'child-page',
+      },
+    ])
+    expect(Object.keys(fetchedWithBreadcrumbs)).toEqual(['id', 'breadcrumbs'])
+
+    // Test meta only
+    const fetchedWithMeta = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        meta: true,
+      },
+    })
+
+    expect(fetchedWithMeta).toBeDefined()
+    expect(fetchedWithMeta.meta.alternatePaths).toEqual([
+      {
+        hreflang: 'de',
+        id: fetchedWithMeta.meta.alternatePaths.at(0)?.id,
+        path: '/de/child-page',
+      },
+    ])
+    expect(Object.keys(fetchedWithMeta).sort()).toEqual(['id', 'meta'].sort())
+
+    // Test meta.alternatePaths only
+    const fetchedWithMetaAlternatePaths = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        meta: {
+          alternatePaths: true,
+        },
+      },
+    })
+
+    expect(fetchedWithMetaAlternatePaths).toBeDefined()
+    expect(fetchedWithMetaAlternatePaths.meta.alternatePaths).toEqual([
+      {
+        hreflang: 'de',
+        id: fetchedWithMetaAlternatePaths.meta.alternatePaths.at(0)?.id,
+        path: '/de/child-page',
+      },
+    ])
+    expect(Object.keys(fetchedWithMetaAlternatePaths).sort()).toEqual(['id', 'meta'].sort())
+    expect(Object.keys(fetchedWithMetaAlternatePaths.meta).sort()).toEqual(
+      ['alternatePaths'].sort(),
+    )
+  })
+})
+
 /**
  * Helper function to remove id field from objects in an array
  */
