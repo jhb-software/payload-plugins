@@ -1265,14 +1265,20 @@ describe('Parent deletion prevention hook', () => {
 })
 
 describe('Select during read operation', () => {
-  beforeAll(async () => {
+  beforeEach(async () => {
     await payload.delete({
       collection: 'pages',
       where: {},
     })
+    await payload.delete({
+      collection: 'pages',
+      where: {
+        isRootPage: { equals: true },
+      },
+    })
   })
 
-  test('Only selected virtual fields are returned', async () => {
+  test('Respect select inclusion (field: true)', async () => {
     // Create root page
     const rootPage = await payload.create({
       collection: 'pages',
@@ -1299,7 +1305,16 @@ describe('Select during read operation', () => {
       },
     })
 
-    // Test path only
+    const fetchedWithAllFields = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+    })
+
+    expect(fetchedWithAllFields).toBeDefined()
+
+    // ################ Test path only ################
     const fetchedWithPath = await payload.findByID({
       collection: 'pages',
       id: childPage.id,
@@ -1311,10 +1326,10 @@ describe('Select during read operation', () => {
     })
 
     expect(fetchedWithPath).toBeDefined()
-    expect(fetchedWithPath.path).toBe('/de/child-page')
-    expect(Object.keys(fetchedWithPath)).toEqual(['id', 'path'])
+    expect(Object.keys(fetchedWithPath)).toEqual(['id', 'path']) // has correct fields
+    expect(fetchedWithPath.path).toEqual(fetchedWithAllFields.path) // path is correct
 
-    // Test slug only
+    // ################ Test slug only ################
     const fetchedWithSlug = await payload.findByID({
       collection: 'pages',
       id: childPage.id,
@@ -1326,10 +1341,10 @@ describe('Select during read operation', () => {
     })
 
     expect(fetchedWithSlug).toBeDefined()
-    expect(fetchedWithSlug.slug).toBe('child-page')
-    expect(Object.keys(fetchedWithSlug).sort()).toEqual(['id', 'slug'].sort())
+    expect(Object.keys(fetchedWithSlug).sort()).toEqual(['id', 'slug'].sort()) // has correct fields
+    expect(fetchedWithSlug.slug).toEqual(fetchedWithAllFields.slug) // slug is correct
 
-    // Test breadcrumbs only
+    // ################ Test breadcrumbs only ################
     const fetchedWithBreadcrumbs = await payload.findByID({
       collection: 'pages',
       id: childPage.id,
@@ -1341,23 +1356,12 @@ describe('Select during read operation', () => {
     })
 
     expect(fetchedWithBreadcrumbs).toBeDefined()
-    expect(fetchedWithBreadcrumbs.breadcrumbs).toEqual([
-      {
-        id: fetchedWithBreadcrumbs.breadcrumbs.at(0)?.id,
-        label: 'Root Page',
-        path: '/de',
-        slug: '',
-      },
-      {
-        id: fetchedWithBreadcrumbs.breadcrumbs.at(1)?.id,
-        label: 'Child Page',
-        path: '/de/child-page',
-        slug: 'child-page',
-      },
-    ])
-    expect(Object.keys(fetchedWithBreadcrumbs)).toEqual(['id', 'breadcrumbs'])
+    expect(Object.keys(fetchedWithBreadcrumbs)).toEqual(['id', 'breadcrumbs']) // has correct fields
+    expect(removeIdsFromArray(fetchedWithBreadcrumbs.breadcrumbs)).toEqual(
+      removeIdsFromArray(fetchedWithAllFields.breadcrumbs),
+    ) // breadcrumbs is correct
 
-    // Test meta only
+    // ################ Test meta only ################
     const fetchedWithMeta = await payload.findByID({
       collection: 'pages',
       id: childPage.id,
@@ -1369,16 +1373,12 @@ describe('Select during read operation', () => {
     })
 
     expect(fetchedWithMeta).toBeDefined()
-    expect(fetchedWithMeta.meta.alternatePaths).toEqual([
-      {
-        hreflang: 'de',
-        id: fetchedWithMeta.meta.alternatePaths.at(0)?.id,
-        path: '/de/child-page',
-      },
-    ])
-    expect(Object.keys(fetchedWithMeta).sort()).toEqual(['id', 'meta'].sort())
+    expect(Object.keys(fetchedWithMeta).sort()).toEqual(['id', 'meta'].sort()) // has correct fields
+    expect(removeIdsFromArray(fetchedWithMeta.meta.alternatePaths)).toEqual(
+      removeIdsFromArray(fetchedWithAllFields.meta.alternatePaths),
+    ) // alternatePaths is correct
 
-    // Test meta.alternatePaths only
+    // ################ Test meta.alternatePaths only ################
     const fetchedWithMetaAlternatePaths = await payload.findByID({
       collection: 'pages',
       id: childPage.id,
@@ -1392,17 +1392,145 @@ describe('Select during read operation', () => {
     })
 
     expect(fetchedWithMetaAlternatePaths).toBeDefined()
-    expect(fetchedWithMetaAlternatePaths.meta.alternatePaths).toEqual([
-      {
-        hreflang: 'de',
-        id: fetchedWithMetaAlternatePaths.meta.alternatePaths.at(0)?.id,
-        path: '/de/child-page',
-      },
-    ])
-    expect(Object.keys(fetchedWithMetaAlternatePaths).sort()).toEqual(['id', 'meta'].sort())
+    expect(Object.keys(fetchedWithMetaAlternatePaths).sort()).toEqual(['id', 'meta'].sort()) // has correct fields
     expect(Object.keys(fetchedWithMetaAlternatePaths.meta).sort()).toEqual(
       ['alternatePaths'].sort(),
-    )
+    ) // nested field has correct fields
+    expect(removeIdsFromArray(fetchedWithMetaAlternatePaths.meta.alternatePaths)).toEqual(
+      removeIdsFromArray(fetchedWithAllFields.meta.alternatePaths),
+    ) // alternatePaths is correct
+  })
+
+  test('Respect select exclusion (field: false)', async () => {
+    // Create root page
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      // @ts-expect-error
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+      },
+    })
+
+    // Create child page
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      // @ts-expect-error
+      data: {
+        title: 'Child Page',
+        slug: 'child-page',
+        content: 'Child content',
+        parent: rootPage.id,
+      },
+    })
+
+    const fetchedWithAllFields = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+    })
+
+    expect(fetchedWithAllFields).toBeDefined()
+
+    // ################ Test excluding path ################
+    const fetchedWithoutPath = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        path: false,
+      },
+    })
+
+    expect(fetchedWithoutPath).toBeDefined()
+    expect(Object.keys(fetchedWithoutPath).sort()).toEqual(
+      Object.keys(fetchedWithAllFields)
+        .filter((field) => field !== 'path')
+        .sort(),
+    ) // has correct fields
+    expect(removeIdsFromArray(fetchedWithoutPath.breadcrumbs)).toEqual(
+      removeIdsFromArray(fetchedWithAllFields.breadcrumbs),
+    ) // breadcrumbs is correct
+    expect(removeIdsFromArray(fetchedWithoutPath.meta.alternatePaths)).toEqual(
+      removeIdsFromArray(fetchedWithAllFields.meta.alternatePaths),
+    ) // alternatePaths is correct
+
+    // ################ Test excluding breadcrumbs ################
+    const fetchedWithoutBreadcrumbs = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        breadcrumbs: false,
+      },
+    })
+
+    expect(fetchedWithoutBreadcrumbs).toBeDefined()
+    expect(Object.keys(fetchedWithoutBreadcrumbs).sort()).toEqual(
+      Object.keys(fetchedWithAllFields)
+        .filter((field) => field !== 'breadcrumbs')
+        .sort(),
+    ) // has correct fields
+    expect(fetchedWithoutBreadcrumbs.path).toEqual(fetchedWithAllFields.path) // path is correct
+    expect(removeIdsFromArray(fetchedWithoutBreadcrumbs.meta.alternatePaths)).toEqual(
+      removeIdsFromArray(fetchedWithAllFields.meta.alternatePaths),
+    ) // alternatePaths is correct
+
+    // ################ Test excluding meta.alternatePaths ################
+    const fetchedWithoutMeta = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        meta: false,
+      },
+    })
+
+    expect(fetchedWithoutMeta).toBeDefined()
+    expect(Object.keys(fetchedWithoutMeta).sort()).toEqual(
+      Object.keys(fetchedWithAllFields)
+        .filter((field) => field !== 'meta')
+        .sort(),
+    ) // has correct fields on top level
+    expect(fetchedWithoutMeta.path).toEqual(fetchedWithAllFields.path) // path is correct
+    expect(removeIdsFromArray(fetchedWithoutMeta.breadcrumbs)).toEqual(
+      removeIdsFromArray(fetchedWithAllFields.breadcrumbs),
+    ) // breadcrumbs is correct
+
+    // ################ Test excluding meta.alternatePaths ################
+    const fetchedWithoutAlternatePaths = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      depth: 0,
+      select: {
+        meta: {
+          alternatePaths: false,
+        },
+      },
+    })
+
+    expect(fetchedWithoutAlternatePaths).toBeDefined()
+    expect(Object.keys(fetchedWithoutAlternatePaths).sort()).toEqual(
+      Object.keys(fetchedWithAllFields).sort(),
+    ) // has correct fields on top level
+    expect(Object.keys(fetchedWithoutAlternatePaths.meta).sort()).toEqual(
+      Object.keys(fetchedWithAllFields.meta)
+        .filter((field) => field !== 'alternatePaths')
+        .sort(),
+    ) // has correct fields on nested level
+    expect(fetchedWithoutAlternatePaths.path).toEqual(fetchedWithAllFields.path) // path is correct
+    expect(removeIdsFromArray(fetchedWithoutAlternatePaths.breadcrumbs)).toEqual(
+      removeIdsFromArray(fetchedWithAllFields.breadcrumbs),
+    ) // breadcrumbs is correct
   })
 })
 

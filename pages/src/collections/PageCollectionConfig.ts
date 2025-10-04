@@ -5,7 +5,7 @@ import { parentField } from '../fields/parentField.js'
 import { pathField } from '../fields/pathField.js'
 import { pageSlugField } from '../fields/slugField.js'
 import { beforeDuplicateTitle } from '../hooks/beforeDuplicate.js'
-import { ensureSelectedFieldsBeforeOperation } from '../hooks/ensureSelectedFieldsBeforeOperation.js'
+import { selectDependentFieldsBeforeOperation } from '../hooks/selectDependentFieldsBeforeOperation.js'
 import { preventParentDeletion } from '../hooks/preventParentDeletion.js'
 import {
   setVirtualFieldsAfterChange,
@@ -85,7 +85,7 @@ export const createPageCollectionConfig = ({
       ...incomingCollectionConfig.hooks,
       beforeOperation: [
         ...(incomingCollectionConfig.hooks?.beforeOperation || []),
-        ensureSelectedFieldsBeforeOperation,
+        selectDependentFieldsBeforeOperation,
       ],
       beforeRead: [
         ...(incomingCollectionConfig.hooks?.beforeRead || []),
