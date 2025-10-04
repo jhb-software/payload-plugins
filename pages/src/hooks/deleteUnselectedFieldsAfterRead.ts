@@ -9,6 +9,7 @@ import { getSelectType } from '../utils/getSelectType.js'
  */
 export const deleteUnselectedFieldsAfterRead: CollectionAfterReadHook = ({ doc, context }) => {
   const originalSelect = context.originalSelect as SelectType | undefined
+  const select = context.select as SelectType | undefined
 
   // if there is no original select, this means that the selection was not altered, therefore return early.
   if (!originalSelect) {
@@ -25,7 +26,14 @@ export const deleteUnselectedFieldsAfterRead: CollectionAfterReadHook = ({ doc, 
       }
     })
   } else if (selectType === 'exclude') {
-    // it seems that payload automatically removes the fields that are not in the select
+    // remove all fields that were added to the select (present in originalSelect but not in select)
+    const addedFields = Object.keys(originalSelect || {}).filter(
+      (field) => !select?.[field] && field !== 'id',
+    )
+
+    addedFields.forEach((field) => {
+      delete doc[field]
+    })
   }
 
   return doc

@@ -47,15 +47,21 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
     } else if (selectType === 'exclude') {
       const selectedFields = Object.keys(args.select)
       const virtualFields = ['path', 'breadcrumbs', 'meta']
-      const hasVirtualFieldsDeselected = virtualFields.some((field) =>
+      const allVirtualFieldsDeselected = virtualFields.every((field) =>
         selectedFields.includes(field),
       )
 
-      if (hasVirtualFieldsDeselected) {
-        // remove the required fields from the select
+      if (!allVirtualFieldsDeselected) {
+        // min one of the virtual fields needs to be generated
+        // -> remove deselection of the required fields
         args.select = Object.fromEntries(
           Object.entries(args.select).filter(([field]) => !dependendSelectedFields.includes(field)),
         )
+
+        // if select is empty now, set it to undefined, because an empty select would select nothing
+        if (Object.keys(args.select).length === 0) {
+          args.select = undefined
+        }
 
         // Store the original select so that deleteUnselectedFieldsAfterRead can properly handle field exclusion
         context.originalSelect = originalSelect
