@@ -12,8 +12,9 @@ import {
 } from '../hooks/setVirtualFields.js'
 import {
   IncomingPageCollectionConfig,
-  PageCollectionConfig,
+     PageCollectionConfig,
 } from '../types/PageCollectionConfig.js'
+
 import { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import { deleteUnselectedFieldsAfterRead } from '../hooks/deleteUnselectedFieldsAfterRead.js'
