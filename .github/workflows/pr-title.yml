@@ -1,0 +1,42 @@
+name: pr-title
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+
+permissions:
+  pull-requests: write
+
+jobs:
+  main:
+    name: lint-pr-title
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        id: lint_pr_title
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            build
+            chore
+            ci
+            docs
+            feat
+            fix
+            perf
+            release
+            refactor
+            revert
+            style
+            test
+          scopes: |
+            admin-search
+            cloudinary
+            geocoding
+            pages
+            seo
+          wip: true
+          requireScope: false
