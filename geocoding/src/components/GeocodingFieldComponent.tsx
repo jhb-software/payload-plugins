@@ -1,17 +1,25 @@
 'use client'
 import { FieldError, FieldLabel, useField } from '@payloadcms/ui'
-import { SelectFieldClientComponent } from 'payload'
 import GooglePlacesAutocomplete, {
   geocodeByPlaceId,
   getLatLng,
 } from 'react-google-places-autocomplete'
 
+interface GeocodingFieldComponentProps {
+  field: any
+  path: string
+  googleMapsApiKey: string
+}
+
 /**
  * A custom client component that shows the Google Places Autocomplete component and
  * fills the point and geodata fields with the received data from the Google Places API.
  */
-export const GeocodingFieldComponent: SelectFieldClientComponent = ({ field, path }) => {
-  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+export const GeocodingFieldComponent = ({
+  field,
+  path,
+  googleMapsApiKey,
+}: GeocodingFieldComponentProps) => {
   const pointFieldPath = path.replace('_googlePlacesData', '')
 
   const { value: geoData, setValue: setGeoData } = useField<string>({
@@ -26,7 +34,7 @@ export const GeocodingFieldComponent: SelectFieldClientComponent = ({ field, pat
         <FieldError path={path} />
       </div>
       <GooglePlacesAutocomplete
-        apiKey={API_KEY}
+        apiKey={googleMapsApiKey}
         selectProps={{
           value: geoData as any,
           isClearable: true,
