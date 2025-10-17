@@ -1,5 +1,4 @@
-import { asPageCollectionConfigOrThrow } from '../collections/PageCollectionConfig.js'
-
+import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 import { BasePayload } from 'payload'
 import { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 

@@ -34,4 +34,25 @@ export type PagesPluginConfig = {
    * @default true
    */
   preventParentDeletion?: boolean
+
+  /**
+   * Function to generate the full URL to a frontend page. This will be passed to Payload's preview and live preview features.
+   *
+   * @param args - The arguments for URL generation
+   * @param args.path - The path to the page (always starts with '/')
+   * @param args.preview - Whether this is a preview URL
+   * @returns The full URL to the frontend page or null/undefined to not render the preview button.
+   *
+   * @example
+   * ```ts
+   * generatePageURL: ({ path, preview }) =>
+   *   path ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}` : null
+   * ```
+   */
+  generatePageURL: (args: {
+    path: string | null
+    preview: boolean
+    data: Record<string, unknown>
+    req: PayloadRequest
+  }) => (string | null) | Promise<string | null>
 }

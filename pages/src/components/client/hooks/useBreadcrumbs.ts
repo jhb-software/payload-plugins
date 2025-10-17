@@ -1,5 +1,7 @@
+'use client'
+
 import { useAllFormFields, useForm } from '@payloadcms/ui'
-import { Breadcrumb } from 'src/types/Breadcrumb.js'
+import { Breadcrumb } from '../../../types/Breadcrumb.js'
 
 /**
  * Hook to get and set the breadcrumbs of a document.

@@ -55,8 +55,6 @@ export async function getBreadcrumbs({
       ? data[parentField]
       : data[parentField].id
 
-  // TODO: if the parent is an object and has the breadcrumbs already set, it may not be necessary to fetch the parent document again
-
   if (!parentId) {
     throw new Error('Parent ID not found for document ' + data.id)
   }
@@ -105,12 +103,30 @@ export async function getBreadcrumbs({
   }
 }
 
-/** Converts a localized or unlocalized document to a breadcrumb. */
+/** Converts a localized or unlocalized document to a breadcrumb item. */
 function docToBreadcrumb(
   doc: Record<string, any>,
   locale: Locale | 'all' | undefined,
   breadcrumbLabelField?: string | undefined,
 ): Breadcrumb {
+  if (!doc.slug) {
+    console.warn(
+      'Slug not found for document ' + doc.id + '. Cannot convert document to breadcrumb.',
+    )
+  }
+  if (!doc.path) {
+    console.warn(
+      'Path not found for document ' + doc.id + '. Cannot convert document to breadcrumb.',
+    )
+  }
+  if (breadcrumbLabelField && !doc[breadcrumbLabelField]) {
+    console.warn(
+      'Breadcrumb label field not found for document ' +
+        doc.id +
+        '. Cannot convert document to breadcrumb.',
+    )
+  }
+
   return {
     slug: doc.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(doc.slug, locale)!,
     path: pickFieldValue(doc.path, locale)!,

@@ -22,17 +22,6 @@ export const payloadPagesPlugin =
       if (incomingConfig.onInit) {
         await incomingConfig.onInit(payload)
       }
-
-      const neededEnvVars = ['NEXT_PUBLIC_FRONTEND_URL']
-
-      const missingEnvVars = neededEnvVars.filter((envVar) => !process.env[envVar])
-      if (missingEnvVars.length > 0) {
-        throw new Error(
-          `The following environment variables are required for the pages plugin but not defined: ${missingEnvVars.join(
-            ', ',
-          )}`,
-        )
-      }
     }
 
     // Ensure collections array exists

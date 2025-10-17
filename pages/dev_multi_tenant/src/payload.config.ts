@@ -1,7 +1,7 @@
-import { getPageUrl, payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
-import { buildConfig } from 'payload'
+import { buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
 import { Authors } from './collections/authors'
 import { Blogposts } from './collections/blogposts'
@@ -24,11 +24,6 @@ export default buildConfig({
       password: 'test',
     },
     user: 'users',
-    livePreview: {
-      // For testing purposes, we only want to live preview the pages collection
-      collections: ['pages'],
-      url: ({ data }) => getPageUrl({ path: data.path, preview: true })!,
-    },
   },
   collections: [
     Pages,
@@ -60,6 +55,24 @@ export default buildConfig({
   localization: false,
   plugins: [
     payloadPagesPlugin({
+      generatePageURL: async ({ path, preview, data, req }) => {
+        if (data.tenant && typeof data.tenant === 'string') {
+          const tenant = await req.payload.findByID({
+            collection: 'tenants',
+            id: data.tenant,
+            select: {
+              websiteUrl: true,
+            },
+            req,
+          })
+
+          if (tenant && 'websiteUrl' in tenant && tenant.websiteUrl) {
+            return `${tenant.websiteUrl}${preview ? '/preview' : ''}${path}`
+          }
+        }
+
+        return null
+      },
       baseFilter: ({ req }) => {
         const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 

@@ -1,9 +1,8 @@
 import { PayloadRequest, CollectionSlug } from 'payload'
 import type { CollectionConfig } from 'payload'
-import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
-import { isPageCollectionConfig } from '../collections/PageCollectionConfig.js'
+import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
 
 /**
  * Finds all child documents that reference a given parent document.

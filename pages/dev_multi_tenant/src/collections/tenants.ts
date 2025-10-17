@@ -18,6 +18,11 @@ const Tenants: CollectionConfig = {
       type: 'text',
       required: true,
     },
+    {
+      name: 'websiteUrl',
+      type: 'text',
+      required: true,
+    },
   ],
 }
 

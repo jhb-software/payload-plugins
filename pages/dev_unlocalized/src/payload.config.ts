@@ -1,4 +1,4 @@
-import { getPageUrl, payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -21,11 +21,6 @@ export default buildConfig({
       password: 'test',
     },
     user: 'users',
-    livePreview: {
-      // For testing purposes, we only want to live preview the pages collection
-      collections: ['pages'],
-      url: ({ data }) => getPageUrl({ path: data.path, preview: true })!,
-    },
   },
   collections: [
     Pages,
@@ -54,7 +49,14 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   localization: false,
-  plugins: [payloadPagesPlugin({})],
+  plugins: [
+    payloadPagesPlugin({
+      generatePageURL: ({ path, preview }) =>
+        path && process.env.NEXT_PUBLIC_FRONTEND_URL
+          ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
+          : null,
+    }),
+  ],
   async onInit(payload) {
     const existingUsers = await payload.find({
       collection: 'users',

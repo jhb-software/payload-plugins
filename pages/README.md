@@ -6,10 +6,21 @@ The Payload Pages plugin simplifies website building by adding essential fields 
 
 ## Setup
 
-First, add the plugin to your payload config as follows:
+First, add the plugin to your payload config. The `generatePageURL` function is required and must provide a function that returns the full URL to the frontend page. 
 
 ```ts
-plugins: [payloadPagesPlugin({})]
+import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+
+// Add to plugins array
+plugins: [
+  payloadPagesPlugin({
+      // Example generatePageURL function:
+      generatePageURL: ({ path, preview }) =>
+        path && process.env.NEXT_PUBLIC_FRONTEND_URL
+          ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
+          : null,
+    }),
+]
 ```
 
 Next, create a page collections using the `PageCollectionConfig` type. This type extends Payload's `CollectionConfig` type with a `page` field that contains configurations for the page collection. The `page` field must be specified as follows:
@@ -87,17 +98,34 @@ const Redirects: RedirectsCollectionConfig = {
 }
 ```
 
-In order for the official payload SEO plugin to use the generated URL, you need to pass the `getPageUrl` function provided by this plugin to the `generateURL` field in the `seo` plugin config inside your payload config. 
-If your collections are localized, you also need to pass the `alternatePathsField` field to the `fields` array.
+### SEO Plugin Integration
+
+To integrate with the official Payload SEO plugin, store the `generatePageURL` function you defined for the pages plugin in a variable outside of the Payload config and pass it to the `generateURL` option of the SEO plugin. 
+If your collections are localized, also add the `alternatePathsField` which is exported by the plugin to the fields option of the SEO plugin.
 
 ```ts
-import { alternatePathsField, getPageUrl } from '@jhb.software/payload-pages-plugin'
+import { alternatePathsField, payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+import { seoPlugin } from '@payloadcms/plugin-seo'
+
+// Example generatePageURL function:
+const generatePageURL = ({ path, preview }: {
+  path: string | null
+  preview: boolean
+}): string | null => {
+  return path && process.env.NEXT_PUBLIC_FRONTEND_URL
+    ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
+    : null
+}
 
 export default buildConfig({
   // ...
   plugins: [
+    payloadPagesPlugin({
+      generatePageURL,
+    }),
     seoPlugin({
-      generateURL: ({ doc }) => getPageUrl({ path: doc.path })!,
+      generateURL: ({ doc }) => generatePageURL({ path: doc.path, preview: false }),
+      // If your collections are localized, also add the alternatePathsField
       fields: ({ defaultFields }) => [...defaultFields, alternatePathsField()],
     }),
   ],
@@ -136,16 +164,37 @@ export const Pages: PageCollectionConfig = {
 Some features (e.g. the parent and isRootPage fields) internally fetch documents from the database. To ensure only documents from the current tenant are fetched, you need to pass the `baseFilter` function to the plugin config. It receives the current request object and should return a `Where` object which will be added to the query.
 For the validation of the redirects, you need to pass the `redirectValidationFilter` function to the plugin config. It receives the current request object and the document object and should return a `Where` object which will be added to the query.
 
+To generate the URL based on the tenant the page belongs to, pass an async function to the `generatePageURL` option of the plugin config. It receives the current request object and document data so you could for example fetch the tenant from the database and use its website URL.
+
 Example:
 
 ```ts
 import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 
+
 export default buildConfig({
   // ...
   plugins: [
     payloadPagesPlugin({
+      generatePageURL: async ({ path, preview, data, req }) => {
+        if (data.tenant && typeof data.tenant === 'string') {
+          const tenant = await req.payload.findByID({
+            collection: 'tenants',
+            id: data.tenant,
+            select: {
+              websiteUrl: true,
+            },
+            req,
+          })
+
+          if (tenant && 'websiteUrl' in tenant && tenant.websiteUrl) {
+            return `${tenant.websiteUrl}${preview ? '/preview' : ''}${path}`
+          }
+        }
+
+        return null
+      },
       baseFilter: ({ req }) => {
         const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
@@ -194,6 +243,7 @@ If you need to allow deletion of parent documents regardless of child references
 plugins: [
   payloadPagesPlugin({
     preventParentDeletion: false
+    // other options
   })
 ]
 ```
@@ -223,12 +273,6 @@ await payload.delete({
   id: originalParentId,
 })
 ```
-
-### Environment variables
-
-The following environment variables are required:
-
-- `NEXT_PUBLIC_FRONTEND_URL`
 
 ## About this plugin
 

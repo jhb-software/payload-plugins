@@ -13,8 +13,6 @@ export const de: GenericTranslationsObject = {
     alternatePath: 'Alternative Pfad',
     breadcrumbs: 'Navigationspfade',
     breadcrumb: 'Navigationspfad',
-    saveDocumentToPreview: 'Speichere das Dokument um die Vorschau zu sehen',
-    openWebsitePageInPreviewMode: 'Seite der Website im Vorschau-Modus öffnen',
     syncSlugWithX: 'Mit {X} synchronisieren',
     slugWasChangedFromXToY:
       'Die URL-Endung wurde von <code>{X}</code> zu <code>{Y}</code> geändert. Dies erfordert eine manuelle Erstellung einer Umleitung vom alten zum neuen Seitenpfad.',

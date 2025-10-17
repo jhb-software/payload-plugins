@@ -20,12 +20,12 @@
   },
   "dependencies": {
     "@jhb.software/payload-pages-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "3.50.0",
-    "@payloadcms/db-sqlite": "3.50.0",
-    "@payloadcms/next": "3.50.0",
-    "@payloadcms/ui": "3.50.0",
+    "@payloadcms/db-mongodb": "3.60.0",
+    "@payloadcms/db-sqlite": "3.60.0",
+    "@payloadcms/next": "3.60.0",
+    "@payloadcms/ui": "3.60.0",
     "next": "15.4.6",
-    "payload": "3.50.0",
+    "payload": "3.60.0",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   },

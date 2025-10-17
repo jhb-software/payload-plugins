@@ -3,7 +3,10 @@
 ## 0.6.0 (Unreleased)
 
 - feat!: add new collection config creation approach using `PageCollectionConfig` and `RedirectsCollectionConfig` types instead of `createPageCollectionConfig` and `createRedirectsCollectionConfig` functions.
+- feat!: the plugin config now requires a `generatePageURL` function to be defined. See the [README](./README.md#setup) for more information.
+- The plugin now uses the build-in Preview Button instead of a custom one.
 - feat: add support for multi-tenant setups via the official [Multi-tenant plugin](https://payloadcms.com/docs/plugins/multi-tenant). See the [README](./README.md#multi-tenant-support) for more information.
+
 
 ### Migration Guide
 

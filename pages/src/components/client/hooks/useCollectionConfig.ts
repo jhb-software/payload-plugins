@@ -1,3 +1,5 @@
+'use client'
+
 import { useConfig, useDocumentInfo } from '@payloadcms/ui'
 import { ClientCollectionConfig } from 'payload'
 

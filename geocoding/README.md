@@ -22,8 +22,10 @@ To use this plugin, you'll need a Google Maps API key. To get one, follow these 
 
 1. Set up a Google Cloud account and create a project
 2. Enable the Maps JavaScript API in your Google Cloud project
-3. Create an API key with Maps JavaScript API access
+3. Create an API key with `Maps JavaScript API`,  `Places API` and `Geocoding API` access
 4. Add the API key to your environment variables.
+
+Note: Since this API key is exposed to the frontend (Payload Admin panel), it is strongly recommended to restrict its usage by setting up domain restrictions and only enabling the `Maps JavaScript API`, `Places API`, and `Geocoding API` in the Google Cloud Console under API Keys & Credentials
 
 ## Usage
 

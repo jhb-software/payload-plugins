@@ -163,6 +163,7 @@ export interface Tenant {
   id: string;
   slug: string;
   name: string;
+  websiteUrl: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -495,6 +496,7 @@ export interface CountryTravelTipsSelect<T extends boolean = true> {
 export interface TenantsSelect<T extends boolean = true> {
   slug?: T;
   name?: T;
+  websiteUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }

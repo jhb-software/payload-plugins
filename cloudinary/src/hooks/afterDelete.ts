@@ -7,7 +7,15 @@ const afterDeleteHook: CollectionAfterDeleteHook = async ({ doc }) => {
     result?: 'ok' | 'not-found' | any
   }
 
-  const result = (await cloudinary.uploader.destroy(doc.cloudinaryPublicId)) as ReturnType
+  let resource_type: 'video' | 'image' | 'raw' | undefined = undefined
+  if (doc.mimeType?.startsWith('video/')) {
+    // for videos, the resource_type must explicitly be set to 'video', otherwise Cloudinary will not find the file
+    resource_type = 'video'
+  }
+
+  const result = (await cloudinary.uploader.destroy(doc.cloudinaryPublicId, {
+    resource_type: resource_type,
+  })) as ReturnType
 
   if (result?.result === 'ok') {
     return doc

@@ -40,12 +40,6 @@
           "breadcrumb": {
             "type": "string"
           },
-          "saveDocumentToPreview": {
-            "type": "string"
-          },
-          "openWebsitePageInPreviewMode": {
-            "type": "string"
-          },
           "syncSlugWithX": {
             "type": "string"
           },
@@ -64,8 +58,6 @@
           "alternatePath",
           "breadcrumbs",
           "breadcrumb",
-          "saveDocumentToPreview",
-          "openWebsitePageInPreviewMode",
           "syncSlugWithX",
           "slugWasChangedFromXToY"
         ]

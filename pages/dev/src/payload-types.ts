@@ -148,6 +148,13 @@ export interface Page {
   breadcrumbs: Breadcrumbs;
   title: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -164,6 +171,13 @@ export interface Author {
   breadcrumbs: Breadcrumbs;
   name: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -219,6 +233,13 @@ export interface Country {
   breadcrumbs: Breadcrumbs;
   title: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -235,6 +256,13 @@ export interface CountryTravelTip {
   breadcrumbs: Breadcrumbs;
   title: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -356,6 +384,17 @@ export interface PagesSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -381,6 +420,17 @@ export interface AuthorsSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   name?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -432,6 +482,17 @@ export interface CountriesSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -447,6 +508,17 @@ export interface CountryTravelTipsSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
