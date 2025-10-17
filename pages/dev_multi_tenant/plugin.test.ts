@@ -32,6 +32,7 @@ describe('Multi-tenant baseFilter functionality', () => {
       data: {
         slug: 'tenant-1',
         name: 'Tenant 1',
+        websiteUrl: 'https://tenant1.example.com',
       },
     })
     tenant1Id = tenant1.id
@@ -41,6 +42,7 @@ describe('Multi-tenant baseFilter functionality', () => {
       data: {
         slug: 'tenant-2',
         name: 'Tenant 2',
+        websiteUrl: 'https://tenant2.example.com',
       },
     })
     tenant2Id = tenant2.id
