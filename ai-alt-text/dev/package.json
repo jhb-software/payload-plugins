@@ -14,9 +14,8 @@
     "payload": "payload",
     "generate:types": "payload generate:types",
     "generate:schema": "payload-graphql generate:schema",
-    "generate:importmap": "payload generate:importmap",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "generate:importmap": "payload generate:importmap"
+  
   },
   "dependencies": {
     "@jhb.software/payload-ai-alt-text-plugin": "workspace:*",
@@ -32,8 +31,6 @@
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
-    "typescript": "5.9.3",
-    "vite": "^7.1.11",
-    "vitest": "^3.2.4"
+    "typescript": "5.9.3"
   }
 }
