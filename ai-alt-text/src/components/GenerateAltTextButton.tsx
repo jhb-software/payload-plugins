@@ -3,7 +3,8 @@
 import { Button, toast, useDocumentInfo, useField, useLocale } from '@payloadcms/ui'
 import { useTransition } from 'react'
 
-import { generateAltText } from '../actions/generateAltText'
+import { Lightning } from './icons/Lightning'
+import { Spinner } from './icons/Spinner'
 
 export function GenerateAltTextButton() {
   const { id, collectionSlug } = useDocumentInfo()
@@ -22,12 +23,33 @@ export function GenerateAltTextButton() {
 
     startTransition(async () => {
       try {
-        const data = await generateAltText({
-          collection: collectionSlug,
-          id: id as string,
-          context,
-          locale: locale.code,
+        const response = await fetch('/api/ai-alt-text-plugin/generate-alt-text', {
+          method: 'POST',
+          body: JSON.stringify({
+            collection: collectionSlug,
+            id: id as string,
+            context,
+            locale: locale.code,
+          }),
         })
+
+        if (!response.ok) {
+          let errorMessage = 'Failed to generate alt text. Please try again.'
+          try {
+            const errorData = (await response.json()) as { error: string }
+            errorMessage = errorData.error
+          } catch (error) {
+            console.error('Error generating alt text:', error)
+          }
+
+          toast.error(errorMessage)
+          return
+        }
+
+        const data = (await response.json()) as {
+          altText: string
+          keywords: string[]
+        }
 
         if (data.altText && data.keywords) {
           setAltText(data.altText)
@@ -42,57 +64,6 @@ export function GenerateAltTextButton() {
       }
     })
   }
-
-  const icon = isPending ? (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      style={{
-        height: '1rem',
-        width: '1rem',
-        animation: 'spin 1s linear infinite',
-      }}
-    >
-      <style>
-        {`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}
-      </style>
-      <circle
-        style={{ opacity: 0.25 }}
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      ></circle>
-      <path
-        style={{ opacity: 0.75 }}
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      ></path>
-    </svg>
-  ) : (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      style={{
-        height: '1rem',
-        width: '1rem',
-      }}
-    >
-      <path
-        fillRule="evenodd"
-        d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
-        clipRule="evenodd"
-      />
-    </svg>
-  )
 
   return (
     <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
@@ -116,7 +87,7 @@ export function GenerateAltTextButton() {
         <Button
           onClick={handleGenerateAltText}
           disabled={isPending || !id}
-          icon={icon}
+          icon={isPending ? <Spinner /> : <Lightning />}
           tooltip={!id ? 'Please save the document first' : undefined}
         >
           AI-Generate Alt Text

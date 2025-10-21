@@ -12,8 +12,11 @@ export type IncomingAltTextPluginConfig = {
   /** Maximum number of concurrent API requests for bulk operations. */
   maxConcurrency?: number
 
+  /** Function to get the thumbnail URL of an image. */
+  getImageThumbnail: (doc: Record<string, unknown>) => string
+
   /** The OpenAI LLM model to use for alt text generation. */
-  model?: 'gpt-4o-mini' | 'gpt-4o-2024-08-06'
+  model?: 'gpt-4.1-nano' | 'gpt-4.1-mini'
 }
 
 /** Configuration of the AI alt text plugin after defaults have been applied. */
@@ -30,6 +33,12 @@ export type AltTextPluginConfig = {
   /** Maximum number of concurrent API requests for bulk operations. */
   maxConcurrency: number
 
+  /** Function to get the thumbnail URL of an image. */
+  getImageThumbnail: (doc: Record<string, unknown>) => string
+
   /** The OpenAI LLM model to use for alt text generation. */
-  model: 'gpt-4o-mini' | 'gpt-4o-2024-08-06'
+  model: 'gpt-4.1-nano' | 'gpt-4.1-mini'
+
+  /** The locales to generate alt text for. */
+  locales: string[]
 }

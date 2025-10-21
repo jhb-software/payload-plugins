@@ -43,8 +43,11 @@ export default buildConfig({
       enabled: true,
       openAIApiKey: process.env.OPENAI_API_KEY || '',
       collections: ['media'], // Specify which collections should have AI alt text
-      defaultModel: 'gpt-4o-mini',
+      model: 'gpt-4o-mini',
       maxConcurrency: 5,
+      getImageThumbnail: (doc: Record<string, unknown>) => {
+        return doc.url as string
+      },
     }),
   ],
   async onInit(payload) {

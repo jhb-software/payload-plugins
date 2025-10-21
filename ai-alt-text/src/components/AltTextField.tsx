@@ -5,7 +5,7 @@ import type { TextareaFieldClientComponent } from 'payload'
 
 import { GenerateAltTextButton } from './GenerateAltTextButton'
 
-export function AltTextField({ clientProps }: { clientProps: TextareaFieldClientComponent }) {
+export function AltTextField(clientProps: TextareaFieldClientComponent) {
   // @ts-expect-error
   const { field, path } = clientProps
 

@@ -1,34 +1,39 @@
 import type OpenAI from 'openai'
+import { AltTextPluginConfig } from '../types/AltTextPluginConfig'
 
 type GenerationCost = {
-  model: string
+  model: 'gpt-4.1-nano' | 'gpt-4.1-mini'
   inputCost: number
   outputCost: number
   totalCost: number
   totalTokens: number
 }
 
-const MODEL_COSTS = {
-  'gpt-4o-mini': { input: 0.15, output: 0.6 }, // per 1M tokens
-  'gpt-4o-2024-08-06': { input: 2.5, output: 10 },
-} as const
-
-/** Calculates and returns the cost of an OpenAI generation. */
+/** Calculates the cost of a generation. */
 export function getGenerationCost(
   response: OpenAI.Chat.Completions.ChatCompletion,
-  model: string,
+  model: AltTextPluginConfig['model'],
 ): GenerationCost {
-  const costs = MODEL_COSTS[model as keyof typeof MODEL_COSTS] ?? {
-    input: 0,
-    output: 0,
+  const modelCosts: Record<AltTextPluginConfig['model'], { input: number; output: number }> = {
+    // see https://platform.openai.com/docs/models/gpt-4.1-nano
+    'gpt-4.1-nano': {
+      input: 0.1,
+      output: 0.4,
+    },
+    // see https://platform.openai.com/docs/models/gpt-4.1-mini
+    'gpt-4.1-mini': {
+      input: 0.4,
+      output: 1.6,
+    },
   }
 
-  const inputTokens = response.usage?.prompt_tokens ?? 0
-  const outputTokens = response.usage?.completion_tokens ?? 0
-  const totalTokens = response.usage?.total_tokens ?? 0
+  // Calculate cost based on token usage
+  const inputTokens = response.usage?.prompt_tokens || 0
+  const outputTokens = response.usage?.completion_tokens || 0
+  const totalTokens = response.usage?.total_tokens || 0
 
-  const inputCost = (inputTokens / 1_000_000) * costs.input
-  const outputCost = (outputTokens / 1_000_000) * costs.output
+  const inputCost = (inputTokens / 1_000_000) * modelCosts[model].input
+  const outputCost = (outputTokens / 1_000_000) * modelCosts[model].output
   const totalCost = inputCost + outputCost
 
   return {

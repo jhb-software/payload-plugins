@@ -3,24 +3,34 @@ import type { Config, Field } from 'payload'
 import type { AltTextPluginConfig, IncomingAltTextPluginConfig } from './types/AltTextPluginConfig'
 import { altTextField } from './fields/altTextField'
 import { keywordsField } from './fields/keywordsField'
+import { generateAltTextEndpoint } from './endpoints/generateAltText'
+import { bulkUpdateAltTextsEndpoint } from './endpoints/bulkUpdateAltTexts'
 
 /** Payload plugin which adds AI-powered alt text generation to upload collections. */
 export const payloadAiAltTextPlugin =
-  (pluginOptions: IncomingAltTextPluginConfig) =>
+  (incomingPluginConfig: IncomingAltTextPluginConfig) =>
   (incomingConfig: Config): Config => {
     const config = { ...incomingConfig }
 
     // If the plugin is disabled, return the config without modifying it
-    if (pluginOptions.enabled === false) {
+    if (incomingPluginConfig.enabled === false) {
       return config
     }
 
+    const locales = config.localization
+      ? config.localization.locales.map((localeConfig) =>
+          typeof localeConfig === 'string' ? localeConfig : localeConfig.code,
+        )
+      : []
+
     const pluginConfig: AltTextPluginConfig = {
-      enabled: pluginOptions.enabled ?? true,
-      openAIApiKey: pluginOptions.openAIApiKey,
-      collections: pluginOptions.collections,
-      maxConcurrency: pluginOptions.maxConcurrency ?? 16,
-      model: pluginOptions.model ?? 'gpt-4o-mini',
+      enabled: incomingPluginConfig.enabled ?? true,
+      openAIApiKey: incomingPluginConfig.openAIApiKey,
+      collections: incomingPluginConfig.collections,
+      maxConcurrency: incomingPluginConfig.maxConcurrency ?? 16,
+      model: incomingPluginConfig.model ?? 'gpt-4.1-nano',
+      locales: locales,
+      getImageThumbnail: incomingPluginConfig.getImageThumbnail,
     }
 
     // Ensure collections array exists
@@ -74,5 +84,18 @@ export const payloadAiAltTextPlugin =
         // Make plugin config available in hooks/actions (like pages plugin does)
         aiAltTextPluginConfig: pluginConfig,
       },
+      endpoints: [
+        ...(config.endpoints ?? []),
+        {
+          path: '/ai-alt-text-plugin/generate-alt-text',
+          method: 'post',
+          handler: generateAltTextEndpoint,
+        },
+        {
+          path: '/ai-alt-text-plugin/bulk-update-alt-texts',
+          method: 'post',
+          handler: bulkUpdateAltTextsEndpoint,
+        },
+      ],
     }
   }
