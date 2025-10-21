@@ -41,11 +41,11 @@ export default buildConfig({
   plugins: [
     payloadAiAltTextPlugin({
       enabled: true,
-      openAIApiKey: process.env.OPENAI_API_KEY || '',
+      openAIApiKey: process.env.OPENAI_API_KEY!,
       collections: ['media'], // Specify which collections should have AI alt text
-      model: 'gpt-4o-mini',
-      maxConcurrency: 5,
+      model: 'gpt-4.1-mini',
       getImageThumbnail: (doc: Record<string, unknown>) => {
+        // in a real application, you would use a function to get a thumbnail URL (e.g. from the sizes)
         return doc.url as string
       },
     }),

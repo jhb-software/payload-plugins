@@ -12,7 +12,14 @@ export type IncomingAltTextPluginConfig = {
   /** Maximum number of concurrent API requests for bulk operations. */
   maxConcurrency?: number
 
-  /** Function to get the thumbnail URL of an image. */
+  /**
+   * Function to get the thumbnail URL of an image.
+   * This URL will be sent to the LLM for analysis.
+   *
+   * @remarks
+   * - The URL must be publicly accessible so the LLM can fetch it
+   * - Use a thumbnail/preview version of the image when possible (e.g. from the sizes field)
+   */
   getImageThumbnail: (doc: Record<string, unknown>) => string
 
   /** The OpenAI LLM model to use for alt text generation. */

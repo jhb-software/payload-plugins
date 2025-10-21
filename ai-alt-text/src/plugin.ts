@@ -23,6 +23,12 @@ export const payloadAiAltTextPlugin =
         )
       : []
 
+    if (locales.length === 0) {
+      throw new Error(
+        'The alt text plugin currently only supports localized setups. If you need to use this plugin in a non-localized setup, please open an issue at https://github.com/jhb-software/payload-plugins.',
+      )
+    }
+
     const pluginConfig: AltTextPluginConfig = {
       enabled: incomingPluginConfig.enabled ?? true,
       openAIApiKey: incomingPluginConfig.openAIApiKey,
