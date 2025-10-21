@@ -37,16 +37,16 @@
     "test:watch": "pnpm -C dev test:watch"
   },
   "dependencies": {
-    "openai": "^5.9.1",
+    "openai": "^6.6.0",
     "p-map": "^7.0.3",
-    "zod": "^4.0.5"
+    "zod": "^4.1.12"
   },
   "peerDependencies": {
-    "@payloadcms/ui": "^3.27.0",
-    "next": "15.2.1",
-    "payload": "^3.27.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "@payloadcms/ui": "^3.60.0",
+    "next": "15.5.6",
+    "payload": "^3.60.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
     "@types/react": "19.2.2",

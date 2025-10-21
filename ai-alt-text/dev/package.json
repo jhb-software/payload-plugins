@@ -19,21 +19,21 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@payloadcms/db-mongodb": "^3.27.0",
-    "@payloadcms/next": "^3.27.0",
-    "@payloadcms/ui": "^3.27.0",
-    "next": "15.2.1",
-    "payload": "^3.27.0",
     "@jhb.software/payload-ai-alt-text-plugin": "workspace:*",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "@payloadcms/db-mongodb": "^3.60.0",
+    "@payloadcms/next": "^3.60.0",
+    "@payloadcms/ui": "^3.60.0",
+    "next": "15.5.6",
+    "payload": "^3.60.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
     "copyfiles": "^2.4.1",
-    "cross-env": "^7.0.3",
-    "dotenv": "^16.4.7",
-    "typescript": "5.8.2",
-    "vite": "^6.0.6",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
+    "typescript": "5.9.3",
+    "vite": "^7.1.11",
     "vitest": "^3.2.4"
   }
 }
