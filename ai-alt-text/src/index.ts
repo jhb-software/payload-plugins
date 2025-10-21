@@ -1,5 +1,2 @@
 export { payloadAiAltTextPlugin } from './plugin.js'
-export { aiAltTextField } from './fields/aiAltTextField'
-export { injectBulkGenerateButton } from './fields/injectBulkGenerateButton'
-export type { AltTextPluginConfig } from './types/AltTextPluginConfig'
-export type { AltTextFieldConfig } from './types/AltTextFieldConfig'
+export type { IncomingAltTextPluginConfig as AltTextPluginConfig } from './types/AltTextPluginConfig'

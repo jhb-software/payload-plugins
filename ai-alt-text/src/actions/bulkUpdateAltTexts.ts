@@ -4,7 +4,7 @@ import OpenAI from 'openai'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import {
   ChatCompletionContentPartText,
-  ChatCompletionContentPartImage
+  ChatCompletionContentPartImage,
 } from 'openai/resources/chat/completions.mjs'
 import pMap from 'p-map'
 import type { BasePayload, CollectionSlug } from 'payload'
@@ -16,7 +16,7 @@ import { getImageDataUrl } from '../utilities/getImageDataUrl'
 import { getImageThumbnail } from '../utilities/getImageThumbnail'
 import { getUserFromHeaders } from '../utilities/getUserFromHeaders'
 import type { MediaDocument } from '../types/MediaDocument'
-import type { AltTextPluginConfig } from '../types/AltTextPluginConfig'
+import type { IncomingAltTextPluginConfig } from '../types/AltTextPluginConfig'
 
 /**
  * Generates and updates alt text for multiple images in all locales.
@@ -48,7 +48,7 @@ export async function bulkUpdateAltTexts({
 
     // Get plugin config from payload config (like pages plugin does)
     const pluginConfig = payload.config.custom?.aiAltTextPluginConfig as
-      | (AltTextPluginConfig & { openAIApiKey: string })
+      | (IncomingAltTextPluginConfig & { openAIApiKey: string })
       | undefined
 
     // Check for plugin config
@@ -123,7 +123,7 @@ async function generateAndUpdateAltText({
 
   // Get plugin config from payload config
   const pluginConfig = payload.config.custom?.aiAltTextPluginConfig as
-    | (AltTextPluginConfig & { openAIApiKey: string })
+    | (IncomingAltTextPluginConfig & { openAIApiKey: string })
     | undefined
 
   if (!pluginConfig?.openAIApiKey) {
@@ -181,7 +181,12 @@ async function generateAndUpdateAltText({
             ? [{ type: 'text', text: imageDoc.filename } satisfies ChatCompletionContentPartText]
             : []),
           ...('context' in imageDoc && imageDoc.context
-            ? [{ type: 'text', text: String(imageDoc.context) } satisfies ChatCompletionContentPartText]
+            ? [
+                {
+                  type: 'text',
+                  text: String(imageDoc.context),
+                } satisfies ChatCompletionContentPartText,
+              ]
             : []),
         ],
       },

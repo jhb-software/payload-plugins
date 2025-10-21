@@ -5,20 +5,15 @@ import type { TextareaFieldClientComponent } from 'payload'
 
 import { GenerateAltTextButton } from './GenerateAltTextButton'
 
-export type AltTextFieldProps = {
-  openAIApiKey: string
-  defaultModel: string
-  models: string[]
-}
-
-export const AltTextField: TextareaFieldClientComponent = (props) => {
-  const { field, path } = props as any
-  const customProps = (props as any).clientProps as AltTextFieldProps
+export function AltTextField({ clientProps }: { clientProps: TextareaFieldClientComponent }) {
+  // @ts-expect-error
+  const { field, path } = clientProps
 
   const { value, setValue } = useField<string>({ path })
   const { id } = useDocumentInfo()
 
-  // Field is optional when document is being created
+  // the field should be optional when the document is created
+  // (since the alt text generation can only be used once the document is created and the image uploaded)
   const required = id ? field.required : false
 
   return (
