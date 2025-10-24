@@ -25,10 +25,6 @@ jobs:
           cat << 'EOF' > pages/dev_multi_tenant/.env
           ${{ secrets.PAGES_DEV_MULTI_TENANT_ENV_FILE }}
           EOF
-
-          cat << 'EOF' > ai-alt-text/dev/.env
-          ${{ secrets.AI_ALT_TEXT_DEV_ENV_FILE }}
-          EOF
         
       - name: Setup Node.js
         uses: actions/setup-node@v4

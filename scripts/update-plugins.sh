@@ -2,7 +2,7 @@
 # Note: We'll control error handling per-function rather than globally
 
 # Configuration
-PLUGINS=("pages" "geocoding" "seo" "cloudinary" "admin-search" "ai-alt-text")
+PLUGINS=("pages" "geocoding" "seo" "cloudinary" "admin-search" "alt-text")
 PAGES_DEV_FOLDERS=("dev" "dev_unlocalized" "dev_multi_tenant")
 
 # Color codes for output

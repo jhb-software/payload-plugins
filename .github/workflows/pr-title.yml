@@ -34,7 +34,7 @@ jobs:
             test
           scopes: |
             admin-search
-            ai-alt-text
+            alt-text
             cloudinary
             geocoding
             pages
