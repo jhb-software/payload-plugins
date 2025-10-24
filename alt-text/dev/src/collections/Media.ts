@@ -3,30 +3,23 @@ import type { CollectionConfig } from 'payload'
 export const Media: CollectionConfig = {
   slug: 'media',
   upload: {
-    // Configure image sizes for testing thumbnail generation
-    imageSizes: [
-      {
-        name: 'sm',
-        width: 400,
-        height: 300,
-        position: 'centre',
-      },
-      {
-        name: 'md',
-        width: 800,
-        height: 600,
-        position: 'centre',
-      },
-    ],
     mimeTypes: ['image/*'],
   },
   fields: [
     // The plugin will automatically inject context, alt, and keywords fields
-    // Additional field for testing
+
+    // For this example project which has no real upload storage connected to, always use the following image URL:
     {
-      name: 'title',
+      name: 'url',
       type: 'text',
-      localized: true,
+      admin: {
+        hidden: true,
+      },
+      hooks: {
+        afterRead: [
+          async () => 'https://images.pexels.com/photos/16981245/pexels-photo-16981245.jpeg',
+        ],
+      },
     },
   ],
 }

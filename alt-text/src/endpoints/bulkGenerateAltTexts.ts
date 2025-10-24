@@ -1,12 +1,11 @@
 import OpenAI from 'openai'
-import { zodResponseFormat } from 'openai/helpers/zod'
 import { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
 import pMap from 'p-map'
 import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
 import { z } from 'zod'
-
 import { getGenerationCost } from '../utilities/getGenerationCost'
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig'
+import { zodResponseFormat } from '../utilities/zodResponseFormat'
 
 /**
  * Generates and updates alt text for multiple images in all locales.
@@ -114,12 +113,15 @@ async function generateAndUpdateAltText({
   })
 
   const modelResponseSchema = z.object(
-    locales.map((locale) => ({
-      [locale]: z.object({
-        altText: z.string().describe('A concise, descriptive alt text for the image'),
-        keywords: z.array(z.string()).describe('Keywords that describe the content of the image'),
-      }),
-    })),
+    Object.fromEntries(
+      locales.map((locale) => [
+        locale,
+        z.object({
+          altText: z.string().describe('A concise, descriptive alt text for the image'),
+          keywords: z.array(z.string()).describe('Keywords that describe the content of the image'),
+        }),
+      ]),
+    ),
   )
 
   const response = await openai.chat.completions.parse({

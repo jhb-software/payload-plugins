@@ -1,11 +1,10 @@
 import OpenAI from 'openai'
-import { zodResponseFormat } from 'openai/helpers/zod'
 import { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
 import type { PayloadHandler, PayloadRequest } from 'payload'
 import { z } from 'zod'
-
 import { getGenerationCost } from '../utilities/getGenerationCost'
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig'
+import { zodResponseFormat } from '../utilities/zodResponseFormat'
 
 /**
  * Generates alt text for a single image using OpenAI Vision API.
