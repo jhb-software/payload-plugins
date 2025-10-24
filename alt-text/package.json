@@ -1,36 +1,32 @@
 {
   "name": "@jhb.software/payload-alt-text-plugin",
   "version": "0.1.0",
-  "description": "A minimal image alt text generation plugin for Payload CMS",
+  "description": "Payload CMS plugin that adds essential fields for hierarchical page structure to collections.",
+  "bugs": "https://github.com/jhb-software/payload-plugins/issues",
+  "repository": "https://github.com/jhb-software/payload-plugins",
   "keywords": [
     "payload",
     "plugin",
-    "image-alt-text",
-    "accessibility"
+    "alt-text",
+    "accessibility",
+    "ai"
   ],
   "author": "JHB Software",
   "license": "MIT",
-  "files": [
-    "dist",
-    "LICENSE.md",
-    "README.md"
-  ],
-  "bugs": "https://github.com/jhb-software/payload-plugins/issues",
-  "repository": "https://github.com/jhb-software/payload-plugins",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "build": "tsc --project tsconfig.json",
-    "build:all": "pnpm build && pnpm -C dev build",
-    "build:app": "pnpm -C dev build",
-    "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png}\" dist/",
-    "dev": "pnpm -C dev dev",
+    "build": "pnpm copyfiles && pnpm build:types && pnpm build:swc",
+    "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths",
+    "build:types": "tsc --outDir dist --rootDir ./src",
+    "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
+    "clean": "rimraf --glob {dist,*.tsbuildinfo}",
+    "dev": "tsc -w",
     "format": "prettier --write src",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "prepack": "pnpm prepublishOnly",
-    "prepublishOnly": "pnpm build && pnpm copyfiles"
+    "lint": "eslint ./src",
+    "lint:fix": "eslint ./src --fix",
+    "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
     "openai": "^6.6.0",
@@ -45,28 +41,22 @@
     "react-dom": "19.2.0"
   },
   "devDependencies": {
+    "@swc/cli": "^0.7.8",
+    "@swc/core": "^1.13.21",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "copyfiles": "^2.4.1",
+    "copyfiles": "2.4.1",
     "prettier": "^3.6.2",
+    "rimraf": "6.0.1",
     "typescript": "5.9.3"
   },
-  "exports": {
-    ".": {
-      "import": "./src/index.ts",
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./client": {
-      "import": "./src/exports/client.ts",
-      "types": "./src/exports/client.ts",
-      "default": "./src/exports/client.ts"
-    }
-  },
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "main": "./dist/index.js",
-    "registry": "https://registry.npmjs.org/",
     "types": "./dist/index.d.ts",
+    "registry": "https://registry.npmjs.org/",
     "access": "public",
     "exports": {
       ".": {
@@ -78,7 +68,32 @@
         "import": "./dist/exports/client.js",
         "types": "./dist/exports/client.d.ts",
         "default": "./dist/exports/client.js"
+      },
+      "./server": {
+        "import": "./dist/exports/server.js",
+        "types": "./dist/exports/server.d.ts",
+        "default": "./dist/exports/server.js"
       }
     }
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./client": {
+      "import": "./src/exports/client.ts",
+      "types": "./src/exports/client.ts",
+      "default": "./src/exports/client.ts"
+    },
+    "./server": {
+      "import": "./src/exports/server.ts",
+      "types": "./src/exports/server.ts",
+      "default": "./src/exports/server.ts"
+    }
+  },
+  "engines": {
+    "node": "^18.20.2 || >=20.9.0"
   }
 }

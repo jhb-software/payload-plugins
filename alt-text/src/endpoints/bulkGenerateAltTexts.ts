@@ -3,9 +3,9 @@ import { ChatCompletionContentPartText } from 'openai/resources/chat/completions
 import pMap from 'p-map'
 import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
 import { z } from 'zod'
-import { getGenerationCost } from '../utilities/getGenerationCost'
-import type { AltTextPluginConfig } from '../types/AltTextPluginConfig'
-import { zodResponseFormat } from '../utilities/zodResponseFormat'
+import { getGenerationCost } from '../utilities/getGenerationCost.js'
+import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
+import { zodResponseFormat } from '../utilities/zodResponseFormat.js'
 
 /**
  * Generates and updates alt text for multiple images in all locales.

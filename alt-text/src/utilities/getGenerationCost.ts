@@ -1,5 +1,5 @@
 import type OpenAI from 'openai'
-import { AltTextPluginConfig } from '../types/AltTextPluginConfig'
+import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 type GenerationCost = {
   model: 'gpt-4.1-nano' | 'gpt-4.1-mini'

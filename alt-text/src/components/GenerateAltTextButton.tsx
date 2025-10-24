@@ -3,8 +3,8 @@
 import { Button, toast, useDocumentInfo, useField, useLocale } from '@payloadcms/ui'
 import { useTransition } from 'react'
 
-import { Lightning } from './icons/Lightning'
-import { Spinner } from './icons/Spinner'
+import { Lightning } from './icons/Lightning.js'
+import { Spinner } from './icons/Spinner.js'
 
 export function GenerateAltTextButton() {
   const { id, collectionSlug } = useDocumentInfo()

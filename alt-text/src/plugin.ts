@@ -1,10 +1,13 @@
 import type { Config } from 'payload'
 
-import type { AltTextPluginConfig, IncomingAltTextPluginConfig } from './types/AltTextPluginConfig'
-import { altTextField } from './fields/altTextField'
-import { keywordsField } from './fields/keywordsField'
-import { generateAltTextEndpoint } from './endpoints/generateAltText'
-import { bulkGenerateAltTextsEndpoint } from './endpoints/bulkGenerateAltTexts'
+import type {
+  AltTextPluginConfig,
+  IncomingAltTextPluginConfig,
+} from './types/AltTextPluginConfig.js'
+import { altTextField } from './fields/altTextField.js'
+import { keywordsField } from './fields/keywordsField.js'
+import { generateAltTextEndpoint } from './endpoints/generateAltText.js'
+import { bulkGenerateAltTextsEndpoint } from './endpoints/bulkGenerateAltTexts.js'
 
 export const payloadAltTextPlugin =
   (incomingPluginConfig: IncomingAltTextPluginConfig) =>
@@ -75,7 +78,7 @@ export const payloadAltTextPlugin =
               ...(collectionConfig.admin?.components ?? {}),
               beforeListTable: [
                 ...(collectionConfig.admin?.components?.beforeListTable ?? []),
-                '@jhb.software/payload-alt-text-plugin/client#BulkUpdateAltTextsButton',
+                '@jhb.software/payload-alt-text-plugin/client#BulkGenerateAltTextsButton',
               ],
             },
           },

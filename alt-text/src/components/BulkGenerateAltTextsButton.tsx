@@ -4,8 +4,8 @@ import { Button, toast, useSelection } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 
-import { Lightning } from './icons/Lightning'
-import { Spinner } from './icons/Spinner'
+import { Lightning } from './icons/Lightning.js'
+import { Spinner } from './icons/Spinner.js'
 
 export function BulkGenerateAltTextsButton() {
   const [isPending, startTransition] = useTransition()

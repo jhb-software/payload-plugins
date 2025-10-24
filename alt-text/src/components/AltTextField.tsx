@@ -3,10 +3,9 @@
 import { FieldLabel, TextareaInput, useDocumentInfo, useField } from '@payloadcms/ui'
 import type { TextareaFieldClientComponent } from 'payload'
 
-import { GenerateAltTextButton } from './GenerateAltTextButton'
+import { GenerateAltTextButton } from './GenerateAltTextButton.js'
 
 export function AltTextField(clientProps: TextareaFieldClientComponent) {
-  // @ts-expect-error
   const { field, path } = clientProps
 
   const { value, setValue } = useField<string>({ path })
