@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, toast, useSelection } from '@payloadcms/ui'
-import { useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation.js'
 import { useTransition } from 'react'
 
 import { Lightning } from './icons/Lightning.js'

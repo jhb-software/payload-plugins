@@ -1,11 +1,11 @@
 'use client'
 
 import { FieldLabel, TextareaInput, useDocumentInfo, useField } from '@payloadcms/ui'
-import type { TextareaFieldClientComponent } from 'payload'
+import type { TextareaFieldClientProps } from 'payload'
 
 import { GenerateAltTextButton } from './GenerateAltTextButton.js'
 
-export function AltTextField(clientProps: TextareaFieldClientComponent) {
+export const AltTextField = (clientProps: TextareaFieldClientProps) => {
   const { field, path } = clientProps
 
   const { value, setValue } = useField<string>({ path })
@@ -29,7 +29,7 @@ export function AltTextField(clientProps: TextareaFieldClientComponent) {
           value={value}
           path={path!}
           required={required}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
           AfterInput={<GenerateAltTextButton />}
         />
       </div>
