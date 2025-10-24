@@ -31,8 +31,7 @@
     "install:pages": "cd ./pages && pnpm install --frozen-lockfile",
     "install:seo": "cd ./seo && pnpm install --frozen-lockfile",
 
-    "test:all": "pnpm test:ai-alt-text && pnpm test:pages",
-    "test:ai-alt-text": "cd ./ai-alt-text/dev && pnpm test",
+    "test:all": "pnpm test:pages",
     "test:pages": "cd ./pages && pnpm test"
   }
 }
