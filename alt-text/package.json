@@ -1,7 +1,7 @@
 {
   "name": "@jhb.software/payload-alt-text-plugin",
   "version": "0.1.0",
-  "description": "Payload CMS plugin that adds essential fields for hierarchical page structure to collections.",
+  "description": "A minimal Payload CMS plugin to generate image alt texts using OpenAI's Vision API.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
   "keywords": [
@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@swc/cli": "^0.7.8",
-    "@swc/core": "^1.13.21",
+    "@swc/core": "^1.13.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "copyfiles": "2.4.1",

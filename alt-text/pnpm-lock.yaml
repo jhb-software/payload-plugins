@@ -37,7 +37,7 @@ importers:
         specifier: ^0.7.8
         version: 0.7.8(@swc/core@1.13.21)
       '@swc/core':
-        specifier: ^1.13.21
+        specifier: ^1.13.3
         version: 1.13.21
       '@types/react':
         specifier: 19.2.2
