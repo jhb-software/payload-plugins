@@ -1,8 +1,15 @@
 import type { Config } from 'payload'
 
 import type { GeocodingPluginConfig } from './types/GeoCodingPluginConfig'
+import { setPluginApiKey } from './plugin-state'
 
-/** Payload plugin which extends the point field with geocoding functionality. */
+/**
+ * Payload plugin which extends the point field with geocoding functionality.
+ *
+ * The plugin stores the Google Maps API key in a singleton state manager,
+ * allowing the geocodingField() helper function to access it when users
+ * create geocoding fields in their collections.
+ */
 export const payloadGeocodingPlugin =
   (pluginOptions: GeocodingPluginConfig) =>
   (incomingConfig: Config): Config => {
@@ -13,22 +20,10 @@ export const payloadGeocodingPlugin =
       return config
     }
 
-    config.onInit = async (payload) => {
-      if (incomingConfig.onInit) {
-        await incomingConfig.onInit(payload)
-      }
-
-      const neededEnvVars = ['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY']
-
-      const missingEnvVars = neededEnvVars.filter((envVar) => !process.env[envVar])
-      if (missingEnvVars.length > 0) {
-        throw new Error(
-          `The following environment variables are required for the geocoding plugin but not defined: ${missingEnvVars.join(
-            ', ',
-          )}`,
-        )
-      }
-    }
+    // Store API key in singleton for field access
+    // This allows geocodingField() to retrieve the API key when users
+    // call it in their collection definitions
+    setPluginApiKey(pluginOptions.googleMapsApiKey)
 
     return config
   }
