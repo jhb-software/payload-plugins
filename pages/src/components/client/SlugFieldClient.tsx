@@ -7,12 +7,16 @@ import {
   useDocumentInfo,
   useField,
   useLocale,
+  useTranslation,
 } from '@payloadcms/ui'
 import type { TextFieldClientProps } from 'payload'
 import { useEffect, useState } from 'react'
 import { formatSlug, liveFormatSlug } from '../../hooks/validateSlug.js'
-import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { RefreshIcon } from '../../icons/RefreshIcon.js'
+import type {
+  PluginPagesTranslations,
+  PluginPagesTranslationKeys,
+} from '../../translations/index.js'
 
 export type SlugFieldProps = {
   pageSlug: boolean | undefined
@@ -31,7 +35,7 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
   const [showSyncButtonTooltip, setShowSyncButtonTooltip] = useState(false)
   const { value: isRootPage } = useField<boolean>({ path: 'isRootPage' })
   const locale = useLocale()
-  const { t } = usePluginTranslation()
+  const { t } = useTranslation<PluginPagesTranslations, PluginPagesTranslationKeys>()
 
   /**
    * Sets the slug, but only if the new slug is different from the current slug.
@@ -117,7 +121,7 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
             >
               <>
                 <Tooltip show={showSyncButtonTooltip}>
-                  {t('syncSlugWithX').replace(
+                  {t('@jhb.software/payload-pages-plugin:syncSlugWithX').replace(
                     '{X}',
                     fallbackField.charAt(0).toUpperCase() + fallbackField.slice(1),
                   )}
@@ -154,7 +158,7 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
               <div
                 style={{ marginLeft: '0.5rem' }}
                 dangerouslySetInnerHTML={{
-                  __html: t('slugWasChangedFromXToY')
+                  __html: t('@jhb.software/payload-pages-plugin:slugWasChangedFromXToY')
                     .replace('{X}', initialSlug)
                     .replace('{Y}', slug),
                 }}
