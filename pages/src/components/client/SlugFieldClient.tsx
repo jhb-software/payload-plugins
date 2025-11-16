@@ -1,6 +1,7 @@
 'use client'
 import {
   Banner,
+  Button,
   FieldLabel,
   TextInput,
   Tooltip,
@@ -13,6 +14,9 @@ import { useEffect, useState } from 'react'
 import { formatSlug, liveFormatSlug } from '../../hooks/validateSlug.js'
 import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { RefreshIcon } from '../../icons/RefreshIcon.js'
+import { useCreateRedirect } from '../../hooks/useCreateRedirect.js'
+import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
+import { useBreadcrumbs } from '../client/hooks/useBreadcrumbs.js'
 
 export type SlugFieldProps = {
   pageSlug: boolean | undefined
@@ -31,7 +35,11 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
   const [showSyncButtonTooltip, setShowSyncButtonTooltip] = useState(false)
   const { value: isRootPage } = useField<boolean>({ path: 'isRootPage' })
   const locale = useLocale()
+  const { code: localeCode } = locale as unknown as { code: string | undefined }
   const { t } = usePluginTranslation()
+  const { createRedirect } = useCreateRedirect()
+  const { getBreadcrumbs } = useBreadcrumbs()
+  const [isCreatingRedirect, setIsCreatingRedirect] = useState(false)
 
   /**
    * Sets the slug, but only if the new slug is different from the current slug.
@@ -46,6 +54,34 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
   // TODO: create and use a mustCreateRedirect function to determine if a redirect must be created
   // Then inside an afterChange hook use this same function to automatically create the redirect
   const showRedirectWarning = initialSlug && pageSlug && initialSlug !== slug && hasPublishedDoc
+
+  const handleCreateRedirect = async () => {
+    setIsCreatingRedirect(true)
+
+    try {
+      const breadcrumbs = getBreadcrumbs() || []
+
+      // Calculate old path (with initial slug)
+      const oldPath = pathFromBreadcrumbs({
+        locale: localeCode,
+        breadcrumbs: breadcrumbs.slice(0, -1), // Remove current page
+        additionalSlug: initialSlug
+      })
+
+      // Calculate new path (with current slug)
+      const newPath = pathFromBreadcrumbs({
+        locale: localeCode,
+        breadcrumbs: breadcrumbs.slice(0, -1), // Remove current page
+        additionalSlug: slug
+      })
+
+      await createRedirect(oldPath, newPath)
+    } catch (error) {
+      // Error is handled by the hook with toast
+    } finally {
+      setIsCreatingRedirect(false)
+    }
+  }
 
   useEffect(() => {
     if (isRootPage) {
@@ -151,14 +187,24 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
         {showRedirectWarning && (
           <div style={{ marginTop: '0.5rem' }}>
             <Banner type="info" icon={<InfoIcon />} alignIcon="left">
-              <div
-                style={{ marginLeft: '0.5rem' }}
-                dangerouslySetInnerHTML={{
-                  __html: t('slugWasChangedFromXToY')
-                    .replace('{X}', initialSlug)
-                    .replace('{Y}', slug),
-                }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div
+                  style={{ flex: 1, marginLeft: '0.5rem' }}
+                  dangerouslySetInnerHTML={{
+                    __html: t('slugWasChangedFromXToY')
+                      .replace('{X}', `<code>${initialSlug}</code>`)
+                      .replace('{Y}', `<code>${slug}</code>`)
+                  }}
+                />
+                <Button
+                  size="small"
+                  buttonStyle="secondary"
+                  onClick={handleCreateRedirect}
+                  disabled={isCreatingRedirect}
+                >
+                  {t(isCreatingRedirect ? 'creating' : 'createRedirect')}
+                </Button>
+              </div>
             </Banner>
           </div>
         )}
