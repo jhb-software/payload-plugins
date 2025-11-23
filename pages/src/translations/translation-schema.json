@@ -52,6 +52,9 @@
           "createRedirect": {
             "type": "string"
           },
+          "redirectCreated": {
+            "type": "string"
+          },
           "creatingRedirect": {
             "type": "string"
           },
@@ -83,6 +86,7 @@
           "syncSlugWithX",
           "slugWasChangedFromXToY",
           "createRedirect",
+          "redirectCreated",
           "creatingRedirect",
           "redirectCreatedSuccessfully",
           "redirectCreationFailed",
