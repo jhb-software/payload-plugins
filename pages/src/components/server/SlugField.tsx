@@ -12,8 +12,14 @@ export const SlugField = async ({
   fallbackField,
   defaultValue,
   pageSlug,
+  payload,
 }: TextFieldServerProps & SlugFieldProps) => {
   const isReadOnly = readOnly || (permissions !== true && permissions?.update !== true)
+
+  const redirectsCollection = payload.config.collections?.find(
+    (col) => col.custom?.redirects === true
+  )?.slug || 'redirects'
+
   return (
     <SlugFieldClient
       field={clientField}
@@ -22,6 +28,7 @@ export const SlugField = async ({
       fallbackField={fallbackField}
       defaultValue={defaultValue}
       pageSlug={pageSlug}
+      redirectsCollection={redirectsCollection}
     />
   )
 }

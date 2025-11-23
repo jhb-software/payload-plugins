@@ -3,21 +3,16 @@
 import { toast, useConfig } from '@payloadcms/ui'
 import { usePluginTranslation } from '../utils/usePluginTranslations.js'
 
-export const useCreateRedirect = () => {
+export const useCreateRedirect = (redirectsCollection: string = 'redirects') => {
   const { t } = usePluginTranslation()
   const {
     config: {
       routes: { api },
       serverURL,
-      collections,
     },
   } = useConfig()
 
   const createRedirect = async (sourcePath: string, destinationPath: string) => {
-    // Find redirects collection slug from config
-    // Look for collection with redirects: true in custom config
-    const redirectsCollection =
-      collections?.find((col) => (col as any).custom?.redirects)?.slug || 'redirects'
 
     const loadingToast = toast.loading(t('creatingRedirect'))
 
