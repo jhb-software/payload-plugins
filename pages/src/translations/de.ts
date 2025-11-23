@@ -18,6 +18,7 @@ export const de: GenericTranslationsObject = {
     slugWasChangedFromXToY:
       'Die URL-Endung wurde von {X} zu {Y} geändert. Eine Weiterleitung vom alten zum neuen Pfad ist erforderlich.',
     createRedirect: 'Weiterleitung erstellen',
+    redirectCreated: 'Weiterleitung erstellt',
     creatingRedirect: 'Erstelle Weiterleitung...',
     redirectCreatedSuccessfully: 'Weiterleitung erfolgreich erstellt',
     redirectCreationFailed: 'Weiterleitung konnte nicht erstellt werden',

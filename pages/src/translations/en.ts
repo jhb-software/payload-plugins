@@ -18,6 +18,7 @@ export const en: GenericTranslationsObject = {
     slugWasChangedFromXToY:
       'The slug was changed from {X} to {Y}. A redirect from the old to the new path is required.',
     createRedirect: 'Create Redirect',
+    redirectCreated: 'Redirect Created',
     creatingRedirect: 'Creating redirect...',
     redirectCreatedSuccessfully: 'Redirect created successfully',
     redirectCreationFailed: 'Failed to create redirect',
