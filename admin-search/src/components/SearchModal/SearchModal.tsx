@@ -6,6 +6,7 @@ import {
   SearchIcon,
   useConfig,
   useDebounce,
+  useEntityVisibility,
   usePayloadAPI,
   useTranslation,
 } from '@payloadcms/ui'
@@ -37,6 +38,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     routes: { admin, api },
   } = config
   const router = useRouter()
+  const { visibleEntities } = useEntityVisibility()
 
   const collectionLabelsMap = useMemo(() => {
     const map: Record<string, { plural: string; singular: string; slug: string }> = {}
@@ -106,11 +108,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
       const lowerQuery = searchQuery.toLowerCase()
       const results: SearchResult[] = []
 
+      // Only include collections that are visible to the current user
       for (const [slug, labels] of Object.entries(collectionLabelsMap)) {
         if (
-          slug.toLowerCase().includes(lowerQuery) ||
-          labels.singular.toLowerCase().includes(lowerQuery) ||
-          labels.plural.toLowerCase().includes(lowerQuery)
+          visibleEntities.collections.includes(slug) &&
+          (slug.toLowerCase().includes(lowerQuery) ||
+            labels.singular.toLowerCase().includes(lowerQuery) ||
+            labels.plural.toLowerCase().includes(lowerQuery))
         ) {
           results.push({
             id: `collection-${slug}`,
@@ -121,10 +125,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
         }
       }
 
+      // Only include globals that are visible to the current user
       for (const [slug, globalInfo] of Object.entries(globalLabelsMap)) {
         if (
-          slug.toLowerCase().includes(lowerQuery) ||
-          globalInfo.label.toLowerCase().includes(lowerQuery)
+          visibleEntities.globals.includes(slug) &&
+          (slug.toLowerCase().includes(lowerQuery) ||
+            globalInfo.label.toLowerCase().includes(lowerQuery))
         ) {
           results.push({
             id: `global-${slug}`,
@@ -137,7 +143,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
 
       return results
     },
-    [collectionLabelsMap, globalLabelsMap],
+    [collectionLabelsMap, globalLabelsMap, visibleEntities],
   )
 
   useEffect(() => {
