@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { SearchResult } from '../../types/SearchResult.js'
 
+import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModalSkeleton } from './SearchModalSkeleton.js'
 import './SearchModal.css'
 
@@ -29,6 +30,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
   const { t } = useTranslation()
+  const { t: pluginT } = usePluginTranslation()
   const {
     config: {
       routes: { admin, api },
@@ -158,7 +160,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
         .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ')
     }
-    return 'Unknown'
+    return pluginT('unknownCollection')
   }
 
   const highlightSearchTerm = (text: string, searchTerm: string) => {
@@ -190,7 +192,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
 
   return (
     <div
-      aria-label="Close search modal"
+      aria-label={pluginT('closeSearchModal')}
       className="search-modal__overlay"
       onClick={handleClose}
       onKeyDown={(e) => e.key === 'Enter' && handleClose()}
@@ -198,7 +200,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
       tabIndex={0}
     >
       <div
-        aria-label="Search modal content"
+        aria-label={pluginT('searchModalContent')}
         className="search-modal__content"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
@@ -211,7 +213,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
               <SearchIcon />
             </span>
             <input
-              aria-label="Search for documents"
+              aria-label={pluginT('searchForDocuments')}
               className="search-modal__input-field"
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -225,24 +227,22 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
                   handleClose()
                 }
               }}
-              placeholder="Search..."
+              placeholder={pluginT('searchPlaceholder')}
               ref={inputRef}
               type="text"
               value={query}
             />
-            <span className="search-modal__escape-hint">ESC</span>
+            <span className="search-modal__escape-hint">{pluginT('escapeHint')}</span>
           </div>
         </div>
 
         <div className="search-modal__results-container">
           {isLoading && <SearchModalSkeleton count={SEARCH_RESULTS_LIMIT} />}
-          {isError && (
-            <Banner type="error">An error occurred while searching. Please try again.</Banner>
-          )}
+          {isError && <Banner type="error">{pluginT('errorSearching')}</Banner>}
           {!isLoading && !isError && results.length === 0 && debouncedQuery && (
             <div className="search-modal__no-results-message">
-              <p>No results found for "{debouncedQuery}"</p>
-              <p className="search-modal__no-results-hint">Try different keywords or check your spelling</p>
+              <p>{pluginT('noResultsFound').replace('{query}', debouncedQuery)}</p>
+              <p className="search-modal__no-results-hint">{pluginT('noResultsHint')}</p>
             </div>
           )}
           {!isLoading && !isError && results.length > 0 && (
@@ -261,7 +261,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
                     onMouseEnter={() => setSelectedIndex(index)}
                   >
                     <button
-                      aria-label={`Open ${displayTitle} in ${getCollectionDisplayName(result)}`}
+                      aria-label={pluginT('openDocumentIn')
+                        .replace('{title}', displayTitle)
+                        .replace('{collection}', getCollectionDisplayName(result))}
                       className="search-modal__result-item-button"
                       onClick={() => handleResultClick(result)}
                       onKeyDown={(e) => e.key === 'Enter' && handleResultClick(result)}
@@ -285,15 +287,15 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
           <div className="search-modal__keyboard-shortcuts">
             <div className="search-modal__shortcut-item">
               <span className="search-modal__shortcut-key">↑↓</span>
-              <span className="search-modal__shortcut-description">to navigate</span>
+              <span className="search-modal__shortcut-description">{pluginT('toNavigate')}</span>
             </div>
             <div className="search-modal__shortcut-item">
               <span className="search-modal__shortcut-key">↵</span>
-              <span className="search-modal__shortcut-description">to select</span>
+              <span className="search-modal__shortcut-description">{pluginT('toSelect')}</span>
             </div>
             <div className="search-modal__shortcut-item">
               <span className="search-modal__shortcut-key">ESC</span>
-              <span className="search-modal__shortcut-description">to close</span>
+              <span className="search-modal__shortcut-description">{pluginT('toClose')}</span>
             </div>
           </div>
         </div>

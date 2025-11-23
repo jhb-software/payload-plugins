@@ -4,10 +4,12 @@ import type React from 'react'
 import { Button, SearchIcon, useHotkey } from '@payloadcms/ui'
 import { useState } from 'react'
 
+import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 
 export function SearchButton(): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const { t } = usePluginTranslation()
 
   useHotkey(
     {
@@ -27,7 +29,7 @@ export function SearchButton(): React.ReactElement {
         buttonStyle="icon-label"
         onClick={() => setIsModalOpen(true)}
         size="small"
-        tooltip="Search (⌘K)"
+        tooltip={t('searchTooltip')}
       >
         <SearchIcon />
       </Button>
