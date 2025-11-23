@@ -27,6 +27,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [isKeyboardNav, setIsKeyboardNav] = useState(false)
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
   const { t } = useTranslation()
   const {
@@ -115,9 +116,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     (e: KeyboardEvent | React.KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
+        setIsKeyboardNav(true)
         setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
+        setIsKeyboardNav(true)
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0))
       } else if (e.key === 'Enter' && selectedIndex !== -1) {
         e.preventDefault()
@@ -141,6 +144,26 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyboardNavigation])
+
+  useEffect(() => {
+    if (!isKeyboardNav) {
+      return
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Ignore "fake" mouse moves that some browsers fire on scroll
+      // This ensures we only re-enable hover when the user *actually* moves the mouse
+      if (e.movementX === 0 && e.movementY === 0) {
+        return
+      }
+      setIsKeyboardNav(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+    }
+  }, [isKeyboardNav])
 
   useEffect(() => {
     if (selectedIndex !== -1 && resultsRef.current) {
@@ -246,7 +269,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
             </div>
           )}
           {!isLoading && !isError && results.length > 0 && (
-            <ul className="search-modal__results-list" ref={resultsRef}>
+            <ul
+              className={`search-modal__results-list ${isKeyboardNav ? 'is-keyboard-nav' : ''}`}
+              ref={resultsRef}
+            >
               {results.map((result, index) => {
                 const displayTitle =
                   result.title && result.title.trim().length > 0

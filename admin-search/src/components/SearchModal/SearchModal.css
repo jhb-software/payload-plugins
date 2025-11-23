@@ -143,6 +143,10 @@
   padding: 0;
 }
 
+.search-modal__results-list.is-keyboard-nav {
+  pointer-events: none;
+}
+
 .search-modal__result-item-container {
   border-radius: 4px;
   cursor: pointer;
