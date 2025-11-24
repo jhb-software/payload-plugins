@@ -1,8 +1,5 @@
 name: pr-title
 
-permissions:
-  pull-requests: write # required when using "wip: true", see https://github.com/amannn/action-semantic-pull-request?tab=readme-ov-file#work-in-progress-pull-requests
-
 on:
   pull_request_target:
     types:
@@ -17,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
-      statuses: write 
     steps:
       - uses: amannn/action-semantic-pull-request@v6
         env:
@@ -43,5 +39,4 @@ jobs:
             geocoding
             pages
             seo
-          wip: true
           requireScope: false
