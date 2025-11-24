@@ -7,6 +7,7 @@ import {
   Tooltip,
   useDocumentInfo,
   useField,
+  useFormModified,
   useLocale,
 } from '@payloadcms/ui'
 import type { TextFieldClientProps } from 'payload'
@@ -40,6 +41,7 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
   const { t } = usePluginTranslation()
   const { createRedirect, isCreating, isSuccess } = useCreateRedirect(redirectsCollectionSlug)
   const { getBreadcrumbs } = useBreadcrumbs()
+  const modified = useFormModified()
 
   /**
    * Sets the slug, but only if the new slug is different from the current slug.
@@ -51,7 +53,8 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
     }
   }
 
-  const showRedirectWarning = initialSlug && pageSlug && initialSlug !== slug && hasPublishedDoc
+  const showRedirectWarning =
+    initialSlug && pageSlug && initialSlug !== slug && hasPublishedDoc && modified
 
   const handleCreateRedirect = async () => {
     try {
