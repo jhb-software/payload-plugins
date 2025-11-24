@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-alt-text-plugin",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A minimal Payload CMS plugin to generate image alt texts using OpenAI's Vision API.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
