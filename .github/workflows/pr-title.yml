@@ -1,5 +1,8 @@
 name: pr-title
 
+permissions:
+  pull-requests: write # required when using "wip: true", see https://github.com/amannn/action-semantic-pull-request?tab=readme-ov-file#work-in-progress-pull-requests
+
 on:
   pull_request_target:
     types:
@@ -13,8 +16,7 @@ jobs:
     name: lint-pr-title
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
-      statuses: write
+      pull-requests: read
     steps:
       - uses: amannn/action-semantic-pull-request@v6
         env:
