@@ -197,15 +197,28 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
                       .replace('{Y}', `<code>${slug}</code>`),
                   }}
                 />
-                <Button
-                  size="small"
-                  buttonStyle="secondary"
-                  onClick={handleCreateRedirect}
-                  disabled={isCreating || isSuccess}
-                  margin={false}
+                <div
+                  style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginLeft: '0.5rem' }}
                 >
-                  {t(isSuccess ? 'redirectCreated' : isCreating ? 'creating' : 'createRedirect')}
-                </Button>
+                  <Button
+                    size="small"
+                    buttonStyle="secondary"
+                    onClick={handleCreateRedirect}
+                    disabled={isCreating || isSuccess}
+                    margin={false}
+                  >
+                    {t(isSuccess ? 'redirectCreated' : isCreating ? 'creating' : 'createRedirect')}
+                  </Button>
+                  <Button
+                    size="small"
+                    buttonStyle="secondary"
+                    onClick={() => setSlug(initialSlug)}
+                    disabled={isCreating || isSuccess}
+                    margin={false}
+                  >
+                    {t('revertSlug')}
+                  </Button>
+                </div>
               </div>
             </Banner>
           </div>

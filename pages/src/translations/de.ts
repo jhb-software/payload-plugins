@@ -24,5 +24,6 @@ export const de: GenericTranslationsObject = {
     redirectCreationFailed: 'Weiterleitung konnte nicht erstellt werden',
     redirectReasonSlugChange: 'Automatische Weiterleitung aufgrund von Slug-Änderung',
     creating: 'Erstelle...',
+    revertSlug: 'Änderung verwerfen',
   },
 }

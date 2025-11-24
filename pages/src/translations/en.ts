@@ -24,5 +24,6 @@ export const en: GenericTranslationsObject = {
     redirectCreationFailed: 'Failed to create redirect',
     redirectReasonSlugChange: 'Automatic redirect due to slug change',
     creating: 'Creating...',
+    revertSlug: 'Revert change',
   },
 }
