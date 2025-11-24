@@ -196,8 +196,8 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
                   style={{ marginLeft: '0.5rem' }}
                   dangerouslySetInnerHTML={{
                     __html: t('slugWasChangedFromXToY')
-                      .replace('{X}', `<code>${initialSlug}</code>`)
-                      .replace('{Y}', `<code>${slug}</code>`),
+                      .replace('{X}', initialSlug)
+                      .replace('{Y}', slug),
                   }}
                 />
                 <div
