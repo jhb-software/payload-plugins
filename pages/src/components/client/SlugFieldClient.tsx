@@ -27,7 +27,8 @@ export type SlugFieldProps = {
 }
 
 export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldProps) => {
-  const { field, path, readOnly, pageSlug, fallbackField, defaultValue, redirectsCollection } = clientProps
+  const { field, path, readOnly, pageSlug, fallbackField, defaultValue, redirectsCollection } =
+    clientProps
 
   const { value: title } = useField<string>({ path: fallbackField })
   const { initialData, hasPublishedDoc, id } = useDocumentInfo()
@@ -60,14 +61,14 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
       const oldPath = pathFromBreadcrumbs({
         locale: locale.code,
         breadcrumbs: breadcrumbs.slice(0, -1), // Remove current page
-        additionalSlug: initialSlug
+        additionalSlug: initialSlug,
       })
 
       // Calculate new path (with current slug)
       const newPath = pathFromBreadcrumbs({
         locale: locale.code,
         breadcrumbs: breadcrumbs.slice(0, -1), // Remove current page
-        additionalSlug: slug
+        additionalSlug: slug,
       })
 
       await createRedirect(oldPath, newPath)
@@ -180,13 +181,20 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
         {showRedirectWarning && (
           <div style={{ marginTop: '0.5rem' }}>
             <Banner type="info" icon={<InfoIcon />} alignIcon="left">
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '0.75rem',
+                }}
+              >
                 <div
                   style={{ marginLeft: '0.5rem' }}
                   dangerouslySetInnerHTML={{
                     __html: t('slugWasChangedFromXToY')
                       .replace('{X}', `<code>${initialSlug}</code>`)
-                      .replace('{Y}', `<code>${slug}</code>`)
+                      .replace('{Y}', `<code>${slug}</code>`),
                   }}
                 />
                 <Button
