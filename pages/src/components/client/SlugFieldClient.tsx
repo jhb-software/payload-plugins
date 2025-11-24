@@ -15,16 +15,13 @@ import type { TextFieldClientProps } from 'payload'
 import { useEffect, useState } from 'react'
 import { formatSlug, liveFormatSlug } from '../../hooks/validateSlug.js'
 import { RefreshIcon } from '../../icons/RefreshIcon.js'
-<<<<<<< HEAD
 import type {
   PluginPagesTranslations,
   PluginPagesTranslationKeys,
 } from '../../translations/index.js'
-=======
-import { useCreateRedirect } from '../../hooks/useCreateRedirect.js'
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
-import { useBreadcrumbs } from '../client/hooks/useBreadcrumbs.js'
->>>>>>> main
+import { useCreateRedirect } from '../../hooks/useCreateRedirect.js'
+import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 
 export type SlugFieldProps = {
   pageSlug: boolean | undefined
@@ -45,14 +42,10 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
   const [showSyncButtonTooltip, setShowSyncButtonTooltip] = useState(false)
   const { value: isRootPage } = useField<boolean>({ path: 'isRootPage' })
   const locale = useLocale()
-<<<<<<< HEAD
   const { t } = useTranslation<PluginPagesTranslations, PluginPagesTranslationKeys>()
-=======
-  const { t } = usePluginTranslation()
   const { createRedirect, isCreating, isSuccess } = useCreateRedirect(redirectsCollectionSlug)
   const { getBreadcrumbs } = useBreadcrumbs()
   const modified = useFormModified()
->>>>>>> main
 
   /**
    * Sets the slug, but only if the new slug is different from the current slug.
@@ -221,7 +214,14 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
                     disabled={isCreating || isSuccess}
                     margin={false}
                   >
-                    {t(isSuccess ? 'redirectCreated' : isCreating ? 'creating' : 'createRedirect')}
+                    {t(
+                      '@jhb.software/payload-pages-plugin:' +
+                        (isSuccess
+                          ? 'redirectCreated'
+                          : isCreating
+                            ? 'creating'
+                            : 'createRedirect'),
+                    )}
                   </Button>
                   <Button
                     size="small"
@@ -230,7 +230,7 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
                     disabled={isCreating || isSuccess}
                     margin={false}
                   >
-                    {t('revertSlug')}
+                    {t('@jhb.software/payload-pages-plugin:revertSlug')}
                   </Button>
                 </div>
               </div>
