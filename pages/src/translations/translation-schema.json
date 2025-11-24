@@ -48,6 +48,30 @@
           },
           "slugWasChangedFromXToY": {
             "type": "string"
+          },
+          "createRedirect": {
+            "type": "string"
+          },
+          "redirectCreated": {
+            "type": "string"
+          },
+          "creatingRedirect": {
+            "type": "string"
+          },
+          "redirectCreatedSuccessfully": {
+            "type": "string"
+          },
+          "redirectCreationFailed": {
+            "type": "string"
+          },
+          "redirectReasonSlugChange": {
+            "type": "string"
+          },
+          "creating": {
+            "type": "string"
+          },
+          "revertSlug": {
+            "type": "string"
           }
         },
         "required": [
@@ -63,7 +87,15 @@
           "breadcrumb",
           "showBreadcrumbs",
           "syncSlugWithX",
-          "slugWasChangedFromXToY"
+          "slugWasChangedFromXToY",
+          "createRedirect",
+          "redirectCreated",
+          "creatingRedirect",
+          "redirectCreatedSuccessfully",
+          "redirectCreationFailed",
+          "redirectReasonSlugChange",
+          "creating",
+          "revertSlug"
         ]
       }
     },

@@ -42,7 +42,7 @@ export function internalSlugField({
             defaultValue: staticValue,
             pageSlug: pageSlug,
             fallbackField: fallbackField,
-          } satisfies SlugFieldProps,
+          } satisfies Omit<SlugFieldProps, 'redirectsCollectionSlug'>,
         },
       },
       // The condition option is not used to hide the field when the page is the root page because then the type of the slug field would be optional.

@@ -1,11 +1,13 @@
 'use client'
 import {
   Banner,
+  Button,
   FieldLabel,
   TextInput,
   Tooltip,
   useDocumentInfo,
   useField,
+  useFormModified,
   useLocale,
 } from '@payloadcms/ui'
 import type { TextFieldClientProps } from 'payload'
@@ -13,16 +15,21 @@ import { useEffect, useState } from 'react'
 import { formatSlug, liveFormatSlug } from '../../hooks/validateSlug.js'
 import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { RefreshIcon } from '../../icons/RefreshIcon.js'
+import { useCreateRedirect } from '../../hooks/useCreateRedirect.js'
+import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
+import { useBreadcrumbs } from '../client/hooks/useBreadcrumbs.js'
 
 export type SlugFieldProps = {
   pageSlug: boolean | undefined
   fallbackField: string
   readOnly: boolean | undefined
   defaultValue: string | Record<string, string> | undefined
+  redirectsCollectionSlug: string
 }
 
 export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldProps) => {
-  const { field, path, readOnly, pageSlug, fallbackField, defaultValue } = clientProps
+  const { field, path, readOnly, pageSlug, fallbackField, defaultValue, redirectsCollectionSlug } =
+    clientProps
 
   const { value: title } = useField<string>({ path: fallbackField })
   const { initialData, hasPublishedDoc, id } = useDocumentInfo()
@@ -32,6 +39,9 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
   const { value: isRootPage } = useField<boolean>({ path: 'isRootPage' })
   const locale = useLocale()
   const { t } = usePluginTranslation()
+  const { createRedirect, isCreating, isSuccess } = useCreateRedirect(redirectsCollectionSlug)
+  const { getBreadcrumbs } = useBreadcrumbs()
+  const modified = useFormModified()
 
   /**
    * Sets the slug, but only if the new slug is different from the current slug.
@@ -43,9 +53,32 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
     }
   }
 
-  // TODO: create and use a mustCreateRedirect function to determine if a redirect must be created
-  // Then inside an afterChange hook use this same function to automatically create the redirect
-  const showRedirectWarning = initialSlug && pageSlug && initialSlug !== slug && hasPublishedDoc
+  const showRedirectWarning =
+    initialSlug && pageSlug && initialSlug !== slug && hasPublishedDoc && modified
+
+  const handleCreateRedirect = async () => {
+    try {
+      const breadcrumbs = getBreadcrumbs() || []
+
+      // Calculate old path (with initial slug)
+      const oldPath = pathFromBreadcrumbs({
+        locale: locale.code,
+        breadcrumbs: breadcrumbs.slice(0, -1), // Remove current page
+        additionalSlug: initialSlug,
+      })
+
+      // Calculate new path (with current slug)
+      const newPath = pathFromBreadcrumbs({
+        locale: locale.code,
+        breadcrumbs: breadcrumbs.slice(0, -1), // Remove current page
+        additionalSlug: slug,
+      })
+
+      await createRedirect(oldPath, newPath)
+    } catch (error) {
+      // Error is handled by the hook with toast
+    }
+  }
 
   useEffect(() => {
     if (isRootPage) {
@@ -152,13 +185,44 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
           <div style={{ marginTop: '0.5rem' }}>
             <Banner type="info" icon={<InfoIcon />} alignIcon="left">
               <div
-                style={{ marginLeft: '0.5rem' }}
-                dangerouslySetInnerHTML={{
-                  __html: t('slugWasChangedFromXToY')
-                    .replace('{X}', initialSlug)
-                    .replace('{Y}', slug),
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '0.75rem',
                 }}
-              />
+              >
+                <div
+                  style={{ marginLeft: '0.5rem' }}
+                  dangerouslySetInnerHTML={{
+                    __html: t('slugWasChangedFromXToY')
+                      .replace('{X}', initialSlug)
+                      .replace('{Y}', slug),
+                  }}
+                />
+                <div
+                  style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginLeft: '0.5rem' }}
+                >
+                  <Button
+                    size="small"
+                    buttonStyle="secondary"
+                    onClick={handleCreateRedirect}
+                    disabled={isCreating || isSuccess}
+                    margin={false}
+                  >
+                    {t(isSuccess ? 'redirectCreated' : isCreating ? 'creating' : 'createRedirect')}
+                  </Button>
+                  <Button
+                    size="small"
+                    buttonStyle="secondary"
+                    onClick={() => setSlug(initialSlug)}
+                    disabled={isCreating || isSuccess}
+                    margin={false}
+                  >
+                    {t('revertSlug')}
+                  </Button>
+                </div>
+              </div>
             </Banner>
           </div>
         )}

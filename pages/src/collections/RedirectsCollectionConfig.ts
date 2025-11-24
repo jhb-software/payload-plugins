@@ -31,6 +31,7 @@ export const createRedirectsCollectionConfig = ({
       ...incomingCollectionConfig.custom,
       // This makes the baseFilter available in hooks etc.
       pagesPluginConfig: pluginConfig,
+      isRedirectsCollection: true,
     },
     hooks: {
       ...incomingCollectionConfig.hooks,
