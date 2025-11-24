@@ -1,6 +1,7 @@
 import payload, { CollectionSlug, SanitizedConfig, ValidationError } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, test } from 'vitest'
 import config from './src/payload.config'
+import { Page } from 'payload/generated-types'
 
 beforeAll(async () => {
   await payload.init({
@@ -1559,6 +1560,232 @@ describe('Select during read operation', () => {
     )
   })
 })
+
+describe('Virtual fields in versions', () => {
+  beforeEach(async () => await deleteCollection('pages'))
+
+  test('are correctly set when reading versions', async () => {
+    const locale = 'de'
+    const pageData = samplePageData({
+      title: 'Test Page',
+      slug: 'test-page',
+      content: 'Test content',
+    })
+
+    // Create a page
+    const page = await payload.create({
+      collection: 'pages',
+      locale,
+      data: pageData,
+    })
+
+    // Update the page to create a version
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale,
+      data: {
+        title: 'Updated Test Page',
+      },
+    })
+
+    // Get all versions
+    const versions = await payload.findVersions({
+      collection: 'pages',
+      where: {
+        parent: {
+          equals: page.id,
+        },
+      },
+      select: {},
+      locale,
+    })
+
+    expect(versions.docs).toBeDefined()
+    expect(versions.docs.length).toBeGreaterThan(0)
+
+    // Check that each version has the virtual fields correctly set
+    for (const version of versions.docs) {
+      expect(version.version).toBeDefined()
+
+      // The path should be correctly generated from the slug
+      if (version.version.slug) {
+        expect(version.version.path).toBeDefined()
+        expect(version.version.path).toBe(`/${locale}/${version.version.slug}`)
+      }
+
+      // Breadcrumbs should be correctly generated
+      if (version.version.slug) {
+        expect(version.version.breadcrumbs).toBeDefined()
+        expect(Array.isArray(version.version.breadcrumbs)).toBe(true)
+        expect(version.version.breadcrumbs.length).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  test('are correctly set when reading a specific version by ID', async () => {
+    const locale = 'de'
+    const pageData = samplePageData({
+      title: 'Test Page',
+      slug: 'test-page',
+      content: 'Test content',
+    })
+
+    // Create a page
+    const page = await payload.create({
+      collection: 'pages',
+      locale,
+      data: pageData,
+    })
+
+    // Update the page to create a version
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale,
+      data: {
+        title: 'Updated Test Page for Version',
+      },
+    })
+
+    // Get all versions to find a specific version ID
+    const versions = await payload.findVersions({
+      collection: 'pages',
+      where: {
+        parent: {
+          equals: page.id,
+        },
+      },
+      locale,
+    })
+
+    expect(versions.docs.length).toBeGreaterThan(0)
+
+    // Get a specific version by ID
+    const versionId = versions.docs[0].id
+    const version = await payload.findVersionByID({
+      collection: 'pages',
+      id: versionId,
+      locale,
+    })
+
+    expect(version).toBeDefined()
+    expect(version.version).toBeDefined()
+
+    // The path should be correctly generated from the slug
+    if (version.version.slug) {
+      expect(version.version.path).toBeDefined()
+      expect(version.version.path).toBe(`/${locale}/${version.version.slug}`)
+
+      // Breadcrumbs should be correctly generated
+      expect(version.version.breadcrumbs).toBeDefined()
+      expect(Array.isArray(version.version.breadcrumbs)).toBe(true)
+      expect(version.version.breadcrumbs.length).toBeGreaterThan(0)
+
+      // Verify breadcrumb structure
+      const lastBreadcrumb = version.version.breadcrumbs[version.version.breadcrumbs.length - 1]
+      expect(lastBreadcrumb.slug).toBe(version.version.slug)
+      expect(lastBreadcrumb.path).toBe(version.version.path)
+    }
+  })
+
+  test('are correctly set when reading a specific version by ID (nested page)', async () => {
+    const locale = 'de'
+    const parentPageData = samplePageData({
+      title: 'Parent Page',
+      slug: 'parent-page',
+      content: 'Parent content',
+    })
+    const childPageData = samplePageData({
+      title: 'Child Page',
+      slug: 'child-page',
+      content: 'Child content',
+    })
+
+    // Create parent page
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale,
+      data: parentPageData,
+    })
+
+    // Create child page
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale,
+      data: { ...childPageData, parent: parentPage.id },
+    })
+
+    // Update the child page to create a version
+    await payload.update({
+      collection: 'pages',
+      id: childPage.id,
+      locale,
+      data: {
+        title: 'Updated Child Page',
+      },
+    })
+
+    // Get versions of the child page
+    const versions = await payload.findVersions({
+      collection: 'pages',
+      where: {
+        parent: {
+          equals: childPage.id,
+        },
+      },
+      locale,
+    })
+
+    expect(versions.docs.length).toBeGreaterThan(0)
+
+    // Check the first version
+    const version = versions.docs[0]
+    expect(version.version).toBeDefined()
+
+    // The path should include the parent slug
+    if (version.version.slug) {
+      expect(version.version.path).toBeDefined()
+      expect(version.version.path).toBe(`/${locale}/${parentPageData.slug}/${version.version.slug}`)
+
+      // Breadcrumbs should include both parent and child
+      expect(version.version.breadcrumbs).toBeDefined()
+      expect(Array.isArray(version.version.breadcrumbs)).toBe(true)
+      expect(version.version.breadcrumbs.length).toBe(2)
+
+      // Verify parent breadcrumb
+      expect(version.version.breadcrumbs[0].slug).toBe(parentPageData.slug)
+      expect(version.version.breadcrumbs[0].path).toBe(`/${locale}/${parentPageData.slug}`)
+
+      // Verify child breadcrumb
+      expect(version.version.breadcrumbs[1].slug).toBe(version.version.slug)
+      expect(version.version.breadcrumbs[1].path).toBe(version.version.path)
+    }
+  })
+})
+
+function samplePageData({
+  title,
+  slug,
+  content,
+}: {
+  title: string
+  slug: string
+  content: string
+}): Omit<Page, 'id' | 'createdAt' | 'deletedAt' | 'sizes' | 'updatedAt'> {
+  return {
+    title,
+    slug,
+    content,
+
+    // the following fields are virtual and created by the plugin
+    breadcrumbs: [],
+    meta: {
+      alternatePaths: [],
+    },
+    path: '',
+  }
+}
 
 /**
  * Helper function to remove id field from objects in an array

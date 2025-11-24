@@ -39,5 +39,4 @@ jobs:
             geocoding
             pages
             seo
-          wip: true
           requireScope: false

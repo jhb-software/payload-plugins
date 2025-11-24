@@ -5,6 +5,7 @@ import { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
+import { hasVirtualFieldSelected } from '../utils/hasVirtualFieldSelected.js'
 
 /**
  * Returns the fields that the setVirtualFields hook depends on to correctly generate the virtual fields.
@@ -29,8 +30,10 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   collection,
   context,
 }) => {
-  // If the selectDependentFieldsBeforeOperation hook detected that no virtual fields are selected, return early.
-  if (context.generateVirtualFields !== true) {
+  // If a select was used and no virtual fields are selected, return early.
+  // It is important that this decision is made here, because the selectDependentFieldsBeforeOperation (beforeOperation) hook
+  // is not called for findVersions operations.
+  if (context.select && !hasVirtualFieldSelected(context.select)) {
     return doc
   }
 
