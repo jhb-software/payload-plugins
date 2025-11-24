@@ -16,7 +16,7 @@ export const de: GenericTranslationsObject = {
     showBreadcrumbs: 'Navigationspfade anzeigen',
     syncSlugWithX: 'Mit {X} synchronisieren',
     slugWasChangedFromXToY:
-      'Die URL-Endung wurde von {X} zu {Y} geändert. Eine Weiterleitung vom alten zum neuen Pfad ist erforderlich.',
+      'Die URL-Endung wurde von <code>{X}</code> zu <code>{Y}</code> geändert. Eine Weiterleitung vom alten zum neuen Pfad ist erforderlich.',
     createRedirect: 'Weiterleitung erstellen',
     redirectCreated: 'Weiterleitung erstellt',
     creatingRedirect: 'Erstelle Weiterleitung...',
