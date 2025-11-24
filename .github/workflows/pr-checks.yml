@@ -18,35 +18,21 @@ jobs:
           mongodb-version: 7.0
 
       - name: Copy environment variables to dev apps
-        env:
-          PAGES_DEV_ENV_FILE: ${{ secrets.PAGES_DEV_ENV_FILE }}
-          PAGES_DEV_UNLOCALIZED_ENV_FILE: ${{ secrets.PAGES_DEV_UNLOCALIZED_ENV_FILE }}
-          PAGES_DEV_MULTI_TENANT_ENV_FILE: ${{ secrets.PAGES_DEV_MULTI_TENANT_ENV_FILE }}
         run: |
-          # For external contributor PRs, secrets are not available, so use local MongoDB
-          if [ -z "$PAGES_DEV_ENV_FILE" ]; then
-            echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-test" > pages/dev/.env
-            echo "PAYLOAD_SECRET=test-secret-not-for-production" >> pages/dev/.env
-            echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev/.env
-          else
-            echo "$PAGES_DEV_ENV_FILE" > pages/dev/.env
-          fi
+          # Set up environment variables for the dev app
+          echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-test" > pages/dev/.env
+          echo "PAYLOAD_SECRET=test-secret-not-for-production" >> pages/dev/.env
+          echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev/.env
 
-          if [ -z "$PAGES_DEV_UNLOCALIZED_ENV_FILE" ]; then
-            echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-unlocalized-test" > pages/dev_unlocalized/.env
-            echo "PAYLOAD_SECRET=test-secret-not-for-production" >> pages/dev_unlocalized/.env
-            echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev_unlocalized/.env
-          else
-            echo "$PAGES_DEV_UNLOCALIZED_ENV_FILE" > pages/dev_unlocalized/.env
-          fi
+          # Set up environment variables for the unlocalized dev app
+          echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-unlocalized-test" > pages/dev_unlocalized/.env
+          echo "PAYLOAD_SECRET=test-secret-not-for-production" >> pages/dev_unlocalized/.env
+          echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev_unlocalized/.env
 
-          if [ -z "$PAGES_DEV_MULTI_TENANT_ENV_FILE" ]; then
-            echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-multi-tenant-test" > pages/dev_multi_tenant/.env
-            echo "PAYLOAD_SECRET=test-secret-not-for-production" >> pages/dev_multi_tenant/.env
-            echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev_multi_tenant/.env
-          else
-            echo "$PAGES_DEV_MULTI_TENANT_ENV_FILE" > pages/dev_multi_tenant/.env
-          fi
+          # Set up environment variables for the multi-tenant dev app
+          echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-multi-tenant-test" > pages/dev_multi_tenant/.env
+          echo "PAYLOAD_SECRET=test-secret-not-for-production" >> pages/dev_multi_tenant/.env
+          echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev_multi_tenant/.env
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
