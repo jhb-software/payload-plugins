@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { toast, useConfig } from '@payloadcms/ui'
 import { usePluginTranslation } from '../utils/usePluginTranslations.js'
 
-export const useCreateRedirect = (redirectsCollection: string = 'redirects') => {
+export const useCreateRedirect = (redirectsCollectionSlug: string) => {
   const [isCreating, setIsCreating] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const { t } = usePluginTranslation()
@@ -22,7 +22,7 @@ export const useCreateRedirect = (redirectsCollection: string = 'redirects') => 
     const loadingToast = toast.loading(t('creatingRedirect'))
 
     try {
-      const response = await fetch(`${serverURL}${api}/${redirectsCollection}`, {
+      const response = await fetch(`${serverURL}${api}/${redirectsCollectionSlug}`, {
         method: 'POST',
         credentials: 'include',
         headers: {

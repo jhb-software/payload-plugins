@@ -16,8 +16,17 @@ export const SlugField = async ({
 }: TextFieldServerProps & SlugFieldProps) => {
   const isReadOnly = readOnly || (permissions !== true && permissions?.update !== true)
 
-  const redirectsCollection =
-    payload.config.collections?.find((col) => col.custom?.redirects === true)?.slug || 'redirects'
+  let redirectsCollectionSlug = payload.config.collections?.find(
+    (col) => col.custom?.isRedirectsCollection === true,
+  )?.slug
+
+  if (!redirectsCollectionSlug) {
+    console.warn(
+      '[Pages Plugin] No redirects collection found. Falling back to "redirects" collection.',
+    )
+  }
+
+  redirectsCollectionSlug = redirectsCollectionSlug || 'redirects'
 
   return (
     <SlugFieldClient
@@ -27,7 +36,7 @@ export const SlugField = async ({
       fallbackField={fallbackField}
       defaultValue={defaultValue}
       pageSlug={pageSlug}
-      redirectsCollection={redirectsCollection}
+      redirectsCollectionSlug={redirectsCollectionSlug}
     />
   )
 }

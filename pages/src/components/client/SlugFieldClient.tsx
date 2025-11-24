@@ -23,11 +23,11 @@ export type SlugFieldProps = {
   fallbackField: string
   readOnly: boolean | undefined
   defaultValue: string | Record<string, string> | undefined
-  redirectsCollection?: string
+  redirectsCollectionSlug: string
 }
 
 export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldProps) => {
-  const { field, path, readOnly, pageSlug, fallbackField, defaultValue, redirectsCollection } =
+  const { field, path, readOnly, pageSlug, fallbackField, defaultValue, redirectsCollectionSlug } =
     clientProps
 
   const { value: title } = useField<string>({ path: fallbackField })
@@ -38,7 +38,7 @@ export const SlugFieldClient = (clientProps: TextFieldClientProps & SlugFieldPro
   const { value: isRootPage } = useField<boolean>({ path: 'isRootPage' })
   const locale = useLocale()
   const { t } = usePluginTranslation()
-  const { createRedirect, isCreating, isSuccess } = useCreateRedirect(redirectsCollection)
+  const { createRedirect, isCreating, isSuccess } = useCreateRedirect(redirectsCollectionSlug)
   const { getBreadcrumbs } = useBreadcrumbs()
 
   /**
