@@ -2,11 +2,13 @@
 
 ## 0.6.0 (Beta)
 
-- feat!: add new collection config creation approach using `PageCollectionConfig` and `RedirectsCollectionConfig` types instead of `createPageCollectionConfig` and `createRedirectsCollectionConfig` functions.
-- feat!: the plugin config now requires a `generatePageURL` function to be defined. See the [README](./README.md#setup) for more information.
-- The plugin now uses the build-in Preview Button instead of a custom one. Preview and live preview are automatically enabled. To opt out, set the `preview` and `livePreview` options to `false` in the page collection config.
-- feat: add support for multi-tenant setups via the official [Multi-tenant plugin](https://payloadcms.com/docs/plugins/multi-tenant). See the [README](./README.md#multi-tenant-support) for more information.
+> ⚠️ **Warning**: This release includes breaking changes.
 
+- feat!: add new collection config creation approach using `PageCollectionConfig` and `RedirectsCollectionConfig` types instead of `createPageCollectionConfig` and `createRedirectsCollectionConfig` functions.
+- feat!: a `generatePageURL` function needs to be defined in the plugin config. See the [README](./README.md#setup) for more information.
+- feat!: the plugin now uses Payload's build-in preview button instead of a custom one. Preview and live preview are automatically enabled. To opt out, set the `preview` and `livePreview` options to `false` in the page collection config.
+- feat: add support for multi-tenant setups via the official [Multi-tenant plugin](https://payloadcms.com/docs/plugins/multi-tenant). See the [README](./README.md#multi-tenant-support) for more information.
+- feat: add a redirect creation and discard button to the 'changed slug' warning banner below the slug field.
 
 ### Migration Guide
 

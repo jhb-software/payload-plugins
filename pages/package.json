@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-pages-plugin",
-  "version": "0.6.0-beta.4",
+  "version": "0.6.0-beta.5",
   "description": "Payload CMS plugin that adds essential fields for hierarchical page structure to collections.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
