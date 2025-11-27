@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { SearchResult, SearchResultDocument } from '../../types/SearchResult.js'
 
+import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModalSkeleton } from './SearchModalSkeleton.js'
 import { SearchResultItem } from './SearchResultItem.js'
 import './SearchModal.css'
@@ -33,6 +34,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [isKeyboardNav, setIsKeyboardNav] = useState(false)
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
+  const { t } = usePluginTranslation()
   const { i18n } = useTranslation()
   const { config } = useConfig()
   const {
@@ -280,7 +282,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
 
   return (
     <div
-      aria-label="Close search modal"
+      aria-label={t('closeSearchModal')}
       className="admin-search-plugin-modal__overlay"
       onClick={handleClose}
       onKeyDown={(e) => e.key === 'Enter' && handleClose()}
@@ -288,7 +290,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
       tabIndex={0}
     >
       <div
-        aria-label="Search modal content"
+        aria-label={t('searchModalContent')}
         className="admin-search-plugin-modal__content"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
@@ -301,7 +303,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
               <SearchIcon />
             </span>
             <input
-              aria-label="Search for documents"
+              aria-label={t('searchForDocuments')}
               className="admin-search-plugin-modal__input-field"
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -315,26 +317,22 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
                   handleClose()
                 }
               }}
-              placeholder="Search..."
+              placeholder={t('searchPlaceholder')}
               ref={inputRef}
               type="text"
               value={query}
             />
-            <span className="admin-search-plugin-modal__escape-hint">ESC</span>
+            <span className="admin-search-plugin-modal__escape-hint">{t('escapeHint')}</span>
           </div>
         </div>
 
         <div className="admin-search-plugin-modal__results-container">
           {isLoading && <SearchModalSkeleton count={SEARCH_RESULTS_LIMIT} />}
-          {isError && (
-            <Banner type="error">An error occurred while searching. Please try again.</Banner>
-          )}
+          {isError && <Banner type="error">{t('errorSearching')}</Banner>}
           {!isLoading && !isError && results.length === 0 && debouncedQuery && (
             <div className="admin-search-plugin-modal__no-results-message">
-              <p>No results found for "{debouncedQuery}"</p>
-              <p className="admin-search-plugin-modal__no-results-hint">
-                Try different keywords or check your spelling
-              </p>
+              <p>{t('noResultsFound').replace('{query}', debouncedQuery)}</p>
+              <p className="admin-search-plugin-modal__no-results-hint">{t('noResultsHint')}</p>
             </div>
           )}
           {!isLoading && !isError && results.length > 0 && (
@@ -361,15 +359,19 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
           <div className="admin-search-plugin-modal__keyboard-shortcuts">
             <div className="admin-search-plugin-modal__shortcut-item">
               <span className="admin-search-plugin-modal__shortcut-key">↑↓</span>
-              <span className="admin-search-plugin-modal__shortcut-description">to navigate</span>
+              <span className="admin-search-plugin-modal__shortcut-description">
+                {t('toNavigate')}
+              </span>
             </div>
             <div className="admin-search-plugin-modal__shortcut-item">
               <span className="admin-search-plugin-modal__shortcut-key">↵</span>
-              <span className="admin-search-plugin-modal__shortcut-description">to select</span>
+              <span className="admin-search-plugin-modal__shortcut-description">{t('toOpen')}</span>
             </div>
             <div className="admin-search-plugin-modal__shortcut-item">
-              <span className="admin-search-plugin-modal__shortcut-key">ESC</span>
-              <span className="admin-search-plugin-modal__shortcut-description">to close</span>
+              <span className="admin-search-plugin-modal__shortcut-key">{t('escapeHint')}</span>
+              <span className="admin-search-plugin-modal__shortcut-description">
+                {t('toClose')}
+              </span>
             </div>
           </div>
         </div>

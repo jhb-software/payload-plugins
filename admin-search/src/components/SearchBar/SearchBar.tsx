@@ -2,8 +2,10 @@
 import type React from 'react'
 
 import { Button, Pill, SearchIcon, useHotkey } from '@payloadcms/ui'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
+import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
+import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 import './SearchBar.css'
 
@@ -11,12 +13,7 @@ const baseClass = 'admin-search-plugin-bar'
 
 export function SearchBar(): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [shortcutKey, setShortcutKey] = useState('Ctrl')
-
-  useEffect(() => {
-    const isMac = typeof window !== 'undefined' && /Mac/i.test(navigator.platform)
-    setShortcutKey(isMac ? '⌘' : 'Ctrl')
-  }, [])
+  const { t } = usePluginTranslation()
 
   useHotkey(
     {
@@ -40,12 +37,12 @@ export function SearchBar(): React.ReactElement {
         <div className="admin-search-plugin-bar__wrap">
           <SearchIcon />
           <input
-            aria-label="Search input"
+            aria-label={t('searchInput')}
             className="admin-search-plugin-bar__input"
-            placeholder="Search..."
+            placeholder={t('searchPlaceholder')}
             type="text"
           />
-          <Pill className="admin-search-plugin-bar__shortcut">{shortcutKey} + K</Pill>
+          <Pill className="admin-search-plugin-bar__shortcut">{getSearchShortcut()}</Pill>
         </div>
       </Button>
 
