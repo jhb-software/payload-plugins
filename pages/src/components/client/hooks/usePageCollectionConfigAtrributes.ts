@@ -1,8 +1,9 @@
 'use client'
 
-import { PageCollectionConfigAttributes } from '../../../types/PageCollectionConfigAttributes.js'
-import { useCollectionConfig } from './useCollectionConfig.js'
+import type { PageCollectionConfigAttributes } from '../../../types/PageCollectionConfigAttributes.js'
+
 import { asPageCollectionConfigOrThrow } from '../../../utils/pageCollectionConfigHelpers.js'
+import { useCollectionConfig } from './useCollectionConfig.js'
 
 /**
  * Returns the PageCollectionConfigAttributes for the collection of the document.

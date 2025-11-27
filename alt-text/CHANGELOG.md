@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.2
+- fix: add filename to `admin.listSearchableFields` if not already included
+
 ## 0.2.1
 - fix: replace hardcoded 'media' slug with correct slug in bulk generate component
 

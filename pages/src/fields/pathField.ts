@@ -1,4 +1,5 @@
-import { Field } from 'payload'
+import type { Field } from 'payload'
+
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 /**
@@ -9,25 +10,26 @@ import { translatedLabel } from '../utils/translatedLabel.js'
 export function pathField(): Field {
   return {
     name: 'path',
-    label: translatedLabel('path'),
     type: 'text',
+    label: translatedLabel('path'),
     required: true,
     virtual: true,
-    // Validate by default to allow the document to be updated, without having to set the path field.
-    validate: (_: any): true => true,
-    localized: true,
+
     admin: {
-      readOnly: true,
-      disableBulkEdit: true,
-      position: 'sidebar',
       components: {
         Field: '@jhb.software/payload-pages-plugin/client#PathField',
       },
+      disableBulkEdit: true,
+      position: 'sidebar',
+      readOnly: true,
     },
     hooks: {
       afterRead: [
         // The path is generated in the getVirtualFields collection hook
       ],
     },
+    localized: true,
+    // Validate by default to allow the document to be updated, without having to set the path field:
+    validate: (_: any): true => true,
   }
 }

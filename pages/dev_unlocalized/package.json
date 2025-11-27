@@ -15,7 +15,9 @@
     "generate:types": "payload generate:types",
     "generate:schema": "payload-graphql generate:schema",
     "generate:importmap": "payload generate:importmap",
-    "test": "vitest run",
+    "test": "pnpm test:mongodb && pnpm test:sqlite",
+    "test:mongodb": "cross-env PAYLOAD_DATABASE=mongodb vitest run",
+    "test:sqlite": "cross-env PAYLOAD_DATABASE=sqlite vitest run",
     "test:watch": "vitest watch"
   },
   "dependencies": {

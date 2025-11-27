@@ -1,5 +1,4 @@
 import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
 import { buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
@@ -13,6 +12,7 @@ import { BlogpostCategories } from './collections/blogpost-categories'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import Tenants from './collections/tenants'
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+import { databaseAdapter } from './test/databaseAdapter'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -40,14 +40,7 @@ export default buildConfig({
       fields: [],
     },
   ],
-  db: mongooseAdapter({
-    url: process.env.MONGODB_URL!,
-  }),
-  /* db: sqliteAdapter({
-    client: {
-      url: process.env.SQLITE_URL!,
-    },
-  }), */
+  db: databaseAdapter,
   secret: process.env.PAYLOAD_SECRET!,
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
