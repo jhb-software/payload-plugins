@@ -97,9 +97,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
         type="button"
       >
         <div className="search-result-item__content">
-          <span className="search-result-item__title">
-            {highlightSearchTerm(title, query)}
-          </span>
+          <span className="search-result-item__title">{highlightSearchTerm(title, query)}</span>
           <Pill size="small">
             {result.type === 'document'
               ? getCollectionDisplayName(result.doc.relationTo)
