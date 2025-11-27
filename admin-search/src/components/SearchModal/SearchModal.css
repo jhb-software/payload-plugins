@@ -199,4 +199,15 @@
   .admin-search-plugin-modal__search-icon svg {
     font-weight: 800;
   }
+
+  /* Hide keyboard shortcuts on touch devices */
+  @media (pointer: coarse) {
+    .admin-search-plugin-modal__footer {
+      display: none;
+    }
+
+    .admin-search-plugin-modal__escape-hint {
+      display: none;
+    }
+  }
 }
