@@ -989,6 +989,215 @@ describe('Parent deletion prevention hook', () => {
   })
 })
 
+// TODO: remove the skip once Payload fixed the issue that findVersions operations do not excecute
+// the beforeOperation hook (https://github.com/payloadcms/payload/issues/14726) because the plugin depends on it.
+describe.skip('Virtual fields in findVersions operation', () => {
+  beforeEach(async () => await deleteCollection('pages'))
+
+  test('are correctly set when reading versions', async () => {
+    const locale = 'de'
+    const pageData = {
+      title: 'Test Page',
+      slug: 'test-page',
+      content: 'Test content',
+      ...virtualFields,
+    }
+
+    // Create a page
+    const page = await payload.create({
+      collection: 'pages',
+      locale,
+      data: pageData,
+    })
+
+    // Update the page to create a version
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale,
+      data: {
+        title: 'Updated Test Page',
+      },
+    })
+
+    // Get all versions
+    const versions = await payload.findVersions({
+      collection: 'pages',
+      where: {
+        parent: {
+          equals: page.id,
+        },
+      },
+      select: {},
+      locale,
+    })
+
+    expect(versions.docs).toBeDefined()
+    expect(versions.docs.length).toBeGreaterThan(0)
+
+    // Check that each version has the virtual fields correctly set
+    for (const version of versions.docs) {
+      expect(version.version).toBeDefined()
+
+      // The path should be correctly generated from the slug
+      if (version.version.slug) {
+        expect(version.version.path).toBeDefined()
+        expect(version.version.path).toBe(`/${locale}/${version.version.slug}`)
+      }
+
+      // Breadcrumbs should be correctly generated
+      if (version.version.slug) {
+        expect(version.version.breadcrumbs).toBeDefined()
+        expect(Array.isArray(version.version.breadcrumbs)).toBe(true)
+        expect(version.version.breadcrumbs.length).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  test('are correctly set when reading a specific version by ID', async () => {
+    const locale = 'de'
+    const pageData = {
+      title: 'Test Page',
+      slug: 'test-page',
+      content: 'Test content',
+      ...virtualFields,
+    }
+
+    // Create a page
+    const page = await payload.create({
+      collection: 'pages',
+      locale,
+      data: pageData,
+    })
+
+    // Update the page to create a version
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale,
+      data: {
+        title: 'Updated Test Page for Version',
+      },
+    })
+
+    // Get all versions to find a specific version ID
+    const versions = await payload.findVersions({
+      collection: 'pages',
+      where: {
+        parent: {
+          equals: page.id,
+        },
+      },
+      locale,
+    })
+
+    expect(versions.docs.length).toBeGreaterThan(0)
+
+    // Get a specific version by ID
+    const versionId = versions.docs[0].id
+    const version = await payload.findVersionByID({
+      collection: 'pages',
+      id: versionId,
+      locale,
+    })
+
+    expect(version).toBeDefined()
+    expect(version.version).toBeDefined()
+
+    // The path should be correctly generated from the slug
+    if (version.version.slug) {
+      expect(version.version.path).toBeDefined()
+      expect(version.version.path).toBe(`/${locale}/${version.version.slug}`)
+
+      // Breadcrumbs should be correctly generated
+      expect(version.version.breadcrumbs).toBeDefined()
+      expect(Array.isArray(version.version.breadcrumbs)).toBe(true)
+      expect(version.version.breadcrumbs.length).toBeGreaterThan(0)
+
+      // Verify breadcrumb structure
+      const lastBreadcrumb = version.version.breadcrumbs[version.version.breadcrumbs.length - 1]
+      expect(lastBreadcrumb.slug).toBe(version.version.slug)
+      expect(lastBreadcrumb.path).toBe(version.version.path)
+    }
+  })
+
+  test('are correctly set when reading a specific version by ID (nested page)', async () => {
+    const locale = 'de'
+    const parentPageData = {
+      title: 'Parent Page',
+      slug: 'parent-page',
+      content: 'Parent content',
+      ...virtualFields,
+    }
+    const childPageData = {
+      title: 'Child Page',
+      slug: 'child-page',
+      content: 'Child content',
+      ...virtualFields,
+    }
+
+    // Create parent page
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale,
+      data: parentPageData,
+    })
+
+    // Create child page
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale,
+      data: { ...childPageData, parent: parentPage.id },
+    })
+
+    // Update the child page to create a version
+    await payload.update({
+      collection: 'pages',
+      id: childPage.id,
+      locale,
+      data: {
+        title: 'Updated Child Page',
+      },
+    })
+
+    // Get versions of the child page
+    const versions = await payload.findVersions({
+      collection: 'pages',
+      where: {
+        parent: {
+          equals: childPage.id,
+        },
+      },
+      locale,
+    })
+
+    expect(versions.docs.length).toBeGreaterThan(0)
+
+    // Check the first version
+    const version = versions.docs[0]
+    expect(version.version).toBeDefined()
+
+    // The path should include the parent slug
+    if (version.version.slug) {
+      expect(version.version.path).toBeDefined()
+      expect(version.version.path).toBe(`/${locale}/${parentPageData.slug}/${version.version.slug}`)
+
+      // Breadcrumbs should include both parent and child
+      expect(version.version.breadcrumbs).toBeDefined()
+      expect(Array.isArray(version.version.breadcrumbs)).toBe(true)
+      expect(version.version.breadcrumbs.length).toBe(2)
+
+      // Verify parent breadcrumb
+      expect(version.version.breadcrumbs[0].slug).toBe(parentPageData.slug)
+      expect(version.version.breadcrumbs[0].path).toBe(`/${locale}/${parentPageData.slug}`)
+
+      // Verify child breadcrumb
+      expect(version.version.breadcrumbs[1].slug).toBe(version.version.slug)
+      expect(version.version.breadcrumbs[1].path).toBe(version.version.path)
+    }
+  })
+})
+
 describe('Select during read operation', () => {
   beforeEach(async () => {
     // clear the collections we use in this test
