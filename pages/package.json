@@ -24,6 +24,8 @@
     "format": "prettier --write src",
     "test": "pnpm test:localized && pnpm test:unlocalized && pnpm test:multi-tenant",
     "test:localized": "cd dev && pnpm test",
+    "test:localized:mongodb": "cd dev && pnpm test:mongodb",
+    "test:localized:sqlite": "cd dev && pnpm test:sqlite",
     "test:unlocalized": "cd dev_unlocalized && pnpm test",
     "test:multi-tenant": "cd dev_multi_tenant && pnpm test",
     "test:watch": "cd dev && pnpm test:watch",
