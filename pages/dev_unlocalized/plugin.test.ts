@@ -19,9 +19,7 @@ beforeAll(async () => {
   })
 
   // clear all collections except users
-  for (const collection of (await config).collections.filter((c) => c.slug !== 'users')) {
-    await deleteCollection(collection.slug)
-  }
+  await deleteAllCollections(['users'])
 })
 
 afterAll(async () => {
@@ -494,4 +492,49 @@ const deleteCollection = async (collection: CollectionSlug) => {
     collection: collection,
     where: {},
   })
+
+  // this will fail for collections which have no versions enabled, therefore wrapped in a try catch
+  try {
+    await payload.db.deleteVersions({
+      collection: collection,
+      where: {},
+    })
+  } catch {}
+}
+
+/**
+ * Deletion order for collections to respect foreign key constraints.
+ * Collections are deleted in this order: children before parents.
+ * Collections not in this list will be deleted at the end in arbitrary order.
+ */
+const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
+  // Level 3: deepest nested (depends on level 2)
+  'country-travel-tips',
+  // Level 2: depends on level 1 collections
+  'blogposts',
+  'authors',
+  'countries',
+  // Level 1: root collections (pages can self-reference)
+  'pages',
+  // Level 0: no dependencies
+  'blogpost-categories',
+  'redirects',
+]
+
+const deleteAllCollections = async (except: CollectionSlug[] = []) => {
+  const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
+  const collectionSlugs = new Set(collections.map((c) => c.slug))
+
+  // Delete in the specified order first
+  for (const slug of COLLECTION_DELETION_ORDER) {
+    if (collectionSlugs.has(slug)) {
+      await deleteCollection(slug)
+      collectionSlugs.delete(slug)
+    }
+  }
+
+  // Delete any remaining collections not in the order list
+  for (const slug of Array.from(collectionSlugs)) {
+    await deleteCollection(slug)
+  }
 }
