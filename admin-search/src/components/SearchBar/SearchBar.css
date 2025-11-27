@@ -8,9 +8,9 @@
     width: 100%;
   }
 
-  /* Only apply to .shortcut-key and .search-filter__input when inside .search-bar__wrap */
+  /* Only apply to .shortcut-key and .placeholder when inside .search-bar__wrap */
   .admin-search-plugin-bar__wrap .admin-search-plugin-bar__shortcut,
-  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__input {
+  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__placeholder {
     display: inline;
   }
 
@@ -20,24 +20,25 @@
     align-items: center;
     background-color: var(--theme-elevation-50);
     border-radius: var(--style-radius-m);
-    padding: 6px 12px;
-    gap: 12px;
+    padding: 4px 6px;
+    gap: 4px;
   }
 
   .admin-search-plugin-bar__wrap svg {
-    font-weight: 800;
-    height: 30px;
-    width: 30px;
+    height: 16px;
+    width: 16px;
   }
 
-  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__input {
-    background: transparent;
-    border: none;
-    outline: none;
+  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__placeholder {
     flex: 1;
     font-size: 14px;
-    color: var(--theme-elevation-900);
-    pointer-events: none;
+    color: var(--theme-elevation-500);
+    margin-right: 32px;
+  }
+
+  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__shortcut {
+    padding: 3px 3px;
+    line-height: 1;
   }
 
   .admin-search-plugin-bar.position-actions {
@@ -51,7 +52,7 @@
 
     /* Only hide when inside .search-bar__wrap */
     .admin-search-plugin-bar__wrap .admin-search-plugin-bar__shortcut,
-    .admin-search-plugin-bar__wrap .admin-search-plugin-bar__input {
+    .admin-search-plugin-bar__wrap .admin-search-plugin-bar__placeholder {
       display: none;
     }
   }
