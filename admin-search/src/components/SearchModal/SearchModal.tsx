@@ -103,7 +103,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
 
   const filterCollectionsAndGlobals = useCallback(
     (searchQuery: string): SearchResult[] => {
-      if (!searchQuery || searchQuery.trim().length < 2) {return []}
+      if (!searchQuery || searchQuery.trim().length < 2) {
+        return []
+      }
 
       const lowerQuery = searchQuery.toLowerCase()
       const results: SearchResult[] = []
@@ -243,8 +245,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyboardNavigation])
 
-
-
   useEffect(() => {
     if (selectedIndex !== -1 && resultsRef.current) {
       const selectedItem = resultsRef.current.children[selectedIndex]
@@ -254,11 +254,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     }
   }, [selectedIndex])
 
-
   return (
     <div
       aria-label="Close search modal"
-      className="search-modal__overlay"
+      className="admin-search-plugin-modal__overlay"
       onClick={handleClose}
       onKeyDown={(e) => e.key === 'Enter' && handleClose()}
       role="button"
@@ -266,20 +265,20 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     >
       <div
         aria-label="Search modal content"
-        className="search-modal__content"
+        className="admin-search-plugin-modal__content"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         role="button"
         tabIndex={0}
       >
-        <div className="search-modal__header">
-          <div className="search-modal__input-wrapper">
-            <span className="search-modal__search-icon">
+        <div className="admin-search-plugin-modal__header">
+          <div className="admin-search-plugin-modal__input-wrapper">
+            <span className="admin-search-plugin-modal__search-icon">
               <SearchIcon />
             </span>
             <input
               aria-label="Search for documents"
-              className="search-modal__input-field"
+              className="admin-search-plugin-modal__input-field"
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && results.length > 0) {
@@ -297,17 +296,17 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
               type="text"
               value={query}
             />
-            <span className="search-modal__escape-hint">ESC</span>
+            <span className="admin-search-plugin-modal__escape-hint">ESC</span>
           </div>
         </div>
 
-        <div className="search-modal__results-container">
+        <div className="admin-search-plugin-modal__results-container">
           {isLoading && <SearchModalSkeleton count={SEARCH_RESULTS_LIMIT} />}
           {isError && (
             <Banner type="error">An error occurred while searching. Please try again.</Banner>
           )}
           {!isLoading && !isError && results.length === 0 && debouncedQuery && (
-            <div className="search-modal__no-results-message">
+            <div className="admin-search-plugin-modal__no-results-message">
               <p>No results found for "{debouncedQuery}"</p>
               <p className="search-modal__no-results-hint">
                 Try different keywords or check your spelling
@@ -331,19 +330,19 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
           )}
         </div>
 
-        <div className="search-modal__footer">
-          <div className="search-modal__keyboard-shortcuts">
-            <div className="search-modal__shortcut-item">
-              <span className="search-modal__shortcut-key">↑↓</span>
-              <span className="search-modal__shortcut-description">to navigate</span>
+        <div className="admin-search-plugin-modal__footer">
+          <div className="admin-search-plugin-modal__keyboard-shortcuts">
+            <div className="admin-search-plugin-modal__shortcut-item">
+              <span className="admin-search-plugin-modal__shortcut-key">↑↓</span>
+              <span className="admin-search-plugin-modal__shortcut-description">to navigate</span>
             </div>
-            <div className="search-modal__shortcut-item">
-              <span className="search-modal__shortcut-key">↵</span>
-              <span className="search-modal__shortcut-description">to select</span>
+            <div className="admin-search-plugin-modal__shortcut-item">
+              <span className="admin-search-plugin-modal__shortcut-key">↵</span>
+              <span className="admin-search-plugin-modal__shortcut-description">to select</span>
             </div>
-            <div className="search-modal__shortcut-item">
-              <span className="search-modal__shortcut-key">ESC</span>
-              <span className="search-modal__shortcut-description">to close</span>
+            <div className="admin-search-plugin-modal__shortcut-item">
+              <span className="admin-search-plugin-modal__shortcut-key">ESC</span>
+              <span className="admin-search-plugin-modal__shortcut-description">to close</span>
             </div>
           </div>
         </div>
