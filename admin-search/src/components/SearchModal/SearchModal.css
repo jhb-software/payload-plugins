@@ -176,11 +176,11 @@
   }
 
   .admin-search-plugin-modal__result-item-container.selected .admin-search-plugin-modal__result-item-button {
-    background-color: var(--theme-elevation-150);
+    background-color: var(--theme-elevation-100);
   }
 
   .admin-search-plugin-modal__result-item-container.selected:hover .admin-search-plugin-modal__result-item-button {
-    background-color: var(--theme-elevation-200);
+    background-color: var(--theme-elevation-150);
   }
 
   .admin-search-plugin-modal__result-content {
@@ -272,33 +272,27 @@
     background: none !important;
   }
 
-  .admin-search-plugin-modal__skeleton-title {
+  .admin-search-plugin-modal__skeleton-shimmer {
     background: linear-gradient(
       90deg,
-      var(--theme-elevation-200) 25%,
-      var(--theme-elevation-100) 50%,
-      var(--theme-elevation-200) 75%
+      var(--theme-elevation-100) 25%,
+      var(--theme-elevation-50) 50%,
+      var(--theme-elevation-100) 75%
     );
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite;
+  }
+
+  .admin-search-plugin-modal__skeleton-title {
     border-radius: 4px;
-    height: 16px;
-    width: 70%;
-    flex: 1;
+    height: 20px;
+    width: 60%;
   }
 
   .admin-search-plugin-modal__skeleton-pill {
-    background: linear-gradient(
-      90deg,
-      var(--theme-elevation-200) 25%,
-      var(--theme-elevation-100) 50%,
-      var(--theme-elevation-200) 75%
-    );
-    background-size: 200px 100%;
-    animation: shimmer 1.5s infinite;
-    border-radius: 12px;
-    height: 20px;
-    width: 80px;
+    border-radius: 10px;
+    height: 24px;
+    width: 70px;
   }
 
   /* Make search icons bolder */

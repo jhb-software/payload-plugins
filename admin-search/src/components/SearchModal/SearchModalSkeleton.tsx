@@ -11,8 +11,8 @@ export const SearchModalSkeleton: React.FC<SearchModalSkeletonProps> = ({ count 
         <li className="admin-search-plugin-modal__result-item-container" key={index}>
           <div className="admin-search-plugin-modal__result-item-button admin-search-plugin-modal__skeleton-item">
             <div className="admin-search-plugin-modal__result-content">
-              <div className="admin-search-plugin-modal__skeleton-title" />
-              <div className="admin-search-plugin-modal__skeleton-pill" />
+              <div className="admin-search-plugin-modal__skeleton-shimmer admin-search-plugin-modal__skeleton-title" />
+              <div className="admin-search-plugin-modal__skeleton-shimmer admin-search-plugin-modal__skeleton-pill" />
             </div>
           </div>
         </li>
