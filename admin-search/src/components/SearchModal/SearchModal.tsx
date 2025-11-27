@@ -308,13 +308,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
           {!isLoading && !isError && results.length === 0 && debouncedQuery && (
             <div className="admin-search-plugin-modal__no-results-message">
               <p>No results found for "{debouncedQuery}"</p>
-              <p className="search-modal__no-results-hint">
+              <p className="admin-search-plugin-modal__no-results-hint">
                 Try different keywords or check your spelling
               </p>
             </div>
           )}
           {!isLoading && !isError && results.length > 0 && (
-            <ul className="search-modal__results-list" ref={resultsRef}>
+            <ul className="admin-search-plugin-modal__results-list" ref={resultsRef}>
               {results.map((result, index) => (
                 <SearchResultItem
                   index={index}

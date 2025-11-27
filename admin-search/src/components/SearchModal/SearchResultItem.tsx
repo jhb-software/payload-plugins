@@ -32,7 +32,7 @@ const highlightSearchTerm = (text: string, searchTerm: string) => {
   return parts.map((part, index) => {
     if (part.toLowerCase() === searchTerm.toLowerCase()) {
       return (
-        <mark className="search-modal__highlighted-text" key={index}>
+        <mark className="admin-search-plugin-modal__highlighted-text" key={index}>
           {part}
         </mark>
       )
@@ -75,21 +75,27 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
 
       return (
         <>
-          <span className="search-modal__result-title">{highlightSearchTerm(displayTitle, query)}</span>
+          <span className="admin-search-plugin-modal__result-title">
+            {highlightSearchTerm(displayTitle, query)}
+          </span>
           <Pill size="small">{getCollectionDisplayName(result.doc.relationTo)}</Pill>
         </>
       )
     } else if (result.type === 'collection') {
       return (
         <>
-          <span className="search-modal__result-title">{highlightSearchTerm(result.label, query)}</span>
+          <span className="admin-search-plugin-modal__result-title">
+            {highlightSearchTerm(result.label, query)}
+          </span>
           <Pill size="small">Collection</Pill>
         </>
       )
     } else if (result.type === 'global') {
       return (
         <>
-          <span className="search-modal__result-title">{highlightSearchTerm(result.label, query)}</span>
+          <span className="admin-search-plugin-modal__result-title">
+            {highlightSearchTerm(result.label, query)}
+          </span>
           <Pill size="small">Global</Pill>
         </>
       )
@@ -105,18 +111,18 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
 
   return (
     <li
-      className={`search-modal__result-item-container ${selectedIndex === index ? 'selected' : ''}`}
+      className={`admin-search-plugin-modal__result-item-container ${selectedIndex === index ? 'selected' : ''}`}
       key={result.id}
       onMouseEnter={onMouseEnter}
     >
       <button
         aria-label={getAriaLabel(result, displayTitle)}
-        className="search-modal__result-item-button"
+        className="admin-search-plugin-modal__result-item-button"
         onClick={() => onResultClick(result)}
         onKeyDown={(e) => e.key === 'Enter' && onResultClick(result)}
         type="button"
       >
-        <div className="search-modal__result-content">{renderContent()}</div>
+        <div className="admin-search-plugin-modal__result-content">{renderContent()}</div>
       </button>
     </li>
   )
