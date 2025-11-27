@@ -365,9 +365,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
             </div>
             <div className="admin-search-plugin-modal__shortcut-item">
               <span className="admin-search-plugin-modal__shortcut-key">↵</span>
-              <span className="admin-search-plugin-modal__shortcut-description">
-                {t('toSelect')}
-              </span>
+              <span className="admin-search-plugin-modal__shortcut-description">{t('toOpen')}</span>
             </div>
             <div className="admin-search-plugin-modal__shortcut-item">
               <span className="admin-search-plugin-modal__shortcut-key">{t('escapeHint')}</span>

@@ -4,6 +4,7 @@ import type React from 'react'
 import { Button, SearchIcon, useHotkey } from '@payloadcms/ui'
 import { useState } from 'react'
 
+import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
 import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 
@@ -29,7 +30,7 @@ export function SearchButton(): React.ReactElement {
         buttonStyle="icon-label"
         onClick={() => setIsModalOpen(true)}
         size="small"
-        tooltip={t('searchTooltip')}
+        tooltip={t('searchTooltip').replace('{shortcut}', getSearchShortcut())}
       >
         <SearchIcon />
       </Button>

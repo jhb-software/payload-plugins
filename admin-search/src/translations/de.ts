@@ -17,10 +17,10 @@ export const de: GenericTranslationsObject = {
     searchInput: 'Sucheingabe',
     searchModalContent: 'Suchmodal-Inhalt',
     searchPlaceholder: 'Suchen...',
-    searchTooltip: 'Suchen (⌘K)',
+    searchTooltip: 'Suchen ({shortcut})',
     toClose: 'zum Schließen',
     toNavigate: 'zum Navigieren',
-    toSelect: 'zum Auswählen',
+    toOpen: 'zum Öffnen',
     unknownCollection: 'Unbekannt',
   },
 }

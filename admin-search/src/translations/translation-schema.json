@@ -55,7 +55,7 @@
         "toNavigate": {
           "type": "string"
         },
-        "toSelect": {
+        "toOpen": {
           "type": "string"
         },
         "toClose": {
@@ -84,7 +84,7 @@
         "closeSearchModal",
         "searchModalContent",
         "toNavigate",
-        "toSelect",
+        "toOpen",
         "toClose",
         "searchTooltip",
         "searchInput"
