@@ -1,4 +1,4 @@
-import type { PluginPagesTranslationKeys, PluginPagesTranslations  } from 'src/translations/index.js'
+import type { PluginPagesTranslationKeys, PluginPagesTranslations } from 'src/translations/index.js'
 
 import { useTranslation } from '@payloadcms/ui'
 

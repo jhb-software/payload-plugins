@@ -1,4 +1,4 @@
-import type { CollectionConfig, CollectionSlug, PayloadRequest  } from 'payload'
+import type { CollectionConfig, CollectionSlug, PayloadRequest } from 'payload'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
@@ -77,7 +77,9 @@ function isPageCollectionWithParent(
   expectedParentCollectionSlug: CollectionSlug,
 ): collection is PageCollectionConfig {
   const pageConfig = isPageCollectionConfig(collection)
-  if (!pageConfig) {return false}
+  if (!pageConfig) {
+    return false
+  }
 
   return collection.page.parent.collection === expectedParentCollectionSlug
 }
