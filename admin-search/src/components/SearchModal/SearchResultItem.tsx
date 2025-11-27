@@ -3,6 +3,8 @@ import React from 'react'
 
 import type { SearchResult } from '../../types/SearchResult.js'
 
+import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
+
 interface SearchResultItemProps {
   index: number
   onMouseEnter: () => void
@@ -46,13 +48,19 @@ const getCollectionDisplayName = (relationTo: string) => {
     .join(' ')
 }
 
-const getAriaLabel = (result: SearchResult, displayTitle: string): string => {
+const getAriaLabel = (
+  result: SearchResult,
+  displayTitle: string,
+  t: (key: string) => string,
+): string => {
   if (result.type === 'document') {
-    return `Open ${displayTitle} in ${getCollectionDisplayName(result.doc.relationTo)}`
+    return t('openDocumentIn')
+      .replace('{title}', displayTitle)
+      .replace('{collection}', getCollectionDisplayName(result.doc.relationTo))
   } else if (result.type === 'collection') {
-    return `Open ${result.label} collection`
+    return t('openCollectionLabel').replace('{label}', result.label)
   } else {
-    return `Open ${result.label} global`
+    return t('openGlobalLabel').replace('{label}', result.label)
   }
 }
 
@@ -64,13 +72,14 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
   result,
   selectedIndex,
 }) => {
-  const { t } = useTranslation()
+  const { t: payloadT } = useTranslation()
+  const { t } = usePluginTranslation()
 
   const title =
     result.type === 'document' && result.title && result.title.trim().length > 0
       ? result.title
       : result.type === 'document'
-        ? `[${t('general:untitled')}]`
+        ? `[${payloadT('general:untitled')}]`
         : result.label
 
   return (
@@ -80,7 +89,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
       onMouseEnter={onMouseEnter}
     >
       <button
-        aria-label={getAriaLabel(result, title)}
+        aria-label={getAriaLabel(result, title, t)}
         className="admin-search-plugin-modal__result-item-button"
         onClick={() => onResultClick(result)}
         onKeyDown={(e) => e.key === 'Enter' && onResultClick(result)}
@@ -94,8 +103,8 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
             {result.type === 'document'
               ? getCollectionDisplayName(result.doc.relationTo)
               : result.type === 'collection'
-                ? 'Collection'
-                : 'Global'}
+                ? t('pillCollection')
+                : t('pillGlobal')}
           </Pill>
         </div>
       </button>

@@ -28,6 +28,18 @@
         "noResultsHint": {
           "type": "string"
         },
+        "openCollectionLabel": {
+          "type": "string"
+        },
+        "openGlobalLabel": {
+          "type": "string"
+        },
+        "pillCollection": {
+          "type": "string"
+        },
+        "pillGlobal": {
+          "type": "string"
+        },
         "unknownCollection": {
           "type": "string"
         },
@@ -63,10 +75,14 @@
         "errorSearching",
         "noResultsFound",
         "noResultsHint",
+        "openCollectionLabel",
+        "openDocumentIn",
+        "openGlobalLabel",
+        "pillCollection",
+        "pillGlobal",
         "unknownCollection",
         "closeSearchModal",
         "searchModalContent",
-        "openDocumentIn",
         "toNavigate",
         "toSelect",
         "toClose",
