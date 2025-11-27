@@ -17,14 +17,16 @@
     "publish:pages": "cd ./pages && pnpm publish",
     "publish:seo": "cd ./seo && pnpm publish",
 
-    "format:all": "pnpm format:alt-text && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:seo",
+    "format:all": "pnpm format:admin-search && pnpm format:alt-text && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:seo",
+    "format:admin-search": "cd ./admin-search && pnpm format",
     "format:alt-text": "cd ./alt-text && pnpm format",
     "format:cloudinary": "cd ./cloudinary && pnpm format",
     "format:geocoding": "cd ./geocoding && pnpm format",
     "format:pages": "cd ./pages && pnpm format",
     "format:seo": "cd ./seo && pnpm format",
 
-    "install:all": "pnpm install:alt-text && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:seo",
+    "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:seo",
+    "install:admin-search": "cd ./admin-search && pnpm install --frozen-lockfile",
     "install:alt-text": "cd ./alt-text && pnpm install --frozen-lockfile",
     "install:cloudinary": "cd ./cloudinary && pnpm install --frozen-lockfile",
     "install:geocoding": "cd ./geocoding && pnpm install --frozen-lockfile",
