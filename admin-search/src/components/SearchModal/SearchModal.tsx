@@ -336,7 +336,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
             </div>
           )}
           {!isLoading && !isError && results.length > 0 && (
-            <ul className="admin-search-plugin-modal__results-list" ref={resultsRef}>
+            <ul
+              className={`admin-search-plugin-modal__results-list ${isKeyboardNav ? 'is-keyboard-nav' : ''}`}
+              ref={resultsRef}
+            >
               {results.map((result, index) => (
                 <SearchResultItem
                   index={index}
