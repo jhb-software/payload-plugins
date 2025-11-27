@@ -17,8 +17,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { SearchResult, SearchResultDocument } from '../../types/SearchResult.js'
 
 import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
-import { SearchModalSkeleton } from './SearchModalSkeleton.js'
-import { SearchResultItem } from './SearchResultItem.js'
+import { SearchResultItem } from '../SearchResultItem/SearchResultItem.js'
+import { SearchResultItemSkeleton } from '../SearchResultItem/SearchResultItemSkeleton.js'
 import './SearchModal.css'
 
 interface SearchModalProps {
@@ -274,7 +274,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
 
         <div className="admin-search-plugin-modal__results-container">
           {isLoading && results.length === 0 && !displayedQuery && (
-            <SearchModalSkeleton count={SEARCH_RESULTS_LIMIT} />
+            <ul className="admin-search-plugin-modal__results-list">
+              {Array.from({ length: SEARCH_RESULTS_LIMIT }).map((_, index) => (
+                <SearchResultItemSkeleton key={index} />
+              ))}
+            </ul>
           )}
           {isError && <Banner type="error">{t('errorSearching')}</Banner>}
           {!isError && results.length === 0 && displayedQuery && (
