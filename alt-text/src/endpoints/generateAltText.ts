@@ -1,9 +1,12 @@
-import OpenAI from 'openai'
-import { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
+import type { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
 import type { PayloadHandler, PayloadRequest } from 'payload'
+
+import OpenAI from 'openai'
 import { z } from 'zod'
-import { getGenerationCost } from '../utilities/getGenerationCost.js'
+
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
+
+import { getGenerationCost } from '../utilities/getGenerationCost.js'
 import { zodResponseFormat } from '../utilities/zodResponseFormat.js'
 
 /**
@@ -19,16 +22,16 @@ export const generateAltTextEndpoint: PayloadHandler = async (req: PayloadReques
     const data = 'json' in req && typeof req.json === 'function' ? await req.json() : null
 
     const requestSchema = z.object({
-      collection: z.string(),
       id: z.string(),
+      collection: z.string(),
       locale: z.string().nullable(),
     })
 
-    const { collection, id, locale } = requestSchema.parse(data)
+    const { id, collection, locale } = requestSchema.parse(data)
 
     const imageDoc = await req.payload.findByID({
-      collection,
       id,
+      collection,
       depth: 0,
     })
 
@@ -83,10 +86,8 @@ export const generateAltTextEndpoint: PayloadHandler = async (req: PayloadReques
     })
 
     const response = await openai.chat.completions.parse({
-      model: pluginConfig.model,
       messages: [
         {
-          role: 'system',
           content: `
             You are an expert at analyzing images and creating descriptive image alt text. 
             
@@ -98,9 +99,9 @@ export const generateAltTextEndpoint: PayloadHandler = async (req: PayloadReques
 
             Format your response as a JSON object. You must respond in the ${targetLocale} language.
           `,
+          role: 'system',
         },
         {
-          role: 'user',
           content: [
             {
               type: 'image_url',
@@ -115,8 +116,10 @@ export const generateAltTextEndpoint: PayloadHandler = async (req: PayloadReques
                 ]
               : []),
           ],
+          role: 'user',
         },
       ],
+      model: pluginConfig.model,
       // limit the response tokens and costs per request
       max_completion_tokens: 150,
       response_format: zodResponseFormat(modelResponseSchema, 'data'),

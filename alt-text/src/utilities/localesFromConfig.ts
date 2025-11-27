@@ -1,4 +1,4 @@
-import { SanitizedConfig } from 'payload'
+import type { SanitizedConfig } from 'payload'
 
 /** Returns the locales from the config. Returns undefined when localization is disabled. */
 export function localesFromConfig(config: SanitizedConfig): string[] | undefined {

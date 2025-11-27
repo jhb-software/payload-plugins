@@ -1,5 +1,7 @@
-import { AutoParseableResponseFormat, makeParseableResponseFormat } from 'openai/lib/parser.mjs'
-import { ResponseFormatJSONSchema } from 'openai/resources/shared.mjs'
+import type { AutoParseableResponseFormat } from 'openai/lib/parser.mjs'
+import type { ResponseFormatJSONSchema } from 'openai/resources/shared.mjs'
+
+import { makeParseableResponseFormat } from 'openai/lib/parser.mjs'
 import { z } from 'zod'
 
 /**
@@ -12,7 +14,7 @@ import { z } from 'zod'
 export function zodResponseFormat<ZodInput extends z.ZodType>(
   zodObject: ZodInput,
   name: string,
-  props?: Omit<ResponseFormatJSONSchema.JSONSchema, 'schema' | 'strict' | 'name'>,
+  props?: Omit<ResponseFormatJSONSchema.JSONSchema, 'name' | 'schema' | 'strict'>,
 ): AutoParseableResponseFormat<z.infer<ZodInput>> {
   return makeParseableResponseFormat(
     {
@@ -20,8 +22,8 @@ export function zodResponseFormat<ZodInput extends z.ZodType>(
       json_schema: {
         ...props,
         name,
-        strict: true,
         schema: z.toJSONSchema(zodObject, { target: 'draft-7' }),
+        strict: true,
       },
     },
     (content) => zodObject.parse(JSON.parse(content)),

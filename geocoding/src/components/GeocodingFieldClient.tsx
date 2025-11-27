@@ -7,12 +7,17 @@ import GooglePlacesAutocompleteImport, {
 
 // Workaround for TypeScript moduleResolution: "nodenext" with React 19
 const GooglePlacesAutocomplete =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   GooglePlacesAutocompleteImport as unknown as React.ComponentType<any>
 
 interface GeocodingFieldComponentProps {
-  field: any
-  path: string
+  field: {
+    label: string
+    path: string
+    required: boolean
+  }
   googleMapsApiKey: string
+  path: string
 }
 
 /**
@@ -21,33 +26,34 @@ interface GeocodingFieldComponentProps {
  */
 export const GeocodingFieldClient = ({
   field,
-  path,
   googleMapsApiKey,
+  path,
 }: GeocodingFieldComponentProps) => {
   const pointFieldPath = path.replace('_googlePlacesData', '')
 
-  const { value: geoData, setValue: setGeoData } = useField<string>({
-    path: path,
+  const { setValue: setGeoData, value: geoData } = useField<string>({
+    path,
   })
   const { setValue: setPoint } = useField<Array<number>>({ path: pointFieldPath })
 
   return (
     <div style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <FieldLabel path={path} label={field.label} required={field.required} />
+        <FieldLabel label={field.label} path={path} required={field.required} />
         <FieldError path={path} />
       </div>
       <GooglePlacesAutocomplete
         apiKey={googleMapsApiKey}
         selectProps={{
-          value: geoData as any,
           isClearable: true,
-          onChange: async (geoData: any) => {
+          onChange: async (geoData: unknown) => {
             if (geoData) {
-              const placeId = geoData?.value.place_id
+              const placeId = (geoData as { value: { place_id: string } }).value.place_id
               const geocode = (await geocodeByPlaceId(placeId)).at(0)
 
-              if (!geocode) return
+              if (!geocode) {
+                return
+              }
               const latLng = await getLatLng(geocode)
 
               setPoint([latLng.lng, latLng.lat])
@@ -58,6 +64,7 @@ export const GeocodingFieldClient = ({
               setGeoData(null)
             }
           },
+          value: geoData as unknown,
         }}
       />
     </div>

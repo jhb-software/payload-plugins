@@ -1,7 +1,10 @@
-import { v2 as cloudinary, UploadApiOptions, UploadApiResponse, UploadStream } from 'cloudinary'
+import type { UploadApiOptions, UploadApiResponse, UploadStream } from 'cloudinary'
 import type { PayloadRequest } from 'payload'
+
+import { v2 as cloudinary } from 'cloudinary'
 import { Readable } from 'stream'
-import { CloudinaryPluginConfig } from '../types/CloudinaryPluginConfig'
+
+import type { CloudinaryPluginConfig } from '../types/CloudinaryPluginConfig'
 
 type File = NonNullable<PayloadRequest['file']>
 
@@ -12,12 +15,11 @@ export const streamUpload =
 
     return new Promise<UploadApiResponse>((resolve, reject) => {
       const options: UploadApiOptions = {
-        // @ts-ignore
-        folder: pluginConfig.cloudinary.folder,
         chunk_size: pluginConfig.uploadOptions?.chunkSize,
+        folder: pluginConfig.cloudinary.folder,
         ...(pluginConfig.uploadOptions?.useFilename && {
-          use_filename: true,
           filename_override: file.name,
+          use_filename: true,
         }),
 
         invalidate: true,
@@ -26,10 +28,11 @@ export const streamUpload =
         // In case of updating the image, the public_id will be needed,
         // but not the folder as it's already in the URL and if we pass
         // the value then it will create file in sub-folder instead of updating.
-        ...(id && { public_id: id, folder: null }),
+        ...(id && { folder: null, public_id: id }),
       }
 
       const stream: UploadStream = cloudinary.uploader.upload_stream(options, (error, result) =>
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
         result ? resolve(result) : reject(error),
       )
 

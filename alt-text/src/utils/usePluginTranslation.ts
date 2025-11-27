@@ -1,6 +1,9 @@
+import type {
+  PluginAltTextTranslationKeys,
+  PluginAltTextTranslations,
+} from 'src/translations/index.js'
+
 import { useTranslation } from '@payloadcms/ui'
-import { PluginAltTextTranslationKeys } from 'src/translations/index.js'
-import { PluginAltTextTranslations } from 'src/translations/index.js'
 
 /** Hook which returns a translation function for the plugin translations. */
 export const usePluginTranslation = () => {
@@ -14,7 +17,7 @@ export const usePluginTranslation = () => {
       const translation = pluginTranslations[key] as string
 
       if (!translation) {
-        console.log('Plugin translation not found', key)
+        console.error('Plugin translation not found', key)
       }
       return translation ?? key
     },

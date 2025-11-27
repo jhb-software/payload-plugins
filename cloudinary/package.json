@@ -19,7 +19,8 @@
     "dev": "tsc -w",
     "format": "prettier --write src",
     "test": "jest",
-    "lint": "eslint .",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "prepublish": "tsc"
   },
   "dependencies": {
@@ -29,6 +30,8 @@
     "payload": "^3.59.1"
   },
   "devDependencies": {
+    "@payloadcms/eslint-config": "^3.28.0",
+    "eslint": "^9.39.1",
     "prettier": "^3.6.2",
     "typescript": "5.9.3"
   },

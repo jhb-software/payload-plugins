@@ -1,9 +1,10 @@
 import type OpenAI from 'openai'
+
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 type GenerationCost = {
-  model: 'gpt-4.1-nano' | 'gpt-4.1-mini'
   inputCost: number
+  model: 'gpt-4.1-mini' | 'gpt-4.1-nano'
   outputCost: number
   totalCost: number
   totalTokens: number
@@ -37,8 +38,8 @@ export function getGenerationCost(
   const totalCost = inputCost + outputCost
 
   return {
-    model,
     inputCost,
+    model,
     outputCost,
     totalCost,
     totalTokens,

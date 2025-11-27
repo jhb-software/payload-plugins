@@ -1,12 +1,15 @@
-import OpenAI from 'openai'
-import { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
-import pMap from 'p-map'
+import type { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
 import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
+
+import OpenAI from 'openai'
+import pMap from 'p-map'
 import { z } from 'zod'
-import { getGenerationCost } from '../utilities/getGenerationCost.js'
+
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
-import { zodResponseFormat } from '../utilities/zodResponseFormat.js'
+
+import { getGenerationCost } from '../utilities/getGenerationCost.js'
 import { localesFromConfig } from '../utilities/localesFromConfig.js'
+import { zodResponseFormat } from '../utilities/zodResponseFormat.js'
 
 /**
  * Generates and updates alt text for multiple images in all locales.
@@ -63,11 +66,11 @@ export const bulkGenerateAltTextsEndpoint: PayloadHandler = async (req: PayloadR
       async (id) => {
         try {
           await generateAndUpdateAltText({
-            payload: req.payload,
             id,
             collection,
-            pluginConfig,
             locales: targetLocales,
+            payload: req.payload,
+            pluginConfig,
           })
           updatedDocs++
           console.log(
@@ -86,9 +89,9 @@ export const bulkGenerateAltTextsEndpoint: PayloadHandler = async (req: PayloadR
     }
 
     return Response.json({
-      updatedDocs,
-      totalDocs: ids.length,
       erroredDocs,
+      totalDocs: ids.length,
+      updatedDocs,
     })
   } catch (error) {
     console.error('Error in bulk generation:', error)
@@ -102,21 +105,21 @@ export const bulkGenerateAltTextsEndpoint: PayloadHandler = async (req: PayloadR
 }
 
 async function generateAndUpdateAltText({
-  payload,
   id,
   collection,
-  pluginConfig,
   locales,
+  payload,
+  pluginConfig,
 }: {
-  payload: BasePayload
-  id: string
   collection: CollectionSlug
-  pluginConfig: AltTextPluginConfig
+  id: string
   locales: string[]
+  payload: BasePayload
+  pluginConfig: AltTextPluginConfig
 }) {
   const imageDoc = await payload.findByID({
-    collection: collection,
-    id: id as string,
+    id,
+    collection,
     depth: 0,
   })
 
@@ -143,10 +146,9 @@ async function generateAndUpdateAltText({
   )
 
   const response = await openai.chat.completions.parse({
-    model: pluginConfig.model,
+    max_completion_tokens: 300,
     messages: [
       {
-        role: 'system',
         content: `
       You are an expert at analyzing images and creating descriptive image alt text. 
       
@@ -158,9 +160,9 @@ async function generateAndUpdateAltText({
       
       Format your response as a JSON object with ${locales.join(', ')} keys, each containing "altText", "keywords" and "slug".
     `,
+        role: 'system',
       },
       {
-        role: 'user',
         content: [
           {
             type: 'image_url',
@@ -175,9 +177,10 @@ async function generateAndUpdateAltText({
               ]
             : []),
         ],
+        role: 'user',
       },
     ],
-    max_completion_tokens: 300,
+    model: pluginConfig.model,
     response_format: zodResponseFormat(modelResponseSchema, 'data'),
   })
 
@@ -191,13 +194,14 @@ async function generateAndUpdateAltText({
 
   for (const locale of locales) {
     await payload.update({
-      collection: collection as CollectionSlug,
-      id: id as string,
-      locale: locale,
+      id,
+      collection,
       data: {
-        alt: (result as any)[locale]?.altText,
-        keywords: (result as any)[locale]?.keywords,
+        alt: (result as Record<string, { altText: string; keywords: string[] }>)[locale]?.altText,
+        keywords: (result as Record<string, { altText: string; keywords: string[] }>)[locale]
+          ?.keywords,
       },
+      locale,
     })
   }
 }

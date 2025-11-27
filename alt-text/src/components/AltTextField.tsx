@@ -1,14 +1,15 @@
 'use client'
 
-import { FieldLabel, TextareaInput, useDocumentInfo, useField } from '@payloadcms/ui'
 import type { TextareaFieldClientProps } from 'payload'
+
+import { FieldLabel, TextareaInput, useDocumentInfo, useField } from '@payloadcms/ui'
 
 import { GenerateAltTextButton } from './GenerateAltTextButton.js'
 
 export const AltTextField = (clientProps: TextareaFieldClientProps) => {
   const { field, path } = clientProps
 
-  const { value, setValue } = useField<string>({ path })
+  const { setValue, value } = useField<string>({ path })
   const { id } = useDocumentInfo()
 
   // the field should be optional when the document is created
@@ -20,17 +21,17 @@ export const AltTextField = (clientProps: TextareaFieldClientProps) => {
       <FieldLabel
         htmlFor={`field-${path}`}
         label={field.label}
-        required={required}
         localized={field.localized}
+        required={required}
       />
 
       <div className="field-type__wrap">
         <TextareaInput
-          value={value}
-          path={path!}
-          required={required}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
           AfterInput={<GenerateAltTextButton />}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
+          path={path}
+          required={required}
+          value={value}
         />
       </div>
     </div>

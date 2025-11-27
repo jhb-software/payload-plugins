@@ -3,9 +3,9 @@
 import { Button, toast, useDocumentInfo, useField, useLocale } from '@payloadcms/ui'
 import { useTransition } from 'react'
 
+import { usePluginTranslation } from '../utils/usePluginTranslation.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
-import { usePluginTranslation } from '../utils/usePluginTranslation.js'
 
 export function GenerateAltTextButton() {
   const { t } = usePluginTranslation()
@@ -16,7 +16,7 @@ export function GenerateAltTextButton() {
   const { setValue: setKeywords } = useField<string>({ path: 'keywords' })
   const { setValue: setAltText } = useField<string>({ path: 'alt' })
 
-  const handleGenerateAltText = async () => {
+  const handleGenerateAltText = () => {
     if (!collectionSlug || !id) {
       toast.error(t('cannotGenerateMissingFields'))
       throw new Error('Missing required fields')
@@ -25,12 +25,12 @@ export function GenerateAltTextButton() {
     startTransition(async () => {
       try {
         const response = await fetch('/api/alt-text-plugin/generate-alt-text', {
-          method: 'POST',
           body: JSON.stringify({
-            collection: collectionSlug,
             id: id as string,
+            collection: collectionSlug,
             locale: locale?.code ?? null, // sent null when localization is disabled
           }),
+          method: 'POST',
         })
 
         if (!response.ok) {
@@ -67,19 +67,19 @@ export function GenerateAltTextButton() {
 
   return (
     <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
-      <div style={{ flex: '1', color: 'var(--theme-elevation-400)' }}>
+      <div style={{ color: 'var(--theme-elevation-400)', flex: '1' }}>
         <p>{t('altTextDescription')}</p>
-        <ol style={{ paddingLeft: '20px', margin: '10px 0' }}>
+        <ol style={{ margin: '10px 0', paddingLeft: '20px' }}>
           <li>{t('altTextRequirement1')}</li>
           <li>{t('altTextRequirement2')}</li>
           <li>{t('altTextRequirement3')}</li>
         </ol>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ alignItems: 'center', display: 'flex' }}>
         <Button
-          onClick={handleGenerateAltText}
           disabled={isPending || !id}
           icon={isPending ? <Spinner /> : <Lightning />}
+          onClick={handleGenerateAltText}
           tooltip={!id ? t('pleaseSaveDocumentFirst') : undefined}
         >
           {t('generateAltText')}

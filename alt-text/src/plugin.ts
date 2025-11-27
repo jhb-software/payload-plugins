@@ -4,10 +4,11 @@ import type {
   AltTextPluginConfig,
   IncomingAltTextPluginConfig,
 } from './types/AltTextPluginConfig.js'
+
+import { bulkGenerateAltTextsEndpoint } from './endpoints/bulkGenerateAltTexts.js'
+import { generateAltTextEndpoint } from './endpoints/generateAltText.js'
 import { altTextField } from './fields/altTextField.js'
 import { keywordsField } from './fields/keywordsField.js'
-import { generateAltTextEndpoint } from './endpoints/generateAltText.js'
-import { bulkGenerateAltTextsEndpoint } from './endpoints/bulkGenerateAltTexts.js'
 import { translations } from './translations/index.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
@@ -28,15 +29,15 @@ export const payloadAltTextPlugin =
       : []
 
     const pluginConfig: AltTextPluginConfig = {
-      enabled: incomingPluginConfig.enabled ?? true,
-      openAIApiKey: incomingPluginConfig.openAIApiKey,
       collections: incomingPluginConfig.collections,
+      enabled: incomingPluginConfig.enabled ?? true,
+      fieldsOverride: incomingPluginConfig.fieldsOverride,
+      getImageThumbnail: incomingPluginConfig.getImageThumbnail,
+      locale: incomingPluginConfig.locale,
+      locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
       model: incomingPluginConfig.model ?? 'gpt-4.1-nano',
-      locales: locales,
-      locale: incomingPluginConfig.locale,
-      getImageThumbnail: incomingPluginConfig.getImageThumbnail,
-      fieldsOverride: incomingPluginConfig.fieldsOverride,
+      openAIApiKey: incomingPluginConfig.openAIApiKey,
     }
 
     // Validate locale requirement for non-localized mode
@@ -79,17 +80,6 @@ export const payloadAltTextPlugin =
           ...collectionConfig,
           admin: {
             ...collectionConfig.admin,
-            listSearchableFields: [
-              // enhance the search by adding the filename, keywords and alt fields (if not already included)
-              ...(collectionConfig.admin?.listSearchableFields ?? []),
-              ...(collectionConfig.admin?.listSearchableFields?.includes('filename')
-                ? []
-                : ['filename']),
-              ...(collectionConfig.admin?.listSearchableFields?.includes('keywords')
-                ? []
-                : ['keywords']),
-              ...(collectionConfig.admin?.listSearchableFields?.includes('alt') ? [] : ['alt']),
-            ],
             components: {
               ...(collectionConfig.admin?.components ?? {}),
               // TODO: use the beforeBulkAction custom component slot once available: https://github.com/payloadcms/payload/pull/11719
@@ -103,6 +93,17 @@ export const payloadAltTextPlugin =
                 },
               ],
             },
+            listSearchableFields: [
+              // enhance the search by adding the filename, keywords and alt fields (if not already included)
+              ...(collectionConfig.admin?.listSearchableFields ?? []),
+              ...(collectionConfig.admin?.listSearchableFields?.includes('filename')
+                ? []
+                : ['filename']),
+              ...(collectionConfig.admin?.listSearchableFields?.includes('keywords')
+                ? []
+                : ['keywords']),
+              ...(collectionConfig.admin?.listSearchableFields?.includes('alt') ? [] : ['alt']),
+            ],
           },
           fields: [...(collectionConfig.fields ?? []), ...fields],
         }
@@ -113,10 +114,6 @@ export const payloadAltTextPlugin =
 
     return {
       ...config,
-      i18n: {
-        ...config.i18n,
-        translations: deepMergeSimple(translations, incomingConfig.i18n?.translations ?? {}),
-      },
       custom: {
         ...config.custom,
         // Make plugin config available in hooks/actions
@@ -125,15 +122,19 @@ export const payloadAltTextPlugin =
       endpoints: [
         ...(config.endpoints ?? []),
         {
-          path: '/alt-text-plugin/generate-alt-text',
-          method: 'post',
           handler: generateAltTextEndpoint,
+          method: 'post',
+          path: '/alt-text-plugin/generate-alt-text',
         },
         {
-          path: '/alt-text-plugin/bulk-generate-alt-texts',
-          method: 'post',
           handler: bulkGenerateAltTextsEndpoint,
+          method: 'post',
+          path: '/alt-text-plugin/bulk-generate-alt-texts',
         },
       ],
+      i18n: {
+        ...config.i18n,
+        translations: deepMergeSimple(translations, incomingConfig.i18n?.translations ?? {}),
+      },
     }
   }

@@ -1,4 +1,4 @@
-import { GenericTranslationsObject } from './index.js'
+import type { GenericTranslationsObject } from './index.js'
 
 export const en: GenericTranslationsObject = {
   $schema: './translation-schema.json',
@@ -15,13 +15,13 @@ export const en: GenericTranslationsObject = {
     images: 'images',
 
     // Toast messages
-    cannotGenerateMissingFields: 'Cannot generate alt text. Missing required fields.',
-    failedToGenerate: 'Failed to generate alt text. Please try again.',
     altTextGeneratedSuccess:
       'Alt text generated successfully. Please review and save the document.',
-    noAltTextGenerated: 'No alt text generated. Please try again.',
+    cannotGenerateMissingFields: 'Cannot generate alt text. Missing required fields.',
     errorGeneratingAltText: 'Error generating alt text. Please try again.',
+    failedToGenerate: 'Failed to generate alt text. Please try again.',
     failedToGenerateForXImages: 'Failed to generate alt text for {X} images.',
+    noAltTextGenerated: 'No alt text generated. Please try again.',
     xOfYImagesUpdated: '{X} of {Y} images updated.',
 
     // Help text

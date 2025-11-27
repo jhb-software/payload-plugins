@@ -17,6 +17,13 @@
     "publish:pages": "cd ./pages && pnpm publish",
     "publish:seo": "cd ./seo && pnpm publish",
 
+    "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages",
+    "lint:admin-search": "cd ./admin-search && pnpm lint",
+    "lint:alt-text": "cd ./alt-text && pnpm lint",
+    "lint:cloudinary": "cd ./cloudinary && pnpm lint",
+    "lint:geocoding": "cd ./geocoding && pnpm lint",
+    "lint:pages": "cd ./pages && pnpm lint",
+
     "format:all": "pnpm format:admin-search && pnpm format:alt-text && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:seo",
     "format:admin-search": "cd ./admin-search && pnpm format",
     "format:alt-text": "cd ./alt-text && pnpm format",
