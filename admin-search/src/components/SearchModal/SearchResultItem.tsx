@@ -68,41 +68,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const renderContent = () => {
-    if (result.type === 'document') {
-      const displayTitle =
-        result.title && result.title.trim().length > 0 ? result.title : `[${t('general:untitled')}]`
-
-      return (
-        <>
-          <span className="admin-search-plugin-modal__result-title">
-            {highlightSearchTerm(displayTitle, query)}
-          </span>
-          <Pill size="small">{getCollectionDisplayName(result.doc.relationTo)}</Pill>
-        </>
-      )
-    } else if (result.type === 'collection') {
-      return (
-        <>
-          <span className="admin-search-plugin-modal__result-title">
-            {highlightSearchTerm(result.label, query)}
-          </span>
-          <Pill size="small">Collection</Pill>
-        </>
-      )
-    } else if (result.type === 'global') {
-      return (
-        <>
-          <span className="admin-search-plugin-modal__result-title">
-            {highlightSearchTerm(result.label, query)}
-          </span>
-          <Pill size="small">Global</Pill>
-        </>
-      )
-    }
-  }
-
-  const displayTitle =
+  const title =
     result.type === 'document' && result.title && result.title.trim().length > 0
       ? result.title
       : result.type === 'document'
@@ -116,13 +82,24 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
       onMouseEnter={onMouseEnter}
     >
       <button
-        aria-label={getAriaLabel(result, displayTitle)}
+        aria-label={getAriaLabel(result, title)}
         className="admin-search-plugin-modal__result-item-button"
         onClick={() => onResultClick(result)}
         onKeyDown={(e) => e.key === 'Enter' && onResultClick(result)}
         type="button"
       >
-        <div className="admin-search-plugin-modal__result-content">{renderContent()}</div>
+        <div className="admin-search-plugin-modal__result-content">
+          <span className="admin-search-plugin-modal__result-title">
+            {highlightSearchTerm(title, query)}
+          </span>
+          <Pill size="small">
+            {result.type === 'document'
+              ? getCollectionDisplayName(result.doc.relationTo)
+              : result.type === 'collection'
+                ? 'Collection'
+                : 'Global'}
+          </Pill>
+        </div>
       </button>
     </li>
   )
