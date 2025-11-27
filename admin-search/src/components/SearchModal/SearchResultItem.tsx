@@ -1,5 +1,3 @@
-'use client'
-
 import { Pill, useTranslation } from '@payloadcms/ui'
 import React from 'react'
 

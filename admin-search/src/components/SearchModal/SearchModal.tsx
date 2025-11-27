@@ -152,6 +152,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     inputRef.current?.focus()
   }, [])
 
+  // Initial search to show default results
   useEffect(() => {
     triggerSearch()
   }, [triggerSearch])
