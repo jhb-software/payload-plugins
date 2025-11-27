@@ -1,0 +1,104 @@
+import { Pill, useTranslation } from '@payloadcms/ui'
+import React from 'react'
+
+import type { SearchResult } from '../../types/SearchResult.js'
+
+interface SearchResultItemProps {
+  index: number
+  onMouseEnter: () => void
+  onResultClick: (result: SearchResult) => void
+  query: string
+  result: SearchResult
+  selectedIndex: number
+}
+
+const highlightSearchTerm = (text: string, searchTerm: string) => {
+  if (!searchTerm.trim() || !text) {
+    return text
+  }
+
+  const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escapedSearchTerm})`, 'gi')
+
+  if (!regex.test(text)) {
+    return text
+  }
+
+  regex.lastIndex = 0
+  const parts = text.split(regex)
+
+  return parts.map((part, index) => {
+    if (part.toLowerCase() === searchTerm.toLowerCase()) {
+      return (
+        <mark className="admin-search-plugin-modal__highlighted-text" key={index}>
+          {part}
+        </mark>
+      )
+    }
+    return part
+  })
+}
+
+const getCollectionDisplayName = (relationTo: string) => {
+  return relationTo
+    .split('-')
+    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+const getAriaLabel = (result: SearchResult, displayTitle: string): string => {
+  if (result.type === 'document') {
+    return `Open ${displayTitle} in ${getCollectionDisplayName(result.doc.relationTo)}`
+  } else if (result.type === 'collection') {
+    return `Open ${result.label} collection`
+  } else {
+    return `Open ${result.label} global`
+  }
+}
+
+export const SearchResultItem: React.FC<SearchResultItemProps> = ({
+  index,
+  onMouseEnter,
+  onResultClick,
+  query,
+  result,
+  selectedIndex,
+}) => {
+  const { t } = useTranslation()
+
+  const title =
+    result.type === 'document' && result.title && result.title.trim().length > 0
+      ? result.title
+      : result.type === 'document'
+        ? `[${t('general:untitled')}]`
+        : result.label
+
+  return (
+    <li
+      className={`admin-search-plugin-modal__result-item-container ${selectedIndex === index ? 'selected' : ''}`}
+      key={result.id}
+      onMouseEnter={onMouseEnter}
+    >
+      <button
+        aria-label={getAriaLabel(result, title)}
+        className="admin-search-plugin-modal__result-item-button"
+        onClick={() => onResultClick(result)}
+        onKeyDown={(e) => e.key === 'Enter' && onResultClick(result)}
+        type="button"
+      >
+        <div className="admin-search-plugin-modal__result-content">
+          <span className="admin-search-plugin-modal__result-title">
+            {highlightSearchTerm(title, query)}
+          </span>
+          <Pill size="small">
+            {result.type === 'document'
+              ? getCollectionDisplayName(result.doc.relationTo)
+              : result.type === 'collection'
+                ? 'Collection'
+                : 'Global'}
+          </Pill>
+        </div>
+      </button>
+    </li>
+  )
+}

@@ -1,19 +1,23 @@
 'use client'
 
+import { getTranslation } from '@payloadcms/translations'
 import {
   Banner,
-  Pill,
   SearchIcon,
   useConfig,
   useDebounce,
+  useEntityVisibility,
   usePayloadAPI,
   useTranslation,
 } from '@payloadcms/ui'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation.js'
+import { formatAdminURL } from 'payload/shared'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { SearchResult } from '../../types/SearchResult.js'
+import type { SearchResult, SearchResultDocument } from '../../types/SearchResult.js'
 
 import { SearchModalSkeleton } from './SearchModalSkeleton.js'
+import { SearchResultItem } from './SearchResultItem.js'
 import './SearchModal.css'
 
 interface SearchModalProps {
@@ -28,12 +32,37 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
-  const { t } = useTranslation()
+  const { i18n } = useTranslation()
+  const { config } = useConfig()
   const {
-    config: {
-      routes: { admin, api },
-    },
-  } = useConfig()
+    routes: { admin, api },
+  } = config
+  const router = useRouter()
+  const { visibleEntities } = useEntityVisibility()
+
+  const collectionLabelsMap = useMemo(() => {
+    const map: Record<string, { plural: string; singular: string; slug: string }> = {}
+    config.collections.forEach((collection) => {
+      map[collection.slug] = {
+        slug: collection.slug,
+        plural: getTranslation(collection.labels?.plural || collection.slug, i18n),
+        singular: getTranslation(collection.labels?.singular || collection.slug, i18n),
+      }
+    })
+    return map
+  }, [config.collections, i18n])
+
+  const globalLabelsMap = useMemo(() => {
+    const map: Record<string, { label: string; slug: string }> = {}
+    config.globals.forEach((global) => {
+      map[global.slug] = {
+        slug: global.slug,
+        label: getTranslation(global.label || global.slug, i18n),
+      }
+    })
+    return map
+  }, [config.globals, i18n])
+
   const [{ data, isError, isLoading }, { setParams }] = usePayloadAPI(`${api}/search`, {
     initialParams: {
       depth: 0,
@@ -72,6 +101,53 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     [getSearchParams, setParams],
   )
 
+  const filterCollectionsAndGlobals = useCallback(
+    (searchQuery: string): SearchResult[] => {
+      if (!searchQuery || searchQuery.trim().length < 2) {
+        return []
+      }
+
+      const lowerQuery = searchQuery.toLowerCase()
+      const results: SearchResult[] = []
+
+      // Only include collections that are visible to the current user
+      for (const [slug, labels] of Object.entries(collectionLabelsMap)) {
+        if (
+          visibleEntities.collections.includes(slug) &&
+          (slug.toLowerCase().includes(lowerQuery) ||
+            labels.singular.toLowerCase().includes(lowerQuery) ||
+            labels.plural.toLowerCase().includes(lowerQuery))
+        ) {
+          results.push({
+            id: `collection-${slug}`,
+            slug,
+            type: 'collection',
+            label: labels.plural,
+          })
+        }
+      }
+
+      // Only include globals that are visible to the current user
+      for (const [slug, globalInfo] of Object.entries(globalLabelsMap)) {
+        if (
+          visibleEntities.globals.includes(slug) &&
+          (slug.toLowerCase().includes(lowerQuery) ||
+            globalInfo.label.toLowerCase().includes(lowerQuery))
+        ) {
+          results.push({
+            id: `global-${slug}`,
+            slug,
+            type: 'global',
+            label: globalInfo.label,
+          })
+        }
+      }
+
+      return results
+    },
+    [collectionLabelsMap, globalLabelsMap, visibleEntities],
+  )
+
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
@@ -93,22 +169,50 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
 
   useEffect(() => {
     if (data?.docs && Array.isArray(data.docs)) {
-      setResults(data.docs as SearchResult[])
+      const documentResults: SearchResult[] = (data.docs as SearchResultDocument[]).map((doc) => ({
+        ...doc,
+        type: 'document' as const,
+      }))
+
+      const collectionGlobalResults = debouncedQuery
+        ? filterCollectionsAndGlobals(debouncedQuery)
+        : []
+
+      const mergedResults = [...collectionGlobalResults, ...documentResults]
+
+      setResults(mergedResults)
       setSelectedIndex(-1)
     }
-  }, [data])
+  }, [data, debouncedQuery, filterCollectionsAndGlobals])
 
   const handleResultClick = useCallback(
     (result: SearchResult) => {
-      const { relationTo, value } = result.doc
-      const collectionSlug = relationTo
-      const documentId = value
-
-      if (collectionSlug && documentId) {
-        window.location.href = `${admin}/collections/${collectionSlug}/${documentId}`
+      if (result.type === 'document') {
+        const { relationTo, value } = result.doc
+        router.push(
+          formatAdminURL({
+            adminRoute: admin,
+            path: `/collections/${relationTo}/${value}`,
+          }),
+        )
+      } else if (result.type === 'collection') {
+        router.push(
+          formatAdminURL({
+            adminRoute: admin,
+            path: `/collections/${result.slug}`,
+          }),
+        )
+      } else if (result.type === 'global') {
+        router.push(
+          formatAdminURL({
+            adminRoute: admin,
+            path: `/globals/${result.slug}`,
+          }),
+        )
       }
+      handleClose()
     },
-    [admin],
+    [router, admin, handleClose],
   )
 
   const handleKeyboardNavigation = useCallback(
@@ -150,43 +254,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
       }
     }
   }, [selectedIndex])
-
-  const getCollectionDisplayName = (result: SearchResult) => {
-    if (result.doc && 'relationTo' in result.doc) {
-      return result.doc.relationTo
-        .split('-')
-        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-    }
-    return 'Unknown'
-  }
-
-  const highlightSearchTerm = (text: string, searchTerm: string) => {
-    if (!searchTerm.trim() || !text) {
-      return text
-    }
-
-    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const regex = new RegExp(`(${escapedSearchTerm})`, 'gi')
-
-    if (!regex.test(text)) {
-      return text
-    }
-
-    regex.lastIndex = 0
-    const parts = text.split(regex)
-
-    return parts.map((part, index) => {
-      if (part.toLowerCase() === searchTerm.toLowerCase()) {
-        return (
-          <mark className="admin-search-plugin-modal__highlighted-text" key={index}>
-            {part}
-          </mark>
-        )
-      }
-      return part
-    })
-  }
 
   return (
     <div
@@ -242,41 +309,24 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
           {!isLoading && !isError && results.length === 0 && debouncedQuery && (
             <div className="admin-search-plugin-modal__no-results-message">
               <p>No results found for "{debouncedQuery}"</p>
-              <p className="admin-search-plugin-modal__no-results-hint">Try different keywords or check your spelling</p>
+              <p className="admin-search-plugin-modal__no-results-hint">
+                Try different keywords or check your spelling
+              </p>
             </div>
           )}
           {!isLoading && !isError && results.length > 0 && (
             <ul className="admin-search-plugin-modal__results-list" ref={resultsRef}>
-              {results.map((result, index) => {
-                const displayTitle =
-                  result.title && result.title.trim().length > 0
-                    ? result.title
-                    : `[${t('general:untitled')}]`
-                return (
-                  <li
-                    className={`admin-search-plugin-modal__result-item-container ${
-                      selectedIndex === index ? 'selected' : ''
-                    }`}
-                    key={result.id}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                  >
-                    <button
-                      aria-label={`Open ${displayTitle} in ${getCollectionDisplayName(result)}`}
-                      className="admin-search-plugin-modal__result-item-button"
-                      onClick={() => handleResultClick(result)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleResultClick(result)}
-                      type="button"
-                    >
-                      <div className="admin-search-plugin-modal__result-content">
-                        <span className="admin-search-plugin-modal__result-title">
-                          {highlightSearchTerm(displayTitle, query)}
-                        </span>
-                        <Pill size="small">{getCollectionDisplayName(result)}</Pill>
-                      </div>
-                    </button>
-                  </li>
-                )
-              })}
+              {results.map((result, index) => (
+                <SearchResultItem
+                  index={index}
+                  key={result.id}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  onResultClick={handleResultClick}
+                  query={query}
+                  result={result}
+                  selectedIndex={selectedIndex}
+                />
+              ))}
             </ul>
           )}
         </div>
