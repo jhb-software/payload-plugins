@@ -4,6 +4,7 @@ import React from 'react'
 import type { SearchResult } from '../../types/SearchResult.js'
 
 import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
+import './SearchResultItem.css'
 
 interface SearchResultItemProps {
   index: number
@@ -32,7 +33,7 @@ const highlightSearchTerm = (text: string, searchTerm: string) => {
   return parts.map((part, index) => {
     if (part.toLowerCase() === searchTerm.toLowerCase()) {
       return (
-        <mark className="admin-search-plugin-modal__highlighted-text" key={index}>
+        <mark className="search-result-item__highlighted-text" key={index}>
           {part}
         </mark>
       )
@@ -84,21 +85,19 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
 
   return (
     <li
-      className={`admin-search-plugin-modal__result-item-container ${selectedIndex === index ? 'selected' : ''}`}
+      className={`search-result-item ${selectedIndex === index ? 'search-result-item--selected' : ''}`}
       key={result.id}
       onMouseEnter={onMouseEnter}
     >
       <button
         aria-label={getAriaLabel(result, title, t)}
-        className="admin-search-plugin-modal__result-item-button"
+        className="search-result-item__button"
         onClick={() => onResultClick(result)}
         onKeyDown={(e) => e.key === 'Enter' && onResultClick(result)}
         type="button"
       >
-        <div className="admin-search-plugin-modal__result-content">
-          <span className="admin-search-plugin-modal__result-title">
-            {highlightSearchTerm(title, query)}
-          </span>
+        <div className="search-result-item__content">
+          <span className="search-result-item__title">{highlightSearchTerm(title, query)}</span>
           <Pill size="small">
             {result.type === 'document'
               ? getCollectionDisplayName(result.doc.relationTo)

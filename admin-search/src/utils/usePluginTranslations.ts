@@ -17,7 +17,8 @@ export const usePluginTranslation = () => {
       const translation = pluginTranslations[key] as string
 
       if (!translation) {
-        console.log('Plugin translation not found', key)
+        // eslint-disable-next-line no-console
+        console.error('Plugin translation not found', key)
       }
       return translation ?? key
     },

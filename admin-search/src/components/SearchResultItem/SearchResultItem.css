@@ -1,0 +1,94 @@
+@layer payload-default {
+  .search-result-item {
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 4px;
+    padding: 0;
+    transition: background-color 0.2s ease;
+  }
+
+  .search-result-item__button {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 12px 16px;
+    text-align: left;
+    transition: background-color 0.2s ease;
+    width: 100%;
+  }
+
+  .search-result-item:hover .search-result-item__button {
+    background-color: var(--theme-elevation-100);
+  }
+
+  .search-result-item--selected .search-result-item__button,
+  .search-result-item--selected:hover .search-result-item__button {
+    background-color: var(--theme-elevation-100);
+  }
+
+  .search-result-item__content {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .search-result-item__title {
+    color: var(--theme-elevation-900);
+    flex: 1;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .search-result-item__highlighted-text {
+    background-color: var(--theme-success-100);
+    border-radius: 2px;
+    color: var(--theme-success-700);
+    font-weight: 600;
+  }
+
+  /* Skeleton styles */
+  .search-result-item--skeleton .search-result-item__button {
+    background: none !important;
+    cursor: default !important;
+  }
+
+  .search-result-item--skeleton:hover .search-result-item__button {
+    background: none !important;
+  }
+
+  .search-result-item__skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--theme-elevation-100) 25%,
+      var(--theme-elevation-50) 50%,
+      var(--theme-elevation-100) 75%
+    );
+    background-size: 200px 100%;
+    animation: search-result-shimmer 1.5s infinite;
+  }
+
+  .search-result-item__skeleton-title {
+    border-radius: 4px;
+    height: 20px;
+    width: 60%;
+  }
+
+  .search-result-item__skeleton-pill {
+    border-radius: 10px;
+    height: 24px;
+    width: 70px;
+  }
+
+  @keyframes search-result-shimmer {
+    0% {
+      background-position: -200px 0;
+    }
+    100% {
+      background-position: calc(200px + 100%) 0;
+    }
+  }
+}

@@ -2,7 +2,7 @@
 import type React from 'react'
 
 import { Button, Pill, SearchIcon, useHotkey } from '@payloadcms/ui'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
 import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
@@ -13,7 +13,13 @@ const baseClass = 'admin-search-plugin-bar'
 
 export function SearchBar(): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [shortcut, setShortcut] = useState('')
   const { t } = usePluginTranslation()
+
+  // Determine shortcut on client to avoid SSR hydration mismatch (navigator unavailable on server)
+  useEffect(() => {
+    setShortcut(getSearchShortcut())
+  }, [])
 
   useHotkey(
     {
@@ -36,16 +42,10 @@ export function SearchBar(): React.ReactElement {
       >
         <div className="admin-search-plugin-bar__wrap">
           <SearchIcon />
-          <input
-            aria-label={t('searchInput')}
-            className="admin-search-plugin-bar__input"
-            placeholder={t('searchPlaceholder')}
-            type="text"
-          />
-          <Pill className="admin-search-plugin-bar__shortcut">{getSearchShortcut()}</Pill>
+          <span className="admin-search-plugin-bar__placeholder">{t('searchPlaceholder')}</span>
+          <Pill className="admin-search-plugin-bar__shortcut">{shortcut || '⌘K'}</Pill>
         </div>
       </Button>
-
       {isModalOpen && <SearchModal handleClose={() => setIsModalOpen(false)} />}
     </>
   )
