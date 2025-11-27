@@ -1,20 +1,24 @@
 'use client'
 
+import { getTranslation } from '@payloadcms/translations'
 import {
   Banner,
-  Pill,
   SearchIcon,
   useConfig,
   useDebounce,
+  useEntityVisibility,
   usePayloadAPI,
   useTranslation,
 } from '@payloadcms/ui'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation.js'
+import { formatAdminURL } from 'payload/shared'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { SearchResult } from '../../types/SearchResult.js'
+import type { SearchResult, SearchResultDocument } from '../../types/SearchResult.js'
 
 import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModalSkeleton } from './SearchModalSkeleton.js'
+import { SearchResultItem } from './SearchResultItem.js'
 import './SearchModal.css'
 
 interface SearchModalProps {
@@ -28,14 +32,40 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [isKeyboardNav, setIsKeyboardNav] = useState(false)
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
-  const { t } = useTranslation()
   const { t: pluginT } = usePluginTranslation()
+  const { i18n } = useTranslation()
+  const { config } = useConfig()
   const {
-    config: {
-      routes: { admin, api },
-    },
-  } = useConfig()
+    routes: { admin, api },
+  } = config
+  const router = useRouter()
+  const { visibleEntities } = useEntityVisibility()
+
+  const collectionLabelsMap = useMemo(() => {
+    const map: Record<string, { plural: string; singular: string; slug: string }> = {}
+    config.collections.forEach((collection) => {
+      map[collection.slug] = {
+        slug: collection.slug,
+        plural: getTranslation(collection.labels?.plural || collection.slug, i18n),
+        singular: getTranslation(collection.labels?.singular || collection.slug, i18n),
+      }
+    })
+    return map
+  }, [config.collections, i18n])
+
+  const globalLabelsMap = useMemo(() => {
+    const map: Record<string, { label: string; slug: string }> = {}
+    config.globals.forEach((global) => {
+      map[global.slug] = {
+        slug: global.slug,
+        label: getTranslation(global.label || global.slug, i18n),
+      }
+    })
+    return map
+  }, [config.globals, i18n])
+
   const [{ data, isError, isLoading }, { setParams }] = usePayloadAPI(`${api}/search`, {
     initialParams: {
       depth: 0,
@@ -74,6 +104,53 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     [getSearchParams, setParams],
   )
 
+  const filterCollectionsAndGlobals = useCallback(
+    (searchQuery: string): SearchResult[] => {
+      if (!searchQuery || searchQuery.trim().length < 2) {
+        return []
+      }
+
+      const lowerQuery = searchQuery.toLowerCase()
+      const results: SearchResult[] = []
+
+      // Only include collections that are visible to the current user
+      for (const [slug, labels] of Object.entries(collectionLabelsMap)) {
+        if (
+          visibleEntities.collections.includes(slug) &&
+          (slug.toLowerCase().includes(lowerQuery) ||
+            labels.singular.toLowerCase().includes(lowerQuery) ||
+            labels.plural.toLowerCase().includes(lowerQuery))
+        ) {
+          results.push({
+            id: `collection-${slug}`,
+            slug,
+            type: 'collection',
+            label: labels.plural,
+          })
+        }
+      }
+
+      // Only include globals that are visible to the current user
+      for (const [slug, globalInfo] of Object.entries(globalLabelsMap)) {
+        if (
+          visibleEntities.globals.includes(slug) &&
+          (slug.toLowerCase().includes(lowerQuery) ||
+            globalInfo.label.toLowerCase().includes(lowerQuery))
+        ) {
+          results.push({
+            id: `global-${slug}`,
+            slug,
+            type: 'global',
+            label: globalInfo.label,
+          })
+        }
+      }
+
+      return results
+    },
+    [collectionLabelsMap, globalLabelsMap, visibleEntities],
+  )
+
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
@@ -95,31 +172,61 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
 
   useEffect(() => {
     if (data?.docs && Array.isArray(data.docs)) {
-      setResults(data.docs as SearchResult[])
+      const documentResults: SearchResult[] = (data.docs as SearchResultDocument[]).map((doc) => ({
+        ...doc,
+        type: 'document' as const,
+      }))
+
+      const collectionGlobalResults = debouncedQuery
+        ? filterCollectionsAndGlobals(debouncedQuery)
+        : []
+
+      const mergedResults = [...collectionGlobalResults, ...documentResults]
+
+      setResults(mergedResults)
       setSelectedIndex(-1)
     }
-  }, [data])
+  }, [data, debouncedQuery, filterCollectionsAndGlobals])
 
   const handleResultClick = useCallback(
     (result: SearchResult) => {
-      const { relationTo, value } = result.doc
-      const collectionSlug = relationTo
-      const documentId = value
-
-      if (collectionSlug && documentId) {
-        window.location.href = `${admin}/collections/${collectionSlug}/${documentId}`
+      if (result.type === 'document') {
+        const { relationTo, value } = result.doc
+        router.push(
+          formatAdminURL({
+            adminRoute: admin,
+            path: `/collections/${relationTo}/${value}`,
+          }),
+        )
+      } else if (result.type === 'collection') {
+        router.push(
+          formatAdminURL({
+            adminRoute: admin,
+            path: `/collections/${result.slug}`,
+          }),
+        )
+      } else if (result.type === 'global') {
+        router.push(
+          formatAdminURL({
+            adminRoute: admin,
+            path: `/globals/${result.slug}`,
+          }),
+        )
       }
+      handleClose()
     },
-    [admin],
+    [router, admin, handleClose],
   )
 
   const handleKeyboardNavigation = useCallback(
     (e: KeyboardEvent | React.KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
+        setIsKeyboardNav(true)
         setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
+        setIsKeyboardNav(true)
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0))
       } else if (e.key === 'Enter' && selectedIndex !== -1) {
         e.preventDefault()
@@ -145,6 +252,26 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
   }, [handleKeyboardNavigation])
 
   useEffect(() => {
+    if (!isKeyboardNav) {
+      return
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Ignore "fake" mouse moves that some browsers fire on scroll
+      // This ensures we only re-enable hover when the user *actually* moves the mouse
+      if (e.movementX === 0 && e.movementY === 0) {
+        return
+      }
+      setIsKeyboardNav(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+    }
+  }, [isKeyboardNav])
+
+  useEffect(() => {
     if (selectedIndex !== -1 && resultsRef.current) {
       const selectedItem = resultsRef.current.children[selectedIndex]
       if (selectedItem instanceof HTMLLIElement) {
@@ -153,47 +280,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     }
   }, [selectedIndex])
 
-  const getCollectionDisplayName = (result: SearchResult) => {
-    if (result.doc && 'relationTo' in result.doc) {
-      return result.doc.relationTo
-        .split('-')
-        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-    }
-    return pluginT('unknownCollection')
-  }
-
-  const highlightSearchTerm = (text: string, searchTerm: string) => {
-    if (!searchTerm.trim() || !text) {
-      return text
-    }
-
-    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const regex = new RegExp(`(${escapedSearchTerm})`, 'gi')
-
-    if (!regex.test(text)) {
-      return text
-    }
-
-    regex.lastIndex = 0
-    const parts = text.split(regex)
-
-    return parts.map((part, index) => {
-      if (part.toLowerCase() === searchTerm.toLowerCase()) {
-        return (
-          <mark className="search-modal__highlighted-text" key={index}>
-            {part}
-          </mark>
-        )
-      }
-      return part
-    })
-  }
-
   return (
     <div
       aria-label={pluginT('closeSearchModal')}
-      className="search-modal__overlay"
+      className="admin-search-plugin-modal__overlay"
       onClick={handleClose}
       onKeyDown={(e) => e.key === 'Enter' && handleClose()}
       role="button"
@@ -201,20 +291,20 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     >
       <div
         aria-label={pluginT('searchModalContent')}
-        className="search-modal__content"
+        className="admin-search-plugin-modal__content"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         role="button"
         tabIndex={0}
       >
-        <div className="search-modal__header">
-          <div className="search-modal__input-wrapper">
-            <span className="search-modal__search-icon">
+        <div className="admin-search-plugin-modal__header">
+          <div className="admin-search-plugin-modal__input-wrapper">
+            <span className="admin-search-plugin-modal__search-icon">
               <SearchIcon />
             </span>
             <input
               aria-label={pluginT('searchForDocuments')}
-              className="search-modal__input-field"
+              className="admin-search-plugin-modal__input-field"
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && results.length > 0) {
@@ -232,70 +322,59 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
               type="text"
               value={query}
             />
-            <span className="search-modal__escape-hint">{pluginT('escapeHint')}</span>
+            <span className="admin-search-plugin-modal__escape-hin">{pluginT('escapeHint')}</span>
           </div>
         </div>
 
-        <div className="search-modal__results-container">
+        <div className="admin-search-plugin-modal__results-container">
           {isLoading && <SearchModalSkeleton count={SEARCH_RESULTS_LIMIT} />}
           {isError && <Banner type="error">{pluginT('errorSearching')}</Banner>}
           {!isLoading && !isError && results.length === 0 && debouncedQuery && (
-            <div className="search-modal__no-results-message">
+            <div className="admin-search-plugin-modal__no-results-message">
               <p>{pluginT('noResultsFound').replace('{query}', debouncedQuery)}</p>
-              <p className="search-modal__no-results-hint">{pluginT('noResultsHint')}</p>
+              <p className="admin-search-plugin-modal__no-results-hint">
+                {pluginT('noResultsHint')}
+              </p>
             </div>
           )}
           {!isLoading && !isError && results.length > 0 && (
-            <ul className="search-modal__results-list" ref={resultsRef}>
-              {results.map((result, index) => {
-                const displayTitle =
-                  result.title && result.title.trim().length > 0
-                    ? result.title
-                    : `[${t('general:untitled')}]`
-                return (
-                  <li
-                    className={`search-modal__result-item-container ${
-                      selectedIndex === index ? 'selected' : ''
-                    }`}
-                    key={result.id}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                  >
-                    <button
-                      aria-label={pluginT('openDocumentIn')
-                        .replace('{title}', displayTitle)
-                        .replace('{collection}', getCollectionDisplayName(result))}
-                      className="search-modal__result-item-button"
-                      onClick={() => handleResultClick(result)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleResultClick(result)}
-                      type="button"
-                    >
-                      <div className="search-modal__result-content">
-                        <span className="search-modal__result-title">
-                          {highlightSearchTerm(displayTitle, query)}
-                        </span>
-                        <Pill size="small">{getCollectionDisplayName(result)}</Pill>
-                      </div>
-                    </button>
-                  </li>
-                )
-              })}
+            <ul className="admin-search-plugin-modal__results-list" ref={resultsRef}>
+              {results.map((result, index) => (
+                <SearchResultItem
+                  index={index}
+                  key={result.id}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  onResultClick={handleResultClick}
+                  query={query}
+                  result={result}
+                  selectedIndex={selectedIndex}
+                />
+              ))}
             </ul>
           )}
         </div>
 
-        <div className="search-modal__footer">
-          <div className="search-modal__keyboard-shortcuts">
-            <div className="search-modal__shortcut-item">
-              <span className="search-modal__shortcut-key">↑↓</span>
-              <span className="search-modal__shortcut-description">{pluginT('toNavigate')}</span>
+        <div className="admin-search-plugin-modal__footer">
+          <div className="admin-search-plugin-modal__keyboard-shortcuts">
+            <div className="admin-search-plugin-modal__shortcut-item">
+              <span className="admin-search-plugin-modal__shortcut-key">↑↓</span>
+              <span className="admin-search-plugin-modal__shortcut-description">
+                {pluginT('toNavigate')}
+              </span>
             </div>
-            <div className="search-modal__shortcut-item">
-              <span className="search-modal__shortcut-key">↵</span>
-              <span className="search-modal__shortcut-description">{pluginT('toSelect')}</span>
+            <div className="admin-search-plugin-modal__shortcut-item">
+              <span className="admin-search-plugin-modal__shortcut-key">↵</span>
+              <span className="admin-search-plugin-modal__shortcut-description">
+                {pluginT('toSelect')}
+              </span>
             </div>
-            <div className="search-modal__shortcut-item">
-              <span className="search-modal__shortcut-key">ESC</span>
-              <span className="search-modal__shortcut-description">{pluginT('toClose')}</span>
+            <div className="admin-search-plugin-modal__shortcut-item">
+              <span className="admin-search-plugin-modal__shortcut-key">
+                {pluginT('escapeHint')}
+              </span>
+              <span className="admin-search-plugin-modal__shortcut-description">
+                {pluginT('toClose')}
+              </span>
             </div>
           </div>
         </div>

@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@payloadcms/translations':
+        specifier: ^3.62.1
+        version: 3.62.1
       '@payloadcms/ui':
         specifier: ^3.62.1
         version: 3.62.1(@types/react@19.2.2)(monaco-editor@0.54.0)(next@15.5.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.77.4))(payload@3.62.1(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)

@@ -5,43 +5,28 @@ on:
     branches: [main]
 
 jobs:
-  format-and-test:
+  format:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy environment variables to dev apps
-        run: |
-          cat << 'EOF' > pages/dev/.env
-          ${{ secrets.PAGES_DEV_ENV_FILE }}
-          EOF
-
-          cat << 'EOF' > pages/dev_unlocalized/.env
-          ${{ secrets.PAGES_DEV_UNLOCALIZED_ENV_FILE }}
-          EOF
-
-          cat << 'EOF' > pages/dev_multi_tenant/.env
-          ${{ secrets.PAGES_DEV_MULTI_TENANT_ENV_FILE }}
-          EOF
-        
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: ^9.0.0
-          
+
       - name: Install dependencies in all packages
         run: pnpm install:all
-        
+
       - name: Run format
         run: pnpm format:all
-        
+
       - name: Check for formatting changes in all packages
         run: |
           if [ -n "$(git status --porcelain)" ]; then
@@ -50,6 +35,172 @@ jobs:
             git diff
             exit 1
           fi
-          
-      - name: Run tests in all packages
-        run: pnpm test:all
+
+  # TODO: also lint all other plugins
+  lint-pages:
+    runs-on: ubuntu-latest
+    needs: format
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ^9.0.0
+
+      - name: Install dependencies
+        run: pnpm install:all
+
+      - name: Run ESLint
+        run: cd pages && pnpm lint
+
+  test-pages-localized:
+    runs-on: ubuntu-latest
+    needs: format
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [mongodb, sqlite]
+    name: test-pages-localized-${{ matrix.database }}
+
+    services:
+      mongodb:
+        image: ${{ matrix.database == 'mongodb' && 'mongo:7.0' || '' }}
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup environment variables
+        run: |
+          # Set up environment variables for the dev app
+          echo "PAYLOAD_SECRET=test-secret-not-for-production" > pages/dev/.env
+          echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev/.env
+
+          if [ "${{ matrix.database }}" = "mongodb" ]; then
+            echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-test" >> pages/dev/.env
+          else
+            echo "SQLITE_URL=file:./payload-test.db" >> pages/dev/.env
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ^9.0.0
+
+      - name: Install dependencies
+        run: pnpm install:all
+
+      - name: Run tests
+        run: cd pages && pnpm test:localized:${{ matrix.database }}
+        env:
+          PAYLOAD_DATABASE: ${{ matrix.database }}
+
+  test-pages-unlocalized:
+    runs-on: ubuntu-latest
+    needs: format
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [mongodb, sqlite]
+    name: test-pages-unlocalized-${{ matrix.database }}
+
+    services:
+      mongodb:
+        image: ${{ matrix.database == 'mongodb' && 'mongo:7.0' || '' }}
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup environment variables
+        run: |
+          echo "PAYLOAD_SECRET=test-secret-not-for-production" > pages/dev_unlocalized/.env
+          echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev_unlocalized/.env
+
+          if [ "${{ matrix.database }}" = "mongodb" ]; then
+            echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-unlocalized-test" >> pages/dev_unlocalized/.env
+          else
+            echo "SQLITE_URL=file:./payload-test.db" >> pages/dev_unlocalized/.env
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ^9.0.0
+
+      - name: Install dependencies
+        run: pnpm install:all
+
+      - name: Run tests
+        run: cd pages && pnpm test:unlocalized:${{ matrix.database }}
+        env:
+          PAYLOAD_DATABASE: ${{ matrix.database }}
+
+  test-pages-multi-tenant:
+    runs-on: ubuntu-latest
+    needs: format
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [mongodb, sqlite]
+    name: test-pages-multi-tenant-${{ matrix.database }}
+
+    services:
+      mongodb:
+        image: ${{ matrix.database == 'mongodb' && 'mongo:7.0' || '' }}
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup environment variables
+        run: |
+          echo "PAYLOAD_SECRET=test-secret-not-for-production" > pages/dev_multi_tenant/.env
+          echo "NEXT_PUBLIC_FRONTEND_URL=http://localhost:4321" >> pages/dev_multi_tenant/.env
+
+          if [ "${{ matrix.database }}" = "mongodb" ]; then
+            echo "MONGODB_URL=mongodb://localhost:27017/plugin-pages-dev-multi-tenant-test" >> pages/dev_multi_tenant/.env
+          else
+            echo "SQLITE_URL=file:./payload-test.db" >> pages/dev_multi_tenant/.env
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ^9.0.0
+
+      - name: Install dependencies
+        run: pnpm install:all
+
+      - name: Run tests
+        run: cd pages && pnpm test:multi-tenant:${{ matrix.database }}
+        env:
+          PAYLOAD_DATABASE: ${{ matrix.database }}

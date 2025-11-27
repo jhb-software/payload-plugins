@@ -1,32 +1,35 @@
-import { PayloadRequest } from 'payload'
-import { Breadcrumb } from '../types/Breadcrumb.js'
-import { Locale } from '../types/Locale.js'
-import { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
-import { SeoMetadata } from '../types/SeoMetadata.js'
+import type { PayloadRequest } from 'payload'
+
+import type { Breadcrumb } from '../types/Breadcrumb.js'
+import type { Locale } from '../types/Locale.js'
+import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { SeoMetadata } from '../types/SeoMetadata.js'
+
 import { getBreadcrumbs } from './getBreadcrumbs.js'
 
 /** Sets the virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
 export async function setPageDocumentVirtualFields({
-  req,
   doc,
   locale,
   locales,
   pageConfigAttributes,
+  req,
 }: {
-  req: PayloadRequest | undefined
   doc: Record<string, any>
-  locale: Locale | 'all' | undefined
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
   pageConfigAttributes: PageCollectionConfigAttributes
+  req: PayloadRequest | undefined
 }) {
   if (locales && locale) {
     const breadcrumbs = (await getBreadcrumbs({
-      req,
-      locales: locales,
       breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
-      parentField: pageConfigAttributes.parent.name,
-      parentCollection: pageConfigAttributes.parent.collection,
       data: doc,
+      locales,
+      parentCollection: pageConfigAttributes.parent.collection,
+      parentField: pageConfigAttributes.parent.name,
+      req,
       // For localized pages, we need to fetch the breadcrumbs for all locales in order to correctly set the alternate paths
       locale: 'all',
     })) as Record<Locale, Breadcrumb[]>
@@ -47,7 +50,7 @@ export async function setPageDocumentVirtualFields({
 
     const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
       ([locale, path]) => ({
-        hreflang: locale as Locale,
+        hreflang: locale,
         path,
       }),
     )
@@ -55,39 +58,39 @@ export async function setPageDocumentVirtualFields({
     if (locale === 'all') {
       return {
         ...doc,
-        path: paths,
         breadcrumbs,
         meta: {
           ...doc.meta,
           alternatePaths,
         },
+        path: paths,
       }
     } else {
       return {
         ...doc,
-        path: paths[locale],
         breadcrumbs: breadcrumbs[locale],
         meta: {
           ...doc.meta,
           alternatePaths,
         },
+        path: paths[locale],
       }
     }
   } else {
     const breadcrumbs = (await getBreadcrumbs({
-      req,
-      locales: locales,
       breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
-      parentField: pageConfigAttributes.parent.name,
-      parentCollection: pageConfigAttributes.parent.collection,
       data: doc,
       locale: undefined,
+      locales,
+      parentCollection: pageConfigAttributes.parent.collection,
+      parentField: pageConfigAttributes.parent.name,
+      req,
     })) as Breadcrumb[]
 
     return {
       ...doc,
+      breadcrumbs,
       path: breadcrumbs.at(-1)!.path,
-      breadcrumbs: breadcrumbs,
     }
   }
 }

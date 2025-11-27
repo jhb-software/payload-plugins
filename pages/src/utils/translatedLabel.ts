@@ -1,4 +1,5 @@
-import { StaticLabel } from 'payload'
+import type { StaticLabel } from 'payload'
+
 import { translations } from '../translations/index.js'
 
 /** Returns the StaticLabel object for the given translation to to use inside the field label. */

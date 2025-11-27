@@ -1,5 +1,4 @@
 import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -12,6 +11,7 @@ import { Redirects } from './collections/redirects'
 import { BlogpostCategories } from './collections/blogpost-categories'
 import { en } from 'payload/i18n/en'
 import { de } from 'payload/i18n/de'
+import { databaseAdapter } from './test/databaseAdapter'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -38,14 +38,7 @@ export default buildConfig({
       fields: [],
     },
   ],
-  db: mongooseAdapter({
-    url: process.env.MONGODB_URL!,
-  }),
-  /*  db: sqliteAdapter({
-    client: {
-      url: process.env.SQLITE_URL!,
-    },
-  }), */
+  db: databaseAdapter,
   secret: process.env.PAYLOAD_SECRET!,
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),

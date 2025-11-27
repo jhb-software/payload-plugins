@@ -1,22 +1,22 @@
+import type {
+  IncomingPageCollectionConfig,
+  PageCollectionConfig,
+} from '../types/PageCollectionConfig.js'
+import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+
 import { breadcrumbsField } from '../fields/breadcrumbsField.js'
 import { isRootPageField } from '../fields/isRootPageField.js'
 import { parentField } from '../fields/parentField.js'
 import { pathField } from '../fields/pathField.js'
 import { pageSlugField } from '../fields/slugField.js'
 import { beforeDuplicateTitle } from '../hooks/beforeDuplicate.js'
-import { selectDependentFieldsBeforeOperation } from '../hooks/selectDependentFieldsBeforeOperation.js'
 import { preventParentDeletion } from '../hooks/preventParentDeletion.js'
+import { selectDependentFieldsBeforeOperation } from '../hooks/selectDependentFieldsBeforeOperation.js'
 import {
   setVirtualFieldsAfterChange,
   setVirtualFieldsBeforeRead,
 } from '../hooks/setVirtualFields.js'
-import {
-  IncomingPageCollectionConfig,
-  PageCollectionConfig,
-} from '../types/PageCollectionConfig.js'
-
-import { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
-import { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 /**
  * Creates a collection config for a page-like collection by adding:
@@ -33,11 +33,13 @@ export const createPageCollectionConfig = ({
   pluginConfig: PagesPluginConfig
 }): PageCollectionConfig => {
   const pageConfig: PageCollectionConfigAttributes = {
-    isRootCollection: incomingCollectionConfig.page.isRootCollection ?? false,
-    parent: {
-      collection: incomingCollectionConfig.page.parent.collection,
-      name: incomingCollectionConfig.page.parent.name,
-      sharedDocument: incomingCollectionConfig.page.parent.sharedDocument ?? false,
+    slug: {
+      fallbackField:
+        incomingCollectionConfig.page?.slug?.fallbackField ??
+        incomingCollectionConfig.admin?.useAsTitle ??
+        'title',
+      staticValue: incomingCollectionConfig.page?.slug?.staticValue,
+      unique: incomingCollectionConfig.page?.slug?.unique ?? true,
     },
     breadcrumbs: {
       labelField:
@@ -45,16 +47,14 @@ export const createPageCollectionConfig = ({
         incomingCollectionConfig.admin?.useAsTitle ??
         'title',
     },
-    slug: {
-      fallbackField:
-        incomingCollectionConfig.page?.slug?.fallbackField ??
-        incomingCollectionConfig.admin?.useAsTitle ??
-        'title',
-      unique: incomingCollectionConfig.page?.slug?.unique ?? true,
-      staticValue: incomingCollectionConfig.page?.slug?.staticValue,
+    isRootCollection: incomingCollectionConfig.page.isRootCollection ?? false,
+    livePreview: incomingCollectionConfig.page?.livePreview ?? true,
+    parent: {
+      name: incomingCollectionConfig.page.parent.name,
+      collection: incomingCollectionConfig.page.parent.collection,
+      sharedDocument: incomingCollectionConfig.page.parent.sharedDocument ?? false,
     },
     preview: incomingCollectionConfig.page?.preview ?? true,
-    livePreview: incomingCollectionConfig.page?.livePreview ?? true,
   }
 
   return {
@@ -68,10 +68,10 @@ export const createPageCollectionConfig = ({
           (pageConfig.livePreview
             ? ({ data, req }) =>
                 pluginConfig.generatePageURL({
+                  data,
                   path: 'path' in data && typeof data.path === 'string' ? data.path : null,
                   preview: true,
-                  data: data,
-                  req: req,
+                  req,
                 })
             : undefined),
       },
@@ -80,9 +80,9 @@ export const createPageCollectionConfig = ({
         (pageConfig.preview
           ? (data, options) =>
               pluginConfig.generatePageURL({
+                data,
                 path: 'path' in data && typeof data.path === 'string' ? data.path : null,
                 preview: true,
-                data: data,
                 req: options.req,
               })
           : undefined),
@@ -92,26 +92,6 @@ export const createPageCollectionConfig = ({
       // This makes the page attributes available in hooks etc.
       pageConfig,
       pagesPluginConfig: pluginConfig,
-    },
-    page: pageConfig,
-    hooks: {
-      ...incomingCollectionConfig.hooks,
-      beforeOperation: [
-        ...(incomingCollectionConfig.hooks?.beforeOperation || []),
-        selectDependentFieldsBeforeOperation,
-      ],
-      beforeRead: [
-        ...(incomingCollectionConfig.hooks?.beforeRead || []),
-        setVirtualFieldsBeforeRead,
-      ],
-      afterChange: [
-        ...(incomingCollectionConfig.hooks?.afterChange || []),
-        setVirtualFieldsAfterChange,
-      ],
-      beforeDelete: [
-        ...(incomingCollectionConfig.hooks?.beforeDelete || []),
-        ...(pluginConfig.preventParentDeletion !== false ? [preventParentDeletion] : []),
-      ],
     },
     fields: [
       ...(pageConfig.isRootCollection
@@ -123,8 +103,8 @@ export const createPageCollectionConfig = ({
         : []),
       pageSlugField({
         fallbackField: pageConfig.slug.fallbackField,
-        unique: pageConfig.slug.unique,
         staticValue: pageConfig.slug.staticValue,
+        unique: pageConfig.slug.unique,
       }),
       parentField(pageConfig, incomingCollectionConfig.slug, pluginConfig.baseFilter),
       pathField(),
@@ -146,5 +126,25 @@ export const createPageCollectionConfig = ({
           : field,
       ),
     ],
+    hooks: {
+      ...incomingCollectionConfig.hooks,
+      afterChange: [
+        ...(incomingCollectionConfig.hooks?.afterChange || []),
+        setVirtualFieldsAfterChange,
+      ],
+      beforeDelete: [
+        ...(incomingCollectionConfig.hooks?.beforeDelete || []),
+        ...(pluginConfig.preventParentDeletion !== false ? [preventParentDeletion] : []),
+      ],
+      beforeOperation: [
+        ...(incomingCollectionConfig.hooks?.beforeOperation || []),
+        selectDependentFieldsBeforeOperation,
+      ],
+      beforeRead: [
+        ...(incomingCollectionConfig.hooks?.beforeRead || []),
+        setVirtualFieldsBeforeRead,
+      ],
+    },
+    page: pageConfig,
   }
 }

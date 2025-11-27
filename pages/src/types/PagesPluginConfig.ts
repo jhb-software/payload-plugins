@@ -1,10 +1,7 @@
-import { PayloadRequest, Where } from 'payload'
+import type { PayloadRequest, Where } from 'payload'
 
 /** Configuration options for the pages plugin. */
 export type PagesPluginConfig = {
-  /** Whether the pages plugin is enabled. */
-  enabled?: boolean
-
   /**
    * The base filter to apply to find queries which are executed by the pages plugin internally.
    *
@@ -13,27 +10,8 @@ export type PagesPluginConfig = {
    */
   baseFilter?: (args: { req: PayloadRequest }) => Where
 
-  /**
-   * The filter to apply to find queries when validating redirects.
-   *
-   * This is useful for multi-tenant setups where you want to restrict the redirects plugin to
-   * account for redirects in the same tenant while validating redirects on create/update.
-   */
-  redirectValidationFilter?: (args: { req: PayloadRequest; doc: any }) => Where
-
-  /**
-   * Whether to prevent deletion of parent documents that have child documents referencing them.
-   *
-   * When enabled (default), the plugin will check for child documents before allowing deletion
-   * of a parent document. This protection is only applied for MongoDB, SQLite, and PostgreSQL
-   * database adapters that don't enforce foreign key constraints natively.
-   *
-   * Set to false to disable this protection and allow deletion of parent documents regardless
-   * of existing child references.
-   *
-   * @default true
-   */
-  preventParentDeletion?: boolean
+  /** Whether the pages plugin is enabled. */
+  enabled?: boolean
 
   /**
    * Function to generate the full URL to a frontend page. This will be passed to Payload's preview and live preview features.
@@ -50,9 +28,31 @@ export type PagesPluginConfig = {
    * ```
    */
   generatePageURL: (args: {
-    path: string | null
-    preview: boolean
     data: Record<string, unknown>
+    path: null | string
+    preview: boolean
     req: PayloadRequest
-  }) => (string | null) | Promise<string | null>
+  }) => (null | string) | Promise<null | string>
+
+  /**
+   * Whether to prevent deletion of parent documents that have child documents referencing them.
+   *
+   * When enabled (default), the plugin will check for child documents before allowing deletion
+   * of a parent document. This protection is only applied for MongoDB, SQLite, and PostgreSQL
+   * database adapters that don't enforce foreign key constraints natively.
+   *
+   * Set to false to disable this protection and allow deletion of parent documents regardless
+   * of existing child references.
+   *
+   * @default true
+   */
+  preventParentDeletion?: boolean
+
+  /**
+   * The filter to apply to find queries when validating redirects.
+   *
+   * This is useful for multi-tenant setups where you want to restrict the redirects plugin to
+   * account for redirects in the same tenant while validating redirects on create/update.
+   */
+  redirectValidationFilter?: (args: { doc: any; req: PayloadRequest }) => Where
 }

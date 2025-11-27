@@ -1,4 +1,5 @@
-import { Field } from 'payload'
+import type { Field } from 'payload'
+
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 /**
@@ -9,70 +10,70 @@ import { translatedLabel } from '../utils/translatedLabel.js'
 export function breadcrumbsField(): Field {
   return {
     name: 'breadcrumbs',
+    type: 'array',
     interfaceName: 'Breadcrumbs',
     label: translatedLabel('breadcrumbs'),
     labels: {
-      singular: translatedLabel('breadcrumb'),
       plural: translatedLabel('breadcrumbs'),
+      singular: translatedLabel('breadcrumb'),
     },
-    type: 'array',
-    required: true,
     localized: true,
+    required: true,
     virtual: true,
     // Validate by default to allow the document to be updated, without having to set the breadcrumbs field.
-    validate: (_: any): true => true,
+    admin: {
+      components: {
+        Field: '@jhb.software/payload-pages-plugin/client#BreadcrumbsField',
+      },
+      disableBulkEdit: true,
+      position: 'sidebar',
+      readOnly: true,
+    },
     fields: [
       {
         type: 'row',
         fields: [
           {
             name: 'slug',
+            type: 'text',
             label: translatedLabel('slug'),
             required: true,
-            type: 'text',
             // Validate by default to allow the document to be updated, without having to set the breadcrumbs field.
-            validate: (_: any): true => true,
             admin: {
               width: '33%',
             },
+            validate: (_: any): true => true,
           },
           {
             name: 'path',
+            type: 'text',
             label: translatedLabel('path'),
             required: true,
-            type: 'text',
             // Validate by default to allow the document to be updated, without having to set the breadcrumbs field.
-            validate: (_: any): true => true,
             admin: {
               width: '33%',
             },
+            validate: (_: any): true => true,
           },
           {
             name: 'label',
+            type: 'text',
             label: translatedLabel('label'),
             required: true,
-            type: 'text',
             // Validate by default to allow the document to be updated, without having to set the breadcrumbs field.
-            validate: (_: any): true => true,
             admin: {
               width: '33%',
             },
+            validate: (_: any): true => true,
           },
         ],
       },
     ],
-    admin: {
-      readOnly: true,
-      disableBulkEdit: true,
-      position: 'sidebar',
-      components: {
-        Field: '@jhb.software/payload-pages-plugin/client#BreadcrumbsField',
-      },
-    },
     hooks: {
       afterRead: [
         // The breadcrumbs are generated in the getVirtualFields collection hook
       ],
     },
+    validate: (_: any): true => true,
   }
 }

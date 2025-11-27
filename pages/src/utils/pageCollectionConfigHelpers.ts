@@ -3,7 +3,7 @@ import type { PageCollectionConfig } from 'src/types/PageCollectionConfig.js'
 
 /** Checks if the config is a PageCollectionConfig. */
 export const isPageCollectionConfig = (
-  config: CollectionConfig | ClientCollectionConfig,
+  config: ClientCollectionConfig | CollectionConfig,
 ): config is PageCollectionConfig => {
   if (!config) {
     console.error('config is not defined')
@@ -19,8 +19,8 @@ export const isPageCollectionConfig = (
  * This provides type-safe access to the page attributes.
  */
 export const asPageCollectionConfig = (
-  config: CollectionConfig | ClientCollectionConfig,
-): PageCollectionConfig | null => {
+  config: ClientCollectionConfig | CollectionConfig,
+): null | PageCollectionConfig => {
   if (isPageCollectionConfig(config)) {
     return config
   }
@@ -33,7 +33,7 @@ export const asPageCollectionConfig = (
  * This provides type-safe access to the page attributes.
  */
 export const asPageCollectionConfigOrThrow = (
-  config: CollectionConfig | ClientCollectionConfig,
+  config: ClientCollectionConfig | CollectionConfig,
 ): PageCollectionConfig => {
   if (isPageCollectionConfig(config)) {
     return config

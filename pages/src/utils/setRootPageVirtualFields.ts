@@ -1,6 +1,6 @@
-import { Breadcrumb } from '../types/Breadcrumb.js'
-import { Locale } from '../types/Locale.js'
-import { SeoMetadata } from '../types/SeoMetadata.js'
+import type { Breadcrumb } from '../types/Breadcrumb.js'
+import type { Locale } from '../types/Locale.js'
+import type { SeoMetadata } from '../types/SeoMetadata.js'
 
 /**
  * The slug of the root page.
@@ -14,15 +14,15 @@ export const ROOT_PAGE_SLUG = ''
 
 /** Sets the slug field and virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
 export function setRootPageDocumentVirtualFields({
+  breadcrumbLabelField,
   doc,
   locale,
   locales,
-  breadcrumbLabelField,
 }: {
+  breadcrumbLabelField: string
   doc: Record<string, any>
   locale: Locale | undefined
   locales: Locale[] | undefined
-  breadcrumbLabelField: string
 }) {
   if (locales && locale) {
     const paths = locales.reduce(
@@ -41,7 +41,7 @@ export function setRootPageDocumentVirtualFields({
 
     const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
       ([locale, path]) => ({
-        hreflang: locale as Locale,
+        hreflang: locale,
         path,
       }),
     )
@@ -51,9 +51,9 @@ export function setRootPageDocumentVirtualFields({
         (acc, locale) => {
           acc[locale] = [
             {
-              path: paths[locale],
-              label: doc[breadcrumbLabelField][locale],
               slug: ROOT_PAGE_SLUG,
+              label: doc[breadcrumbLabelField][locale],
+              path: paths[locale],
             },
           ]
           return acc
@@ -63,41 +63,41 @@ export function setRootPageDocumentVirtualFields({
 
       return {
         ...doc,
-        path: paths,
-        breadcrumbs: breadcrumbs,
+        breadcrumbs,
         meta: {
           ...doc.meta,
-          alternatePaths: alternatePaths,
+          alternatePaths,
         },
+        path: paths,
       }
     } else {
       return {
         ...doc,
-        path: paths[locale],
         breadcrumbs: [
           {
-            path: `/${locale}`,
-            label: doc[breadcrumbLabelField],
             slug: ROOT_PAGE_SLUG,
+            label: doc[breadcrumbLabelField],
+            path: `/${locale}`,
           },
         ],
         meta: {
           ...doc.meta,
-          alternatePaths: alternatePaths,
+          alternatePaths,
         },
+        path: paths[locale],
       }
     }
   } else {
     return {
       ...doc,
-      path: '/',
       breadcrumbs: [
         {
-          path: '/',
-          label: doc[breadcrumbLabelField],
           slug: ROOT_PAGE_SLUG,
+          label: doc[breadcrumbLabelField],
+          path: '/',
         },
       ],
+      path: '/',
     }
   }
 }

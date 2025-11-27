@@ -1,7 +1,9 @@
-import { CollectionBeforeDeleteHook } from 'payload'
-import { PagesPluginConfig } from '../types/PagesPluginConfig.js'
-import { childDocumentsOf } from '../utils/childDocumentsOf.js'
+import type { CollectionBeforeDeleteHook } from 'payload'
+
+import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+
 import { AdminPanelError } from '../utils/AdminPanelError.js'
+import { childDocumentsOf } from '../utils/childDocumentsOf.js'
 
 const ADAPTERS_REQUIRING_CUSTOM_LOGIC = [
   '@payloadcms/db-mongodb',
@@ -10,9 +12,9 @@ const ADAPTERS_REQUIRING_CUSTOM_LOGIC = [
 ]
 
 export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
-  req,
   id,
   collection,
+  req,
 }) => {
   const databaseAdapter = req.payload.db.packageName || req.payload.db.name
   if (!ADAPTERS_REQUIRING_CUSTOM_LOGIC.includes(databaseAdapter)) {
@@ -37,7 +39,7 @@ export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
         acc[child.collection].push(child.id)
         return acc
       },
-      {} as Record<string, (string | number)[]>,
+      {} as Record<string, (number | string)[]>,
     )
 
     const collectionMessages = Object.entries(childrenByCollection)

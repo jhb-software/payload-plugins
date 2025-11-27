@@ -8,7 +8,7 @@ import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 import './SearchBar.css'
 
-const baseClass = 'search-bar'
+const baseClass = 'admin-search-plugin-bar'
 
 export function SearchBar(): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -39,15 +39,15 @@ export function SearchBar(): React.ReactElement {
         className={`${baseClass} position-actions`}
         onClick={() => setIsModalOpen(true)}
       >
-        <div className="search-bar__wrap">
+        <div className="admin-search-plugin-bar__wrap">
           <SearchIcon />
           <input
             aria-label={t('searchInput')}
-            className="search-filter__input"
+            className="admin-search-plugin-bar__input"
             placeholder={t('searchPlaceholder')}
             type="text"
           />
-          <Pill className="shortcut-key">{shortcutKey} + K</Pill>
+          <Pill className="admin-search-plugin-bar__shortcut">{shortcutKey} + K</Pill>
         </div>
       </Button>
 
