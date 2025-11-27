@@ -16,7 +16,7 @@ export const en: GenericTranslationsObject = {
     searchForDocuments: 'Search for documents',
     searchInput: 'Search input',
     searchModalContent: 'Search modal content',
-    searchPlaceholder: 'Search...',
+    searchPlaceholder: 'Search',
     searchTooltip: 'Search ({shortcut})',
     toClose: 'to close',
     toNavigate: 'to navigate',
