@@ -31,6 +31,7 @@ const SEARCH_RESULTS_LIMIT = 5
 export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
+  const [displayedQuery, setDisplayedQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [isKeyboardNav, setIsKeyboardNav] = useState(false)
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
@@ -155,19 +156,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
     inputRef.current?.focus()
   }, [])
 
-  // Initial search to show default results
   useEffect(() => {
-    triggerSearch()
-  }, [triggerSearch])
-
-  useEffect(() => {
-    if (!debouncedQuery) {
-      setResults([])
-      setSelectedIndex(-1)
-      return
-    }
-
-    triggerSearch(debouncedQuery)
+    triggerSearch(debouncedQuery || undefined)
   }, [debouncedQuery, triggerSearch])
 
   useEffect(() => {
@@ -184,9 +174,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
       const mergedResults = [...collectionGlobalResults, ...documentResults]
 
       setResults(mergedResults)
-      setSelectedIndex(-1)
+      setSelectedIndex(mergedResults.length > 0 ? 0 : -1)
+      setDisplayedQuery(debouncedQuery)
     }
-  }, [data, debouncedQuery, filterCollectionsAndGlobals])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data])
 
   const handleResultClick = useCallback(
     (result: SearchResult) => {
@@ -327,15 +319,17 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
         </div>
 
         <div className="admin-search-plugin-modal__results-container">
-          {isLoading && <SearchModalSkeleton count={SEARCH_RESULTS_LIMIT} />}
+          {isLoading && results.length === 0 && !displayedQuery && (
+            <SearchModalSkeleton count={SEARCH_RESULTS_LIMIT} />
+          )}
           {isError && <Banner type="error">{t('errorSearching')}</Banner>}
-          {!isLoading && !isError && results.length === 0 && debouncedQuery && (
+          {!isError && results.length === 0 && displayedQuery && (
             <div className="admin-search-plugin-modal__no-results-message">
-              <p>{t('noResultsFound').replace('{query}', debouncedQuery)}</p>
+              <p>{t('noResultsFound').replace('{query}', displayedQuery)}</p>
               <p className="admin-search-plugin-modal__no-results-hint">{t('noResultsHint')}</p>
             </div>
           )}
-          {!isLoading && !isError && results.length > 0 && (
+          {!isError && results.length > 0 && (
             <ul
               className={`admin-search-plugin-modal__results-list ${isKeyboardNav ? 'is-keyboard-nav' : ''}`}
               ref={resultsRef}
