@@ -1,7 +1,7 @@
 import payload, { CollectionSlug } from 'payload'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
-import { Page, Tenant } from 'payload/generated-types'
+import type { Page, Tenant, Config } from 'payload/generated-types'
 
 // NOTE: this file only contains test that are specific to the multi-tenant setup. The main plugin tests are located in the /dev project.
 
@@ -14,15 +14,15 @@ const virtualFields = {
   path: '',
 }
 
+type DefaultIDType = Config['db']['defaultIDType']
+
 beforeAll(async () => {
   await payload.init({
     config: config,
   })
 
   // clear all collections except users
-  for (const collection of (await config).collections.filter((c) => c.slug !== 'users')) {
-    await deleteCollection(collection.slug)
-  }
+  await deleteAllCollections(['users'])
 })
 
 afterAll(async () => {
@@ -34,8 +34,8 @@ afterAll(async () => {
 })
 
 describe('Multi-tenant baseFilter functionality', () => {
-  let tenant1Id: string
-  let tenant2Id: string
+  let tenant1Id: DefaultIDType
+  let tenant2Id: DefaultIDType
 
   beforeAll(async () => {
     // Create two tenants
@@ -408,4 +408,50 @@ const deleteCollection = async (collection: CollectionSlug) => {
     collection: collection,
     where: {},
   })
+
+  // this will fail for collections which have no versions enabled, therefore wrapped in a try catch
+  try {
+    await payload.db.deleteVersions({
+      collection: collection,
+      where: {},
+    })
+  } catch {}
+}
+
+/**
+ * Deletion order for collections to respect foreign key constraints.
+ * Collections are deleted in this order: children before parents.
+ * Collections not in this list will be deleted at the end in arbitrary order.
+ */
+const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
+  // Level 3: deepest nested (depends on level 2)
+  'country-travel-tips',
+  // Level 2: depends on level 1 collections
+  'blogposts',
+  'authors',
+  'countries',
+  'redirects',
+  // Level 1: root collections (pages can self-reference)
+  'pages',
+  // Level 0: no dependencies
+  'blogpost-categories',
+  'tenants',
+]
+
+const deleteAllCollections = async (except: CollectionSlug[] = []) => {
+  const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
+  const collectionSlugs = new Set(collections.map((c) => c.slug))
+
+  // Delete in the specified order first
+  for (const slug of COLLECTION_DELETION_ORDER) {
+    if (collectionSlugs.has(slug)) {
+      await deleteCollection(slug)
+      collectionSlugs.delete(slug)
+    }
+  }
+
+  // Delete any remaining collections not in the order list
+  for (const slug of Array.from(collectionSlugs)) {
+    await deleteCollection(slug)
+  }
 }

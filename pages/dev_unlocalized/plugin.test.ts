@@ -1,6 +1,9 @@
 import payload, { CollectionSlug, ValidationError } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
+import type { Config } from 'payload/generated-types'
+
+type DefaultIDType = Config['db']['defaultIDType']
 
 // NOTE: this file contains a subset of the tests from the localized (/dev) project which are adjusted to test in a unlocalized environment.
 
@@ -19,9 +22,7 @@ beforeAll(async () => {
   })
 
   // clear all collections except users
-  for (const collection of (await config).collections.filter((c) => c.slug !== 'users')) {
-    await deleteCollection(collection.slug)
-  }
+  await deleteAllCollections(['users'])
 })
 
 afterAll(async () => {
@@ -84,8 +85,8 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       slug: 'nested-page',
       content: 'Nested Page',
     }
-    let rootPageId: string | number | undefined // will be set in the beforeEach hook
-    let nestedPageId: string | number | undefined // will be set in the beforeEach hook
+    let rootPageId: DefaultIDType | undefined
+    let nestedPageId: DefaultIDType | undefined
 
     beforeAll(async () => {
       await deleteCollection('pages')
@@ -176,8 +177,8 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       slug: 'nested-page',
       content: 'Nested Page',
     }
-    let rootPageId: string | number | undefined // will be set in the beforeEach hook
-    let nestedPageId: string | number | undefined // will be set in the beforeEach hook
+    let rootPageId: DefaultIDType | undefined
+    let nestedPageId: DefaultIDType | undefined
 
     beforeAll(async () => {
       await deleteCollection('pages')
@@ -494,4 +495,49 @@ const deleteCollection = async (collection: CollectionSlug) => {
     collection: collection,
     where: {},
   })
+
+  // this will fail for collections which have no versions enabled, therefore wrapped in a try catch
+  try {
+    await payload.db.deleteVersions({
+      collection: collection,
+      where: {},
+    })
+  } catch {}
+}
+
+/**
+ * Deletion order for collections to respect foreign key constraints.
+ * Collections are deleted in this order: children before parents.
+ * Collections not in this list will be deleted at the end in arbitrary order.
+ */
+const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
+  // Level 3: deepest nested (depends on level 2)
+  'country-travel-tips',
+  // Level 2: depends on level 1 collections
+  'blogposts',
+  'authors',
+  'countries',
+  // Level 1: root collections (pages can self-reference)
+  'pages',
+  // Level 0: no dependencies
+  'blogpost-categories',
+  'redirects',
+]
+
+const deleteAllCollections = async (except: CollectionSlug[] = []) => {
+  const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
+  const collectionSlugs = new Set(collections.map((c) => c.slug))
+
+  // Delete in the specified order first
+  for (const slug of COLLECTION_DELETION_ORDER) {
+    if (collectionSlugs.has(slug)) {
+      await deleteCollection(slug)
+      collectionSlugs.delete(slug)
+    }
+  }
+
+  // Delete any remaining collections not in the order list
+  for (const slug of Array.from(collectionSlugs)) {
+    await deleteCollection(slug)
+  }
 }
