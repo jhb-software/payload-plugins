@@ -1,7 +1,8 @@
 'use client'
 
 import { useAllFormFields, useForm } from '@payloadcms/ui'
-import { Breadcrumb } from '../../../types/Breadcrumb.js'
+
+import type { Breadcrumb } from '../../../types/Breadcrumb.js'
 
 /**
  * Hook to get and set the breadcrumbs of a document.
@@ -21,11 +22,11 @@ export const useBreadcrumbs = () => {
    * This prevents the "leave without saving" warning from being shown every time a document is opened without it being actually modified.
    */
   const setBreadcrumbs = (newBreadcrumbs: Breadcrumb[]) => {
-    let breadcrumbs = getBreadcrumbs() as Breadcrumb[]
+    const breadcrumbs = getBreadcrumbs()
 
     // Compare breadcrumbs ignoring id field since it's not relevant for equality
     const areBreadcrumbsEqual = (a: Breadcrumb[], b: Breadcrumb[]) => {
-      if (a.length !== b.length) return false
+      if (a.length !== b.length) {return false}
       return a.every((breadcrumb, i) => {
         // Sort keys to ensure consistent order when comparing
         const sortObject = (obj: any) => {
@@ -80,9 +81,9 @@ export const useBreadcrumbs = () => {
           path: 'breadcrumbs',
           rowIndex: index,
           subFieldState: {
-            label: { value: breadcrumb.label, initialValue: breadcrumb.label, valid: true },
-            slug: { value: breadcrumb.slug, initialValue: breadcrumb.slug, valid: true },
-            path: { value: breadcrumb.path, initialValue: breadcrumb.path, valid: true },
+            slug: { initialValue: breadcrumb.slug, valid: true, value: breadcrumb.slug },
+            label: { initialValue: breadcrumb.label, valid: true, value: breadcrumb.label },
+            path: { initialValue: breadcrumb.path, valid: true, value: breadcrumb.path },
           },
         })
       }

@@ -1,9 +1,11 @@
 'use client'
 
-import { ArrayField, Drawer, Button, useModal } from '@payloadcms/ui'
-import { ArrayFieldClientComponent } from 'payload'
-import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
+import type { ArrayFieldClientComponent } from 'payload'
+
+import { ArrayField, Button, Drawer, useModal } from '@payloadcms/ui'
+
 import { BreadcrumbsIcon } from '../../icons/BreadcrumbsIcon.js'
+import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 
 const breadcrumbsModalSlug = 'breadcrumbs-drawer'
 
@@ -13,11 +15,11 @@ export const BreadcrumbsFieldModalButton: React.FC = () => {
 
   return (
     <Button
-      onClick={() => toggleModal(breadcrumbsModalSlug)}
       buttonStyle="transparent"
+      icon={<BreadcrumbsIcon />}
+      onClick={() => toggleModal(breadcrumbsModalSlug)}
       size="small"
       tooltip={t('showBreadcrumbs')}
-      icon={<BreadcrumbsIcon />}
     />
   )
 }

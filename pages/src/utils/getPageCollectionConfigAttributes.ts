@@ -1,6 +1,8 @@
+import type { BasePayload } from 'payload'
+
+import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
-import { BasePayload } from 'payload'
-import { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 
 /**
  * Get the page config attributes for a collection.

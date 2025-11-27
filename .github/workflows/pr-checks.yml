@@ -36,6 +36,30 @@ jobs:
             exit 1
           fi
 
+  # TODO: also lint all other plugins
+  lint-pages:
+    runs-on: ubuntu-latest
+    needs: format
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ^9.0.0
+
+      - name: Install dependencies
+        run: pnpm install:all
+
+      - name: Run ESLint
+        run: cd pages && pnpm lint
+
   test-pages-localized:
     runs-on: ubuntu-latest
     needs: format

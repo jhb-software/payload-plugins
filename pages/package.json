@@ -52,6 +52,8 @@
     "@swc/core": "^1.15.0",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "@payloadcms/eslint-config": "3.28.0",
+    "eslint": "^9.39.1",
     "copyfiles": "2.4.1",
     "prettier": "^3.6.2",
     "rimraf": "6.1.0",

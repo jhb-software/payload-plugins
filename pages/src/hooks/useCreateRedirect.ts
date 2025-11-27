@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { toast, useConfig } from '@payloadcms/ui'
+import { useState } from 'react'
+
 import { usePluginTranslation } from '../utils/usePluginTranslations.js'
 
 export const useCreateRedirect = (redirectsCollectionSlug: string) => {
@@ -23,17 +24,17 @@ export const useCreateRedirect = (redirectsCollectionSlug: string) => {
 
     try {
       const response = await fetch(`${serverURL}${api}/${redirectsCollectionSlug}`, {
-        method: 'POST',
+        body: JSON.stringify({
+          type: 'permanent',
+          destinationPath,
+          reason: t('redirectReasonSlugChange'),
+          sourcePath,
+        }),
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sourcePath,
-          destinationPath,
-          type: 'permanent',
-          reason: t('redirectReasonSlugChange'),
-        }),
+        method: 'POST',
       })
 
       const result = await response.json()

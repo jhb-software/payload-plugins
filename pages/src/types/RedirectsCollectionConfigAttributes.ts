@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+
 /** The incoming attributes for the redirects collection config. */
 export type IncomingRedirectsCollectionConfigAttributes = {}
 

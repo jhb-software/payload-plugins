@@ -1,17 +1,19 @@
-import { CollectionBeforeOperationHook } from 'payload'
+import type { CollectionBeforeOperationHook } from 'payload'
+
+import { getSelectMode } from 'payload/shared'
+
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 import { dependentFields } from './setVirtualFields.js'
-import { getSelectMode } from 'payload/shared'
 
 /**
  * A CollectionBeforeOperationHook that alters the select in case a virtual field is selected
  * to ensure that the fields the setVirtualFields hook depends on to correctly generate
  * the virtual fields are also selected.
  */
-export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook = async ({
+export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook = ({
   args,
-  operation,
   context,
+  operation,
 }) => {
   if (operation == 'read' && args.select) {
     const pageConfig = asPageCollectionConfigOrThrow(args.collection.config)

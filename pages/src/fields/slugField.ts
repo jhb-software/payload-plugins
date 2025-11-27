@@ -1,16 +1,17 @@
-import { Field } from 'payload'
-import { Locale } from 'src/types/Locale.js'
+import type { Field } from 'payload'
+import type { SlugFieldProps } from 'src/components/client/SlugFieldClient.js'
+import type { Locale } from 'src/types/Locale.js'
+
 import { beforeDuplicateSlug } from '../hooks/beforeDuplicate.js'
 import { formatSlug } from '../hooks/validateSlug.js'
-import { SlugFieldProps } from 'src/components/client/SlugFieldClient.jsx'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 type InternalSlugFieldConfig = {
-  pageSlug?: boolean
   fallbackField: string
+  pageSlug?: boolean
+  staticValue?: Record<Locale, string> | string
   unique?: boolean
-  staticValue?: string | Record<Locale, string>
 }
 
 type PageSlugFieldConfig = Omit<InternalSlugFieldConfig, 'pageSlug'>
@@ -20,36 +21,43 @@ type SlugFieldConfig = Omit<InternalSlugFieldConfig, 'pageSlug'>
  * The internal slug field which can be used on pages and non-page collections, depending on the `pageSlug` option.
  */
 export function internalSlugField({
-  pageSlug,
   fallbackField,
-  unique = true,
+  pageSlug,
   staticValue,
+  unique = true,
 }: InternalSlugFieldConfig): Field {
   return {
     name: 'slug',
-    label: translatedLabel('slug'),
     type: 'text',
-    defaultValue: ({ locale }) =>
-      typeof staticValue === 'string' ? staticValue : locale && staticValue?.[locale],
     admin: {
-      position: 'sidebar',
-      readOnly: !!staticValue,
       components: {
         Field: {
-          path: '@jhb.software/payload-pages-plugin/server#SlugField',
           clientProps: {
-            readOnly: !!staticValue,
             defaultValue: staticValue,
-            pageSlug: pageSlug,
-            fallbackField: fallbackField,
+            fallbackField,
+            pageSlug,
+            readOnly: !!staticValue,
           } satisfies Omit<SlugFieldProps, 'redirectsCollectionSlug'>,
+          path: '@jhb.software/payload-pages-plugin/server#SlugField',
         },
       },
+      position: 'sidebar',
+      readOnly: !!staticValue,
       // The condition option is not used to hide the field when the page is the root page because then the type of the slug field would be optional.
     },
+    defaultValue: ({ locale }) =>
+      typeof staticValue === 'string' ? staticValue : locale && staticValue?.[locale],
+    hooks: {
+      beforeDuplicate: [beforeDuplicateSlug],
+    },
+    index: true,
+    label: translatedLabel('slug'),
+    localized: true,
+    required: true,
+    unique,
     validate: (
-      value: string | null | undefined,
-      options: { data: any; siblingData: any; id?: string | number },
+      value: null | string | undefined,
+      options: { data: any; id?: number | string; siblingData: any },
     ): string | true => {
       if (pageSlug && options.data.isRootPage) {
         return value === ROOT_PAGE_SLUG
@@ -67,13 +75,6 @@ export function internalSlugField({
 
       return true
     },
-    hooks: {
-      beforeDuplicate: [beforeDuplicateSlug],
-    },
-    unique: unique,
-    index: true,
-    localized: true,
-    required: true,
   }
 }
 
