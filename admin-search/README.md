@@ -8,6 +8,7 @@ A plugin for [Payload CMS](https://payloadcms.com) that adds a search modal to q
 
 - Global search modal triggered by `Cmd + K` / `Ctrl + K`
 - Search across collections in your Payload admin panel
+- Quickly open collections and globals by name
 - Search index powered by [@payloadcms/plugin-search](https://www.npmjs.com/package/@payloadcms/plugin-search)
 - Real time search results
 - Keyboard navigation support

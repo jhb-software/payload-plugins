@@ -1,6 +1,6 @@
+import type { PluginPagesTranslationKeys, PluginPagesTranslations } from 'src/translations/index.js'
+
 import { useTranslation } from '@payloadcms/ui'
-import { PluginPagesTranslationKeys } from 'src/translations/index.js'
-import { PluginPagesTranslations } from 'src/translations/index.js'
 
 /** Hook which returns a translation function for the plugin translations. */
 export const usePluginTranslation = () => {

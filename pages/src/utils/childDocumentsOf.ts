@@ -1,7 +1,8 @@
-import { PayloadRequest, CollectionSlug } from 'payload'
-import type { CollectionConfig } from 'payload'
-import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+import type { CollectionConfig, CollectionSlug, PayloadRequest } from 'payload'
+
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
+import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+
 import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
 
 /**
@@ -10,11 +11,11 @@ import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
  */
 export async function childDocumentsOf(
   req: PayloadRequest,
-  docId: string | number,
+  docId: number | string,
   collectionSlug: CollectionSlug,
   baseFilter?: PagesPluginConfig['baseFilter'],
-): Promise<{ id: string | number; collection: CollectionSlug }[]> {
-  const childReferences: { id: string | number; collection: CollectionSlug }[] = []
+): Promise<{ collection: CollectionSlug; id: number | string }[]> {
+  const childReferences: { collection: CollectionSlug; id: number | string }[] = []
 
   const allCollections = req.payload.config.collections || []
 
@@ -30,15 +31,15 @@ export async function childDocumentsOf(
     try {
       const childDocuments = await req.payload.find({
         collection: targetCollection.slug,
+        depth: 0,
+        limit: 0,
+        select: {},
         where: {
           and: [
             { [parentFieldName]: { equals: docId } },
             ...(baseFilterWhere ? [baseFilterWhere] : []),
           ],
         },
-        depth: 0,
-        select: {},
-        limit: 0,
       })
 
       for (const doc of childDocuments.docs) {
@@ -60,7 +61,7 @@ export async function childDocumentsOf(
  */
 export async function hasChildDocuments(
   req: PayloadRequest,
-  docId: string | number,
+  docId: number | string,
   collectionSlug: CollectionSlug,
   baseFilter?: PagesPluginConfig['baseFilter'],
 ): Promise<boolean> {
@@ -76,7 +77,9 @@ function isPageCollectionWithParent(
   expectedParentCollectionSlug: CollectionSlug,
 ): collection is PageCollectionConfig {
   const pageConfig = isPageCollectionConfig(collection)
-  if (!pageConfig) return false
+  if (!pageConfig) {
+    return false
+  }
 
   return collection.page.parent.collection === expectedParentCollectionSlug
 }

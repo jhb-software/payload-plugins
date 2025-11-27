@@ -3,7 +3,7 @@ export interface SeoMetadata {
   [key: string]: any
   alternatePaths: {
     hreflang: string
+    id?: null | string
     path: string
-    id?: string | null
   }[]
 }

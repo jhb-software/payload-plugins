@@ -1,7 +1,9 @@
-import { Field } from 'payload'
-import { translatedLabel } from '../utils/translatedLabel.js'
+import type { Field } from 'payload'
+
+import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+
 import { beforeDuplicateIsRootPage } from '../hooks/beforeDuplicate.js'
-import { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+import { translatedLabel } from '../utils/translatedLabel.js'
 
 export function isRootPageField({
   baseFilter,
@@ -10,10 +12,8 @@ export function isRootPageField({
 }): Field {
   return {
     name: 'isRootPage',
-    label: translatedLabel('isRootPage'),
     type: 'checkbox',
     admin: {
-      position: 'sidebar',
       components: {
         Field: {
           path: '@jhb.software/payload-pages-plugin/server#IsRootPageField',
@@ -22,9 +22,11 @@ export function isRootPageField({
           },
         },
       },
+      position: 'sidebar',
     },
     hooks: {
       beforeDuplicate: [beforeDuplicateIsRootPage],
     },
+    label: translatedLabel('isRootPage'),
   }
 }

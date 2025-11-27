@@ -1,26 +1,28 @@
-import { CollectionBeforeValidateHook, Where } from 'payload'
+import type { CollectionBeforeValidateHook } from 'payload'
+
+import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+
 import { AdminPanelError } from '../utils/AdminPanelError.js'
-import { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 // TODO: use a unique index on the sourcePath field to improve performance (ensure it can be disabled for the multi-tenant setups)
 
 /** Hook which validates the redirect data before it is saved to ensure that no infinite redirect loops are created. */
 export const validateRedirect: CollectionBeforeValidateHook = async ({
+  collection,
   data,
   originalDoc,
   req,
-  collection,
 }) => {
   // When the fields of a redirect are edited via the local API, the sourcePath and destinationPath fields might be undefined,
   // therefore fallback to the originalDoc values in this case.
-  let sourcePath = data?.sourcePath ?? originalDoc?.sourcePath
-  let destinationPath = data?.destinationPath ?? originalDoc?.destinationPath
+  const sourcePath = data?.sourcePath ?? originalDoc?.sourcePath
+  const destinationPath = data?.destinationPath ?? originalDoc?.destinationPath
 
   // Get baseFilter from collection config
   const pagesPluginConfig = collection?.custom?.pagesPluginConfig as PagesPluginConfig
   const redirectValidationFilter =
     typeof pagesPluginConfig?.redirectValidationFilter === 'function'
-      ? pagesPluginConfig?.redirectValidationFilter({ req, doc: data })
+      ? pagesPluginConfig?.redirectValidationFilter({ doc: data, req })
       : undefined
 
   // Check if there's already a redirect for the source path

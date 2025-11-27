@@ -80,8 +80,11 @@ export const payloadAltTextPlugin =
           admin: {
             ...collectionConfig.admin,
             listSearchableFields: [
-              // enhance the search by adding the keywords and alt fields (if not already included)
+              // enhance the search by adding the filename, keywords and alt fields (if not already included)
               ...(collectionConfig.admin?.listSearchableFields ?? []),
+              ...(collectionConfig.admin?.listSearchableFields?.includes('filename')
+                ? []
+                : ['filename']),
               ...(collectionConfig.admin?.listSearchableFields?.includes('keywords')
                 ? []
                 : ['keywords']),
