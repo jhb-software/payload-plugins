@@ -26,7 +26,9 @@ export const useBreadcrumbs = () => {
 
     // Compare breadcrumbs ignoring id field since it's not relevant for equality
     const areBreadcrumbsEqual = (a: Breadcrumb[], b: Breadcrumb[]) => {
-      if (a.length !== b.length) {return false}
+      if (a.length !== b.length) {
+        return false
+      }
       return a.every((breadcrumb, i) => {
         // Sort keys to ensure consistent order when comparing
         const sortObject = (obj: any) => {
