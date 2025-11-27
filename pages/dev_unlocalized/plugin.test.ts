@@ -1,6 +1,9 @@
 import payload, { CollectionSlug, ValidationError } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
+import type { Config } from 'payload/generated-types'
+
+type DefaultIDType = Config['db']['defaultIDType']
 
 // NOTE: this file contains a subset of the tests from the localized (/dev) project which are adjusted to test in a unlocalized environment.
 
@@ -82,8 +85,8 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       slug: 'nested-page',
       content: 'Nested Page',
     }
-    let rootPageId: string | number | undefined // will be set in the beforeEach hook
-    let nestedPageId: string | number | undefined // will be set in the beforeEach hook
+    let rootPageId: DefaultIDType | undefined
+    let nestedPageId: DefaultIDType | undefined
 
     beforeAll(async () => {
       await deleteCollection('pages')
@@ -174,8 +177,8 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       slug: 'nested-page',
       content: 'Nested Page',
     }
-    let rootPageId: string | number | undefined // will be set in the beforeEach hook
-    let nestedPageId: string | number | undefined // will be set in the beforeEach hook
+    let rootPageId: DefaultIDType | undefined
+    let nestedPageId: DefaultIDType | undefined
 
     beforeAll(async () => {
       await deleteCollection('pages')

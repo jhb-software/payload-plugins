@@ -1,7 +1,7 @@
 import payload, { CollectionSlug } from 'payload'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
-import { Page, Tenant } from 'payload/generated-types'
+import type { Page, Tenant, Config } from 'payload/generated-types'
 
 // NOTE: this file only contains test that are specific to the multi-tenant setup. The main plugin tests are located in the /dev project.
 
@@ -13,6 +13,8 @@ const virtualFields = {
   breadcrumbs: [],
   path: '',
 }
+
+type DefaultIDType = Config['db']['defaultIDType']
 
 beforeAll(async () => {
   await payload.init({
@@ -32,8 +34,8 @@ afterAll(async () => {
 })
 
 describe('Multi-tenant baseFilter functionality', () => {
-  let tenant1Id: string
-  let tenant2Id: string
+  let tenant1Id: DefaultIDType
+  let tenant2Id: DefaultIDType
 
   beforeAll(async () => {
     // Create two tenants
