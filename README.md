@@ -10,7 +10,9 @@ This repository contains a collection of powerful plugins designed to enhance [P
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-admin-search)](https://www.npmjs.com/package/@jhb.software/payload-admin-search)
 
-A plugin that adds a global search modal to the Payload admin panel, enabling quick navigation across documents with keyboard shortcuts (`Cmd + K` / `Ctrl + K`).
+A plugin that adds a global search modal to the Payload admin panel, enabling quick navigation across documents and collections with keyboard shortcuts (`Cmd + K` / `Ctrl + K`).
+
+<img width="659" height="489" alt="image" src="https://github.com/user-attachments/assets/ba52d56e-7365-46ee-80e3-416d07946727" />
 
 [Learn more about the Admin Search plugin →](./admin-search)
 
