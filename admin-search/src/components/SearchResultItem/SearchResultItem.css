@@ -22,12 +22,9 @@
     background-color: var(--theme-elevation-100);
   }
 
-  .search-result-item--selected .search-result-item__button {
-    background-color: var(--theme-elevation-100);
-  }
-
+  .search-result-item--selected .search-result-item__button,
   .search-result-item--selected:hover .search-result-item__button {
-    background-color: var(--theme-elevation-150);
+    background-color: var(--theme-elevation-100);
   }
 
   .search-result-item__content {
