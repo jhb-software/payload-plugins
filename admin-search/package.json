@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-admin-search",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A global search plugin for the Payload CMS admin panel.",
   "keywords": [
     "payload",
@@ -28,9 +28,9 @@
   },
   "peerDependencies": {
     "@payloadcms/translations": "^3.62.1",
-    "@payloadcms/ui":  "^3.62.1",
+    "@payloadcms/ui": "^3.62.1",
     "next": "15.5.6",
-    "payload":  "^3.62.1",
+    "payload": "^3.62.1",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

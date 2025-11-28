@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build:all": "pnpm build:alt-text && pnpm build:cloudinary && pnpm build:pages && pnpm build:seo && pnpm build:geocoding",
+    "build:all": "pnpm build:admin-search && pnpm build:alt-text && pnpm build:cloudinary && pnpm build:pages && pnpm build:seo && pnpm build:geocoding",
+    "build:admin-search": "cd ./admin-search && pnpm build",
     "build:alt-text": "cd ./alt-text && pnpm build",
     "build:cloudinary": "cd ./cloudinary && pnpm build",
     "build:geocoding": "cd ./geocoding && pnpm build",
     "build:pages": "cd ./pages && pnpm build",
     "build:seo": "cd ./seo && pnpm build",
 
-    "publish:all": "pnpm publish:alt-text && pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:seo && pnpm publish:geocoding",
+    "publish:all": "pnpm publish:admin-search && pnpm publish:alt-text && pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:seo && pnpm publish:geocoding",
+    "publish:admin-search": "cd ./admin-search && pnpm publish",
     "publish:alt-text": "cd ./alt-text && pnpm publish",
     "publish:cloudinary": "cd ./cloudinary && pnpm publish",
     "publish:geocoding": "cd ./geocoding && pnpm publish",
