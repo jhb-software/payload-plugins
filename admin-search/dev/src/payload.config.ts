@@ -76,10 +76,15 @@ export default buildConfig({
       beforeSync: ({ originalDoc, searchDoc }) => {
         return {
           ...searchDoc,
-          title: searchDoc.doc.relationTo === 'authors' ? originalDoc.name : originalDoc.title,
+          title:
+            searchDoc.doc.relationTo === 'authors'
+              ? originalDoc.name
+              : searchDoc.doc.relationTo === 'media'
+                ? originalDoc.filename
+                : originalDoc.title,
         }
       },
-      collections: ['pages', 'posts', 'authors'],
+      collections: ['pages', 'posts', 'authors', 'media'],
     }),
   ],
 })

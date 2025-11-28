@@ -251,6 +251,10 @@ export interface Search {
     | {
         relationTo: 'authors';
         value: string | Author;
+      }
+    | {
+        relationTo: 'media';
+        value: string | Media;
       };
   updatedAt: string;
   createdAt: string;

@@ -1,4 +1,5 @@
-import { Pill, useTranslation } from '@payloadcms/ui'
+import { getTranslation } from '@payloadcms/translations'
+import { Pill, useConfig, useTranslation } from '@payloadcms/ui'
 import React from 'react'
 
 import type { SearchResult } from '../../types/SearchResult.js'
@@ -42,22 +43,16 @@ const highlightSearchTerm = (text: string, searchTerm: string) => {
   })
 }
 
-const getCollectionDisplayName = (relationTo: string) => {
-  return relationTo
-    .split('-')
-    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
 const getAriaLabel = (
   result: SearchResult,
   displayTitle: string,
+  collectionLabel: string,
   t: (key: string) => string,
 ): string => {
   if (result.type === 'document') {
     return t('openDocumentIn')
       .replace('{title}', displayTitle)
-      .replace('{collection}', getCollectionDisplayName(result.doc.relationTo))
+      .replace('{collection}', collectionLabel)
   } else if (result.type === 'collection') {
     return t('openCollectionLabel').replace('{label}', result.label)
   } else {
@@ -73,8 +68,22 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
   result,
   selectedIndex,
 }) => {
-  const { t: payloadT } = useTranslation()
+  const { i18n, t: payloadT } = useTranslation()
   const { t } = usePluginTranslation()
+  const { config } = useConfig()
+
+  const getCollectionLabel = (slug: string): string => {
+    const collection = config.collections.find((c) => c.slug === slug)
+
+    if (collection?.labels?.singular) {
+      return getTranslation(collection.labels.singular, i18n)
+    }
+
+    return slug
+  }
+
+  const collectionLabel =
+    result.type === 'document' ? getCollectionLabel(result.doc.relationTo) : ''
 
   const title =
     result.type === 'document' && result.title && result.title.trim().length > 0
@@ -90,7 +99,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
       onMouseEnter={onMouseEnter}
     >
       <button
-        aria-label={getAriaLabel(result, title, t)}
+        aria-label={getAriaLabel(result, title, collectionLabel, t)}
         className="search-result-item__button"
         onClick={() => onResultClick(result)}
         onKeyDown={(e) => e.key === 'Enter' && onResultClick(result)}
@@ -100,7 +109,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
           <span className="search-result-item__title">{highlightSearchTerm(title, query)}</span>
           <Pill size="small">
             {result.type === 'document'
-              ? getCollectionDisplayName(result.doc.relationTo)
+              ? collectionLabel
               : result.type === 'collection'
                 ? t('pillCollection')
                 : t('pillGlobal')}
