@@ -1,19 +1,23 @@
-import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-export const Pages: PageCollectionConfig = {
+export const Pages: CollectionConfig = {
   slug: 'pages',
   admin: {
     useAsTitle: 'title',
   },
-  page: {
-    parent: {
-      collection: 'pages',
-      name: 'parent',
-    },
-    isRootCollection: true,
-    slug: {
-      // Disable the slug uniqueness because of the multi-tenant setup (see indexes below)
-      unique: false,
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'pages',
+          name: 'parent',
+        },
+        isRootCollection: true,
+        slug: {
+          // Disable the slug uniqueness because of the multi-tenant setup (see indexes below)
+          unique: false,
+        },
+      },
     },
   },
   versions: {

@@ -1,22 +1,17 @@
 import type { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payload'
 
-import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
+import type { SanitizedPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
-import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
+import { getPageConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
 
 /**
  * Returns the fields that the setVirtualFields hook depends on to correctly generate the virtual fields.
  */
-export function dependentFields(collectionConfig: PageCollectionConfig): string[] {
-  return [
-    'isRootPage',
-    'slug',
-    collectionConfig.page.parent.name,
-    collectionConfig.page.breadcrumbs.labelField,
-  ]
+export function dependentFields(pageConfig: SanitizedPageCollectionConfigAttributes): string[] {
+  return ['isRootPage', 'slug', pageConfig.parent.name, pageConfig.breadcrumbs.labelField]
 }
 
 /**
@@ -35,14 +30,14 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
     return doc
   }
 
-  const pageConfig = asPageCollectionConfigOrThrow(collection)
+  const pageConfig = getPageConfigOrThrow(collection)
 
   const locale = localeFromRequest(req)
   const locales = localesFromRequest(req)
 
   if (doc.isRootPage) {
     const docWithVirtualFields = setRootPageDocumentVirtualFields({
-      breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+      breadcrumbLabelField: pageConfig.breadcrumbs.labelField,
       doc,
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
@@ -65,7 +60,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
       doc,
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
-      pageConfigAttributes: pageConfig.page,
+      pageConfigAttributes: pageConfig,
       req,
     })
 
@@ -87,11 +82,11 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   const locale = localeFromRequest(req)
   const locales = localesFromRequest(req)
 
-  const pageConfig = asPageCollectionConfigOrThrow(collection)
+  const pageConfig = getPageConfigOrThrow(collection)
 
   if (doc.isRootPage) {
     const docWithVirtualFields = setRootPageDocumentVirtualFields({
-      breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+      breadcrumbLabelField: pageConfig.breadcrumbs.labelField,
       doc,
       locale,
       locales,
@@ -108,7 +103,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
       doc,
       locale,
       locales,
-      pageConfigAttributes: pageConfig.page,
+      pageConfigAttributes: pageConfig,
       req,
     })
 

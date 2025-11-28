@@ -1,8 +1,9 @@
+import type { CollectionConfig } from 'payload'
+
 import type {
-  IncomingPageCollectionConfig,
-  PageCollectionConfig,
-} from '../types/PageCollectionConfig.js'
-import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+  PageCollectionConfigAttributes,
+  SanitizedPageCollectionConfigAttributes,
+} from '../types/PageCollectionConfigAttributes.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { breadcrumbsField } from '../fields/breadcrumbsField.js'
@@ -19,6 +20,33 @@ import {
 } from '../hooks/setVirtualFields.js'
 
 /**
+ * Sanitizes the page collection config by applying defaults.
+ */
+export const sanitizePageCollectionConfig = (
+  incoming: PageCollectionConfigAttributes,
+  collectionConfig: CollectionConfig,
+): SanitizedPageCollectionConfigAttributes => {
+  return {
+    slug: {
+      fallbackField: incoming.slug?.fallbackField ?? collectionConfig.admin?.useAsTitle ?? 'title',
+      staticValue: incoming.slug?.staticValue,
+      unique: incoming.slug?.unique ?? true,
+    },
+    breadcrumbs: {
+      labelField: incoming.breadcrumbs?.labelField ?? collectionConfig.admin?.useAsTitle ?? 'title',
+    },
+    isRootCollection: incoming.isRootCollection ?? false,
+    livePreview: incoming.livePreview ?? true,
+    parent: {
+      name: incoming.parent.name,
+      collection: incoming.parent.collection,
+      sharedDocument: incoming.parent.sharedDocument ?? false,
+    },
+    preview: incoming.preview ?? true,
+  }
+}
+
+/**
  * Creates a collection config for a page-like collection by adding:
  * - Page attributes as custom attributes for use in hooks
  * - Required parent relationship field in the sidebar
@@ -29,33 +57,24 @@ export const createPageCollectionConfig = ({
   collectionConfig: incomingCollectionConfig,
   pluginConfig,
 }: {
-  collectionConfig: IncomingPageCollectionConfig
+  collectionConfig: CollectionConfig
   pluginConfig: PagesPluginConfig
-}): PageCollectionConfig => {
-  const pageConfig: PageCollectionConfigAttributes = {
-    slug: {
-      fallbackField:
-        incomingCollectionConfig.page?.slug?.fallbackField ??
-        incomingCollectionConfig.admin?.useAsTitle ??
-        'title',
-      staticValue: incomingCollectionConfig.page?.slug?.staticValue,
-      unique: incomingCollectionConfig.page?.slug?.unique ?? true,
-    },
-    breadcrumbs: {
-      labelField:
-        incomingCollectionConfig.page.breadcrumbs?.labelField ??
-        incomingCollectionConfig.admin?.useAsTitle ??
-        'title',
-    },
-    isRootCollection: incomingCollectionConfig.page.isRootCollection ?? false,
-    livePreview: incomingCollectionConfig.page?.livePreview ?? true,
-    parent: {
-      name: incomingCollectionConfig.page.parent.name,
-      collection: incomingCollectionConfig.page.parent.collection,
-      sharedDocument: incomingCollectionConfig.page.parent.sharedDocument ?? false,
-    },
-    preview: incomingCollectionConfig.page?.preview ?? true,
+}): CollectionConfig => {
+  // Get page config from custom.pagesPlugin.page (type-safe via module augmentation)
+  const pagesPlugin = incomingCollectionConfig.custom?.pagesPlugin
+  const incomingPageConfig = pagesPlugin && 'page' in pagesPlugin ? pagesPlugin.page : undefined
+
+  if (!incomingPageConfig) {
+    throw new Error(
+      `Collection "${incomingCollectionConfig.slug}" is missing custom.pagesPlugin.page configuration`,
+    )
   }
+
+  // Sanitize the incoming config (apply defaults)
+  const sanitizedPageConfig = sanitizePageCollectionConfig(
+    incomingPageConfig,
+    incomingCollectionConfig,
+  )
 
   return {
     ...incomingCollectionConfig,
@@ -65,7 +84,7 @@ export const createPageCollectionConfig = ({
         ...incomingCollectionConfig.admin?.livePreview,
         url:
           incomingCollectionConfig.admin?.livePreview?.url ??
-          (pageConfig.livePreview
+          (sanitizedPageConfig.livePreview
             ? ({ data, req }) =>
                 pluginConfig.generatePageURL({
                   data,
@@ -77,7 +96,7 @@ export const createPageCollectionConfig = ({
       },
       preview:
         incomingCollectionConfig.admin?.preview ??
-        (pageConfig.preview
+        (sanitizedPageConfig.preview
           ? (data, options) =>
               pluginConfig.generatePageURL({
                 data,
@@ -89,12 +108,15 @@ export const createPageCollectionConfig = ({
     },
     custom: {
       ...incomingCollectionConfig.custom,
-      // This makes the page attributes available in hooks etc.
-      pageConfig,
-      pagesPluginConfig: pluginConfig,
+      pagesPlugin: {
+        // Keep the original incoming config
+        page: incomingPageConfig,
+        // Store the sanitized config for internal use
+        _page: sanitizedPageConfig,
+      },
     },
     fields: [
-      ...(pageConfig.isRootCollection
+      ...(sanitizedPageConfig.isRootCollection
         ? [
             isRootPageField({
               baseFilter: pluginConfig.baseFilter,
@@ -102,11 +124,11 @@ export const createPageCollectionConfig = ({
           ]
         : []),
       pageSlugField({
-        fallbackField: pageConfig.slug.fallbackField,
-        staticValue: pageConfig.slug.staticValue,
-        unique: pageConfig.slug.unique,
+        fallbackField: sanitizedPageConfig.slug.fallbackField,
+        staticValue: sanitizedPageConfig.slug.staticValue,
+        unique: sanitizedPageConfig.slug.unique,
       }),
-      parentField(pageConfig, incomingCollectionConfig.slug, pluginConfig.baseFilter),
+      parentField(sanitizedPageConfig, incomingCollectionConfig.slug, pluginConfig.baseFilter),
       pathField(),
       breadcrumbsField(),
       // add the user defined fields below the fields defined by the plugin to ensure a correct order in the sidebar
@@ -145,6 +167,5 @@ export const createPageCollectionConfig = ({
         setVirtualFieldsBeforeRead,
       ],
     },
-    page: pageConfig,
   }
 }

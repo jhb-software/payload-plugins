@@ -1,18 +1,22 @@
-import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-export const CountryTravelTips: PageCollectionConfig = {
+export const CountryTravelTips: CollectionConfig = {
   slug: 'country-travel-tips',
   admin: {
     useAsTitle: 'title',
   },
-  page: {
-    parent: {
-      collection: 'countries',
-      name: 'country',
-    },
-    slug: {
-      unique: false,
-      staticValue: 'reisetipps',
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'countries',
+          name: 'country',
+        },
+        slug: {
+          unique: false,
+          staticValue: 'reisetipps',
+        },
+      },
     },
   },
   versions: {

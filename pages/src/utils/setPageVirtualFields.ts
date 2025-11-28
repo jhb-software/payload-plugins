@@ -2,7 +2,7 @@ import type { PayloadRequest } from 'payload'
 
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
-import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { SanitizedPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { SeoMetadata } from '../types/SeoMetadata.js'
 
 import { getBreadcrumbs } from './getBreadcrumbs.js'
@@ -19,7 +19,7 @@ export async function setPageDocumentVirtualFields({
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
-  pageConfigAttributes: PageCollectionConfigAttributes
+  pageConfigAttributes: SanitizedPageCollectionConfigAttributes
   req: PayloadRequest | undefined
 }) {
   if (locales && locale) {

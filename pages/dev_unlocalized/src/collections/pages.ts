@@ -1,16 +1,20 @@
-import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-export const Pages: PageCollectionConfig = {
+export const Pages: CollectionConfig = {
   slug: 'pages',
   admin: {
     useAsTitle: 'title',
   },
-  page: {
-    parent: {
-      collection: 'pages',
-      name: 'parent',
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'pages',
+          name: 'parent',
+        },
+        isRootCollection: true,
+      },
     },
-    isRootCollection: true,
   },
   versions: {
     drafts: true,

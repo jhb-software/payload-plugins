@@ -1,22 +1,26 @@
-import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-export const Authors: PageCollectionConfig = {
+export const Authors: CollectionConfig = {
   slug: 'authors',
   admin: {
     useAsTitle: 'name',
   },
-  page: {
-    parent: {
-      collection: 'pages',
-      name: 'parent',
-      sharedDocument: true,
-    },
-    breadcrumbs: {
-      labelField: 'name',
-    },
-    slug: {
-      // Disable the slug uniqueness because of the multi-tenant setup (see indexes below)
-      unique: false,
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'pages',
+          name: 'parent',
+          sharedDocument: true,
+        },
+        breadcrumbs: {
+          labelField: 'name',
+        },
+        slug: {
+          // Disable the slug uniqueness because of the multi-tenant setup (see indexes below)
+          unique: false,
+        },
+      },
     },
   },
   indexes: [

@@ -2,8 +2,8 @@ import type { CollectionSlug } from 'payload'
 
 import type { Locale } from './Locale.js'
 
-/** The incoming attributes for the page collection config. */
-export type IncomingPageCollectionConfigAttributes = {
+/** The page collection config attributes as provided by the user. */
+export type PageCollectionConfigAttributes = {
   breadcrumbs?: {
     /**
      * Name of the field to use to generate the breadcrumb label.
@@ -31,7 +31,7 @@ export type IncomingPageCollectionConfigAttributes = {
     sharedDocument?: boolean
   }
 
-  /** Whether Payloads feature should be enabled for this collection. Defaults to `true`. */
+  /** Whether Payloads preview feature should be enabled for this collection. Defaults to `true`. */
   preview?: boolean
 
   slug?: {
@@ -46,8 +46,8 @@ export type IncomingPageCollectionConfigAttributes = {
   }
 }
 
-/** The attributes for the page collection config after they have been processed using the incoming config attributes. */
-export type PageCollectionConfigAttributes = {
+/** The page collection config attributes after sanitization (defaults applied, validated). */
+export type SanitizedPageCollectionConfigAttributes = {
   breadcrumbs: {
     /** Name of the field to use to generate the breadcrumb label. */
     labelField: string
@@ -70,7 +70,7 @@ export type PageCollectionConfigAttributes = {
     sharedDocument: boolean
   }
 
-  /** Whether Payloads feature should be enabled for this collection. */
+  /** Whether Payloads preview feature should be enabled for this collection. */
   preview: boolean
 
   slug: {
@@ -80,7 +80,7 @@ export type PageCollectionConfigAttributes = {
     /** The static slug value for all documents in the collection. */
     staticValue?: Record<Locale, string> | string
 
-    /** Whether the slug must be unique.  */
+    /** Whether the slug must be unique. */
     unique: boolean
   }
 }

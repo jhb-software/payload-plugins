@@ -1,20 +1,26 @@
-import { alternatePathsField, PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-export const CountryTravelTips: PageCollectionConfig = {
+import { alternatePathsField } from '@jhb.software/payload-pages-plugin'
+
+export const CountryTravelTips: CollectionConfig = {
   slug: 'country-travel-tips',
   admin: {
     useAsTitle: 'title',
   },
-  page: {
-    parent: {
-      collection: 'countries',
-      name: 'country',
-    },
-    slug: {
-      unique: false,
-      staticValue: {
-        de: 'reisetipps',
-        en: 'travel-tips',
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'countries',
+          name: 'country',
+        },
+        slug: {
+          unique: false,
+          staticValue: {
+            de: 'reisetipps',
+            en: 'travel-tips',
+          },
+        },
       },
     },
   },

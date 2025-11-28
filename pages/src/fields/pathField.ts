@@ -17,7 +17,7 @@ export function pathField(): Field {
 
     admin: {
       components: {
-        Field: '@jhb.software/payload-pages-plugin/client#PathField',
+        Field: '@jhb.software/payload-pages-plugin/server#PathField',
       },
       disableBulkEdit: true,
       position: 'sidebar',

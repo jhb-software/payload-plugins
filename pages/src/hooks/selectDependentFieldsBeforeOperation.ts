@@ -3,7 +3,7 @@ import type { CollectionBeforeOperationHook } from 'payload'
 import { getSelectMode } from 'payload/shared'
 
 import { hasVirtualFieldSelected } from '../utils/hasVirtualFieldSelected.js'
-import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
+import { getPageConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 import { dependentFields } from './setVirtualFields.js'
 
 /**
@@ -17,7 +17,7 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   operation,
 }) => {
   if (operation == 'read' && args.select) {
-    const pageConfig = asPageCollectionConfigOrThrow(args.collection.config)
+    const pageConfig = getPageConfigOrThrow(args.collection.config)
     const selectMode = getSelectMode(args.select)
     const dependendSelectedFields = dependentFields(pageConfig)
     const hasVirtualFieldsSelected = hasVirtualFieldSelected(args.select)

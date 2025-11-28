@@ -1,13 +1,13 @@
 import type { Field, PayloadRequest, Where } from 'payload'
 
-import type { IncomingPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { SanitizedPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { getPageCollectionConfigAttributes } from '../utils/getPageCollectionConfigAttributes.js'
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 export function parentField(
-  pageConfig: IncomingPageCollectionConfigAttributes,
+  pageConfig: SanitizedPageCollectionConfigAttributes,
   collectionSlug: string,
   baseFilter?: PagesPluginConfig['baseFilter'],
 ): Field {

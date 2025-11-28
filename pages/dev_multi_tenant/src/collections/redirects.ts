@@ -1,12 +1,16 @@
-import { RedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-export const Redirects: RedirectsCollectionConfig = {
+export const Redirects: CollectionConfig = {
   slug: 'redirects',
   admin: {
     defaultColumns: ['sourcePath', 'destinationPath', 'permanent', 'createdAt'],
     listSearchableFields: ['sourcePath', 'destinationPath'],
   },
-  redirects: {},
+  custom: {
+    pagesPlugin: {
+      redirects: {},
+    },
+  },
   fields: [
     // the fields are added by the plugin automatically
   ],
