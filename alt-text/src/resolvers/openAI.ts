@@ -203,8 +203,9 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
               locale,
               z.object({
                 altText: z.string().describe('A concise, descriptive alt text for the image'),
-                keywords:
-                  z.array(z.string()).describe('Keywords that describe the content of the image'),
+                keywords: z
+                  .array(z.string())
+                  .describe('Keywords that describe the content of the image'),
               }),
             ]),
           ),
