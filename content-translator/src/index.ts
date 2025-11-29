@@ -1,4 +1,4 @@
-export { translator } from './plugin.js'
+export { payloadContentTranslatorPlugin } from './plugin.js'
 export { openAIResolver } from './resolvers/openAI.js'
 export * from './resolvers/types.js'
 export { translateOperation } from './translate/operation.js'

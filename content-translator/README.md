@@ -2,21 +2,25 @@
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
 
-A plugin for [Payload CMS](https://payloadcms.com) that enables AI-powered content translation for localized collections and globals.
+A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
 
 ## Features
 
-- Translate content in the Payload Admin UI between locales
-- abstraction to use different translation resolvers (e.g. OpenAI, DeepL, etc.)
-- Seamless integration with Payload's localization system
-- Review and edit translations before saving or publishing
+- translate content in the Payload Admin UI between locales
+- supports any translation service using a resolver pattern (e.g. OpenAI, DeepL, etc.)
+- comes with a ready-to-use OpenAI resolver out of the box
+- seamless integration with Payload's localization system
+- review and edit translations before saving or publishing
 
 ## Setup
 
 Install the plugin and add it to your Payload config:
 
 ```ts
-import { translator, openAIResolver } from '@jhb.software/payload-content-translator-plugin'
+import {
+  payloadContentTranslatorPlugin,
+  openAIResolver,
+} from '@jhb.software/payload-content-translator-plugin'
 
 export default buildConfig({
   // Enable localization
@@ -25,7 +29,7 @@ export default buildConfig({
     locales: ['en', 'de'] /* example */,
   },
   plugins: [
-    translator({
+    payloadContentTranslatorPlugin({
       collections: ['pages', 'posts'],
       globals: ['settings'],
       /* openAI or any other resolver */
@@ -88,7 +92,7 @@ export const customResolver = (): TranslateResolver => ({
 
 ## Acknowledgements
 
-This plugin is based on the translator package from [payload-enchants](https://github.com/r1tsuu/payload-enchants/tree/master/packages/translator). It has been modified, fixed and simplified.
+This plugin builds upon the translator package from [payload-enchants](https://github.com/r1tsuu/payload-enchants/tree/master/packages/translator) and has been refined and streamlined with additional enhancements and fixes.
 
 ## Contributing
 

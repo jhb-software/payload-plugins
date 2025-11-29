@@ -8,7 +8,9 @@ import { CustomButton } from './client/components/CustomButton/index.js'
 import { translations } from './i18n/translations.js'
 import { translateEndpoint } from './translate/endpoint.js'
 
-export const translator: (pluginConfig: TranslatorConfig) => Plugin = (pluginConfig) => {
+export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) => Plugin = (
+  pluginConfig,
+) => {
   return (config) => {
     if (pluginConfig.enabled === false) {
       return config

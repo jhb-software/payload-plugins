@@ -1,4 +1,4 @@
-import { translator } from '@jhb.software/payload-content-translator-plugin'
+import { payloadContentTranslatorPlugin } from '@jhb.software/payload-content-translator-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -76,7 +76,7 @@ export default buildConfig({
   },
 
   plugins: [
-    translator({
+    payloadContentTranslatorPlugin({
       collections: ['pages', 'posts', 'authors'],
       globals: [],
       resolver: mockResolver(),
