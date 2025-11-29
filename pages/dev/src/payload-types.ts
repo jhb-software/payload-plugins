@@ -106,8 +106,9 @@ export interface Config {
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
   db: {
-    defaultIDType: number;
+    defaultIDType: string;
   };
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('de' | 'en') | ('de' | 'en')[];
   globals: {};
   globalsSelect: {};
   locale: 'de' | 'en';
@@ -142,10 +143,10 @@ export interface UserAuthOperations {
  * via the `definition` "pages".
  */
 export interface Page {
-  id: number;
+  id: string;
   isRootPage?: boolean | null;
   slug: string;
-  parent?: (number | null) | Page;
+  parent?: (string | null) | Page;
   path: string;
   breadcrumbs: Breadcrumbs;
   title: string;
@@ -166,9 +167,9 @@ export interface Page {
  * via the `definition` "authors".
  */
 export interface Author {
-  id: number;
+  id: string;
   slug: string;
-  parent: number | Page;
+  parent: string | Page;
   path: string;
   breadcrumbs: Breadcrumbs;
   name: string;
@@ -188,15 +189,15 @@ export interface Author {
  * via the `definition` "blogposts".
  */
 export interface Blogpost {
-  id: number;
+  id: string;
   slug: string;
-  parent: number | Page;
+  parent: string | Page;
   path: string;
   breadcrumbs: Breadcrumbs;
   title: string;
   shortTitle: string;
   content: string;
-  author: number | Author;
+  author: string | Author;
   updatedAt: string;
   createdAt: string;
 }
@@ -205,7 +206,7 @@ export interface Blogpost {
  * via the `definition` "blogpost-categories".
  */
 export interface BlogpostCategory {
-  id: number;
+  id: string;
   title: string;
   slug: string;
   updatedAt: string;
@@ -216,7 +217,7 @@ export interface BlogpostCategory {
  * via the `definition` "redirects".
  */
 export interface Redirect {
-  id: number;
+  id: string;
   sourcePath: string;
   destinationPath: string;
   type: 'permanent' | 'temporary';
@@ -229,9 +230,9 @@ export interface Redirect {
  * via the `definition` "countries".
  */
 export interface Country {
-  id: number;
+  id: string;
   slug: string;
-  parent: number | Page;
+  parent: string | Page;
   path: string;
   breadcrumbs: Breadcrumbs;
   title: string;
@@ -252,9 +253,9 @@ export interface Country {
  * via the `definition` "country-travel-tips".
  */
 export interface CountryTravelTip {
-  id: number;
+  id: string;
   slug: string;
-  country: number | Country;
+  country: string | Country;
   path: string;
   breadcrumbs: Breadcrumbs;
   title: string;
@@ -275,7 +276,7 @@ export interface CountryTravelTip {
  * via the `definition` "users".
  */
 export interface User {
-  id: number;
+  id: string;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -299,7 +300,7 @@ export interface User {
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
-  id: number;
+  id: string;
   key: string;
   data:
     | {
@@ -316,44 +317,44 @@ export interface PayloadKv {
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: number;
+  id: string;
   document?:
     | ({
         relationTo: 'pages';
-        value: number | Page;
+        value: string | Page;
       } | null)
     | ({
         relationTo: 'authors';
-        value: number | Author;
+        value: string | Author;
       } | null)
     | ({
         relationTo: 'blogposts';
-        value: number | Blogpost;
+        value: string | Blogpost;
       } | null)
     | ({
         relationTo: 'blogpost-categories';
-        value: number | BlogpostCategory;
+        value: string | BlogpostCategory;
       } | null)
     | ({
         relationTo: 'redirects';
-        value: number | Redirect;
+        value: string | Redirect;
       } | null)
     | ({
         relationTo: 'countries';
-        value: number | Country;
+        value: string | Country;
       } | null)
     | ({
         relationTo: 'country-travel-tips';
-        value: number | CountryTravelTip;
+        value: string | CountryTravelTip;
       } | null)
     | ({
         relationTo: 'users';
-        value: number | User;
+        value: string | User;
       } | null);
   globalSlug?: string | null;
   user: {
     relationTo: 'users';
-    value: number | User;
+    value: string | User;
   };
   updatedAt: string;
   createdAt: string;
@@ -363,10 +364,10 @@ export interface PayloadLockedDocument {
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: number;
+  id: string;
   user: {
     relationTo: 'users';
-    value: number | User;
+    value: string | User;
   };
   key?: string | null;
   value?:
@@ -386,7 +387,7 @@ export interface PayloadPreference {
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: number;
+  id: string;
   name?: string | null;
   batch?: number | null;
   updatedAt: string;
