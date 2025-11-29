@@ -21,13 +21,14 @@ import { translator, openAIResolver } from '@jhb.software/payload-content-transl
 export default buildConfig({
   // Enable localization
   localization: {
-    defaultLocale: 'en',
-    locales: ['en', 'de'],
+    defaultLocale: 'en' /* example */,
+    locales: ['en', 'de'] /* example */,
   },
   plugins: [
     translator({
       collections: ['pages', 'posts'],
       globals: ['settings'],
+      /* openAI or any other resolver */
       resolver: openAIResolver({
         apiKey: process.env.OPENAI_API_KEY,
         model: 'gpt-4o-mini',
@@ -48,9 +49,11 @@ export default buildConfig({
 | `resolver`    | `TranslateResolver` | Yes      | Translation resolver to use           |
 | `enabled`     | `boolean`           | No       | Whether to enable the plugin.         |
 
-### Available Resolvers
+### Resolvers
 
-The plugin comes with an openAI resolver out of the box, but you can use any other translation resolver by creating your own and passing it to the plugin config.
+This plugin is designed to work seamlessly with various translation services by accepting a customizable translation resolver as a configuration option.
+
+An OpenAI resolver is provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
 
 #### OpenAI Resolver
 
