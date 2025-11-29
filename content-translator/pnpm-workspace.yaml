@@ -1,0 +1,8 @@
+packages:
+  - '.'
+  - 'dev'
+
+onlyBuiltDependencies:
+  - '@swc/core'
+  - 'esbuild'
+  - 'sharp'

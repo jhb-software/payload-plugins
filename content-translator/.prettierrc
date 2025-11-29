@@ -1,9 +1,0 @@
-{
-  "plugins": ["prettier-plugin-organize-imports"],
-  "printWidth": 100,
-  "parser": "typescript",
-  "semi": false,
-  "singleQuote": true,
-  "trailingComma": "all",
-  "arrowParens": "avoid"
-}

@@ -10,7 +10,11 @@
     },
     "transform": {
       "react": {
-        "runtime": "automatic"
+        "runtime": "automatic",
+        "pragmaFrag": "React.Fragment",
+        "throwIfNamespace": true,
+        "development": false,
+        "useBuiltins": true
       }
     }
   },

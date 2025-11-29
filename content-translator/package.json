@@ -1,119 +1,142 @@
 {
-  "name": "@payload-enchants/translator",
-  "version": "1.3.0",
-  "private": false,
-  "bugs": "https://github.com/r1tsuu/payload-enchants/issues",
-  "repository": "https://github.com/r1tsuu/payload-enchants",
-  "license": "MIT",
-  "author": "r1tsuu",
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": "./src/index.ts",
-      "require": "./src/index.ts",
-      "types": "./src/index.ts"
-    },
-    "./types": {
-      "import": "./src/types.ts",
-      "require": "./src/types.ts",
-      "types": "./src/types.ts"
-    },
-    "./resolvers/types": {
-      "import": "./src/resolvers/types.ts",
-      "require": "./src/resolvers/types.ts",
-      "types": "./src/resolvers/types.ts"
-    },
-    "./resolvers/google": {
-      "import": "./src/resolvers/google.ts",
-      "require": "./src/resolvers/google.ts",
-      "types": "./src/resolvers/google.ts"
-    },
-    "./resolvers/copy": {
-      "import": "./src/resolvers/copy.ts",
-      "require": "./src/resolvers/copy.ts",
-      "types": "./src/resolvers/copy.ts"
-    },
-    "./resolvers/openAI": {
-      "import": "./src/resolvers/openAI.ts",
-      "require": "./src/resolvers/openAI.ts",
-      "types": "./src/resolvers/openAI.ts"
-    },
-    "./client": {
-      "import": "./src/exports/client.ts",
-      "require": "./src/exports/client.ts",
-      "types": "./src/exports/client.ts"
-    }
-  },
-  "files": [
-    "dist"
+  "name": "@jhb.software/payload-content-translator",
+  "version": "0.1.0",
+  "description": "A content translation plugin for Payload CMS using AI-powered translators.",
+  "keywords": [
+    "payload",
+    "plugin",
+    "translator",
+    "i18n",
+    "localization",
+    "openai"
   ],
+  "author": "JHB Software",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "scripts": {
-    "build": "pnpm copyfiles && pnpm build:swc && pnpm build:types",
-    "build:swc": "swc ./src -d ./dist --config-file .swcrc",
-    "build:types": "tsc --emitDeclarationOnly --outDir dist",
-    "clean": "rimraf dist && rimraf tsconfig.tsbuildinfo",
+    "build": "pnpm copyfiles && pnpm build:types && pnpm build:swc",
+    "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths",
+    "build:types": "tsc --outDir dist --rootDir ./src",
     "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
+    "clean": "rimraf --glob {dist,*.tsbuildinfo}",
+    "dev": "tsc -w",
+    "format": "prettier --write src",
     "lint": "eslint src",
-    "lint:fix": "eslint --fix --ext .ts,.tsx src",
-    "prepublishOnly": "pnpm clean && pnpm build"
+    "lint:fix": "eslint src --fix",
+    "prepublishOnly": "pnpm clean && pnpm build",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "bson-objectid": "^2.0.4",
     "he": "^1.2.0"
   },
-  "devDependencies": {
-    "@types/he": "^1.2.3",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "typescript": "5.9.3"
-  },
   "peerDependencies": {
-    "@payloadcms/translations": "3.65.0",
-    "@payloadcms/ui": "3.65.0",
-    "payload": "3.65.0"
+    "@payloadcms/translations": "^3.62.1",
+    "@payloadcms/ui": "^3.62.1",
+    "next": "15.5.6",
+    "payload": "^3.62.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
   },
+  "devDependencies": {
+    "@payloadcms/eslint-config": "^3.28.0",
+    "@swc/cli": "^0.7.9",
+    "@swc/core": "^1.15.0",
+    "@types/he": "^1.2.3",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "copyfiles": "^2.4.1",
+    "eslint": "^9.39.1",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.1.0",
+    "typescript": "^5.9.3"
+  },
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
     "exports": {
       ".": {
         "import": "./dist/index.js",
-        "require": "./dist/index.js",
-        "types": "./dist/index.d.ts"
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
       },
       "./types": {
         "import": "./dist/types.js",
-        "require": "./dist/types.js",
-        "types": "./dist/types.d.ts"
+        "types": "./dist/types.d.ts",
+        "default": "./dist/types.js"
       },
       "./resolvers/types": {
         "import": "./dist/resolvers/types.js",
-        "require": "./dist/resolvers/types.js",
-        "types": "./dist/resolvers/types.d.ts"
+        "types": "./dist/resolvers/types.d.ts",
+        "default": "./dist/resolvers/types.js"
       },
       "./resolvers/google": {
         "import": "./dist/resolvers/google.js",
-        "require": "./dist/resolvers/google.js",
-        "types": "./dist/resolvers/google.d.ts"
+        "types": "./dist/resolvers/google.d.ts",
+        "default": "./dist/resolvers/google.js"
       },
       "./resolvers/copy": {
         "import": "./dist/resolvers/copy.js",
-        "require": "./dist/resolvers/copy.js",
-        "types": "./dist/resolvers/copy.d.ts"
+        "types": "./dist/resolvers/copy.d.ts",
+        "default": "./dist/resolvers/copy.js"
       },
       "./resolvers/openAI": {
         "import": "./dist/resolvers/openAI.js",
-        "require": "./dist/resolvers/openAI.js",
-        "types": "./dist/resolvers/openAI.d.ts"
+        "types": "./dist/resolvers/openAI.d.ts",
+        "default": "./dist/resolvers/openAI.js"
       },
       "./client": {
         "import": "./dist/exports/client.js",
-        "require": "./dist/exports/client.js",
-        "types": "./dist/exports/client.d.ts"
+        "types": "./dist/exports/client.d.ts",
+        "default": "./dist/exports/client.js"
       }
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     },
-    "main": "./dist/index.js",
-    "registry": "https://registry.npmjs.org/",
-    "types": "./dist/index.d.ts"
+    "./types": {
+      "import": "./src/types.ts",
+      "types": "./src/types.ts",
+      "default": "./src/types.ts"
+    },
+    "./resolvers/types": {
+      "import": "./src/resolvers/types.ts",
+      "types": "./src/resolvers/types.ts",
+      "default": "./src/resolvers/types.ts"
+    },
+    "./resolvers/google": {
+      "import": "./src/resolvers/google.ts",
+      "types": "./src/resolvers/google.ts",
+      "default": "./src/resolvers/google.ts"
+    },
+    "./resolvers/copy": {
+      "import": "./src/resolvers/copy.ts",
+      "types": "./src/resolvers/copy.ts",
+      "default": "./src/resolvers/copy.ts"
+    },
+    "./resolvers/openAI": {
+      "import": "./src/resolvers/openAI.ts",
+      "types": "./src/resolvers/openAI.ts",
+      "default": "./src/resolvers/openAI.ts"
+    },
+    "./client": {
+      "import": "./src/exports/client.ts",
+      "types": "./src/exports/client.ts",
+      "default": "./src/exports/client.ts"
+    }
+  },
+  "engines": {
+    "node": "^18.20.2 || >=20.9.0"
   }
 }
