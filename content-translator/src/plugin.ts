@@ -5,7 +5,7 @@ import { deepMerge } from 'payload/shared'
 import type { TranslatorConfig } from './types.js'
 
 import { CustomButton } from './client/components/CustomButton/index.js'
-import { translations } from './i18n-translations.js'
+import { translations } from './i18n/translations.js'
 import { translateEndpoint } from './translate/endpoint.js'
 
 export const translator: (pluginConfig: TranslatorConfig) => Plugin = (pluginConfig) => {

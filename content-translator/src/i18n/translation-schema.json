@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Plugin Translator Translations",
+  "description": "Schema for content translator plugin translations",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "plugin-translator": {
+        "type": "object",
+        "properties": {
+          "resolver_openai_buttonLabel": {
+            "type": "string",
+            "description": "Label for the translate button"
+          },
+          "resolver_openai_errorMessage": {
+            "type": "string",
+            "description": "Error message when translation fails"
+          },
+          "resolver_openai_modalDescription": {
+            "type": "string",
+            "description": "Description text in the translation modal"
+          },
+          "resolver_openai_modalSourceLanguage": {
+            "type": "string",
+            "description": "Label for source language selector"
+          },
+          "resolver_openai_modalTitle": {
+            "type": "string",
+            "description": "Title of the translation modal"
+          },
+          "resolver_openai_modalTranslating": {
+            "type": "string",
+            "description": "Text shown while translation is in progress"
+          },
+          "resolver_openai_submitButtonLabelEmpty": {
+            "type": "string",
+            "description": "Label for button to translate only empty fields"
+          },
+          "resolver_openai_submitButtonLabelFull": {
+            "type": "string",
+            "description": "Label for button to translate all fields"
+          },
+          "resolver_openai_successMessage": {
+            "type": "string",
+            "description": "Success message after translation completes"
+          }
+        },
+        "required": [
+          "resolver_openai_buttonLabel",
+          "resolver_openai_errorMessage",
+          "resolver_openai_modalDescription",
+          "resolver_openai_modalSourceLanguage",
+          "resolver_openai_modalTitle",
+          "resolver_openai_modalTranslating",
+          "resolver_openai_submitButtonLabelEmpty",
+          "resolver_openai_submitButtonLabelFull",
+          "resolver_openai_successMessage"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": ["plugin-translator"],
+    "additionalProperties": false
+  }
+}
