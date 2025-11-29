@@ -1,15 +1,11 @@
-import type { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
 import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
 
-import OpenAI from 'openai'
 import pMap from 'p-map'
 import { z } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
-import { getGenerationCost } from '../utilities/getGenerationCost.js'
 import { localesFromConfig } from '../utilities/localesFromConfig.js'
-import { zodResponseFormat } from '../utilities/zodResponseFormat.js'
 
 /**
  * Generates and updates alt text for multiple images in all locales.
@@ -41,8 +37,8 @@ export const bulkGenerateAltTextsEndpoint: PayloadHandler = async (req: PayloadR
       return Response.json({ error: 'Plugin config not found' }, { status: 500 })
     }
 
-    if (!pluginConfig.openAIApiKey) {
-      return Response.json({ error: 'OpenAI API key not configured' }, { status: 500 })
+    if (!pluginConfig.resolver) {
+      return Response.json({ error: 'No alt text resolver configured' }, { status: 500 })
     }
 
     // Use concurrency from config
@@ -71,6 +67,7 @@ export const bulkGenerateAltTextsEndpoint: PayloadHandler = async (req: PayloadR
             locales: targetLocales,
             payload: req.payload,
             pluginConfig,
+            req,
           })
           updatedDocs++
           console.log(
@@ -110,12 +107,14 @@ async function generateAndUpdateAltText({
   locales,
   payload,
   pluginConfig,
+  req,
 }: {
   collection: CollectionSlug
   id: string
   locales: string[]
   payload: BasePayload
   pluginConfig: AltTextPluginConfig
+  req: PayloadRequest
 }) {
   const imageDoc = await payload.findByID({
     id,
@@ -129,79 +128,29 @@ async function generateAndUpdateAltText({
 
   const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc)
 
-  const openai = new OpenAI({
-    apiKey: pluginConfig.openAIApiKey,
+  const result = await pluginConfig.resolver.resolveBulk({
+    filename: 'filename' in imageDoc ? (imageDoc.filename as string) : undefined,
+    imageUrl: imageThumbnailUrl,
+    locales,
+    req,
   })
 
-  const modelResponseSchema = z.object(
-    Object.fromEntries(
-      locales.map((locale) => [
-        locale,
-        z.object({
-          altText: z.string().describe('A concise, descriptive alt text for the image'),
-          keywords: z.array(z.string()).describe('Keywords that describe the content of the image'),
-        }),
-      ]),
-    ),
-  )
-
-  const response = await openai.chat.completions.parse({
-    max_completion_tokens: 300,
-    messages: [
-      {
-        content: `
-      You are an expert at analyzing images and creating descriptive image alt text. 
-      
-      Please analyze the given image and provide the following in ${locales.join(', ')}:
-      - A concise, localized descriptive alt text (1-2 sentences) as "altText". Focus on the subject, action, and setting. Avoid phrases like 'Image of', 'A picture of', or 'Photo showing'. Be specific and include relevant details like location or context if visible. Make no assumptions.
-      - A localized list of keywords that describe the content (e.g., ["Camel", "Palm trees", "Desert"]) as "keywords"
-    
-      If a context is provided, use it to enhance the alt text.
-      
-      Format your response as a JSON object with ${locales.join(', ')} keys, each containing "altText", "keywords" and "slug".
-    `,
-        role: 'system',
-      },
-      {
-        content: [
-          {
-            type: 'image_url',
-            image_url: { url: imageThumbnailUrl },
-          },
-          ...('filename' in imageDoc && imageDoc.filename
-            ? [
-                {
-                  type: 'text',
-                  text: imageDoc.filename,
-                } satisfies ChatCompletionContentPartText,
-              ]
-            : []),
-        ],
-        role: 'user',
-      },
-    ],
-    model: pluginConfig.model,
-    response_format: zodResponseFormat(modelResponseSchema, 'data'),
-  })
-
-  console.log({ imageId: id, ...getGenerationCost(response, pluginConfig.model) })
-
-  const result = response.choices[0]?.message?.parsed
-
-  if (!result) {
-    throw new Error('No result from OpenAI')
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to generate alt text')
   }
 
   for (const locale of locales) {
-    await payload.update({
-      id,
-      collection,
-      data: {
-        alt: (result as Record<string, { altText: string; keywords: string[] }>)[locale]?.altText,
-        keywords: (result as Record<string, { altText: string; keywords: string[] }>)[locale]
-          ?.keywords,
-      },
-      locale,
-    })
+    const localeResult = result.results[locale]
+    if (localeResult) {
+      await payload.update({
+        id,
+        collection,
+        data: {
+          alt: localeResult.altText,
+          keywords: localeResult.keywords,
+        },
+        locale,
+      })
+    }
   }
 }
