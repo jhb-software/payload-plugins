@@ -1,6 +1,6 @@
 # JHB Software - Payload Content Translator Plugin
 
-[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator)](https://www.npmjs.com/package/@jhb.software/payload-content-translator)
+[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
 
 A plugin for [Payload CMS](https://payloadcms.com) that enables AI-powered content translation for localized collections and globals.
 
@@ -16,7 +16,7 @@ A plugin for [Payload CMS](https://payloadcms.com) that enables AI-powered conte
 Install the plugin and add it to your Payload config:
 
 ```ts
-import { translator, openAIResolver } from '@jhb.software/payload-content-translator'
+import { translator, openAIResolver } from '@jhb.software/payload-content-translator-plugin'
 
 export default buildConfig({
   // Enable localization
@@ -58,7 +58,7 @@ An OpenAI resolver is provided out of the box, but you can use any translation p
 #### OpenAI Resolver
 
 ```ts
-import { openAIResolver } from '@jhb.software/payload-content-translator'
+import { openAIResolver } from '@jhb.software/payload-content-translator-plugin'
 
 openAIResolver({
   apiKey: process.env.OPENAI_API_KEY,
@@ -71,7 +71,7 @@ openAIResolver({
 You can create your own resolver by implementing the `TranslateResolver` interface.
 
 ```ts
-import type { TranslateResolver } from '@jhb.software/payload-content-translator'
+import type { TranslateResolver } from '@jhb.software/payload-content-translator-plugin'
 
 export const customResolver = (): TranslateResolver => ({
   key: 'custom',

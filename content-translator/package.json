@@ -1,5 +1,5 @@
 {
-  "name": "@jhb.software/payload-content-translator",
+  "name": "@jhb.software/payload-content-translator-plugin",
   "version": "0.1.0",
   "description": "A Payload CMS plugin that adds a content translation feature to the admin UI.",
   "keywords": [

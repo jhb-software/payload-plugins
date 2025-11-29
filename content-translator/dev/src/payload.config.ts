@@ -1,4 +1,4 @@
-import { translator } from '@jhb.software/payload-content-translator'
+import { translator } from '@jhb.software/payload-content-translator-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'

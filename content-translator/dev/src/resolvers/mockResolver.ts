@@ -1,4 +1,4 @@
-import type { TranslateResolver } from '@jhb.software/payload-content-translator'
+import type { TranslateResolver } from '@jhb.software/payload-content-translator-plugin'
 
 /**
  * A mock resolver for testing purposes.

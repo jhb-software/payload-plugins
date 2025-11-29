@@ -5,6 +5,6 @@ export const CustomButton = (type: 'publish' | 'save'): CustomPublishButton => {
     clientProps: {
       type,
     },
-    path: '@jhb.software/payload-content-translator/client#CustomButtonWithTranslator',
+    path: '@jhb.software/payload-content-translator-plugin/client#CustomButtonWithTranslator',
   }
 }

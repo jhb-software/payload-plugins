@@ -18,7 +18,7 @@
     "seed": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts tsx seed-db.ts"
   },
   "dependencies": {
-    "@jhb.software/payload-content-translator": "workspace:*",
+    "@jhb.software/payload-content-translator-plugin": "workspace:*",
     "@payloadcms/db-mongodb": "^3.65.0",
     "@payloadcms/next": "^3.65.0",
     "@payloadcms/richtext-lexical": "^3.65.0",

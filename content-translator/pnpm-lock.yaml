@@ -69,7 +69,7 @@ importers:
 
   dev:
     dependencies:
-      '@jhb.software/payload-content-translator':
+      '@jhb.software/payload-content-translator-plugin':
         specifier: workspace:*
         version: link:..
       '@payloadcms/db-mongodb':
