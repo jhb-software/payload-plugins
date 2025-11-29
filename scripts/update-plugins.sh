@@ -2,9 +2,10 @@
 # Note: We'll control error handling per-function rather than globally
 
 # Configuration
-PLUGINS=("pages" "geocoding" "seo" "cloudinary" "admin-search" "alt-text")
+PLUGINS=("pages" "geocoding" "cloudinary" "admin-search" "alt-text" "content-translator")
 PAGES_DEV_FOLDERS=("dev" "dev_unlocalized" "dev_multi_tenant")
 ALT_TEXT_DEV_FOLDERS=("dev" "dev_unlocalized")
+CONTENT_TRANSLATOR_DEV_FOLDERS=("dev")
 
 # Color codes for output
 RED='\033[0;31m'
@@ -38,18 +39,24 @@ update_dependencies() {
     # Update all dependencies to latest
     pnpm up --latest || return 1
 
-    # Force Next.js to 15.5.6 if present in package.json
+    # Pin Next.js to 15.x - version 16 has breaking changes with @payloadcms/next peer dependency
     if grep -q '"next"' package.json; then
         log_info "Pinning Next.js to 15.5.6"
-        # Use sed to update package.json directly to avoid workspace root issues
-        sed -i '' 's/"next": "[^"]*"/"next": "15.5.6"/g' package.json || return 1
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' 's/"next": "[^"]*"/"next": "15.5.6"/g' package.json || return 1
+        else
+            sed -i 's/"next": "[^"]*"/"next": "15.5.6"/g' package.json || return 1
+        fi
         pnpm install || return 1
     fi
 
-    # Force eslint-config-next to 15.5.6 if present
     if grep -q '"eslint-config-next"' package.json; then
         log_info "Pinning eslint-config-next to 15.5.6"
-        sed -i '' 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.6"/g' package.json || return 1
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.6"/g' package.json || return 1
+        else
+            sed -i 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.6"/g' package.json || return 1
+        fi
         pnpm install || return 1
     fi
 
@@ -59,29 +66,19 @@ update_dependencies() {
 # Generate types function
 generate_types() {
     local dir=$1
-    local plugin=$2
     cd "$dir"
 
     log_info "Generating types in $dir"
-    if [ "$plugin" = "admin-search" ]; then
-        pnpm run generate:types
-    else
-        pnpm run generate:types
-    fi
+    pnpm run generate:types
 }
 
 # Generate importmap function
 generate_importmap() {
     local dir=$1
-    local plugin=$2
     cd "$dir"
 
     log_info "Generating importmap in $dir"
-    if [ "$plugin" = "admin-search" ]; then
-        pnpm run generate:importmap
-    else
-        pnpm run generate:importmap
-    fi
+    pnpm run generate:importmap
 }
 
 # Verify dev server function
@@ -138,6 +135,8 @@ validate_plugin_structure() {
         expected_folders=("${PAGES_DEV_FOLDERS[@]}")
     elif [ "$plugin" = "alt-text" ]; then
         expected_folders=("${ALT_TEXT_DEV_FOLDERS[@]}")
+    elif [ "$plugin" = "content-translator" ]; then
+        expected_folders=("${CONTENT_TRANSLATOR_DEV_FOLDERS[@]}")
     else
         expected_folders=("dev")
     fi
@@ -204,6 +203,8 @@ for plugin in "${PLUGINS[@]}"; do
         dev_folders=("${PAGES_DEV_FOLDERS[@]}")
     elif [ "$plugin" = "alt-text" ]; then
         dev_folders=("${ALT_TEXT_DEV_FOLDERS[@]}")
+    elif [ "$plugin" = "content-translator" ]; then
+        dev_folders=("${CONTENT_TRANSLATOR_DEV_FOLDERS[@]}")
     else
         dev_folders=("dev")
     fi
@@ -221,13 +222,13 @@ for plugin in "${PLUGINS[@]}"; do
                 continue
             fi
 
-            if ! generate_types "$dev_path" "$plugin"; then
+            if ! generate_types "$dev_path"; then
                 PLUGIN_STATUS="FAILED"
                 log_error "Failed to generate types in $dev_path"
                 continue
             fi
 
-            if ! generate_importmap "$dev_path" "$plugin"; then
+            if ! generate_importmap "$dev_path"; then
                 PLUGIN_STATUS="FAILED"
                 log_error "Failed to generate importmap in $dev_path"
                 continue
