@@ -1,4 +1,4 @@
-import { translator, openAIResolver } from '@jhb.software/payload-content-translator'
+import { translator } from '@jhb.software/payload-content-translator'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -11,6 +11,7 @@ import { authorsSchema } from './collections/authors'
 import { mediaSchema } from './collections/media'
 import { pagesSchema } from './collections/pages'
 import { postsSchema } from './collections/posts'
+import { mockResolver } from './resolvers/mockResolver'
 import { seed } from './seed'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -78,10 +79,11 @@ export default buildConfig({
     translator({
       collections: ['pages', 'posts', 'authors'],
       globals: [],
-      resolver: openAIResolver({
-        apiKey: process.env.OPENAI_API_KEY || '',
-        model: 'gpt-4o-mini',
-      }),
+      resolver: mockResolver(),
+      // resolver: openAIResolver({
+      //   apiKey: process.env.OPENAI_API_KEY || '',
+      //   model: 'gpt-4o-mini',
+      // }),
     }),
   ],
 })

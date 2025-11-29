@@ -52,11 +52,40 @@ export default buildConfig({
 
 The plugin comes with an openAI resolver out of the box, but you can use any other translation resolver by creating your own and passing it to the plugin config.
 
-// TODO: short example of a custom resolver with noop
+#### OpenAI Resolver
+
+```ts
+import { openAIResolver } from '@jhb.software/payload-content-translator'
+
+openAIResolver({
+  apiKey: process.env.OPENAI_API_KEY,
+  model: 'gpt-4o-mini', // or 'gpt-4', 'gpt-3.5-turbo', etc.
+})
+```
+
+## Custom Resolver
+
+You can create your own resolver by implementing the `TranslateResolver` interface.
+
+```ts
+import type { TranslateResolver } from '@jhb.software/payload-content-translator'
+
+export const customResolver = (): TranslateResolver => ({
+  key: 'custom',
+  resolve: ({ localeTo, texts }) => {
+    const translatedTexts = texts.map((text) => {
+      /* your custom translation logic here */
+      return text
+    })
+
+    return { success: true, translatedTexts }
+  },
+})
+```
 
 ## Acknowledgements
 
-This plugin is based on the translator package from [payload-enchants](https://github.com/r1tsuu/payload-enchants/tree/master/packages/translator) by [@r1tsuu](https://github.com/r1tsuu). It has been modified and adapted to meet specific project requirements.
+This plugin is based on the translator package from [payload-enchants](https://github.com/r1tsuu/payload-enchants/tree/master/packages/translator). It has been modified, fixed and simplified.
 
 ## Contributing
 
