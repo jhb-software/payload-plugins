@@ -36,8 +36,7 @@ export const payloadAltTextPlugin =
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
-      model: incomingPluginConfig.model ?? 'gpt-4.1-nano',
-      openAIApiKey: incomingPluginConfig.openAIApiKey,
+      resolver: incomingPluginConfig.resolver,
     }
 
     // Validate locale requirement for non-localized mode

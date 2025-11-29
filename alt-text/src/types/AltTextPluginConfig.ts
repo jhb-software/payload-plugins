@@ -1,5 +1,7 @@
 import type { CollectionSlug, Field } from 'payload'
 
+import type { AltTextResolver } from '../resolvers/types.js'
+
 /** Configuration options for the alt text plugin. */
 export type IncomingAltTextPluginConfig = {
   /** Collection slugs to enable the plugin for. */
@@ -31,11 +33,8 @@ export type IncomingAltTextPluginConfig = {
   /** Maximum number of concurrent API requests for bulk operations. */
   maxBulkGenerateConcurrency?: number
 
-  /** The OpenAI LLM model to use for alt text generation. */
-  model?: 'gpt-4.1-mini' | 'gpt-4.1-nano'
-
-  /** OpenAI API key for authentication. */
-  openAIApiKey: string
+  /** The resolver to use for generating alt text (e.g., openAIResolver) */
+  resolver: AltTextResolver
 }
 
 /** Configuration of the alt text plugin after defaults have been applied. */
@@ -61,9 +60,6 @@ export type AltTextPluginConfig = {
   /** Maximum number of concurrent API requests for bulk generate operations. */
   maxBulkGenerateConcurrency: number
 
-  /** The OpenAI LLM model to use for alt text generation. */
-  model: 'gpt-4.1-mini' | 'gpt-4.1-nano'
-
-  /** OpenAI API key for authentication. */
-  openAIApiKey: string
+  /** The resolver to use for generating alt text */
+  resolver: AltTextResolver
 }
