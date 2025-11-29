@@ -1,13 +1,13 @@
 import type { BasePayload } from 'payload'
 
-import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { SanitizedPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 
-import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
+import { getPageConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 
 /**
- * Get the page config attributes for a collection.
+ * Get the sanitized page config attributes for a collection.
  *
- * This is useful inside server components, where the `usePageCollectionConfigAttributes` hook is not available.
+ * Only available in server components.
  */
 export function getPageCollectionConfigAttributes({
   collectionSlug,
@@ -15,9 +15,7 @@ export function getPageCollectionConfigAttributes({
 }: {
   collectionSlug: string
   payload: BasePayload
-}): PageCollectionConfigAttributes {
+}): SanitizedPageCollectionConfigAttributes {
   const collection = payload.collections[collectionSlug]
-  const pageConfig = asPageCollectionConfigOrThrow(collection.config)
-
-  return pageConfig.page
+  return getPageConfigOrThrow(collection.config)
 }

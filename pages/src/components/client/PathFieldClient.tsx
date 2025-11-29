@@ -1,5 +1,5 @@
 'use client'
-import type { TextFieldClientComponent } from 'payload'
+import type { TextFieldClientProps } from 'payload'
 
 import {
   FieldLabel,
@@ -18,21 +18,31 @@ import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useDidUpdateEffect } from '../../utils/useDidUpdateEffect.js'
 import { BreadcrumbsFieldModalButton } from './BreadcrumbsField.js'
 import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
-import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConfigAtrributes.js'
 
-export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) => {
+export type PathFieldClientProps = {
+  breadcrumbLabelField: string
+  parentCollection: string
+  parentFieldName: string
+} & TextFieldClientProps
+
+export const PathFieldClient = ({
+  breadcrumbLabelField,
+  field,
+  parentCollection,
+  parentFieldName,
+  path: fieldPath,
+}: PathFieldClientProps) => {
   const { config } = useConfig()
-  const {
-    breadcrumbs: { labelField: breadcrumbLabelFieldName },
-    parent: { name: parentField, collection: parentCollection },
-  } = usePageCollectionConfigAttributes()
   const { code: locale } = useLocale() as unknown as { code: Locale | undefined }
   const { getBreadcrumbs, setBreadcrumbs } = useBreadcrumbs()
   const { setValue: setPathRaw, value: path } = useField<string>({ path: fieldPath })
   const { setValue: setSlugRaw, value: slug } = useField<string>({ path: 'slug' })
-  const breadcrumbLabel = useFormFields(([fields, _]) => fields[breadcrumbLabelFieldName])
-    ?.value as string | undefined
-  const parent = useFormFields(([fields, _]) => fields[parentField])?.value as string | undefined
+  const breadcrumbLabel = useFormFields(([fields, _]) => fields[breadcrumbLabelField])?.value as
+    | string
+    | undefined
+  const parent = useFormFields(([fields, _]) => fields[parentFieldName])?.value as
+    | string
+    | undefined
   const isRootPage = useFormFields(([fields, _]) => fields.isRootPage)?.value as boolean | undefined
 
   /**
@@ -64,11 +74,11 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
       slug,
       isRootPage,
     }
-    doc[parentField] = parent
-    doc[breadcrumbLabelFieldName] = breadcrumbLabel
+    doc[parentFieldName] = parent
+    doc[breadcrumbLabelField] = breadcrumbLabel
 
     const fechtchedBreadcrumbs = (await getBreadcrumbsForDoc({
-      breadcrumbLabelField: breadcrumbLabelFieldName,
+      breadcrumbLabelField,
       data: doc,
       locale,
       locales:
@@ -76,7 +86,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
           ? config.localization.localeCodes
           : undefined,
       parentCollection,
-      parentField,
+      parentField: parentFieldName,
       req: undefined, // payload req is not available here
     })) as Breadcrumb[]
 

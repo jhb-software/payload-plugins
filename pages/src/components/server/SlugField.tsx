@@ -2,6 +2,7 @@ import type { TextFieldServerProps } from 'payload'
 
 import type { SlugFieldProps } from '../client/SlugFieldClient.js'
 
+import { isRedirectsCollectionConfig } from '../../utils/pageCollectionConfigHelpers.js'
 import SlugFieldClient from '../client/SlugFieldClient.js'
 
 /**
@@ -19,17 +20,17 @@ export const SlugField = ({
 }: SlugFieldProps & TextFieldServerProps) => {
   const isReadOnly = readOnly || (permissions !== true && permissions?.update !== true)
 
-  let redirectsCollectionSlug = payload.config.collections?.find(
-    (col) => col.custom?.isRedirectsCollection === true,
-  )?.slug
+  const redirectsCollection = payload.config.collections?.find((col) =>
+    isRedirectsCollectionConfig(col),
+  )
 
-  if (!redirectsCollectionSlug) {
+  if (!redirectsCollection) {
     console.warn(
       '[Pages Plugin] No redirects collection found. Falling back to "redirects" collection.',
     )
   }
 
-  redirectsCollectionSlug = redirectsCollectionSlug || 'redirects'
+  const redirectsCollectionSlug = redirectsCollection?.slug ?? 'redirects'
 
   return (
     <SlugFieldClient

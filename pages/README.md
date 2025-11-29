@@ -4,9 +4,13 @@
 
 The Payload Pages plugin simplifies website building by adding essential fields to your collections. These fields enable hierarchical page structures and dynamic URL management.
 
+## Requirements
+
+- Payload CMS `^3.65.0` (required for type-safe `custom` field support via module augmentation)
+
 ## Setup
 
-First, add the plugin to your payload config. The `generatePageURL` function is required and must provide a function that returns the full URL to the frontend page. 
+First, add the plugin to your payload config. The `generatePageURL` function is required and must provide a function that returns the full URL to the frontend page.
 
 ```ts
 import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
@@ -23,7 +27,9 @@ plugins: [
 ]
 ```
 
-Next, create a page collections using the `PageCollectionConfig` type. This type extends Payload's `CollectionConfig` type with a `page` field that contains configurations for the page collection. The `page` field must be specified as follows:
+Next, create page collections using Payload's standard `CollectionConfig` with the `custom.pagesPlugin.page` property. The plugin extends Payload's `CollectionCustom` interface via module augmentation, providing full type-safety for the page configuration.
+
+The `custom.pagesPlugin.page` field must be specified as follows:
 
 - `parent.collection`: The slug of the collection that will be used as the parent of the current collection.
 - `parent.name`: The name of the field on the parent collection that will be used to relate to the current collection.
@@ -35,19 +41,23 @@ Next, create a page collections using the `PageCollectionConfig` type. This type
 Here is an example of the page collection config of the root collection:
 
 ```ts
-import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-const Pages: PageCollectionConfig = {
+const Pages: CollectionConfig = {
   slug: 'pages',
   admin: {
     useAsTitle: 'title',
   },
-  page: {
-    parent: {
-      collection: 'pages',
-      name: 'parent',
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'pages',
+          name: 'parent',
+        },
+        isRootCollection: true,
+      },
     },
-    isRootCollection: true,
   },
   fields: [
     {
@@ -63,15 +73,19 @@ const Pages: PageCollectionConfig = {
 Then additional collections can be created. Documents in these collections will be nested under documents in the root collection.
 
 ```ts
-import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-const Posts: PageCollectionConfig = {
+const Posts: CollectionConfig = {
   slug: 'posts',
-  page: {
-    parent: {
-      collection: 'pages',
-      name: 'parent',
-      sharedDocument: true,
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'pages',
+          name: 'parent',
+          sharedDocument: true,
+        },
+      },
     },
   },
   fields: [
@@ -80,18 +94,22 @@ const Posts: PageCollectionConfig = {
 }
 ```
 
-The plugin also includes a `RedirectsCollectionConfig` type that can be used to create a redirects collection. This type extends Payload's `CollectionConfig` type with a `redirects` field that contains configurations for the redirects collection.
+The plugin also supports a redirects collection. Use the `custom.pagesPlugin.redirects` property to enable it:
 
 ```ts
-import { RedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-const Redirects: RedirectsCollectionConfig = {
+const Redirects: CollectionConfig = {
   slug: 'redirects',
   admin: {
     defaultColumns: ['sourcePath', 'destinationPath', 'permanent', 'createdAt'],
     listSearchableFields: ['sourcePath', 'destinationPath'],
   },
-  redirects: {},
+  custom: {
+    pagesPlugin: {
+      redirects: {},
+    },
+  },
   fields: [
     // the fields are added by the plugin automatically
   ],
@@ -140,15 +158,26 @@ The plugin supports multi-tenant setups via the official [Multi-tenant plugin](h
 
 By default the plugin adds a unique constraint to the slug field of all page collections. In a multi-tenant setup you can disable this constraint by setting the `unique` field to `false` in the page collection config. To ensure uniqueness for a tenant to now have pages with multiple slugs, you can create a compound unique index.
 
-Example:    
+Example:
 
 ```ts
-export const Pages: PageCollectionConfig = {
+import type { CollectionConfig } from 'payload'
+
+export const Pages: CollectionConfig = {
   slug: 'pages',
-  page: {
-    slug: {
-      // Disable the slug uniqueness because of the multi-tenant setup (see indexes below)
-      unique: false,
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'pages',
+          name: 'parent',
+        },
+        isRootCollection: true,
+        slug: {
+          // Disable the slug uniqueness because of the multi-tenant setup (see indexes below)
+          unique: false,
+        },
+      },
     },
   },
   indexes: [
@@ -158,7 +187,7 @@ export const Pages: PageCollectionConfig = {
     },
   ],
   fields: [ /* your fields */],
-} 
+}
 ```
 
 Some features (e.g. the parent and isRootPage fields) internally fetch documents from the database. To ensure only documents from the current tenant are fetched, you need to pass the `baseFilter` function to the plugin config. It receives the current request object and should return a `Where` object which will be added to the query.

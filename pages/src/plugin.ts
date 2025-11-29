@@ -1,13 +1,15 @@
 import type { Config } from 'payload'
 
-import type { IncomingPageCollectionConfig } from './types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from './types/PagesPluginConfig.js'
-import type { IncomingRedirectsCollectionConfig } from './types/RedirectsCollectionConfig.js'
 
 import { createPageCollectionConfig } from './collections/PageCollectionConfig.js'
 import { createRedirectsCollectionConfig } from './collections/RedirectsCollectionConfig.js'
 import { translations } from './translations/index.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
+import {
+  isPagesPluginPageConfig,
+  isPagesPluginRedirectsConfig,
+} from './utils/pageCollectionConfigHelpers.js'
 
 /** Payload plugin which integrates fields for managing website pages. */
 export const payloadPagesPlugin =
@@ -29,18 +31,20 @@ export const payloadPagesPlugin =
     // Ensure collections array exists
     config.collections = config.collections || []
 
-    // Find and transform collections
+    // Find and transform collections based on custom.pagesPlugin.page or custom.pagesPlugin.redirects
     config.collections = config.collections.map((collection) => {
-      if ('page' in collection) {
+      const pagesPlugin = collection.custom?.pagesPlugin
+
+      if (isPagesPluginPageConfig(pagesPlugin)) {
         // Create page collection using the page configuration
         return createPageCollectionConfig({
-          collectionConfig: collection as IncomingPageCollectionConfig,
+          collectionConfig: collection,
           pluginConfig: pluginOptions,
         })
-      } else if ('redirects' in collection) {
+      } else if (isPagesPluginRedirectsConfig(pagesPlugin)) {
         // Create redirects collection using the redirects configuration
         return createRedirectsCollectionConfig({
-          collectionConfig: collection as IncomingRedirectsCollectionConfig,
+          collectionConfig: collection,
           pluginConfig: pluginOptions,
         })
       }

@@ -1,9 +1,9 @@
 import type { CollectionConfig, CollectionSlug, PayloadRequest } from 'payload'
 
-import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
+import type { SanitizedPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
-import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
+import { getPageConfig, isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
 
 /**
  * Finds all child documents that reference a given parent document.
@@ -24,7 +24,8 @@ export async function childDocumentsOf(
   )
 
   for (const targetCollection of pageCollections) {
-    const parentFieldName = targetCollection.page.parent.name || 'parent'
+    const pageConfig = getPageConfig(targetCollection) as SanitizedPageCollectionConfigAttributes
+    const parentFieldName = pageConfig.parent.name || 'parent'
 
     const baseFilterWhere = typeof baseFilter === 'function' ? baseFilter({ req }) : undefined
 
@@ -70,16 +71,16 @@ export async function hasChildDocuments(
 }
 
 /**
- * Checks if the specified `CollectionConfig` is a `PageCollectionConfig` and if the parent collection field equals to the expected collection slug.
+ * Checks if the collection is a page collection and if the parent collection field equals the expected collection slug.
  */
 function isPageCollectionWithParent(
   collection: CollectionConfig,
   expectedParentCollectionSlug: CollectionSlug,
-): collection is PageCollectionConfig {
-  const pageConfig = isPageCollectionConfig(collection)
-  if (!pageConfig) {
+): boolean {
+  if (!isPageCollectionConfig(collection)) {
     return false
   }
 
-  return collection.page.parent.collection === expectedParentCollectionSlug
+  const pageConfig = getPageConfig(collection)
+  return pageConfig?.parent.collection === expectedParentCollectionSlug
 }

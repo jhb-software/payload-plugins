@@ -2,15 +2,27 @@ import type { CollectionConfig } from 'payload'
 
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type {
-  IncomingRedirectsCollectionConfig,
-  RedirectsCollectionConfig,
-} from '../types/RedirectsCollectionConfig.js'
+  RedirectsCollectionConfigAttributes,
+  SanitizedRedirectsCollectionConfigAttributes,
+} from '../types/RedirectsCollectionConfigAttributes.js'
 
 import { validateRedirect } from '../hooks/validateRedirect.js'
 
 // TODO: Consider the potential benefits of storing the destination page in a relationship field.
 //       Note: The destination path should still be explicitly defined to ensure the redirect path remains consistent,
 //       even if the destination page's path changes.
+
+/**
+ * Sanitizes the redirects collection config by applying defaults.
+ */
+export const sanitizeRedirectsCollectionConfig = (
+  _incoming: RedirectsCollectionConfigAttributes,
+  pluginConfig: PagesPluginConfig,
+): SanitizedRedirectsCollectionConfigAttributes => {
+  return {
+    redirectValidationFilter: pluginConfig.redirectValidationFilter,
+  }
+}
 
 /** Creates a collection which stores redirects from one path to another.
  *
@@ -20,21 +32,36 @@ export const createRedirectsCollectionConfig = ({
   collectionConfig: incomingCollectionConfig,
   pluginConfig,
 }: {
-  collectionConfig: IncomingRedirectsCollectionConfig
+  collectionConfig: CollectionConfig
   pluginConfig: PagesPluginConfig
 }): CollectionConfig => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const redirectsCollectionConfig: RedirectsCollectionConfig = {
-    ...incomingCollectionConfig,
+  // Get redirects config from custom.pagesPlugin.redirects (type-safe via module augmentation)
+  const pagesPlugin = incomingCollectionConfig.custom?.pagesPlugin
+  const incomingRedirectsConfig =
+    pagesPlugin && 'redirects' in pagesPlugin ? pagesPlugin.redirects : undefined
+
+  if (!incomingRedirectsConfig) {
+    throw new Error(
+      `Collection "${incomingCollectionConfig.slug}" is missing custom.pagesPlugin.redirects configuration`,
+    )
   }
+
+  // Sanitize the incoming config (apply defaults)
+  const sanitizedRedirectsConfig = sanitizeRedirectsCollectionConfig(
+    incomingRedirectsConfig,
+    pluginConfig,
+  )
 
   return {
     ...incomingCollectionConfig,
     custom: {
       ...incomingCollectionConfig.custom,
-      // This makes the baseFilter available in hooks etc.
-      isRedirectsCollection: true,
-      pagesPluginConfig: pluginConfig,
+      pagesPlugin: {
+        // Keep the original incoming config
+        redirects: incomingRedirectsConfig,
+        // Store the sanitized config for internal use
+        _redirects: sanitizedRedirectsConfig,
+      },
     },
     fields: [
       {

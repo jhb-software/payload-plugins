@@ -1,6 +1,6 @@
 import type { CollectionBeforeValidateHook } from 'payload'
 
-import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
+import type { SanitizedRedirectsCollectionConfigAttributes } from '../types/RedirectsCollectionConfigAttributes.js'
 
 import { AdminPanelError } from '../utils/AdminPanelError.js'
 
@@ -18,11 +18,14 @@ export const validateRedirect: CollectionBeforeValidateHook = async ({
   const sourcePath = data?.sourcePath ?? originalDoc?.sourcePath
   const destinationPath = data?.destinationPath ?? originalDoc?.destinationPath
 
-  // Get baseFilter from collection config
-  const pagesPluginConfig = collection?.custom?.pagesPluginConfig as PagesPluginConfig
+  // Get redirectValidationFilter from sanitized redirects config
+  const pagesPlugin = collection?.custom?.pagesPlugin as
+    | { _redirects?: SanitizedRedirectsCollectionConfigAttributes }
+    | undefined
+  const sanitizedConfig = pagesPlugin?._redirects
   const redirectValidationFilter =
-    typeof pagesPluginConfig?.redirectValidationFilter === 'function'
-      ? pagesPluginConfig?.redirectValidationFilter({ doc: data, req })
+    typeof sanitizedConfig?.redirectValidationFilter === 'function'
+      ? sanitizedConfig.redirectValidationFilter({ doc: data, req })
       : undefined
 
   // Check if there's already a redirect for the source path

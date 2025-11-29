@@ -1,15 +1,19 @@
-import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-export const Countries: PageCollectionConfig = {
+export const Countries: CollectionConfig = {
   slug: 'countries',
   admin: {
     useAsTitle: 'title',
   },
-  page: {
-    parent: {
-      collection: 'pages',
-      name: 'parent',
-      sharedDocument: true,
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'pages',
+          name: 'parent',
+          sharedDocument: true,
+        },
+      },
     },
   },
   versions: {

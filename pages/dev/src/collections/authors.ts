@@ -1,22 +1,28 @@
-import { alternatePathsField, PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import type { CollectionConfig } from 'payload'
 
-export const Authors: PageCollectionConfig = {
+import { alternatePathsField } from '@jhb.software/payload-pages-plugin'
+
+export const Authors: CollectionConfig = {
   slug: 'authors',
   admin: {
     useAsTitle: 'name',
   },
-  page: {
-    parent: {
-      collection: 'pages',
-      name: 'parent',
-      sharedDocument: true,
+  custom: {
+    pagesPlugin: {
+      page: {
+        parent: {
+          collection: 'pages',
+          name: 'parent',
+          sharedDocument: true,
+        },
+        breadcrumbs: {
+          labelField: 'name',
+        },
+        // Example: a collection where preview and live preview are disabled:
+        livePreview: false,
+        preview: false,
+      },
     },
-    breadcrumbs: {
-      labelField: 'name',
-    },
-    // Example: a collection where preview and live preview are disabled:
-    livePreview: false,
-    preview: false,
   },
   fields: [
     {
