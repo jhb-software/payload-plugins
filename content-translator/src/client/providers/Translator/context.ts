@@ -1,22 +1,23 @@
 import type { Locale } from 'payload'
+
 import { createContext, useContext } from 'react'
 
-import type { TranslateResolver } from '../../../resolvers/types'
+import type { TranslateResolver } from '../../../resolvers/types.js'
 
 type TranslatorContextData = {
   closeTranslator: () => void
-  localeToTranslateFrom: string
   localesOptions: Locale[]
+  localeToTranslateFrom: string
   modalSlug: string
   openTranslator: (args: { resolverKey: string }) => void
-  resolver: TranslateResolver | null
+  resolver: null | TranslateResolver
   resolverT: (
     key:
       | 'buttonLabel'
       | 'errorMessage'
-      | 'modalTitle'
       | 'modalDescription'
       | 'modalSourceLanguage'
+      | 'modalTitle'
       | 'modalTranslating'
       | 'submitButtonLabelEmpty'
       | 'submitButtonLabelFull'
@@ -26,12 +27,14 @@ type TranslatorContextData = {
   submit: (args: { emptyOnly: boolean }) => Promise<void>
 }
 
-export const TranslatorContext = createContext<TranslatorContextData | null>(null)
+export const TranslatorContext = createContext<null | TranslatorContextData>(null)
 
 export const useTranslator = () => {
   const context = useContext(TranslatorContext)
 
-  if (context === null) throw new Error('useTranslator must be used within TranslatorProvider')
+  if (context === null) {
+    throw new Error('useTranslator must be used within TranslatorProvider')
+  }
 
   return context
 }

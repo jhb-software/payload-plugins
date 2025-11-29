@@ -1,6 +1,6 @@
 import type { CollectionSlug, GlobalSlug } from 'payload'
 
-import type { TranslateResolver } from './resolvers/types'
+import type { TranslateResolver } from './resolvers/types.js'
 
 export type TranslatorConfig = {
   /**

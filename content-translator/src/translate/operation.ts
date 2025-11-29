@@ -1,11 +1,12 @@
 import he from 'he'
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
-import type { TranslateResolver } from '../resolvers/types'
-import { findEntityWithConfig } from './findEntityWithConfig'
-import { traverseFields } from './traverseFields'
-import type { TranslateArgs, TranslateResult, ValueToTranslate } from './types'
-import { updateEntity } from './updateEntity'
+import type { TranslateResolver } from '../resolvers/types.js'
+import type { TranslateArgs, TranslateResult, ValueToTranslate } from './types.js'
+
+import { findEntityWithConfig } from './findEntityWithConfig.js'
+import { traverseFields } from './traverseFields.js'
+import { updateEntity } from './updateEntity.js'
 
 export type TranslateOperationArgs = (
   | {
@@ -25,21 +26,23 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
           payload: args.payload,
         } as PayloadRequest)
 
-  const { collectionSlug, globalSlug, id, locale, localeFrom, overrideAccess } = args
+  const { id, collectionSlug, globalSlug, locale, localeFrom, overrideAccess } = args
 
   const { config, doc: dataFrom } = await findEntityWithConfig({
+    id,
     collectionSlug,
     globalSlug,
-    id,
     locale: localeFrom,
     req,
   })
 
   const resolver = (
     (req.payload.config.custom?.translator?.resolvers as TranslateResolver[]) ?? []
-  ).find(each => each.key === args.resolver)
+  ).find((each) => each.key === args.resolver)
 
-  if (!resolver) throw new APIError(`Resolver with the key ${args.resolver} was not found`)
+  if (!resolver) {
+    throw new APIError(`Resolver with the key ${args.resolver} was not found`)
+  }
 
   const valuesToTranslate: ValueToTranslate[] = []
 
@@ -47,9 +50,9 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
 
   if (!translatedData) {
     const { doc } = await findEntityWithConfig({
+      id,
       collectionSlug,
       globalSlug,
-      id,
       locale,
       overrideAccess,
       req,
@@ -62,16 +65,16 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     dataFrom,
     emptyOnly: args.emptyOnly ?? false,
     fields: config.fields,
+    payloadConfig: req.payload.config,
     translatedData,
     valuesToTranslate,
-    payloadConfig: req.payload.config,
   })
 
   const resolveResult = await resolver.resolve({
     localeFrom: args.localeFrom,
     localeTo: args.locale,
     req,
-    texts: valuesToTranslate.map(each => each.value),
+    texts: valuesToTranslate.map((each) => each.value),
   })
 
   let result: TranslateResult
@@ -89,11 +92,11 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
 
     if (args.update) {
       await updateEntity({
+        id,
         collectionSlug,
         data: translatedData,
         depth: 0,
         globalSlug,
-        id,
         locale,
         overrideAccess,
         req,

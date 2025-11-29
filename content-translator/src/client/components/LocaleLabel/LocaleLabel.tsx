@@ -1,7 +1,9 @@
+import type { Locale } from 'payload'
+
 import { getTranslation } from '@payloadcms/translations'
 import { ChevronIcon, useTranslation } from '@payloadcms/ui'
-import type { Locale } from 'payload'
-import { useTranslator } from '../../providers/Translator/context'
+
+import { useTranslator } from '../../providers/Translator/context.js'
 
 const baseClass = 'localizer-button'
 

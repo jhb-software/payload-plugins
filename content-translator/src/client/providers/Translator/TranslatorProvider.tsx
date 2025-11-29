@@ -12,10 +12,11 @@ import {
 import { reduceFieldsToValues } from 'payload/shared'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
-import type { TranslateResolver } from '../../../resolvers/types'
-import type { TranslateArgs } from '../../../translate/types'
-import { createClient } from '../../api'
-import { TranslatorContext } from './context'
+import type { TranslateResolver } from '../../../resolvers/types.js'
+import type { TranslateArgs } from '../../../translate/types.js'
+
+import { createClient } from '../../api/index.js'
+import { TranslatorContext } from './context.js'
 
 const modalSlug = 'translator-modal'
 
@@ -26,7 +27,7 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
 
   const { getFormState } = useServerFunctions()
 
-  const { collectionSlug, getDocPreferences, globalSlug, id } = useDocumentInfo()
+  const { id, collectionSlug, getDocPreferences, globalSlug } = useDocumentInfo()
 
   const { setModified } = useForm()
 
@@ -38,15 +39,17 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
     key:
       | 'buttonLabel'
       | 'errorMessage'
-      | 'modalTitle'
       | 'modalDescription'
       | 'modalSourceLanguage'
+      | 'modalTitle'
       | 'modalTranslating'
       | 'submitButtonLabelEmpty'
       | 'submitButtonLabelFull'
       | 'successMessage',
   ) => {
-    if (!resolver) return ''
+    if (!resolver) {
+      return ''
+    }
 
     return t(`plugin-translator:resolver_${resolver}_${key}` as Parameters<typeof t>[0])
   }
@@ -65,42 +68,53 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
   const apiClient = createClient({ api, serverURL })
 
   const resolverConfig = useMemo(() => {
-    if (!resolver) return null
+    if (!resolver) {
+      return null
+    }
 
     const resolvers = (custom?.translator?.resolvers as TranslateResolver[]) || undefined
 
-    if (!resolvers) return null
+    if (!resolvers) {
+      return null
+    }
 
-    const resolverConfig = resolvers.find(each => each.key === resolver)
+    const resolverConfig = resolvers.find((each) => each.key === resolver)
 
     return resolverConfig ?? null
   }, [custom, resolver])
 
-  if (!localization)
+  if (!localization) {
     throw new Error('Localization config is not provided and PluginTranslator is used')
+  }
 
-  const localesOptions = localization.locales.filter(each => each.code !== locale.code)
+  const localesOptions = localization.locales.filter((each) => each.code !== locale.code)
 
   const [localeToTranslateFrom, setLocaleToTranslateFrom] = useState<string>('')
 
   useEffect(() => {
-    const defaultFromOptions = localesOptions.find(each => localization.defaultLocale === each.code)
+    const defaultFromOptions = localesOptions.find(
+      (each) => localization.defaultLocale === each.code,
+    )
 
-    if (defaultFromOptions) setLocaleToTranslateFrom(defaultFromOptions.code)
+    if (defaultFromOptions) {
+      setLocaleToTranslateFrom(defaultFromOptions.code)
+    }
     setLocaleToTranslateFrom(localesOptions[0].code)
   }, [locale, localesOptions, localization.defaultLocale])
 
   const closeTranslator = () => modal.closeModal(modalSlug)
 
   const submit = async ({ emptyOnly }: { emptyOnly: boolean }) => {
-    if (!resolver) return
+    if (!resolver) {
+      return
+    }
 
     const args: TranslateArgs = {
+      id: id === null ? undefined : id,
       collectionSlug,
       data: reduceFieldsToValues(data, true),
       emptyOnly,
       globalSlug,
-      id: id === null ? undefined : id,
       locale: locale.code,
       localeFrom: localeToTranslateFrom,
       resolver,
@@ -132,8 +146,8 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
 
       if (state) {
         dispatch({
-          state,
           type: 'REPLACE_STATE',
+          state,
         })
 
         setModified(true)
@@ -148,11 +162,11 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <TranslatorContext.Provider
+    <TranslatorContext
       value={{
         closeTranslator,
-        localeToTranslateFrom,
         localesOptions,
+        localeToTranslateFrom,
         modalSlug,
         openTranslator: ({ resolverKey }) => {
           setResolver(resolverKey)
@@ -165,6 +179,6 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
       }}
     >
       {children}
-    </TranslatorContext.Provider>
+    </TranslatorContext>
   )
 }

@@ -1,1 +1,1 @@
-export { CustomButtonWithTranslator } from '../client/components/CustomButton/CustomButtonWithTranslator'
+export { CustomButtonWithTranslator } from '../client/components/CustomButton/CustomButtonWithTranslator.js'

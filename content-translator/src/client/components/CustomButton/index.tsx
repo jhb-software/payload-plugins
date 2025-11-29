@@ -1,6 +1,6 @@
-import type { CustomPublishButton, CustomSaveButton } from 'payload'
+import type { CustomPublishButton } from 'payload'
 
-export const CustomButton = (type: 'publish' | 'save'): CustomPublishButton | CustomSaveButton => {
+export const CustomButton = (type: 'publish' | 'save'): CustomPublishButton => {
   return {
     clientProps: {
       type,

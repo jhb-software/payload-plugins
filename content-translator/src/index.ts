@@ -1,21 +1,24 @@
-import type { CollectionSlug, Config, GlobalSlug, Plugin } from 'payload'
+import type { Config, Plugin } from 'payload'
+
 import { deepMerge } from 'payload/shared'
 
-import { CustomButton } from './client/components/CustomButton'
-import { translations } from './i18n-translations'
-import { translateEndpoint } from './translate/endpoint'
-import { translateOperation } from './translate/operation'
-import type { TranslatorConfig } from './types'
+import type { TranslatorConfig } from './types.js'
 
-export { openAIResolver } from './resolvers/openAI'
-export * from './resolvers/types'
+import { CustomButton } from './client/components/CustomButton/index.js'
+import { translations } from './i18n-translations.js'
+import { translateEndpoint } from './translate/endpoint.js'
+import { translateOperation } from './translate/operation.js'
+
+export { openAIResolver } from './resolvers/openAI.js'
+export * from './resolvers/types.js'
 
 export { translateOperation }
 
-export const translator: (pluginConfig: TranslatorConfig) => Plugin = pluginConfig => {
-  return config => {
-    if (pluginConfig.disabled || !config.localization || config.localization.locales.length < 2)
+export const translator: (pluginConfig: TranslatorConfig) => Plugin = (pluginConfig) => {
+  return (config) => {
+    if (pluginConfig.disabled || !config.localization || config.localization.locales.length < 2) {
       return config
+    }
 
     const updatedConfig: Config = {
       ...config,
@@ -29,9 +32,10 @@ export const translator: (pluginConfig: TranslatorConfig) => Plugin = pluginConf
         },
       },
       collections:
-        config.collections?.map(collection => {
-          if (!pluginConfig.collections.includes(collection.slug as CollectionSlug))
+        config.collections?.map((collection) => {
+          if (!pluginConfig.collections.includes(collection.slug)) {
             return collection
+          }
 
           return {
             ...collection,
@@ -63,8 +67,10 @@ export const translator: (pluginConfig: TranslatorConfig) => Plugin = pluginConf
         },
       ],
       globals:
-        config.globals?.map(global => {
-          if (!pluginConfig.globals.includes(global.slug as GlobalSlug)) return global
+        config.globals?.map((global) => {
+          if (!pluginConfig.globals.includes(global.slug)) {
+            return global
+          }
 
           return {
             ...global,

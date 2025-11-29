@@ -1,1 +1,1 @@
-export * from './ResolverButton'
+export * from './ResolverButton.js'

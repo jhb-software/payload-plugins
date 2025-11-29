@@ -1,22 +1,26 @@
 import type { PayloadHandler } from 'payload'
+
 import { APIError } from 'payload'
 
-import { translateOperation } from './operation'
-import type { TranslateEndpointArgs } from './types'
+import type { TranslateEndpointArgs } from './types.js'
 
-export const translateEndpoint: PayloadHandler = async req => {
-  if (!req.json) throw new APIError('Content-Type should be json')
+import { translateOperation } from './operation.js'
+
+export const translateEndpoint: PayloadHandler = async (req) => {
+  if (!req.json) {
+    throw new APIError('Content-Type should be json')
+  }
 
   const args: TranslateEndpointArgs = await req.json()
 
-  const { collectionSlug, data, emptyOnly, globalSlug, id, locale, localeFrom, resolver } = args
+  const { id, collectionSlug, data, emptyOnly, globalSlug, locale, localeFrom, resolver } = args
 
   const result = await translateOperation({
+    id,
     collectionSlug,
     data,
     emptyOnly,
     globalSlug,
-    id,
     locale,
     localeFrom,
     overrideAccess: false,

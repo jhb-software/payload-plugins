@@ -1,1 +1,1 @@
-export * from './LocaleLabel'
+export * from './LocaleLabel.js'

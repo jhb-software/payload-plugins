@@ -1,31 +1,33 @@
-import ObjectID from 'bson-objectid'
 import type { Field, SanitizedConfig } from 'payload'
+
+import ObjectID from 'bson-objectid'
 import { tabHasName } from 'payload/shared'
 
-import { isEmpty } from '../utils/isEmpty'
-import { traverseRichText } from './traverseRichText'
-import type { ValueToTranslate } from './types'
+import type { ValueToTranslate } from './types.js'
+
+import { isEmpty } from '../utils/isEmpty.js'
+import { traverseRichText } from './traverseRichText.js'
 
 export const traverseFields = ({
   dataFrom,
   emptyOnly,
   fields,
   localizedParent,
+  payloadConfig,
   siblingDataFrom,
   siblingDataTranslated,
   translatedData,
   valuesToTranslate,
-  payloadConfig,
 }: {
   dataFrom: Record<string, unknown>
   emptyOnly: boolean
   fields: Field[]
   localizedParent?: boolean
+  payloadConfig: SanitizedConfig
   siblingDataFrom?: Record<string, unknown>
   siblingDataTranslated?: Record<string, unknown>
   translatedData: Record<string, unknown>
   valuesToTranslate: ValueToTranslate[]
-  payloadConfig: SanitizedConfig
 }) => {
   siblingDataFrom = siblingDataFrom ?? dataFrom
   siblingDataTranslated = siblingDataTranslated ?? translatedData
@@ -36,75 +38,22 @@ export const traverseFields = ({
     }
 
     switch (field.type) {
-      case 'tabs':
-        for (const tab of field.tabs) {
-          const hasName = tabHasName(tab)
-
-          const tabDataFrom = hasName
-            ? (siblingDataFrom[tab.name] as Record<string, unknown>)
-            : siblingDataFrom
-
-          if (!tabDataFrom) return
-
-          const tabDataTranslated = hasName
-            ? ((siblingDataTranslated[tab.name] as Record<string, unknown>) ?? {})
-            : siblingDataTranslated
-
-          traverseFields({
-            dataFrom,
-            emptyOnly,
-            fields: tab.fields,
-            localizedParent: tab.localized,
-            siblingDataFrom: tabDataFrom,
-            siblingDataTranslated: tabDataTranslated,
-            translatedData,
-            valuesToTranslate,
-            payloadConfig,
-          })
-        }
-
-        break
-
-      case 'group': {
-        if (!('name' in field)) {
-          // TODO: handle unnamed groups
-          throw new Error('Unnamed groups are currently not supported by this plugin.')
-        }
-
-        const groupDataFrom = siblingDataFrom[field.name] as Record<string, unknown>
-
-        if (!groupDataFrom) break
-
-        const groupDataTranslated =
-          (siblingDataTranslated[field.name] as Record<string, unknown>) ?? {}
-
-        traverseFields({
-          dataFrom,
-          emptyOnly,
-          fields: field.fields,
-          localizedParent: field.localized,
-          siblingDataFrom: groupDataFrom,
-          siblingDataTranslated: groupDataTranslated,
-          translatedData,
-          valuesToTranslate,
-          payloadConfig,
-        })
-
-        break
-      }
-
       case 'array': {
         const arrayDataFrom = siblingDataFrom[field.name] as {
           id: string
         }[]
 
-        if (isEmpty(arrayDataFrom)) break
+        if (isEmpty(arrayDataFrom)) {
+          break
+        }
 
         let arrayDataTranslated =
           (siblingDataTranslated[field.name] as { id: string }[] | undefined) ?? []
 
         if (field.localized || localizedParent) {
-          if (arrayDataTranslated.length > 0 && emptyOnly) break
+          if (arrayDataTranslated.length > 0 && emptyOnly) {
+            break
+          }
 
           arrayDataTranslated = arrayDataFrom.map(() => ({
             id: ObjectID().toHexString(),
@@ -117,11 +66,11 @@ export const traverseFields = ({
             emptyOnly,
             fields: field.fields,
             localizedParent: localizedParent ?? field.localized,
+            payloadConfig,
             siblingDataFrom: arrayDataFrom[index],
             siblingDataTranslated: item,
             translatedData,
             valuesToTranslate,
-            payloadConfig,
           })
         })
 
@@ -136,25 +85,29 @@ export const traverseFields = ({
           id: string
         }[]
 
-        if (isEmpty(blocksDataFrom)) break
+        if (isEmpty(blocksDataFrom)) {
+          break
+        }
 
         let blocksDataTranslated =
           (siblingDataTranslated[field.name] as { blockType: string; id: string }[] | undefined) ??
           []
 
         if (field.localized || localizedParent) {
-          if (blocksDataTranslated.length > 0 && emptyOnly) break
+          if (blocksDataTranslated.length > 0 && emptyOnly) {
+            break
+          }
 
           blocksDataTranslated = blocksDataFrom.map(({ blockType }) => ({
-            blockType,
             id: ObjectID().toHexString(),
+            blockType,
           }))
         }
 
         blocksDataTranslated.forEach((item, index) => {
           let blockConfig = undefined
           if (field.blockReferences) {
-            blockConfig = payloadConfig.blocks?.find(b => b.slug === item.blockType)
+            blockConfig = payloadConfig.blocks?.find((b) => b.slug === item.blockType)
 
             if (!blockConfig) {
               console.warn(
@@ -164,7 +117,7 @@ export const traverseFields = ({
               return
             }
           } else {
-            blockConfig = field.blocks.find(b => b.slug === item.blockType)
+            blockConfig = field.blocks.find((b) => b.slug === item.blockType)
 
             if (!blockConfig) {
               console.warn(
@@ -180,11 +133,11 @@ export const traverseFields = ({
             emptyOnly,
             fields: blockConfig.fields,
             localizedParent: localizedParent ?? field.localized,
+            payloadConfig,
             siblingDataFrom: blocksDataFrom[index],
             siblingDataTranslated: item,
             translatedData,
             valuesToTranslate,
-            payloadConfig,
           })
         })
 
@@ -193,27 +146,11 @@ export const traverseFields = ({
         break
       }
 
-      case 'collapsible':
-      case 'row':
-        traverseFields({
-          dataFrom,
-          emptyOnly,
-          fields: field.fields,
-          localizedParent,
-          siblingDataFrom,
-          siblingDataTranslated,
-          translatedData,
-          valuesToTranslate,
-          payloadConfig,
-        })
-        break
-
-      // long ass cases here we have
-      case 'date':
       case 'checkbox':
-      case 'json':
       case 'code':
+      case 'date':
       case 'email':
+      case 'json':
       case 'number':
       case 'point':
       case 'radio':
@@ -223,13 +160,150 @@ export const traverseFields = ({
         siblingDataTranslated[field.name] = siblingDataFrom[field.name]
 
         break
+      case 'collapsible':
+      case 'row':
+        traverseFields({
+          dataFrom,
+          emptyOnly,
+          fields: field.fields,
+          localizedParent,
+          payloadConfig,
+          siblingDataFrom,
+          siblingDataTranslated,
+          translatedData,
+          valuesToTranslate,
+        })
+        break
+      case 'group': {
+        if (!('name' in field)) {
+          // TODO: handle unnamed groups
+          throw new Error('Unnamed groups are currently not supported by this plugin.')
+        }
 
+        const groupDataFrom = siblingDataFrom[field.name] as Record<string, unknown>
+
+        if (!groupDataFrom) {
+          break
+        }
+
+        const groupDataTranslated =
+          (siblingDataTranslated[field.name] as Record<string, unknown>) ?? {}
+
+        traverseFields({
+          dataFrom,
+          emptyOnly,
+          fields: field.fields,
+          localizedParent: field.localized,
+          payloadConfig,
+          siblingDataFrom: groupDataFrom,
+          siblingDataTranslated: groupDataTranslated,
+          translatedData,
+          valuesToTranslate,
+        })
+
+        break
+      }
+      case 'richText': {
+        if (field.custom && typeof field.custom === 'object' && field.custom.translatorSkip) {
+          break
+        }
+
+        if (!(field.localized || localizedParent) || isEmpty(siblingDataFrom[field.name])) {
+          break
+        }
+
+        if (emptyOnly && !isEmpty(siblingDataTranslated[field.name])) {
+          break
+        }
+
+        const richTextDataFrom = siblingDataFrom[field.name] as object
+
+        siblingDataTranslated[field.name] = richTextDataFrom
+
+        if (!richTextDataFrom) {
+          break
+        }
+
+        const isSlate = Array.isArray(richTextDataFrom)
+
+        const isLexical = 'root' in richTextDataFrom
+
+        if (!isSlate && !isLexical) {
+          break
+        }
+
+        if (isLexical) {
+          const root = (siblingDataTranslated[field.name] as Record<string, unknown>)
+            ?.root as Record<string, unknown>
+
+          if (root) {
+            traverseRichText({
+              emptyOnly,
+              onText: (siblingData, key) => {
+                valuesToTranslate.push({
+                  onTranslate: (translated: string) => {
+                    siblingData[key] = translated
+                  },
+                  value: siblingData[key],
+                })
+              },
+              payloadConfig,
+              root,
+              translatedData,
+              valuesToTranslate,
+            })
+          }
+        } else {
+          console.warn(
+            'Slate RichText fields are not supported by the AI Content Translation Plugin.',
+          )
+        }
+
+        break
+      }
+
+      case 'tabs':
+        for (const tab of field.tabs) {
+          const hasName = tabHasName(tab)
+
+          const tabDataFrom = hasName
+            ? (siblingDataFrom[tab.name] as Record<string, unknown>)
+            : siblingDataFrom
+
+          if (!tabDataFrom) {
+            return
+          }
+
+          const tabDataTranslated = hasName
+            ? ((siblingDataTranslated[tab.name] as Record<string, unknown>) ?? {})
+            : siblingDataTranslated
+
+          traverseFields({
+            dataFrom,
+            emptyOnly,
+            fields: tab.fields,
+            localizedParent: tab.localized,
+            payloadConfig,
+            siblingDataFrom: tabDataFrom,
+            siblingDataTranslated: tabDataTranslated,
+            translatedData,
+            valuesToTranslate,
+          })
+        }
+
+        break
       case 'text':
       case 'textarea':
-        if (field.custom && typeof field.custom === 'object' && field.custom.translatorSkip) break
+        if (field.custom && typeof field.custom === 'object' && field.custom.translatorSkip) {
+          break
+        }
 
-        if (!(field.localized || localizedParent) || isEmpty(siblingDataFrom[field.name])) break
-        if (emptyOnly && siblingDataTranslated[field.name]) break
+        if (!(field.localized || localizedParent) || isEmpty(siblingDataFrom[field.name])) {
+          break
+        }
+        if (emptyOnly && siblingDataTranslated[field.name]) {
+          break
+        }
 
         // do not translate the block ID or admin-facing label
         if (field.name === 'blockName' || field.name === 'id') {
@@ -243,54 +317,6 @@ export const traverseFields = ({
           value: siblingDataFrom[field.name],
         })
         break
-
-      case 'richText': {
-        if (field.custom && typeof field.custom === 'object' && field.custom.translatorSkip) break
-
-        if (!(field.localized || localizedParent) || isEmpty(siblingDataFrom[field.name])) break
-
-        if (emptyOnly && !isEmpty(siblingDataTranslated[field.name])) break
-
-        const richTextDataFrom = siblingDataFrom[field.name] as object
-
-        siblingDataTranslated[field.name] = richTextDataFrom
-
-        if (!richTextDataFrom) break
-
-        const isSlate = Array.isArray(richTextDataFrom)
-
-        const isLexical = 'root' in richTextDataFrom
-
-        if (!isSlate && !isLexical) break
-
-        if (isLexical) {
-          const root = (siblingDataTranslated[field.name] as Record<string, unknown>)
-            ?.root as Record<string, unknown>
-
-          if (root)
-            traverseRichText({
-              onText: (siblingData, key) => {
-                valuesToTranslate.push({
-                  onTranslate: (translated: string) => {
-                    siblingData[key] = translated
-                  },
-                  value: siblingData[key],
-                })
-              },
-              root,
-              emptyOnly,
-              translatedData,
-              valuesToTranslate,
-              payloadConfig,
-            })
-        } else {
-          console.warn(
-            'Slate RichText fields are not supported by the AI Content Translation Plugin.',
-          )
-        }
-
-        break
-      }
 
       default:
         break

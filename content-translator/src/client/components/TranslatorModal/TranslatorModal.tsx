@@ -2,15 +2,15 @@ import './styles.scss'
 
 import { getTranslation } from '@payloadcms/translations'
 import { Button, LoadingOverlay, Modal, Popup, PopupList, useTranslation } from '@payloadcms/ui'
-
 import { useState } from 'react'
-import { useTranslator } from '../../providers/Translator/context'
-import { LocaleLabel } from '../LocaleLabel'
+
+import { useTranslator } from '../../providers/Translator/context.js'
+import { LocaleLabel } from '../LocaleLabel/LocaleLabel.js'
 
 export const TranslatorModal = () => {
   const {
-    localeToTranslateFrom: localeCodeToTranslateFrom,
     localesOptions,
+    localeToTranslateFrom: localeCodeToTranslateFrom,
     resolverT,
     setLocaleToTranslateFrom,
     submit,
@@ -19,7 +19,9 @@ export const TranslatorModal = () => {
 
   const { i18n } = useTranslation()
 
-  const localeToTranslateFrom = localesOptions.find(each => each.code === localeCodeToTranslateFrom)
+  const localeToTranslateFrom = localesOptions.find(
+    (each) => each.code === localeCodeToTranslateFrom,
+  )
 
   const [isTranslating, setIsTranslating] = useState(false)
 
@@ -38,16 +40,21 @@ export const TranslatorModal = () => {
   ) : (
     <Modal className={'translator__modal'} slug={modalSlug}>
       <div className={'translator__wrapper'}>
-        <button aria-label="Close" className={'translator__close'} onClick={closeTranslator}>
+        <button
+          aria-label="Close"
+          className={'translator__close'}
+          onClick={closeTranslator}
+          type="button"
+        >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            fill="none"
-            viewBox="0 0 24 24"
             className="close-icon"
+            fill="none"
+            height="24"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            <path stroke="currentColor" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="2" />
           </svg>
         </button>
 
@@ -59,7 +66,7 @@ export const TranslatorModal = () => {
               horizontalAlign="center"
               render={({ close }) => (
                 <PopupList.ButtonGroup>
-                  {localesOptions.map(option => {
+                  {localesOptions.map((option) => {
                     const label = getTranslation(option.label, i18n)
 
                     return (
@@ -95,7 +102,7 @@ export const TranslatorModal = () => {
                   <Button onClick={() => onSubmit(false)}>
                     {resolverT('submitButtonLabelFull')}
                   </Button>
-                  <Button onClick={() => onSubmit(true)} buttonStyle="pill">
+                  <Button buttonStyle="pill" onClick={() => onSubmit(true)}>
                     {resolverT('submitButtonLabelEmpty')}
                   </Button>
                 </>

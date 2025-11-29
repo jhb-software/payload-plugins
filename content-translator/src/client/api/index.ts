@@ -1,4 +1,4 @@
-import type { TranslateEndpointArgs, TranslateResult } from '../../translate/types'
+import type { TranslateEndpointArgs, TranslateResult } from '../../translate/types.js'
 
 export const createClient = ({ api, serverURL }: { api: string; serverURL: string }) => {
   const translate = async (args: TranslateEndpointArgs): Promise<TranslateResult> => {
@@ -12,11 +12,15 @@ export const createClient = ({ api, serverURL }: { api: string; serverURL: strin
         method: 'POST',
       })
 
-      if (!response.ok) return { success: false }
+      if (!response.ok) {
+        return { success: false }
+      }
 
       return response.json()
     } catch (e) {
-      if (e instanceof Error) console.error(e.message)
+      if (e instanceof Error) {
+        console.error(e.message)
+      }
 
       return { success: false }
     }

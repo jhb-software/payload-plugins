@@ -1,23 +1,25 @@
-import { FlattenedBlock, SanitizedConfig } from 'payload'
-import { traverseFields } from './traverseFields'
-import { ValueToTranslate } from './types'
+import type { FlattenedBlock, SanitizedConfig } from 'payload'
+
+import type { ValueToTranslate } from './types.js'
+
+import { traverseFields } from './traverseFields.js'
 
 export const traverseRichText = ({
+  emptyOnly,
   onText,
+  payloadConfig,
   root,
   siblingData,
-  emptyOnly,
   translatedData,
   valuesToTranslate,
-  payloadConfig,
 }: {
+  emptyOnly: boolean
   onText: (siblingData: Record<string, unknown>, key: string) => void
+  payloadConfig: SanitizedConfig
   root: Record<string, unknown>
   siblingData?: Record<string, unknown>
-  emptyOnly: boolean
   translatedData: Record<string, unknown>
   valuesToTranslate: ValueToTranslate[]
-  payloadConfig: SanitizedConfig
 }) => {
   siblingData = siblingData ?? root
 
@@ -43,14 +45,14 @@ export const traverseRichText = ({
         // Traverse the fields of the block
         traverseFields({
           dataFrom: root,
-          emptyOnly: emptyOnly,
+          emptyOnly,
           fields: blockConfig.fields,
           localizedParent: false,
+          payloadConfig,
           siblingDataFrom: blockData,
           siblingDataTranslated: blockData,
-          translatedData: translatedData,
-          valuesToTranslate: valuesToTranslate,
-          payloadConfig,
+          translatedData,
+          valuesToTranslate,
         })
       }
     } else {
@@ -59,13 +61,13 @@ export const traverseRichText = ({
   } else if (Array.isArray(siblingData?.children)) {
     for (const child of siblingData.children) {
       traverseRichText({
+        emptyOnly,
         onText,
+        payloadConfig,
         root,
         siblingData: child,
-        emptyOnly,
         translatedData,
         valuesToTranslate,
-        payloadConfig,
       })
     }
   }
@@ -75,8 +77,10 @@ const findBlockConfigBySlug = (
   slug: string,
   payloadConfig: SanitizedConfig,
 ): FlattenedBlock | undefined => {
-  const payloadBlockConfig = payloadConfig.blocks?.find(block => block.slug === slug)
-  if (payloadBlockConfig) return payloadBlockConfig
+  const payloadBlockConfig = payloadConfig.blocks?.find((block) => block.slug === slug)
+  if (payloadBlockConfig) {
+    return payloadBlockConfig
+  }
 
   // If not found anywhere, warn and return undefined
   console.warn(

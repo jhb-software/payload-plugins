@@ -1,5 +1,6 @@
-import { chunkArray } from '../utils/chunkArray'
-import type { TranslateResolver } from './types'
+import type { TranslateResolver } from './types.js'
+
+import { chunkArray } from '../utils/chunkArray.js'
 
 export type OpenAIPrompt = (args: {
   localeFrom: string
@@ -61,7 +62,7 @@ export const openAIResolver = ({
           data: OpenAIResponse
           success: boolean
         }[] = await Promise.all(
-          chunkArray(texts, chunkLength).map(async texts => {
+          chunkArray(texts, chunkLength).map(async (texts) => {
             return fetch(apiUrl, {
               body: JSON.stringify({
                 messages: [
@@ -78,14 +79,15 @@ export const openAIResolver = ({
                 'Content-Type': 'application/json',
               },
               method: 'post',
-            }).then(async res => {
+            }).then(async (res) => {
               const data = await res.json()
 
-              if (!res.ok)
+              if (!res.ok) {
                 req.payload.logger.info({
                   message: 'An error occurred when trying to translate the data using OpenAI API',
                   openAIresponse: data,
                 })
+              }
 
               return {
                 data,
@@ -98,10 +100,11 @@ export const openAIResolver = ({
         const translated: string[] = []
 
         for (const { data, success } of response) {
-          if (!success)
+          if (!success) {
             return {
               success: false as const,
             }
+          }
 
           const content = data?.choices?.[0]?.message?.content
 
