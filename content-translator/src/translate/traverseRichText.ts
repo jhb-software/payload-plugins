@@ -84,7 +84,7 @@ const findBlockConfigBySlug = (
 
   // If not found anywhere, warn and return undefined
   console.warn(
-    `Could not find block config for lexical block with slug ${slug} in the payload config blocks array.`,
+    `Could not find block config for lexical block with slug ${slug} in the Payload config blocks array. The content translator plugin only supports blocks defined in the Payload config blocks array.`,
   )
 
   // In Payload v4, the option for defining block configs inside of fields will be removed in favor of the

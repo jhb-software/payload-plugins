@@ -226,39 +226,33 @@ export const traverseFields = ({
           break
         }
 
-        const isSlate = Array.isArray(richTextDataFrom)
-
         const isLexical = 'root' in richTextDataFrom
 
-        if (!isSlate && !isLexical) {
+        if (!isLexical) {
           break
         }
 
-        if (isLexical) {
-          const root = (siblingDataTranslated[field.name] as Record<string, unknown>)
-            ?.root as Record<string, unknown>
+        const root = (siblingDataTranslated[field.name] as Record<string, unknown>)?.root as Record<
+          string,
+          unknown
+        >
 
-          if (root) {
-            traverseRichText({
-              emptyOnly,
-              onText: (siblingData, key) => {
-                valuesToTranslate.push({
-                  onTranslate: (translated: string) => {
-                    siblingData[key] = translated
-                  },
-                  value: siblingData[key],
-                })
-              },
-              payloadConfig,
-              root,
-              translatedData,
-              valuesToTranslate,
-            })
-          }
-        } else {
-          console.warn(
-            'Slate RichText fields are not supported by the AI Content Translation Plugin.',
-          )
+        if (root) {
+          traverseRichText({
+            emptyOnly,
+            onText: (siblingData, key) => {
+              valuesToTranslate.push({
+                onTranslate: (translated: string) => {
+                  siblingData[key] = translated
+                },
+                value: siblingData[key],
+              })
+            },
+            payloadConfig,
+            root,
+            translatedData,
+            valuesToTranslate,
+          })
         }
 
         break
