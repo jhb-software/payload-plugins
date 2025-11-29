@@ -7,6 +7,10 @@ import type { TranslateEndpointArgs } from './types.js'
 import { translateOperation } from './operation.js'
 
 export const translateEndpoint: PayloadHandler = async (req) => {
+  if (!req.user) {
+    throw new APIError('You must be logged in to translate content', 401)
+  }
+
   if (!req.json) {
     throw new APIError('Content-Type should be json')
   }
