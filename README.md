@@ -66,7 +66,7 @@ Extends the official [SEO plugin](https://payloadcms.com/docs/plugins/seo) with 
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
 
-A plugin that enables content translation directly within the Payload CMS panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
+A plugin that enables content translation directly within the Payload CMS admin panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
 
 [Learn more about the Content Translator plugin →](./content-translator)
 
