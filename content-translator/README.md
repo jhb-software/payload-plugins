@@ -1,0 +1,1 @@
+This plugin is a modified version of the original found at https://github.com/r1tsuu/payload-enchants. It includes various bug fixes and has been tailored to meet the specific requirements of this project.
