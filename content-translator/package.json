@@ -1,0 +1,122 @@
+{
+  "name": "@jhb.software/payload-content-translator-plugin",
+  "version": "0.1.0",
+  "description": "A Payload CMS plugin that adds a content translation feature to the admin UI.",
+  "keywords": [
+    "payload",
+    "plugin",
+    "translator",
+    "i18n",
+    "localization",
+    "openai"
+  ],
+  "author": "JHB Software",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "pnpm copyfiles && pnpm build:types && pnpm build:swc",
+    "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths",
+    "build:types": "tsc --outDir dist --rootDir ./src",
+    "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
+    "clean": "rimraf --glob {dist,*.tsbuildinfo}",
+    "dev": "tsc -w",
+    "format": "prettier --write src",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "prepublishOnly": "pnpm clean && pnpm build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bson-objectid": "^2.0.4",
+    "he": "^1.2.0"
+  },
+  "peerDependencies": {
+    "@payloadcms/translations": "^3.65.0",
+    "@payloadcms/ui": "^3.65.0",
+    "next": "15.5.6",
+    "payload": "^3.65.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@payloadcms/eslint-config": "^3.28.0",
+    "@swc/cli": "^0.7.9",
+    "@swc/core": "^1.15.0",
+    "@types/he": "^1.2.3",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "copyfiles": "^2.4.1",
+    "eslint": "^9.39.1",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.1.0",
+    "typescript": "^5.9.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./types": {
+        "import": "./dist/types.js",
+        "types": "./dist/types.d.ts",
+        "default": "./dist/types.js"
+      },
+      "./resolvers/types": {
+        "import": "./dist/resolvers/types.js",
+        "types": "./dist/resolvers/types.d.ts",
+        "default": "./dist/resolvers/types.js"
+      },
+      "./resolvers/openAI": {
+        "import": "./dist/resolvers/openAI.js",
+        "types": "./dist/resolvers/openAI.d.ts",
+        "default": "./dist/resolvers/openAI.js"
+      },
+      "./client": {
+        "import": "./dist/exports/client.js",
+        "types": "./dist/exports/client.d.ts",
+        "default": "./dist/exports/client.js"
+      }
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./types": {
+      "import": "./src/types.ts",
+      "types": "./src/types.ts",
+      "default": "./src/types.ts"
+    },
+    "./resolvers/types": {
+      "import": "./src/resolvers/types.ts",
+      "types": "./src/resolvers/types.ts",
+      "default": "./src/resolvers/types.ts"
+    },
+    "./resolvers/openAI": {
+      "import": "./src/resolvers/openAI.ts",
+      "types": "./src/resolvers/openAI.ts",
+      "default": "./src/resolvers/openAI.ts"
+    },
+    "./client": {
+      "import": "./src/exports/client.ts",
+      "types": "./src/exports/client.ts",
+      "default": "./src/exports/client.ts"
+    }
+  },
+  "engines": {
+    "node": "^18.20.2 || >=20.9.0"
+  }
+}

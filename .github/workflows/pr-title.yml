@@ -36,6 +36,7 @@ jobs:
             admin-search
             alt-text
             cloudinary
+            content-translator
             geocoding
             pages
             seo
