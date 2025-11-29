@@ -13,7 +13,7 @@ export const translateEndpoint: PayloadHandler = async (req) => {
 
   const args: TranslateEndpointArgs = await req.json()
 
-  const { id, collectionSlug, data, emptyOnly, globalSlug, locale, localeFrom, resolver } = args
+  const { id, collectionSlug, data, emptyOnly, globalSlug, locale, localeFrom } = args
 
   const result = await translateOperation({
     id,
@@ -25,7 +25,6 @@ export const translateEndpoint: PayloadHandler = async (req) => {
     localeFrom,
     overrideAccess: false,
     req,
-    resolver,
     update: false,
   })
 

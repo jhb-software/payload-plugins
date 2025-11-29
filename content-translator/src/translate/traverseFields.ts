@@ -1,7 +1,9 @@
 import type { Field, SanitizedConfig } from 'payload'
 
-import ObjectID from 'bson-objectid'
+import ObjectIDModule from 'bson-objectid'
 import { tabHasName } from 'payload/shared'
+
+const ObjectID = typeof ObjectIDModule === 'function' ? ObjectIDModule : ObjectIDModule.default
 
 import type { ValueToTranslate } from './types.js'
 

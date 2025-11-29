@@ -77,16 +77,6 @@
         "types": "./dist/resolvers/types.d.ts",
         "default": "./dist/resolvers/types.js"
       },
-      "./resolvers/google": {
-        "import": "./dist/resolvers/google.js",
-        "types": "./dist/resolvers/google.d.ts",
-        "default": "./dist/resolvers/google.js"
-      },
-      "./resolvers/copy": {
-        "import": "./dist/resolvers/copy.js",
-        "types": "./dist/resolvers/copy.d.ts",
-        "default": "./dist/resolvers/copy.js"
-      },
       "./resolvers/openAI": {
         "import": "./dist/resolvers/openAI.js",
         "types": "./dist/resolvers/openAI.d.ts",
@@ -114,16 +104,6 @@
       "import": "./src/resolvers/types.ts",
       "types": "./src/resolvers/types.ts",
       "default": "./src/resolvers/types.ts"
-    },
-    "./resolvers/google": {
-      "import": "./src/resolvers/google.ts",
-      "types": "./src/resolvers/google.ts",
-      "default": "./src/resolvers/google.ts"
-    },
-    "./resolvers/copy": {
-      "import": "./src/resolvers/copy.ts",
-      "types": "./src/resolvers/copy.ts",
-      "default": "./src/resolvers/copy.ts"
     },
     "./resolvers/openAI": {
       "import": "./src/resolvers/openAI.ts",
