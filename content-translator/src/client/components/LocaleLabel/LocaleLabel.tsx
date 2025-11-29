@@ -9,11 +9,11 @@ const baseClass = 'localizer-button'
 
 export const LocaleLabel = ({ locale }: { locale: Locale }) => {
   const { i18n } = useTranslation()
-  const { resolverT } = useTranslator()
+  const { translatorT } = useTranslator()
 
   return (
-    <div aria-label={resolverT('modalSourceLanguage')} className={baseClass}>
-      <div className={`${baseClass}__label`}>{resolverT('modalSourceLanguage')}:</div>
+    <div aria-label={translatorT('modalSourceLanguage')} className={baseClass}>
+      <div className={`${baseClass}__label`}>{translatorT('modalSourceLanguage')}:</div>
       &nbsp;&nbsp;
       <span className={`${baseClass}__current-label`}>
         {`${getTranslation(locale.label, i18n)}`}

@@ -1,7 +1,7 @@
 import he from 'he'
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
-import type { TranslateResolver } from '../resolvers/types.js'
+import type { TranslatorCustomConfig } from '../types.js'
 import type { TranslateArgs, TranslateResult, ValueToTranslate } from './types.js'
 
 import { findEntityWithConfig } from './findEntityWithConfig.js'
@@ -36,12 +36,11 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     req,
   })
 
-  const resolver = (
-    (req.payload.config.custom?.translator?.resolvers as TranslateResolver[]) ?? []
-  ).find((each) => each.key === args.resolver)
+  const resolver = (req.payload.config.custom as TranslatorCustomConfig | undefined)?.translator
+    ?.resolver
 
   if (!resolver) {
-    throw new APIError(`Resolver with the key ${args.resolver} was not found`)
+    throw new APIError('No translation resolver configured')
   }
 
   const valuesToTranslate: ValueToTranslate[] = []

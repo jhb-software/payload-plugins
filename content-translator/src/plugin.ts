@@ -10,7 +10,14 @@ import { translateEndpoint } from './translate/endpoint.js'
 
 export const translator: (pluginConfig: TranslatorConfig) => Plugin = (pluginConfig) => {
   return (config) => {
-    if (pluginConfig.disabled || !config.localization || config.localization.locales.length < 2) {
+    if (pluginConfig.enabled === false) {
+      return config
+    }
+
+    if (!config.localization || config.localization.locales.length < 2) {
+      console.warn(
+        'Translator plugin requires localization to be enabled and at least two locales.',
+      )
       return config
     }
 
@@ -21,7 +28,7 @@ export const translator: (pluginConfig: TranslatorConfig) => Plugin = (pluginCon
         custom: {
           ...(config.admin?.custom ?? {}),
           translator: {
-            resolvers: pluginConfig.resolvers.map(({ key }) => ({ key })),
+            resolver: { key: pluginConfig.resolver.key },
           },
         },
       },
@@ -49,7 +56,7 @@ export const translator: (pluginConfig: TranslatorConfig) => Plugin = (pluginCon
       custom: {
         ...(config.custom ?? {}),
         translator: {
-          resolvers: pluginConfig.resolvers,
+          resolver: pluginConfig.resolver,
         },
       },
       endpoints: [

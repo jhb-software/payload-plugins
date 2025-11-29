@@ -4,7 +4,7 @@ import './styles.scss'
 
 import { PublishButton, SaveButton, useConfig, useDocumentInfo } from '@payloadcms/ui'
 
-import type { TranslateResolver } from '../../../resolvers/types.js'
+import type { TranslatorClientConfig } from '../../../types.js'
 
 import { TranslatorProvider } from '../../providers/Translator/TranslatorProvider.js'
 import { ResolverButton } from '../ResolverButton/ResolverButton.js'
@@ -17,7 +17,8 @@ export const CustomButtonWithTranslator = ({ type }: { type: 'publish' | 'save' 
 
   const { id, globalSlug } = useDocumentInfo()
 
-  const resolvers = (config.admin?.custom?.translator?.resolvers as TranslateResolver[]) ?? []
+  const resolver =
+    (config.admin?.custom as TranslatorClientConfig | undefined)?.translator?.resolver ?? null
 
   if (!id && !globalSlug) {
     return <DefaultButton />
@@ -28,9 +29,7 @@ export const CustomButtonWithTranslator = ({ type }: { type: 'publish' | 'save' 
       <div className={'translator__custom-save-button'}>
         {<DefaultButton />}
         <TranslatorModal />
-        {resolvers.map((resolver) => (
-          <ResolverButton key={resolver.key} resolver={resolver} />
-        ))}
+        {resolver && <ResolverButton />}
       </div>
     </TranslatorProvider>
   )

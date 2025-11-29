@@ -13,7 +13,6 @@ export type TranslateArgs = {
   locale: string
   localeFrom: string
   overrideAccess?: boolean
-  resolver: string
   update?: boolean
 }
 

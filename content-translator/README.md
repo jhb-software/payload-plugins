@@ -6,11 +6,10 @@ A plugin for [Payload CMS](https://payloadcms.com) that enables AI-powered conte
 
 ## Features
 
-- Translate content between locales using AI resolvers
-- Support for OpenAI GPT models
-- Custom translation resolvers (OpenAI, Google, Copy)
+- Translate content in the Payload Admin UI between locales
+- abstraction to use different translation resolvers (e.g. OpenAI, DeepL, etc.)
 - Seamless integration with Payload's localization system
-- Custom Save/Publish buttons with translation options
+- Review and edit translations before saving or publishing
 
 ## Setup
 
@@ -23,18 +22,16 @@ export default buildConfig({
   // Enable localization
   localization: {
     defaultLocale: 'en',
-    locales: ['en', 'de', 'fr'],
+    locales: ['en', 'de'],
   },
   plugins: [
     translator({
       collections: ['pages', 'posts'],
       globals: ['settings'],
-      resolvers: [
-        openAIResolver({
-          apiKey: process.env.OPENAI_API_KEY,
-          model: 'gpt-4o-mini',
-        }),
-      ],
+      resolver: openAIResolver({
+        apiKey: process.env.OPENAI_API_KEY,
+        model: 'gpt-4o-mini',
+      }),
     }),
   ],
 })
@@ -44,25 +41,18 @@ export default buildConfig({
 
 ### Plugin Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `collections` | `CollectionSlug[]` | Yes | Collections to enable translation for |
-| `globals` | `GlobalSlug[]` | Yes | Globals to enable translation for |
-| `resolvers` | `TranslateResolver[]` | Yes | Translation resolvers to use |
-| `disabled` | `boolean` | No | Disable the plugin |
+| Option        | Type                | Required | Description                           |
+| ------------- | ------------------- | -------- | ------------------------------------- |
+| `collections` | `CollectionSlug[]`  | Yes      | Collections to enable translation for |
+| `globals`     | `GlobalSlug[]`      | Yes      | Globals to enable translation for     |
+| `resolver`    | `TranslateResolver` | Yes      | Translation resolver to use           |
+| `enabled`     | `boolean`           | No       | Whether to enable the plugin.         |
 
 ### Available Resolvers
 
-#### OpenAI Resolver
+The plugin comes with an openAI resolver out of the box, but you can use any other translation resolver by creating your own and passing it to the plugin config.
 
-```ts
-import { openAIResolver } from '@jhb.software/payload-content-translator'
-
-openAIResolver({
-  apiKey: process.env.OPENAI_API_KEY,
-  model: 'gpt-4o-mini', // or 'gpt-4', 'gpt-3.5-turbo', etc.
-})
-```
+// TODO: short example of a custom resolver with noop
 
 ## Acknowledgements
 

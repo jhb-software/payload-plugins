@@ -11,9 +11,9 @@ export const TranslatorModal = () => {
   const {
     localesOptions,
     localeToTranslateFrom: localeCodeToTranslateFrom,
-    resolverT,
     setLocaleToTranslateFrom,
     submit,
+    translatorT,
   } = useTranslator()
   const { closeTranslator, modalSlug, resolver } = useTranslator()
 
@@ -35,7 +35,7 @@ export const TranslatorModal = () => {
     <></>
   ) : isTranslating ? (
     <>
-      <LoadingOverlay loadingText={resolverT('modalTranslating')} />
+      <LoadingOverlay loadingText={translatorT('modalTranslating')} />
     </>
   ) : (
     <Modal className={'translator__modal'} slug={modalSlug}>
@@ -59,7 +59,7 @@ export const TranslatorModal = () => {
         </button>
 
         <div className={'translator__content'}>
-          <h2>{resolverT('modalTitle')}</h2>
+          <h2>{translatorT('modalTitle')}</h2>
           {localeToTranslateFrom && (
             <Popup
               button={<LocaleLabel locale={localeToTranslateFrom} />}
@@ -89,21 +89,21 @@ export const TranslatorModal = () => {
             />
           )}
 
-          <p>{resolverT('modalDescription')}</p>
+          <p>{translatorT('modalDescription')}</p>
 
           <div className={'translator__buttons'}>
             <div className={'translator__buttons'}>
               {isTranslating ? (
                 <>
-                  <LoadingOverlay loadingText={resolverT('modalTranslating')} />
+                  <LoadingOverlay loadingText={translatorT('modalTranslating')} />
                 </>
               ) : (
                 <>
                   <Button onClick={() => onSubmit(false)}>
-                    {resolverT('submitButtonLabelFull')}
+                    {translatorT('submitButtonLabelFull')}
                   </Button>
                   <Button buttonStyle="pill" onClick={() => onSubmit(true)}>
-                    {resolverT('submitButtonLabelEmpty')}
+                    {translatorT('submitButtonLabelEmpty')}
                   </Button>
                 </>
               )}

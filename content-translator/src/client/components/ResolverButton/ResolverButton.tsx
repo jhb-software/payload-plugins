@@ -1,23 +1,19 @@
-import { Button, useTranslation } from '@payloadcms/ui'
-
-import type { TranslateResolver } from '../../../resolvers/types.js'
+import { Button } from '@payloadcms/ui'
 
 import { useTranslator } from '../../providers/Translator/context.js'
 
-export const ResolverButton = ({
-  resolver: { key: resolverKey },
-}: {
-  resolver: TranslateResolver
-}) => {
-  const { openTranslator } = useTranslator()
+export const ResolverButton = () => {
+  const { openTranslator, resolver, translatorT } = useTranslator()
 
-  const { t } = useTranslation()
+  if (!resolver) {
+    return null
+  }
 
-  const handleClick = () => openTranslator({ resolverKey })
+  const handleClick = () => openTranslator()
 
   return (
     <Button buttonStyle="secondary" onClick={handleClick}>
-      {t(`plugin-translator:resolver_${resolverKey}_buttonLabel` as Parameters<typeof t>[0])}
+      {translatorT('buttonLabel')}
     </Button>
   )
 }

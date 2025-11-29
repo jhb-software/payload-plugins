@@ -10,19 +10,17 @@ import {
   useTranslation,
 } from '@payloadcms/ui'
 import { reduceFieldsToValues } from 'payload/shared'
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 
-import type { TranslateResolver } from '../../../resolvers/types.js'
 import type { TranslateArgs } from '../../../translate/types.js'
+import type { TranslatorClientConfig } from '../../../types.js'
 
 import { createClient } from '../../api/index.js'
-import { TranslatorContext } from './context.js'
+import { type TranslationKey, TranslatorContext } from './context.js'
 
 const modalSlug = 'translator-modal'
 
 export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
-  const [resolver, setResolver] = useState<null | string>(null)
-
   const [data, dispatch] = useAllFormFields()
 
   const { getFormState } = useServerFunctions()
@@ -35,25 +33,6 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
 
   const { t } = useTranslation()
 
-  const resolverT = (
-    key:
-      | 'buttonLabel'
-      | 'errorMessage'
-      | 'modalDescription'
-      | 'modalSourceLanguage'
-      | 'modalTitle'
-      | 'modalTranslating'
-      | 'submitButtonLabelEmpty'
-      | 'submitButtonLabelFull'
-      | 'successMessage',
-  ) => {
-    if (!resolver) {
-      return ''
-    }
-
-    return t(`plugin-translator:resolver_${resolver}_${key}` as Parameters<typeof t>[0])
-  }
-
   const locale = useLocale()
 
   const {
@@ -65,23 +44,13 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
     },
   } = useConfig()
 
+  const resolver = (custom as TranslatorClientConfig | undefined)?.translator?.resolver ?? null
+
+  const translatorT = (key: TranslationKey) => {
+    return t(`plugin-translator:${key}` as Parameters<typeof t>[0])
+  }
+
   const apiClient = createClient({ api, serverURL })
-
-  const resolverConfig = useMemo(() => {
-    if (!resolver) {
-      return null
-    }
-
-    const resolvers = (custom?.translator?.resolvers as TranslateResolver[]) || undefined
-
-    if (!resolvers) {
-      return null
-    }
-
-    const resolverConfig = resolvers.find((each) => each.key === resolver)
-
-    return resolverConfig ?? null
-  }, [custom, resolver])
 
   if (!localization) {
     throw new Error('Localization config is not provided and PluginTranslator is used')
@@ -117,13 +86,12 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
       globalSlug,
       locale: locale.code,
       localeFrom: localeToTranslateFrom,
-      resolver,
     }
 
     const result = await apiClient.translate(args)
 
     if (!result.success) {
-      toast.error(resolverT('errorMessage'))
+      toast.error(translatorT('errorMessage'))
 
       return
     }
@@ -151,11 +119,11 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
         })
 
         setModified(true)
-        toast.success(resolverT('successMessage'))
+        toast.success(translatorT('successMessage'))
       }
     } catch (e) {
       console.error(e)
-      toast.error(resolverT('errorMessage'))
+      toast.error(translatorT('errorMessage'))
     }
 
     closeTranslator()
@@ -168,14 +136,13 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
         localesOptions,
         localeToTranslateFrom,
         modalSlug,
-        openTranslator: ({ resolverKey }) => {
-          setResolver(resolverKey)
+        openTranslator: () => {
           modal.openModal(modalSlug)
         },
-        resolver: resolverConfig,
-        resolverT,
+        resolver,
         setLocaleToTranslateFrom,
         submit,
+        translatorT,
       }}
     >
       {children}

@@ -33,10 +33,10 @@
     "he": "^1.2.0"
   },
   "peerDependencies": {
-    "@payloadcms/translations": "^3.62.1",
-    "@payloadcms/ui": "^3.62.1",
+    "@payloadcms/translations": "^3.65.0",
+    "@payloadcms/ui": "^3.65.0",
     "next": "15.5.6",
-    "payload": "^3.62.1",
+    "payload": "^3.65.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

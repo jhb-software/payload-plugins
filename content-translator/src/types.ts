@@ -8,15 +8,34 @@ export type TranslatorConfig = {
    */
   collections: CollectionSlug[]
   /**
-   * Disable the plugin
+   * Enable the plugin.
+   * @default true
    */
-  disabled?: boolean
+  enabled?: boolean
   /**
    * Globals with the enabled translator in the admin UI
    */
   globals: GlobalSlug[]
   /**
-   * Add resolvers that you want to include, examples on how to write your own in ./plugin/src/resolvers
+   * The translation resolver/service to use (e.g., openAIResolver)
    */
-  resolvers: TranslateResolver[]
+  resolver: TranslateResolver
+}
+
+/**
+ * Shape of translator custom config stored on admin.custom and config.custom
+ */
+export type TranslatorCustomConfig = {
+  translator?: {
+    resolver: TranslateResolver
+  }
+}
+
+/**
+ * Client-safe shape of translator config (only includes key)
+ */
+export type TranslatorClientConfig = {
+  translator?: {
+    resolver: { key: string }
+  }
 }

@@ -78,12 +78,10 @@ export default buildConfig({
     translator({
       collections: ['pages', 'posts', 'authors'],
       globals: [],
-      resolvers: [
-        openAIResolver({
-          apiKey: process.env.OPENAI_API_KEY || '',
-          model: 'gpt-4o-mini',
-        }),
-      ],
+      resolver: openAIResolver({
+        apiKey: process.env.OPENAI_API_KEY || '',
+        model: 'gpt-4o-mini',
+      }),
     }),
   ],
 })
