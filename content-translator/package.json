@@ -1,7 +1,7 @@
 {
   "name": "@jhb.software/payload-content-translator",
   "version": "0.1.0",
-  "description": "A content translation plugin for Payload CMS using AI-powered translators.",
+  "description": "A Payload CMS plugin that adds a content translation feature to the admin UI.",
   "keywords": [
     "payload",
     "plugin",
