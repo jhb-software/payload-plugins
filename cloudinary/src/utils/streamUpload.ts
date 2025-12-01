@@ -28,7 +28,7 @@ export const streamUpload =
         // In case of updating the image, the public_id will be needed,
         // but not the folder as it's already in the URL and if we pass
         // the value then it will create file in sub-folder instead of updating.
-        ...(id && { folder: undefined, public_id: id }),
+        ...(id && { folder: null as unknown as string | undefined, public_id: id }),
       }
 
       const stream: UploadStream = cloudinary.uploader.upload_stream(options, (error, result) =>
