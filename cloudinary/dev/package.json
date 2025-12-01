@@ -10,14 +10,13 @@
     "devsafe": "rm -rf .next && pnpm dev",
     "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
-    "format": "prettier --write src",
     "payload": "payload",
     "generate:types": "payload generate:types",
     "generate:schema": "payload-graphql generate:schema",
     "generate:importmap": "payload generate:importmap"
   },
   "dependencies": {
-    "@jhb.software/payload-cloudinary-plugin": "workspace:*",
+    "@jhb.software/payload-storage-cloudinary": "workspace:*",
     "@payloadcms/db-mongodb": "^3.65.0",
     "@payloadcms/next": "^3.65.0",
     "next": "15.5.6",

@@ -1,10 +1,10 @@
-import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin'
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { cloudinaryStorage } from '@jhb.software/payload-storage-cloudinary'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Images } from './collections/images'
 import { Videos } from './collections/videos'
+import { mongooseAdapter } from '@payloadcms/db-mongodb'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -34,22 +34,23 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   plugins: [
-    payloadCloudinaryPlugin({
+    cloudinaryStorage({
+      collections: {
+        images: true,
+        videos: {
+          prefix: 'videos',
+        },
+      },
+      folder: 'cloudinary-storage-plugin-test',
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
       credentials: {
         apiKey: process.env.CLOUDINARY_API_KEY!,
         apiSecret: process.env.CLOUDINARY_API_SECRET!,
       },
-      cloudinary: {
-        cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
-        folder: 'payload-cloudinary-plugin',
-      },
-      uploadCollections: ['images', 'videos'],
-      uploadOptions: {
-        useFilename: true,
-      },
+      clientUploads: true,
     }),
   ],
-  async onInit(payload) {
+  async onInit(payload: any) {
     const existingUsers = await payload.find({
       collection: 'users',
       limit: 1,

@@ -125,8 +125,8 @@ export interface UserAuthOperations {
 export interface Video {
   id: string;
   cloudinaryPublicId?: string | null;
-  cloudinaryURL?: string | null;
   description?: string | null;
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -146,7 +146,6 @@ export interface Video {
 export interface Image {
   id: string;
   cloudinaryPublicId?: string | null;
-  cloudinaryURL?: string | null;
   alt?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -268,8 +267,8 @@ export interface PayloadMigration {
  */
 export interface VideosSelect<T extends boolean = true> {
   cloudinaryPublicId?: T;
-  cloudinaryURL?: T;
   description?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -288,7 +287,6 @@ export interface VideosSelect<T extends boolean = true> {
  */
 export interface ImagesSelect<T extends boolean = true> {
   cloudinaryPublicId?: T;
-  cloudinaryURL?: T;
   alt?: T;
   updatedAt?: T;
   createdAt?: T;
