@@ -21,51 +21,7 @@ export type OpenAIResolverConfig = {
    * The OpenAI LLM model to use for alt text generation.
    * @default 'gpt-4.1-nano'
    */
-  model?: 'gpt-4.1-mini' | 'gpt-4.1-nano'
-}
-
-type GenerationCost = {
-  inputCost: number
-  model: 'gpt-4.1-mini' | 'gpt-4.1-nano'
-  outputCost: number
-  totalCost: number
-  totalTokens: number
-}
-
-/** Calculates the cost of a generation. */
-function getGenerationCost(
-  response: OpenAI.Chat.Completions.ChatCompletion,
-  model: 'gpt-4.1-mini' | 'gpt-4.1-nano',
-): GenerationCost {
-  const modelCosts: Record<'gpt-4.1-mini' | 'gpt-4.1-nano', { input: number; output: number }> = {
-    // see https://platform.openai.com/docs/models/gpt-4.1-nano
-    'gpt-4.1-nano': {
-      input: 0.1,
-      output: 0.4,
-    },
-    // see https://platform.openai.com/docs/models/gpt-4.1-mini
-    'gpt-4.1-mini': {
-      input: 0.4,
-      output: 1.6,
-    },
-  }
-
-  // Calculate cost based on token usage
-  const inputTokens = response.usage?.prompt_tokens || 0
-  const outputTokens = response.usage?.completion_tokens || 0
-  const totalTokens = response.usage?.total_tokens || 0
-
-  const inputCost = (inputTokens / 1_000_000) * modelCosts[model].input
-  const outputCost = (outputTokens / 1_000_000) * modelCosts[model].output
-  const totalCost = inputCost + outputCost
-
-  return {
-    inputCost,
-    model,
-    outputCost,
-    totalCost,
-    totalTokens,
-  }
+  model?: string
 }
 
 /**
@@ -112,10 +68,9 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
 
   return {
     key: 'openai',
-
     resolve: async ({
       filename,
-      imageUrl,
+      imageThumbnailUrl,
       locale,
     }: AltTextResolverArgs): Promise<AltTextResolverResponse> => {
       try {
@@ -147,7 +102,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
               content: [
                 {
                   type: 'image_url',
-                  image_url: { url: imageUrl },
+                  image_url: { url: imageThumbnailUrl },
                 },
                 ...(filename
                   ? [
@@ -165,8 +120,6 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           response_format: zodResponseFormat(modelResponseSchema, 'data'),
         })
 
-        console.log({ imageUrl, ...getGenerationCost(response, model) })
-
         const result = response.choices[0]?.message?.parsed
 
         if (!result) {
@@ -174,10 +127,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
         }
 
         return {
-          result: {
-            altText: result.altText,
-            keywords: result.keywords,
-          },
+          result,
           success: true,
         }
       } catch (error) {
@@ -188,10 +138,9 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
         }
       }
     },
-
     resolveBulk: async ({
       filename,
-      imageUrl,
+      imageThumbnailUrl,
       locales,
     }: AltTextBulkResolverArgs): Promise<AltTextBulkResolverResponse> => {
       try {
@@ -232,7 +181,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
               content: [
                 {
                   type: 'image_url',
-                  image_url: { url: imageUrl },
+                  image_url: { url: imageThumbnailUrl },
                 },
                 ...(filename
                   ? [
@@ -250,29 +199,14 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           response_format: zodResponseFormat(modelResponseSchema, 'data'),
         })
 
-        console.log({ imageUrl, ...getGenerationCost(response, model) })
-
         const result = response.choices[0]?.message?.parsed
 
         if (!result) {
           return { error: 'No result from OpenAI', success: false }
         }
 
-        const results: Record<string, { altText: string; keywords: string[] }> = {}
-        for (const locale of locales) {
-          const localeResult = (result as Record<string, { altText: string; keywords: string[] }>)[
-            locale
-          ]
-          if (localeResult) {
-            results[locale] = {
-              altText: localeResult.altText,
-              keywords: localeResult.keywords,
-            }
-          }
-        }
-
         return {
-          results,
+          results: result,
           success: true,
         }
       } catch (error) {

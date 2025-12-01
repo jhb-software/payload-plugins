@@ -64,20 +64,12 @@ export const generateAltTextEndpoint: PayloadHandler = async (req: PayloadReques
 
     const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc)
 
-    if (!imageThumbnailUrl) {
-      return Response.json({ error: 'Image thumbnail URL not defined' }, { status: 500 })
-    }
-
-    if (!imageThumbnailUrl.startsWith('https://') && !imageThumbnailUrl.includes('http://')) {
-      return Response.json(
-        { error: 'Image thumbnail URL is not a valid URL. It must start with https:// or http://' },
-        { status: 500 },
-      )
-    }
-
     const result = await pluginConfig.resolver.resolve({
-      filename: 'filename' in imageDoc ? (imageDoc.filename as string) : undefined,
-      imageUrl: imageThumbnailUrl,
+      filename:
+        'filename' in imageDoc && typeof imageDoc.filename === 'string'
+          ? imageDoc.filename
+          : undefined,
+      imageThumbnailUrl,
       locale: targetLocale,
       req,
     })

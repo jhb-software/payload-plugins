@@ -1,18 +1,20 @@
 # Changelog
 
-## 0.3.0 (Breaking)
+## 0.3.0
 
-### Breaking Changes
+### Breaking Change
 
 The plugin now uses a resolver pattern for alt text generation. This allows integration with any AI provider.
 
 **Before (v0.2.x):**
 ```typescript
+import { payloadAltTextPlugin } from '@jhb.software/payload-alt-text-plugin'
+
 payloadAltTextPlugin({
   collections: ['media'],
   openAIApiKey: process.env.OPENAI_API_KEY,
   model: 'gpt-4.1-mini',
-  getImageThumbnail: (doc) => doc.url as string,
+  getImageThumbnail: (doc) => doc.url, // your custom function
 })
 ```
 
@@ -26,15 +28,9 @@ payloadAltTextPlugin({
     apiKey: process.env.OPENAI_API_KEY,
     model: 'gpt-4.1-mini', // optional, defaults to 'gpt-4.1-nano'
   }),
-  getImageThumbnail: (doc) => doc.url as string,
+  getImageThumbnail: (doc) => doc.url, // your custom function
 })
 ```
-
-### Features
-
-- feat: add resolver pattern for pluggable AI providers
-- feat: export `openAIResolver` for OpenAI integration
-- feat: export `AltTextResolver` type for custom implementations
 
 ## 0.2.2
 

@@ -41,8 +41,7 @@ export const bulkGenerateAltTextsEndpoint: PayloadHandler = async (req: PayloadR
       return Response.json({ error: 'No alt text resolver configured' }, { status: 500 })
     }
 
-    // Use concurrency from config
-    const concurrency = pluginConfig.maxBulkGenerateConcurrency || 16
+    const concurrency = pluginConfig.maxBulkGenerateConcurrency
 
     // determine target locales based on config
     const locales = localesFromConfig(req.payload.config)
@@ -129,8 +128,11 @@ async function generateAndUpdateAltText({
   const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc)
 
   const result = await pluginConfig.resolver.resolveBulk({
-    filename: 'filename' in imageDoc ? (imageDoc.filename as string) : undefined,
-    imageUrl: imageThumbnailUrl,
+    filename:
+      'filename' in imageDoc && typeof imageDoc.filename === 'string'
+        ? imageDoc.filename
+        : undefined,
+    imageThumbnailUrl,
     locales,
     req,
   })

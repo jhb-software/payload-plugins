@@ -11,6 +11,18 @@ A plugin to generate image alt texts using AI. This plugin automatically adds an
 - Bulk generation for processing multiple images at once
 - Full localization support
 
+
+When the plugin is enabled for an upload collection, it will:
+
+1. Add an alt text field to the collection
+   - A button to AI-generate the alt text
+   - This field will include a description of what the alt text should be
+2. Add a keywords fields to the collection
+   - This field will be automatically filled when generating the alt text 
+   - It will be used for improving the search of images in the admin panel
+2. Add a bulk generate button to the collection list view
+   - This button will allow you to generate alt text for multiple images at once
+
 ## Installation
 
 ```bash
@@ -35,7 +47,7 @@ export default buildConfig({
         apiKey: process.env.OPENAI_API_KEY,
         model: 'gpt-4.1-mini', // optional, defaults to 'gpt-4.1-nano'
       }),
-      getImageThumbnail: (doc) => doc.url as string,
+      getImageThumbnail: (doc) => doc.url, // a function to get a thumbnail URL (e.g. from the sizes)
     }),
   ],
 })
@@ -83,30 +95,23 @@ import type { AltTextResolver } from '@jhb.software/payload-alt-text-plugin'
 
 export const customResolver = (): AltTextResolver => ({
   key: 'custom',
-  resolve: async ({ imageUrl, filename, locale, req }) => {
+  resolve: async ({ imageThumbnailUrl, filename, locale, req }) => {
     // Your custom alt text generation logic here
-    const altText = await generateAltText(imageUrl)
+    const altText = await generateAltText(imageThumbnailUrl, filename, locale, req)
 
     return {
       success: true,
-      result: {
-        altText,
-        keywords: ['keyword1', 'keyword2'],
-      },
+      result: altText,
     }
   },
-  resolveBulk: async ({ imageUrl, filename, locales, req }) => {
-    // Your custom bulk generation logic here
-    const results: Record<string, { altText: string; keywords: string[] }> = {}
+  resolveBulk: async ({ imageThumbnailUrl, filename, locales, req }) => {
+     // Your custom alt text generation logic here
+    const altTexts = await generateAltTextBulk(imageThumbnailUrl, filename, locales, req)
 
-    for (const locale of locales) {
-      results[locale] = {
-        altText: `Alt text in ${locale}`,
-        keywords: ['keyword1', 'keyword2'],
-      }
+    return { 
+      success: true, 
+      results: altTexts 
     }
-
-    return { success: true, results }
   },
 })
 ```

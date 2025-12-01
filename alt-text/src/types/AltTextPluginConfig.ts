@@ -25,12 +25,17 @@ export type IncomingAltTextPluginConfig = {
 
   /**
    * The locale to generate alt texts in when localization is disabled.
+   *
    * Required when localization is disabled, ignored when localization is enabled.
-   * @example 'en', 'de'
+   * @example 'en'
    */
   locale?: string
 
-  /** Maximum number of concurrent API requests for bulk operations. */
+  /**
+   * Maximum number of concurrent API requests for bulk generate operations.
+   *
+   * @default 16
+   */
   maxBulkGenerateConcurrency?: number
 
   /** The resolver to use for generating alt text (e.g., openAIResolver) */

@@ -17,7 +17,7 @@ export type AltTextResolverArgs = {
   /** Optional filename for additional context */
   filename?: string
   /** URL of the image thumbnail (must be publicly accessible) */
-  imageUrl: string
+  imageThumbnailUrl: string
   /** Target locale for the generated alt text */
   locale: string
   /** Payload request object for logging */
@@ -31,7 +31,7 @@ export type AltTextBulkResolverArgs = {
   /** Optional filename for additional context */
   filename?: string
   /** URL of the image thumbnail (must be publicly accessible) */
-  imageUrl: string
+  imageThumbnailUrl: string
   /** Target locales for the generated alt texts */
   locales: string[]
   /** Payload request object for logging */
@@ -54,7 +54,7 @@ export type AltTextBulkResolverResponse =
 
 /**
  * Alt text resolver interface.
- * Implement this to create custom resolvers for different AI providers.
+ * Implement this to create custom resolvers for different providers.
  */
 export type AltTextResolver = {
   /** Unique key identifying this resolver */
