@@ -1,5 +1,5 @@
 import type { HandleUpload } from '@payloadcms/plugin-cloud-storage/types'
-import type { UploadApiOptions, UploadApiResponse } from 'cloudinary';
+import type { UploadApiOptions, UploadApiResponse } from 'cloudinary'
 import type stream from 'stream'
 
 import { v2 as cloudinary } from 'cloudinary'

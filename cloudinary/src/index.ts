@@ -1,17 +1,17 @@
 import type {
   Adapter,
-  ClientUploadsConfig,
   PluginOptions as CloudStoragePluginOptions,
   CollectionOptions,
   GeneratedAdapter,
 } from '@payloadcms/plugin-cloud-storage/types'
-import type { Config, Field, Plugin, UploadCollectionSlug } from 'payload'
+import type { Config, Field, Plugin } from 'payload'
 
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import { initClientUploads } from '@payloadcms/plugin-cloud-storage/utilities'
 import { v2 as cloudinary } from 'cloudinary'
 
 import type { CloudinaryClientUploadHandlerExtra } from './client/CloudinaryClientUploadHandler.js'
+import type { CloudinaryStorageOptions } from './types.js'
 
 import { getGenerateUrl } from './generateURL.js'
 import { getAdminThumbnail } from './getAdminThumbnail.js'
@@ -20,57 +20,12 @@ import { getHandleDelete } from './handleDelete.js'
 import { getHandleUpload } from './handleUpload.js'
 import { getStaticHandler } from './staticHandler.js'
 
-export type CloudinaryStorageOptions = {
-  /**
-   * Do uploads directly on the client, to bypass limits on Vercel.
-   */
-  clientUploads?: ClientUploadsConfig
-
-  /**
-   * Cloudinary cloud name.
-   */
-  cloudName: string
-
-  /**
-   * Collections to apply the Cloudinary storage adapter to
-   */
-  collections: Partial<Record<UploadCollectionSlug, Omit<CollectionOptions, 'adapter'> | true>>
-
-  /**
-   * Cloudinary client configuration.
-   */
-  credentials: {
-    apiKey: string
-    apiSecret: string
-  }
-
-  /**
-   * Whether or not to enable the plugin
-   *
-   * @default true
-   */
-  enabled?: boolean
-
-  /**
-   * Folder name to upload files to.
-   */
-  folder?: string
-
-  /**
-   * Whether to use the original filename as part of the public ID
-   * @default true
-   */
-  useFilename?: boolean
-}
-
 const defaultUploadOptions: Partial<CloudinaryStorageOptions> = {
   enabled: true,
   useFilename: true,
 }
 
-type CloudinaryStoragePlugin = (cloudinaryStorageOpts: CloudinaryStorageOptions) => Plugin
-
-export const payloadCloudinaryPlugin: CloudinaryStoragePlugin =
+export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageOptions) => Plugin =
   (incomingOptions: CloudinaryStorageOptions) =>
   (incomingConfig: Config): Config => {
     cloudinary.config({
