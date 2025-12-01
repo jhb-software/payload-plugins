@@ -1,6 +1,6 @@
 # Image Alt Text Generation Plugin for Payload CMS
 
-A plugin to generate image alt texts using AI. This plugin automatically adds an alt text field with a button to generate the alt text to upload collections, and includes a bulk generation feature in the list view for processing multiple images at once.
+A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text generation for images. I automatically adds an alt text field with a button to generate the alt text to specified upload collections, and includes a bulk generation feature in the list view for processing multiple images at once.
 
 ## Features
 
