@@ -173,7 +173,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
 
       If a context is provided, use it to enhance the alt text.
 
-      Format your response as a JSON object with ${locales.join(', ')} keys, each containing "altText", "keywords" and "slug".
+      Format your response as a JSON object with ${locales.join(', ')} keys, each containing "altText" and "keywords".
     `,
               role: 'system',
             },
