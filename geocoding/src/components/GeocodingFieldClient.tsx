@@ -1,4 +1,6 @@
 'use client'
+import type { FieldBaseClient } from 'payload'
+
 import { FieldError, FieldLabel, useField } from '@payloadcms/ui'
 import GooglePlacesAutocompleteImport, {
   geocodeByPlaceId,
@@ -11,11 +13,7 @@ const GooglePlacesAutocomplete =
   GooglePlacesAutocompleteImport as unknown as React.ComponentType<any>
 
 interface GeocodingFieldComponentProps {
-  field: {
-    label: string
-    path: string
-    required: boolean
-  }
+  field: Pick<FieldBaseClient, 'label' | 'required'>
   googleMapsApiKey: string
   path: string
 }
