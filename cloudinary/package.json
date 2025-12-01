@@ -1,13 +1,15 @@
 {
   "name": "@jhb.software/payload-cloudinary-plugin",
-  "version": "0.0.1",
+  "version": "0.3.0-beta.1",
   "description": "Payload CMS storage adapter for Cloudinary",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
   "keywords": [
     "payload",
+    "plugin",
     "cloudinary",
-    "storage"
+    "storage",
+    "media"
   ],
   "author": "JHB Software",
   "license": "MIT",

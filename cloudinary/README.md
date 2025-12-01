@@ -1,12 +1,12 @@
-# Cloudinary Storage for Payload
+# JHB Software - Cloudinary Storage Adapter for Payload CMS
 
-This package provides a simple way to use [Cloudinary](https://cloudinary.com/) storage with Payload.
+This package provides a Payload CMS Storage Adapter for [Cloudinary](https://cloudinary.com/) to seamlessly integrate Cloudinary with Payload CMS for media asset management.
 
 ## Usage
 
 - Configure the `collections` object to specify which collections should use the Cloudinary adapter. The slug _must_ match one of your existing collection slugs.
 - When enabled, this package will automatically set `disableLocalStorage` to `true` for each collection.
-- When deploying to Vercel, server uploads are limited with 4.5MB. Set `clientUploads` to `true` to do uploads directly on the client.
+- When deploying to Vercel, server uploads are limited with 4.5MB. Set `clientUploads` to `true` upload directly on the client.
 
 ```ts
 import { cloudinaryStorage } from '@jhb.software/payload-cloudinary-plugin'
@@ -32,6 +32,8 @@ export default buildConfig({
       folder: 'uploads',
       // Optional, enables client uploads to bypass limits on Vercel:
       clientUploads: true,
+      // Optional, enables the use of the original filename as part of the public ID:
+      useFilename: true,
     }),
   ],
 })
