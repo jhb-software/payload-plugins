@@ -26,12 +26,12 @@ export const getGenerateSignature =
   async (rawReq) => {
     if (!rawReq) {
       return new Response(JSON.stringify({ error: 'No request provided' }), {
-        status: 400,
         headers: { 'Content-Type': 'application/json' },
+        status: 400,
       })
     }
 
-    const req = rawReq as PayloadRequest
+    const req = rawReq
 
     const collectionSlug = req.searchParams.get('collectionSlug')
 
@@ -39,7 +39,7 @@ export const getGenerateSignature =
       throw new APIError('No payload was provided')
     }
 
-    if (!(await access({ collectionSlug: collectionSlug as UploadCollectionSlug, req }))) {
+    if (!(await access({ collectionSlug, req }))) {
       throw new Forbidden()
     }
 
@@ -47,15 +47,15 @@ export const getGenerateSignature =
 
     if (!body?.paramsToSign) {
       return new Response(JSON.stringify({ error: 'No paramsToSign provided' }), {
-        status: 400,
         headers: { 'Content-Type': 'application/json' },
+        status: 400,
       })
     }
 
     const signature = cloudinary.utils.api_sign_request(body.paramsToSign, apiSecret)
 
     return new Response(JSON.stringify({ signature }), {
-      status: 200,
       headers: { 'Content-Type': 'application/json' },
+      status: 200,
     })
   }

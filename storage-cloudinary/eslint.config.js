@@ -1,18 +1,47 @@
-import { rootEslintConfig, rootParserOptions } from '../../eslint.config.js'
+// @ts-check
 
-/** @typedef {import('eslint').Linter.Config} Config */
+import payloadEsLintConfig from '@payloadcms/eslint-config'
 
-/** @type {Config[]} */
-export const index = [
-  ...rootEslintConfig,
+export const defaultESLintIgnores = [
+  '**/.temp',
+  '**/.*', // ignore all dotfiles
+  '**/.git',
+  '**/.hg',
+  '**/.pnp.*',
+  '**/.svn',
+  '**/playwright.config.ts',
+  '**/vitest.config.js',
+  '**/tsconfig.tsbuildinfo',
+  '**/README.md',
+  '**/eslint.config.js',
+  '**/payload-types.ts',
+  '**/dist/',
+  '**/.yarn/',
+  '**/build/',
+  '**/node_modules/',
+  '**/temp/',
+]
+
+export default [
+  ...payloadEsLintConfig,
+  {
+    rules: {
+      'no-restricted-exports': 'off',
+      'no-console': 'off', // TODO: remove this rule and use the Payload logger instead
+    },
+  },
   {
     languageOptions: {
       parserOptions: {
-        ...rootParserOptions,
+        sourceType: 'module',
+        ecmaVersion: 'latest',
+        projectService: {
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 40,
+          allowDefaultProject: ['scripts/*.ts', '*.js', '*.mjs', '*.spec.ts', '*.d.ts'],
+        },
+        // projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
   },
 ]
-
-export default index

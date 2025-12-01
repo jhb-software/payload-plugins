@@ -1,5 +1,5 @@
 import type { StaticHandler } from '@payloadcms/plugin-cloud-storage/types'
-import type { CollectionSlug } from 'payload'
+
 import type { ClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
 
 // This is called:
@@ -9,11 +9,11 @@ export const getStaticHandler = (): StaticHandler => {
   return async (req, { doc, params }) => {
     try {
       type Params = {
-        filename: string
-        collection: string
         clientUploadContext?: ClientUploadContext
+        collection: string
+        filename: string
       }
-      const { filename, collection, clientUploadContext } = params as Params
+      const { clientUploadContext, collection, filename } = params as Params
 
       let publicId: string | undefined
       let secureUrl: string | undefined
@@ -39,10 +39,10 @@ export const getStaticHandler = (): StaticHandler => {
           secureUrl = doc.url
         } else {
           const result = await req.payload.find({
-            collection: collection as CollectionSlug,
-            req,
+            collection,
             limit: 1,
             pagination: false,
+            req,
             select: {
               cloudinaryPublicId: true,
               url: true,
@@ -87,8 +87,8 @@ export const getStaticHandler = (): StaticHandler => {
 
       return new Response(arrayBuffer, {
         headers: {
-          'Content-Type': response.headers.get('Content-Type') || 'application/octet-stream',
           'Content-Length': response.headers.get('Content-Length') || '',
+          'Content-Type': response.headers.get('Content-Type') || 'application/octet-stream',
           ETag: objectEtag || '',
         },
       })

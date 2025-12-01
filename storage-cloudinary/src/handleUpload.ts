@@ -1,13 +1,17 @@
 import type { HandleUpload } from '@payloadcms/plugin-cloud-storage/types'
-import { v2 as cloudinary, UploadApiOptions, UploadApiResponse } from 'cloudinary'
-import fs from 'fs'
+import type { UploadApiOptions, UploadApiResponse } from 'cloudinary';
 import type stream from 'stream'
+
+import { v2 as cloudinary } from 'cloudinary'
+import fs from 'fs'
+
 import type { ClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
+
 import { generatePublicId } from './utilities/generatePublicId.js'
 
 type HandleUploadArgs = {
-  prefix?: string
   folderSrc: string
+  prefix?: string
   useFilename?: boolean
 }
 

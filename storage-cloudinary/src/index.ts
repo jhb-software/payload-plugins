@@ -1,4 +1,3 @@
-import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import type {
   Adapter,
   ClientUploadsConfig,
@@ -6,10 +5,14 @@ import type {
   CollectionOptions,
   GeneratedAdapter,
 } from '@payloadcms/plugin-cloud-storage/types'
+import type { Config, Field, Plugin, UploadCollectionSlug } from 'payload'
+
+import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import { initClientUploads } from '@payloadcms/plugin-cloud-storage/utilities'
 import { v2 as cloudinary } from 'cloudinary'
-import type { Config, Field, Plugin, UploadCollectionSlug } from 'payload'
-import { CloudinaryClientUploadHandlerExtra } from './client/CloudinaryClientUploadHandler.js'
+
+import type { CloudinaryClientUploadHandlerExtra } from './client/CloudinaryClientUploadHandler.js'
+
 import { getGenerateUrl } from './generateURL.js'
 import { getAdminThumbnail } from './getAdminThumbnail.js'
 import { getGenerateSignature } from './getGenerateSignature.js'
@@ -24,21 +27,14 @@ export type CloudinaryStorageOptions = {
   clientUploads?: ClientUploadsConfig
 
   /**
-   * Collections to apply the Cloudinary storage adapter to
-   */
-  collections: Partial<Record<UploadCollectionSlug, Omit<CollectionOptions, 'adapter'> | true>>
-
-  /**
-   * Whether or not to enable the plugin
-   *
-   * @default true
-   */
-  enabled?: boolean
-
-  /**
    * Cloudinary cloud name.
    */
   cloudName: string
+
+  /**
+   * Collections to apply the Cloudinary storage adapter to
+   */
+  collections: Partial<Record<UploadCollectionSlug, Omit<CollectionOptions, 'adapter'> | true>>
 
   /**
    * Cloudinary client configuration.
@@ -47,6 +43,13 @@ export type CloudinaryStorageOptions = {
     apiKey: string
     apiSecret: string
   }
+
+  /**
+   * Whether or not to enable the plugin
+   *
+   * @default true
+   */
+  enabled?: boolean
 
   /**
    * Folder name to upload files to.
@@ -71,9 +74,9 @@ export const cloudinaryStorage: CloudinaryStoragePlugin =
   (incomingOptions: CloudinaryStorageOptions) =>
   (incomingConfig: Config): Config => {
     cloudinary.config({
-      cloud_name: incomingOptions.cloudName,
       api_key: incomingOptions.credentials.apiKey,
       api_secret: incomingOptions.credentials.apiSecret,
+      cloud_name: incomingOptions.cloudName,
     })
 
     const options = {
@@ -84,14 +87,14 @@ export const cloudinaryStorage: CloudinaryStoragePlugin =
     const fields: Field[] = [
       {
         name: 'cloudinaryPublicId',
-        label: 'Cloudinary Public ID',
         type: 'text',
-        required: false, // set to false to match with the default url field
         admin: {
-          readOnly: true,
-          hidden: true,
           disableBulkEdit: true,
+          hidden: true,
+          readOnly: true,
         },
+        label: 'Cloudinary Public ID',
+        required: false, // set to false to match with the default url field
       },
     ]
 
@@ -108,10 +111,10 @@ export const cloudinaryStorage: CloudinaryStoragePlugin =
       enabled: !isPluginDisabled && Boolean(options.clientUploads),
       extraClientHandlerProps: (collection) =>
         ({
-          cloudName: options.cloudName,
           apiKey: options.credentials.apiKey,
-          prefix: (typeof collection === 'object' && collection.prefix) || '',
+          cloudName: options.cloudName,
           folder: options.folder,
+          prefix: (typeof collection === 'object' && collection.prefix) || '',
           useFilename: options.useFilename,
         } satisfies CloudinaryClientUploadHandlerExtra),
       serverHandler: getGenerateSignature({
@@ -146,19 +149,19 @@ export const cloudinaryStorage: CloudinaryStoragePlugin =
     const config = {
       ...incomingConfig,
       collections: (incomingConfig.collections || []).map((collection) => {
-        if (!collectionsWithAdapter[collection.slug as keyof typeof collectionsWithAdapter]) {
+        if (!collectionsWithAdapter[collection.slug]) {
           return collection
         }
 
         return {
           ...collection,
+          fields: [...fields, ...(collection.fields || [])],
           upload: {
             ...(typeof collection.upload === 'object' ? collection.upload : {}),
-            disableLocalStorage: true,
-            crop: false,
             adminThumbnail: getAdminThumbnail,
+            crop: false,
+            disableLocalStorage: true,
           },
-          fields: [...fields, ...(collection.fields || [])],
         }
       }),
     }

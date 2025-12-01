@@ -1,13 +1,14 @@
 'use client'
 
 import { createClientUploadHandler } from '@payloadcms/plugin-cloud-storage/client'
+
 import { generatePublicId } from '../utilities/generatePublicId.js'
 
 export type CloudinaryClientUploadHandlerExtra = {
-  prefix: string
-  folder?: string
-  cloudName: string
   apiKey: string
+  cloudName: string
+  folder?: string
+  prefix: string
   useFilename?: boolean
 }
 
@@ -17,7 +18,7 @@ export type ClientUploadContext = {
 }
 
 async function getSingnature(
-  paramsToSign: any,
+  paramsToSign: Record<string, unknown>,
   serverHandlerPath: string,
   serverURL: string,
   apiRoute: string,
@@ -30,11 +31,11 @@ async function getSingnature(
         body: JSON.stringify({
           paramsToSign,
         }),
-        method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
+        method: 'POST',
       },
     )
 
@@ -55,8 +56,7 @@ export const CloudinaryClientUploadHandler: ReturnType<
   typeof createClientUploadHandler<CloudinaryClientUploadHandlerExtra>
 > = createClientUploadHandler<CloudinaryClientUploadHandlerExtra>({
   handler: async ({ apiRoute, collectionSlug, extra, file, serverHandlerPath, serverURL }) => {
-    const { prefix, folder, cloudName, apiKey, useFilename } =
-      extra as CloudinaryClientUploadHandlerExtra
+    const { apiKey, cloudName, folder, prefix, useFilename } = extra
 
     const formData = new FormData()
     formData.append('file', file)
@@ -93,8 +93,8 @@ export const CloudinaryClientUploadHandler: ReturnType<
     const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
 
     const response = await fetch(url, {
-      method: 'POST',
       body: formData,
+      method: 'POST',
     })
 
     if (!response.ok) {

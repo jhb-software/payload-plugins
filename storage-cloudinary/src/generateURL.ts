@@ -1,4 +1,5 @@
 import type { GenerateURL } from '@payloadcms/plugin-cloud-storage/types'
+
 import type { CloudinaryStorageOptions } from './index.js'
 
 export const getGenerateUrl = ({ options }: { options: CloudinaryStorageOptions }): GenerateURL => {

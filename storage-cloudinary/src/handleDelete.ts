@@ -1,4 +1,5 @@
 import type { HandleDelete } from '@payloadcms/plugin-cloud-storage/types'
+
 import { v2 as cloudinary } from 'cloudinary'
 import { APIError } from 'payload'
 
@@ -16,7 +17,7 @@ export const getHandleDelete = (): HandleDelete => {
     }
 
     type DestroyReturnType = {
-      result?: 'ok' | 'not-found' | any
+      result?: 'not found' | 'ok'
     }
 
     const result = (await cloudinary.uploader.destroy(doc.cloudinaryPublicId, {
