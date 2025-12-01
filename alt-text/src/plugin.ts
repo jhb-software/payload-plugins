@@ -92,16 +92,11 @@ export const payloadAltTextPlugin =
                 },
               ],
             },
-            listSearchableFields: [
-              // enhance the search by adding the filename, keywords and alt fields (if not already included)
-              ...(collectionConfig.admin?.listSearchableFields ?? []),
-              ...(collectionConfig.admin?.listSearchableFields?.includes('filename')
-                ? []
-                : ['filename']),
-              ...(collectionConfig.admin?.listSearchableFields?.includes('keywords')
-                ? []
-                : ['keywords']),
-              ...(collectionConfig.admin?.listSearchableFields?.includes('alt') ? [] : ['alt']),
+            // enhance the search by adding the filename, keywords and alt fields (if the user has not provided their own listSearchableFields)
+            listSearchableFields: collectionConfig.admin?.listSearchableFields ?? [
+              'filename',
+              'keywords',
+              'alt',
             ],
           },
           fields: [...(collectionConfig.fields ?? []), ...fields],

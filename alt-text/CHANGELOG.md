@@ -2,9 +2,10 @@
 
 ## 0.3.0
 
-### Breaking Change
+### Breaking Changes
 
-The plugin now uses a resolver pattern for alt text generation. This allows integration with any AI provider.
+1. The plugin will only adjust the `admin.listSearchableFields` if the user has not provided their own. Previously, it would always add the filename, keywords and alt fields to the listSearchableFields.
+2. The plugin now uses a resolver pattern for alt text generation. This allows integration with any AI provider.
 
 **Before (v0.2.x):**
 ```typescript
