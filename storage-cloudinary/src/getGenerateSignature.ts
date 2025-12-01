@@ -17,8 +17,11 @@ type Args = {
 
 const defaultAccess: Args['access'] = ({ req }) => !!req.user
 
-// This route handler generates a signature of the file which the client can then sent to cloudinary together with the file
-export const getClientUploadRoute =
+/**
+ * This returns a Payload handler function that generates a signature of the file which the client can then sent to cloudinary together with the file.
+ * It is only used when clientUploads is enabled.
+ */
+export const getGenerateSignature =
   ({ access = defaultAccess, apiSecret }: Args): PayloadHandler =>
   async (rawReq) => {
     if (!rawReq) {

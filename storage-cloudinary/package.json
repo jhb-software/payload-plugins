@@ -46,14 +46,14 @@
     "prepublishOnly": "pnpm clean && pnpm turbo build"
   },
   "dependencies": {
-    "@payloadcms/plugin-cloud-storage": "3.37.0",
-    "cloudinary": "^2.6.1"
+    "@payloadcms/plugin-cloud-storage": "3.62.0",
+    "cloudinary": "^2.8.0"
   },
   "devDependencies": {
-    "payload": "3.37.0"
+    "payload": "3.62.0"
   },
   "peerDependencies": {
-    "payload": "3.37.0"
+    "payload": "3.62.0"
   },
   "engines": {
     "node": "^18.20.2 || >=20.9.0"

@@ -1,3 +1,4 @@
+import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import type {
   Adapter,
   ClientUploadsConfig,
@@ -6,16 +7,15 @@ import type {
   GeneratedAdapter,
 } from '@payloadcms/plugin-cloud-storage/types'
 import { initClientUploads } from '@payloadcms/plugin-cloud-storage/utilities'
+import { v2 as cloudinary } from 'cloudinary'
 import type { Config, Field, Plugin, UploadCollectionSlug } from 'payload'
-import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
+import { CloudinaryClientUploadHandlerExtra } from './client/CloudinaryClientUploadHandler.js'
 import { getGenerateUrl } from './generateURL.js'
-import { getClientUploadRoute } from './getClientUploadRoute.js'
+import { getAdminThumbnail } from './getAdminThumbnail.js'
+import { getGenerateSignature } from './getGenerateSignature.js'
 import { getHandleDelete } from './handleDelete.js'
 import { getHandleUpload } from './handleUpload.js'
 import { getStaticHandler } from './staticHandler.js'
-import { getAdminThumbnail } from './getAdminThumbnail.js'
-import { CloudinaryClientUploadHandlerExtra } from './client/CloudinaryClientUploadHandler.js'
-import { v2 as cloudinary } from 'cloudinary'
 
 export type CloudinaryStorageOptions = {
   /**
@@ -31,7 +31,7 @@ export type CloudinaryStorageOptions = {
   /**
    * Whether or not to enable the plugin
    *
-   * Default: true
+   * @default true
    */
   enabled?: boolean
 
@@ -52,76 +52,81 @@ export type CloudinaryStorageOptions = {
    * Folder name to upload files to.
    */
   folder?: string
+
+  /**
+   * Whether to use the original filename as part of the public ID
+   * @default true
+   */
+  useFilename?: boolean
 }
 
 const defaultUploadOptions: Partial<CloudinaryStorageOptions> = {
   enabled: true,
+  useFilename: true,
 }
 
 type CloudinaryStoragePlugin = (cloudinaryStorageOpts: CloudinaryStorageOptions) => Plugin
 
 export const cloudinaryStorage: CloudinaryStoragePlugin =
-  (options: CloudinaryStorageOptions) =>
+  (incomingOptions: CloudinaryStorageOptions) =>
   (incomingConfig: Config): Config => {
-    if (options.enabled === false) {
-      return incomingConfig
-    }
-
     cloudinary.config({
-      cloud_name: options.cloudName,
-      api_key: options.credentials.apiKey,
-      api_secret: options.credentials.apiSecret,
+      cloud_name: incomingOptions.cloudName,
+      api_key: incomingOptions.credentials.apiKey,
+      api_secret: incomingOptions.credentials.apiSecret,
     })
 
-    const optionsWithDefaults = {
+    const options = {
       ...defaultUploadOptions,
-      ...options,
+      ...incomingOptions,
     }
 
     const fields: Field[] = [
       {
         name: 'cloudinaryPublicId',
+        label: 'Cloudinary Public ID',
         type: 'text',
-        required: true,
+        required: false, // set to false to match with the default url field
         admin: {
+          readOnly: true,
           hidden: true,
-        },
-      },
-      {
-        name: 'cloudinarySecureUrl',
-        type: 'text',
-        required: true,
-        admin: {
-          hidden: true,
+          disableBulkEdit: true,
         },
       },
     ]
 
+    const isPluginDisabled = options.enabled === false
+
     initClientUploads<
       CloudinaryClientUploadHandlerExtra,
-      CloudinaryStorageOptions['collections'][string]
+      CloudinaryStorageOptions['collections'][keyof CloudinaryStorageOptions['collections']]
     >({
       clientHandler:
         '@jhb.software/payload-storage-cloudinary/client#CloudinaryClientUploadHandler',
       collections: options.collections,
       config: incomingConfig,
-      enabled: !!options.clientUploads,
+      enabled: !isPluginDisabled && Boolean(options.clientUploads),
       extraClientHandlerProps: (collection) =>
         ({
           cloudName: options.cloudName,
           apiKey: options.credentials.apiKey,
           prefix: (typeof collection === 'object' && collection.prefix) || '',
           folder: options.folder,
+          useFilename: options.useFilename,
         } satisfies CloudinaryClientUploadHandlerExtra),
-      serverHandler: getClientUploadRoute({
+      serverHandler: getGenerateSignature({
         access:
           typeof options.clientUploads === 'object' ? options.clientUploads.access : undefined,
         apiSecret: options.credentials.apiSecret,
       }),
-      serverHandlerPath: '/cloudinary-client-upload-route', // the route where the signature is generated
+      serverHandlerPath: '/cloudinary-generate-signature',
     })
 
-    const adapter = cloudinaryStorageAdapter({ ...optionsWithDefaults })
+    if (isPluginDisabled) {
+      return incomingConfig
+    }
+
+    const adapter = cloudinaryStorageAdapter({ ...options })
 
     // Add adapter to each collection option object
     const collectionsWithAdapter: CloudStoragePluginOptions['collections'] = Object.entries(
@@ -141,7 +146,7 @@ export const cloudinaryStorage: CloudinaryStoragePlugin =
     const config = {
       ...incomingConfig,
       collections: (incomingConfig.collections || []).map((collection) => {
-        if (!collectionsWithAdapter[collection.slug]) {
+        if (!collectionsWithAdapter[collection.slug as keyof typeof collectionsWithAdapter]) {
           return collection
         }
 
@@ -165,15 +170,17 @@ export const cloudinaryStorage: CloudinaryStoragePlugin =
 
 function cloudinaryStorageAdapter(options: CloudinaryStorageOptions): Adapter {
   return ({ prefix }): GeneratedAdapter => {
-    const folderSrc = options.folder ? options.folder.replace(/^\/|\/$/g, '') + '/' : ''
+    const folderSrc = options.folder ? options.folder.replace(/^\/|\/$/g, '') + '/' : '' // ensure only trailing slash is present
 
     return {
       name: 'cloudinary',
-      generateURL: getGenerateUrl(),
+      clientUploads: options.clientUploads,
+      generateURL: getGenerateUrl({ options }),
       handleDelete: getHandleDelete(),
       handleUpload: getHandleUpload({
         folderSrc,
         prefix,
+        useFilename: options.useFilename,
       }),
       staticHandler: getStaticHandler(),
     }

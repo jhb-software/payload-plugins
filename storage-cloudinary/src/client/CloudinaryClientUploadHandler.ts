@@ -1,12 +1,14 @@
 'use client'
 
 import { createClientUploadHandler } from '@payloadcms/plugin-cloud-storage/client'
+import { generatePublicId } from '../utilities/generatePublicId.js'
 
 export type CloudinaryClientUploadHandlerExtra = {
   prefix: string
   folder?: string
   cloudName: string
   apiKey: string
+  useFilename?: boolean
 }
 
 export type ClientUploadContext = {
@@ -53,7 +55,8 @@ export const CloudinaryClientUploadHandler: ReturnType<
   typeof createClientUploadHandler<CloudinaryClientUploadHandlerExtra>
 > = createClientUploadHandler<CloudinaryClientUploadHandlerExtra>({
   handler: async ({ apiRoute, collectionSlug, extra, file, serverHandlerPath, serverURL }) => {
-    const { prefix, folder, cloudName, apiKey } = extra as CloudinaryClientUploadHandlerExtra
+    const { prefix, folder, cloudName, apiKey, useFilename } =
+      extra as CloudinaryClientUploadHandlerExtra
 
     const formData = new FormData()
     formData.append('file', file)
@@ -65,8 +68,9 @@ export const CloudinaryClientUploadHandler: ReturnType<
       formData.append('folder', folder)
     }
 
-    const publicId = `${prefix}${file.name.replace(/\.[^/.]+$/, '')}` // prepend prefix to filename and remove file extension
-    formData.append('public_id', publicId)
+    if (useFilename) {
+      formData.append('public_id', generatePublicId(prefix, file.name))
+    }
 
     formData.append('resource_type', 'auto')
 
@@ -85,6 +89,7 @@ export const CloudinaryClientUploadHandler: ReturnType<
     )
     formData.append('signature', signature)
 
+    // TODO: use upload_large for files larger than 100MB
     const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
 
     const response = await fetch(url, {

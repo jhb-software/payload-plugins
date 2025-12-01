@@ -37,7 +37,7 @@ export default buildConfig({
 })
 ```
 
-The plugin automatically adds a `cloudinaryPublicId` and `cloudinarySecureUrl` field to your upload collections. This can be used to directly access the uploaded file from Cloudinary.
+The plugin automatically adds a `cloudinaryPublicId` field to your upload collections. This can be used to directly access the uploaded file from Cloudinary.
 
 ## Roadmap
 

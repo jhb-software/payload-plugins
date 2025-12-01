@@ -1,4 +1,5 @@
 import type { StaticHandler } from '@payloadcms/plugin-cloud-storage/types'
+import type { CollectionSlug } from 'payload'
 import type { ClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
 
 // This is called:
@@ -30,30 +31,34 @@ export const getStaticHandler = (): StaticHandler => {
         if (
           doc &&
           'cloudinaryPublicId' in doc &&
-          'cloudinarySecureUrl' in doc &&
+          'url' in doc &&
           typeof doc.cloudinaryPublicId === 'string' &&
-          typeof doc.cloudinarySecureUrl === 'string'
+          typeof doc.url === 'string'
         ) {
           publicId = doc.cloudinaryPublicId
-          secureUrl = doc.cloudinarySecureUrl
+          secureUrl = doc.url
         } else {
           const result = await req.payload.find({
-            collection,
+            collection: collection as CollectionSlug,
             req,
             limit: 1,
             pagination: false,
             select: {
               cloudinaryPublicId: true,
-              cloudinarySecureUrl: true,
+              url: true,
             },
             where: {
               filename: { equals: filename },
             },
           })
 
-          if (result.docs.length > 0) {
+          if (
+            result.docs.length > 0 &&
+            'cloudinaryPublicId' in result.docs[0] &&
+            'url' in result.docs[0]
+          ) {
             publicId = result.docs[0].cloudinaryPublicId as string
-            secureUrl = result.docs[0].cloudinarySecureUrl as string
+            secureUrl = result.docs[0].url as string
           }
         }
       }

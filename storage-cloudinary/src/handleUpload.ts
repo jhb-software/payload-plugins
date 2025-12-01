@@ -2,26 +2,36 @@ import type { HandleUpload } from '@payloadcms/plugin-cloud-storage/types'
 import { v2 as cloudinary, UploadApiOptions, UploadApiResponse } from 'cloudinary'
 import fs from 'fs'
 import type stream from 'stream'
+import type { ClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
+import { generatePublicId } from './utilities/generatePublicId.js'
 
 type HandleUploadArgs = {
   prefix?: string
   folderSrc: string
+  useFilename?: boolean
 }
 
 const multipartThreshold = 1024 * 1024 * 99 // 99MB
 
-export const getHandleUpload = ({ folderSrc, prefix = '' }: HandleUploadArgs): HandleUpload => {
+export const getHandleUpload = ({
+  folderSrc,
+  prefix = '',
+  useFilename,
+}: HandleUploadArgs): HandleUpload => {
   return async ({ data, file }) => {
-    // TODO: this function is also called when the document is updated (e.g. chaging the alt text)
-    // In this case do not re-upload the file
-    // But attention: the file inside the document could be updated, in this case we want to re-upload the file
-    // Therefore returning early if the cloudinaryPublicId is present on the data (document) is not enough
+    const clientUploadContext = file.clientUploadContext as ClientUploadContext | undefined
 
-    const publicId = `${prefix}${file.filename.replace(/\.[^/.]+$/, '')}` // prepend prefix to filename and remove file extension
+    // If the file was already uploaded from the client, add the publicId and secureUrl to the data object and return it
+    if (clientUploadContext) {
+      data.cloudinaryPublicId = clientUploadContext.publicId
+      data.url = clientUploadContext.secureUrl
+
+      return data
+    }
 
     const uploadOptions: UploadApiOptions = {
       folder: folderSrc,
-      public_id: publicId,
+      public_id: useFilename ? generatePublicId(prefix, file.filename) : undefined,
       resource_type: 'auto',
     }
 
@@ -61,11 +71,13 @@ export const getHandleUpload = ({ folderSrc, prefix = '' }: HandleUploadArgs): H
 
     if (result && typeof result === 'object' && 'public_id' in result && 'secure_url' in result) {
       data.cloudinaryPublicId = result.public_id
-      data.cloudinarySecureUrl = result.secure_url
+      // TODO: find out if the URL should be stored in the DB or generated in the generateURL function?
+      // It looks like the official s3 plugin does not store it in the DB initially, but it gets stored after the first update...
+      data.url = result.secure_url
 
       return data
     } else {
-      throw new Error('No public_id in upload result')
+      throw new Error('No public_id in upload result from Cloudinary. Upload failed.')
     }
   }
 }

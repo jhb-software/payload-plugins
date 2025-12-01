@@ -23,8 +23,8 @@ export const getHandleDelete = (): HandleDelete => {
       resource_type: doc.mimeType.startsWith('video')
         ? 'video'
         : doc.mimeType.startsWith('image')
-        ? 'image'
-        : undefined,
+          ? 'image'
+          : undefined,
     })) as DestroyReturnType
 
     if (result?.result === 'ok') {
