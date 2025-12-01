@@ -24,7 +24,10 @@ export const payloadSeoPlugin =
     const officialSeoPlugin = seoPlugin({
       ...pluginOptions,
       generateDescription: generateMetaDescriptionFunction,
-      fields: ({ defaultFields }) => [keywordsField(), ...defaultFields],
+      fields: ({ defaultFields }) => [
+        keywordsField(),
+        ...(pluginOptions.fields ? pluginOptions.fields({ defaultFields }) : defaultFields),
+      ],
     })
 
     // Merge the config after the initialization of the official seo plugin with the incoming config

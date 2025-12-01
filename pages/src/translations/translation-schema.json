@@ -1,0 +1,103 @@
+{
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "additionalProperties": false,
+    "properties": {
+      "$schema": {
+        "type": "string"
+      },
+      "@jhb.software/payload-pages-plugin": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "parent": {
+            "type": "string"
+          },
+          "rootPage": {
+            "type": "string"
+          },
+          "isRootPage": {
+            "type": "string"
+          },
+          "alternatePaths": {
+            "type": "string"
+          },
+          "alternatePath": {
+            "type": "string"
+          },
+          "breadcrumbs": {
+            "type": "string"
+          },
+          "breadcrumb": {
+            "type": "string"
+          },
+          "showBreadcrumbs": {
+            "type": "string"
+          },
+          "syncSlugWithX": {
+            "type": "string"
+          },
+          "slugWasChangedFromXToY": {
+            "type": "string"
+          },
+          "createRedirect": {
+            "type": "string"
+          },
+          "redirectCreated": {
+            "type": "string"
+          },
+          "creatingRedirect": {
+            "type": "string"
+          },
+          "redirectCreatedSuccessfully": {
+            "type": "string"
+          },
+          "redirectCreationFailed": {
+            "type": "string"
+          },
+          "redirectReasonSlugChange": {
+            "type": "string"
+          },
+          "creating": {
+            "type": "string"
+          },
+          "revertSlug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "label",
+          "slug",
+          "parent",
+          "rootPage",
+          "isRootPage",
+          "alternatePaths",
+          "alternatePath",
+          "breadcrumbs",
+          "breadcrumb",
+          "showBreadcrumbs",
+          "syncSlugWithX",
+          "slugWasChangedFromXToY",
+          "createRedirect",
+          "redirectCreated",
+          "creatingRedirect",
+          "redirectCreatedSuccessfully",
+          "redirectCreationFailed",
+          "redirectReasonSlugChange",
+          "creating",
+          "revertSlug"
+        ]
+      }
+    },
+    "required": ["@jhb.software/payload-pages-plugin"]
+  }

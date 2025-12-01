@@ -6,6 +6,24 @@ This repository contains a collection of powerful plugins designed to enhance [P
 
 ## Plugins
 
+### Admin Search Plugin
+
+[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-admin-search)](https://www.npmjs.com/package/@jhb.software/payload-admin-search)
+
+A plugin that adds a global search modal to the Payload admin panel, enabling quick navigation across documents and collections with keyboard shortcuts (`Cmd + K` / `Ctrl + K`).
+
+<img width="659" height="489" alt="image" src="https://github.com/user-attachments/assets/ba52d56e-7365-46ee-80e3-416d07946727" />
+
+[Learn more about the Admin Search plugin →](./admin-search)
+
+### Alt Text Plugin
+
+[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-alt-text-plugin)](https://www.npmjs.com/package/@jhb.software/payload-alt-text-plugin)
+
+A minimal plugin to generate image alt texts using OpenAI's Vision API. Automatically adds an alt text field with AI-generation capability to upload collections, including a bulk generation feature for processing multiple images at once.
+
+[Learn more about the Alt Text plugin →](./alt-text)
+
 ### Geocoding Plugin
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-geocoding-plugin)](https://www.npmjs.com/package/@jhb.software/payload-geocoding-plugin)
@@ -43,3 +61,13 @@ Extends the official [SEO plugin](https://payloadcms.com/docs/plugins/seo) with 
 - Multi-keyword support with content usage analytics
 
 [Learn more about the SEO plugin →](./seo)
+
+### Content Translator Plugin
+
+[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
+
+A plugin that enables content translation directly within the Payload CMS admin panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
+
+[Learn more about the Content Translator plugin →](./content-translator)
+
+

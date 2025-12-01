@@ -3,16 +3,51 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build:all": "pnpm build:cloudinary && pnpm build:pages && pnpm build:seo && pnpm build:geocoding",
-    "publish:all": "pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:seo && pnpm publish:geocoding",
+    "build:all": "pnpm build:admin-search && pnpm build:alt-text && pnpm build:cloudinary && pnpm build:pages && pnpm build:seo && pnpm build:geocoding && pnpm build:content-translator",
+    "build:admin-search": "cd ./admin-search && pnpm build",
+    "build:alt-text": "cd ./alt-text && pnpm build",
     "build:cloudinary": "cd ./cloudinary && pnpm build",
+    "build:content-translator": "cd ./content-translator && pnpm build",
+    "build:geocoding": "cd ./geocoding && pnpm build",
     "build:pages": "cd ./pages && pnpm build",
     "build:seo": "cd ./seo && pnpm build",
+
+    "publish:all": "pnpm publish:admin-search && pnpm publish:alt-text && pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:seo && pnpm publish:geocoding && pnpm publish:content-translator",
+    "publish:admin-search": "cd ./admin-search && pnpm publish",
+    "publish:alt-text": "cd ./alt-text && pnpm publish",
     "publish:cloudinary": "cd ./cloudinary && pnpm publish",
+    "publish:content-translator": "cd ./content-translator && pnpm publish",
+    "publish:geocoding": "cd ./geocoding && pnpm publish",
     "publish:pages": "cd ./pages && pnpm publish",
     "publish:seo": "cd ./seo && pnpm publish",
-    "build:geocoding": "cd ./geocoding && pnpm build",
-    "publish:geocoding": "cd ./geocoding && pnpm publish",
-    "format": "prettier --write \"**/*.{js,ts,json,md}\""
+
+    "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator",
+    "lint:admin-search": "cd ./admin-search && pnpm lint",
+    "lint:alt-text": "cd ./alt-text && pnpm lint",
+    "lint:cloudinary": "cd ./cloudinary && pnpm lint",
+    "lint:content-translator": "cd ./content-translator && pnpm lint",
+    "lint:geocoding": "cd ./geocoding && pnpm lint",
+    "lint:pages": "cd ./pages && pnpm lint",
+
+    "format:all": "pnpm format:admin-search && pnpm format:alt-text && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:seo && pnpm format:content-translator",
+    "format:admin-search": "cd ./admin-search && pnpm format",
+    "format:alt-text": "cd ./alt-text && pnpm format",
+    "format:cloudinary": "cd ./cloudinary && pnpm format",
+    "format:content-translator": "cd ./content-translator && pnpm format",
+    "format:geocoding": "cd ./geocoding && pnpm format",
+    "format:pages": "cd ./pages && pnpm format",
+    "format:seo": "cd ./seo && pnpm format",
+
+    "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:seo && pnpm install:content-translator",
+    "install:admin-search": "cd ./admin-search && pnpm install --frozen-lockfile",
+    "install:alt-text": "cd ./alt-text && pnpm install --frozen-lockfile",
+    "install:cloudinary": "cd ./cloudinary && pnpm install --frozen-lockfile",
+    "install:content-translator": "cd ./content-translator && pnpm install --frozen-lockfile",
+    "install:geocoding": "cd ./geocoding && pnpm install --frozen-lockfile",
+    "install:pages": "cd ./pages && pnpm install --frozen-lockfile",
+    "install:seo": "cd ./seo && pnpm install --frozen-lockfile",
+
+    "test:all": "pnpm test:pages",
+    "test:pages": "cd ./pages && pnpm test"
   }
 }

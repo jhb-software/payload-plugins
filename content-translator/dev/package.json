@@ -1,0 +1,38 @@
+{
+  "name": "content-translator-dev",
+  "description": "Dev app for the content-translator plugin.",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev",
+    "dev:turbo": "pnpm dev --turbo",
+    "dev:safe": "rm -rf .next && pnpm dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "format": "prettier --write src",
+    "payload": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload",
+    "generate:types": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload generate:types",
+    "generate:schema": "payload-graphql generate:schema",
+    "generate:importmap": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload generate:importmap",
+    "seed": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts tsx seed-db.ts"
+  },
+  "dependencies": {
+    "@jhb.software/payload-content-translator-plugin": "workspace:*",
+    "@payloadcms/db-mongodb": "^3.65.0",
+    "@payloadcms/next": "^3.65.0",
+    "@payloadcms/richtext-lexical": "^3.65.0",
+    "@payloadcms/translations": "^3.65.0",
+    "@payloadcms/ui": "^3.65.0",
+    "next": "15.5.6",
+    "openai": "^6.9.1",
+    "payload": "^3.65.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
+    "tsx": "^4.20.6"
+  }
+}

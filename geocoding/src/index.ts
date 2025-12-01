@@ -1,4 +1,4 @@
-export { geocodingField } from './fields/geocodingField'
+export { geocodingField } from './fields/geocodingField.js'
 export { payloadGeocodingPlugin } from './plugin.js'
-export type { GeocodingPluginConfig } from './types/GeoCodingPluginConfig'
-export type { GeoCodingFieldConfig } from './types/GeoCodingFieldConfig'
+export type { GeoCodingFieldConfig } from './types/GeoCodingFieldConfig.js'
+export type { GeocodingPluginConfig } from './types/GeoCodingPluginConfig.js'

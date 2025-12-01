@@ -1,0 +1,42 @@
+{
+  "name": "pages-plugin-unlocalized-test-app",
+  "description": "A test app for the pages plugin with unlocalized pages",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev",
+    "devturbo": "pnpm dev --turbo",
+    "devsafe": "rm -rf .next && pnpm dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "format": "prettier --write src",
+    "payload": "payload",
+    "generate:types": "payload generate:types",
+    "generate:schema": "payload-graphql generate:schema",
+    "generate:importmap": "payload generate:importmap",
+    "test": "pnpm test:mongodb && pnpm test:sqlite",
+    "test:mongodb": "cross-env PAYLOAD_DATABASE=mongodb vitest run",
+    "test:sqlite": "cross-env PAYLOAD_DATABASE=sqlite vitest run",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "@jhb.software/payload-pages-plugin": "workspace:*",
+    "@payloadcms/db-mongodb": "^3.65.0",
+    "@payloadcms/db-sqlite": "^3.65.0",
+    "@payloadcms/next": "^3.65.0",
+    "@payloadcms/plugin-multi-tenant": "^3.65.0",
+    "@payloadcms/ui": "^3.65.0",
+    "next": "15.5.6",
+    "payload": "^3.65.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "copyfiles": "^2.4.1",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
+    "vite": "^7.2.4",
+    "vitest": "^4.0.14"
+  }
+}

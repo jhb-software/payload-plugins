@@ -33,7 +33,11 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  plugins: [payloadGeocodingPlugin({})],
+  plugins: [
+    payloadGeocodingPlugin({
+      googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    }),
+  ],
   async onInit(payload) {
     const existingUsers = await payload.find({
       collection: 'users',

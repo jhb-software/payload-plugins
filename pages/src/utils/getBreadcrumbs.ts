@@ -1,42 +1,39 @@
-import { CollectionSlug, PayloadRequest } from 'payload'
-import { Breadcrumb } from '../types/Breadcrumb.js'
-import { Locale } from '../types/Locale.js'
+import type { CollectionSlug, PayloadRequest } from 'payload'
+
+import type { Breadcrumb } from '../types/Breadcrumb.js'
+import type { Locale } from '../types/Locale.js'
+
 import { fetchRestApi } from './fetchRestApi.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
 /** Returns the breadcrumbs to the given document. */
 export async function getBreadcrumbs({
-  req,
-  locales,
   breadcrumbLabelField,
-  parentField,
-  parentCollection,
   data,
   locale,
+  locales,
+  parentCollection,
+  parentField,
+  req,
 }: {
-  req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
-  locales: Locale[]
   breadcrumbLabelField: string
-  parentField: string
-  parentCollection: CollectionSlug
   data: Record<string, any>
-  locale: Locale | 'all'
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  locale: 'all' | Locale | undefined
+  locales: Locale[] | undefined
+  parentCollection: CollectionSlug
+  parentField: string
+  req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
 }): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
-  const getCurrentDocBreadcrumb = (locale: Locale, parentBreadcrumbs: Breadcrumb[]) =>
+  const getCurrentDocBreadcrumb = (locale: Locale | undefined, parentBreadcrumbs: Breadcrumb[]) =>
     docToBreadcrumb(
       {
         ...data,
         path: pathFromBreadcrumbs({
-          locale,
+          additionalSlug: data.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(data.slug, locale),
           breadcrumbs: parentBreadcrumbs,
-          additionalSlug: data.isRootPage
-            ? ROOT_PAGE_SLUG
-            : typeof data.slug === 'string'
-              ? data.slug
-              : typeof data.slug === 'object'
-                ? data.slug[locale]
-                : undefined,
+          locale,
         }),
       },
       locale,
@@ -45,7 +42,7 @@ export async function getBreadcrumbs({
 
   // If the document has no parent, only return the breadcrumb for the current locale and return
   if (!data[parentField]) {
-    if (locale === 'all') {
+    if (locale === 'all' && locales) {
       return Object.fromEntries(
         locales.map((locale) => [locale, [getCurrentDocBreadcrumb(locale, [])]]),
       )
@@ -55,37 +52,48 @@ export async function getBreadcrumbs({
   }
 
   // If the parent is set, fetch its breadcrumbs, add the breadcrumb of the current doc and return
-  const parentId = typeof data[parentField] === 'string' ? data[parentField] : data[parentField].id
+  const parentId =
+    typeof data[parentField] === 'string' || typeof data[parentField] === 'number'
+      ? data[parentField]
+      : data[parentField].id
+
+  if (!parentId) {
+    throw new Error('Parent ID not found for document ' + data.id)
+  }
 
   const parent = req
     ? await req.payload.findByID({
         id: parentId,
         collection: parentCollection,
         depth: 0,
-        locale: locale,
         disableErrors: true,
+        locale,
         select: {
           breadcrumbs: true,
         },
         // IMPORTANT: do not pass the req here, otherwise there will be issues with the locale flattening
       })
-    : await fetchRestApi(`/${parentCollection}/${parentId}`, {
-        depth: 0,
-        locale: locale,
-        select: {
-          breadcrumbs: true,
+    : await fetchRestApi<{ breadcrumbs: Breadcrumb[]; id: number | string }>(
+        `/${parentCollection}/${parentId}`,
+        {
+          depth: 0,
+          locale,
+          select: {
+            breadcrumbs: true,
+          },
         },
-      })
+      )
 
   if (!parent) {
     // This can be the case, when the parent document got deleted.
     throw new Error('Parent document of document ' + data.id + ' not found.')
   }
 
-  if (locale === 'all') {
+  if (locale === 'all' && locales) {
     const breadcrumbs: Record<Locale, Breadcrumb[]> = locales.reduce(
       (acc, locale) => {
-        const parentBreadcrumbs = (parent?.breadcrumbs as any)[locale] ?? []
+        const parentBreadcrumbs =
+          (parent?.breadcrumbs as Record<Locale, Breadcrumb[]>)?.[locale] ?? []
 
         acc[locale] = [...parentBreadcrumbs, getCurrentDocBreadcrumb(locale, parentBreadcrumbs)]
         return acc
@@ -95,30 +103,39 @@ export async function getBreadcrumbs({
 
     return breadcrumbs
   } else {
-    const parentBreadcrumbs = (parent?.breadcrumbs as any) ?? []
+    const parentBreadcrumbs = (parent?.breadcrumbs as Breadcrumb[]) ?? []
 
     return [...parentBreadcrumbs, getCurrentDocBreadcrumb(locale, parentBreadcrumbs)]
   }
 }
 
-/** Converts a localized or unlocalized document to a breadcrumb. */
+/** Converts a localized or unlocalized document to a breadcrumb item. */
 function docToBreadcrumb(
   doc: Record<string, any>,
-  locale: Locale | 'all',
-  breadcrumbLabelField?: string | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  locale: 'all' | Locale | undefined,
+  breadcrumbLabelField?: string,
 ): Breadcrumb {
   return {
-    slug: doc.isRootPage
-      ? ROOT_PAGE_SLUG
-      : typeof doc.slug === 'string'
-        ? doc.slug
-        : typeof doc.slug === 'object'
-          ? doc.slug[locale]
-          : undefined,
-    path: typeof doc.path === 'string' ? doc.path : doc.path?.[locale],
+    slug: doc.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(doc.slug, locale)!,
     label: breadcrumbLabelField
-      ? // the label field might not be localized (e.g. it's a persons name), therefore we need to check both localized and unlocalized
-        (doc[breadcrumbLabelField]?.[locale] ?? doc[breadcrumbLabelField])
-      : (doc.breadcrumbs?.[locale]?.at(-1)?.label ?? doc.breadcrumbs?.at(-1)?.label),
+      ? pickFieldValue(doc[breadcrumbLabelField], locale)
+      : typeof doc.breadcrumbs === 'object' && locale
+        ? doc.breadcrumbs?.[locale]?.at(-1)?.label
+        : doc.breadcrumbs?.at(-1)?.label,
+    path: pickFieldValue(doc.path, locale)!,
   }
+}
+
+/** Picks the value of a localized or unlocalized field. */
+function pickFieldValue(field: any, locale: Locale | undefined): string | undefined {
+  if (typeof field === 'string') {
+    return field
+  }
+
+  if (typeof field === 'object' && locale) {
+    return field[locale]
+  }
+
+  return undefined
 }

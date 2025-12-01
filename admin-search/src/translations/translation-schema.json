@@ -1,0 +1,95 @@
+{
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "@jhb.software/payload-admin-search": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "searchPlaceholder": {
+          "type": "string"
+        },
+        "escapeHint": {
+          "type": "string"
+        },
+        "searchForDocuments": {
+          "type": "string"
+        },
+        "errorSearching": {
+          "type": "string"
+        },
+        "noResultsFound": {
+          "type": "string"
+        },
+        "noResultsHint": {
+          "type": "string"
+        },
+        "openCollectionLabel": {
+          "type": "string"
+        },
+        "openGlobalLabel": {
+          "type": "string"
+        },
+        "pillCollection": {
+          "type": "string"
+        },
+        "pillGlobal": {
+          "type": "string"
+        },
+        "unknownCollection": {
+          "type": "string"
+        },
+        "closeSearchModal": {
+          "type": "string"
+        },
+        "searchModalContent": {
+          "type": "string"
+        },
+        "openDocumentIn": {
+          "type": "string"
+        },
+        "toNavigate": {
+          "type": "string"
+        },
+        "toOpen": {
+          "type": "string"
+        },
+        "toClose": {
+          "type": "string"
+        },
+        "searchTooltip": {
+          "type": "string"
+        },
+        "searchInput": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "searchPlaceholder",
+        "escapeHint",
+        "searchForDocuments",
+        "errorSearching",
+        "noResultsFound",
+        "noResultsHint",
+        "openCollectionLabel",
+        "openDocumentIn",
+        "openGlobalLabel",
+        "pillCollection",
+        "pillGlobal",
+        "unknownCollection",
+        "closeSearchModal",
+        "searchModalContent",
+        "toNavigate",
+        "toOpen",
+        "toClose",
+        "searchTooltip",
+        "searchInput"
+      ]
+    }
+  },
+  "required": ["@jhb.software/payload-admin-search"]
+}

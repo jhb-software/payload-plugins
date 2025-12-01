@@ -1,0 +1,35 @@
+{
+  "name": "@jhb.software/payload-alt-text-plugin-dev-unlocalized",
+  "description": "Test app for AI Alt Text plugin (unlocalized)",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev",
+    "devturbo": "pnpm dev --turbo",
+    "devsafe": "rm -rf .next && pnpm dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "format": "prettier --write src",
+    "payload": "payload",
+    "generate:types": "payload generate:types",
+    "generate:schema": "payload-graphql generate:schema",
+    "generate:importmap": "payload generate:importmap"
+  },
+  "dependencies": {
+    "@jhb.software/payload-alt-text-plugin": "workspace:*",
+    "@payloadcms/db-mongodb": "^3.65.0",
+    "@payloadcms/next": "^3.65.0",
+    "@payloadcms/ui": "^3.65.0",
+    "next": "15.5.6",
+    "payload": "^3.65.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "copyfiles": "^2.4.1",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
+    "typescript": "5.9.3"
+  }
+}

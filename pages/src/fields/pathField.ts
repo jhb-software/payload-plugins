@@ -1,4 +1,6 @@
-import { Field } from 'payload'
+import type { Field } from 'payload'
+
+import { translatedLabel } from '../utils/translatedLabel.js'
 
 /**
  * Creates a virtual path field that generates the path based on the parents' slugs, the document's slug and the locale.
@@ -9,22 +11,25 @@ export function pathField(): Field {
   return {
     name: 'path',
     type: 'text',
+    label: translatedLabel('path'),
     required: true,
     virtual: true,
-    // Validate by default to allow the document to be updated, without having to set the path field.
-    validate: (_: any): true => true,
-    localized: true,
+
     admin: {
-      readOnly: true,
-      position: 'sidebar',
       components: {
         Field: '@jhb.software/payload-pages-plugin/client#PathField',
       },
+      disableBulkEdit: true,
+      position: 'sidebar',
+      readOnly: true,
     },
     hooks: {
       afterRead: [
         // The path is generated in the getVirtualFields collection hook
       ],
     },
+    localized: true,
+    // Validate by default to allow the document to be updated, without having to set the path field:
+    validate: (_: any): true => true,
   }
 }

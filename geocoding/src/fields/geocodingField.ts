@@ -1,5 +1,6 @@
-import { Field } from 'payload'
-import { GeoCodingFieldConfig } from '../types/GeoCodingFieldConfig'
+import type { Field } from 'payload'
+
+import type { GeoCodingFieldConfig } from '../types/GeoCodingFieldConfig.js'
 
 /**
  * Creates a row field containing:
@@ -16,9 +17,7 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
       {
         name: config.pointField.name + '_googlePlacesData',
         type: 'json',
-        label: config.geoDataFieldOverride?.label ?? 'Location',
         access: config.geoDataFieldOverride?.access ?? {},
-        required: config.geoDataFieldOverride?.required,
         admin: {
           // overridable props:
           readOnly: true,
@@ -27,9 +26,11 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
 
           // non-overridable props:
           components: {
-            Field: '@jhb.software/payload-geocoding-plugin/client#GeocodingFieldComponent',
+            Field: '@jhb.software/payload-geocoding-plugin/server#GeocodingField',
           },
         },
+        label: config.geoDataFieldOverride?.label ?? 'Location',
+        required: config.geoDataFieldOverride?.required,
       },
       config.pointField,
     ],

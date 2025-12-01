@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-pages-plugin",
-  "version": "0.3.0",
+  "version": "0.6.0-beta.6",
   "description": "Payload CMS plugin that adds essential fields for hierarchical page structure to collections.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
@@ -21,7 +21,17 @@
     "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
     "clean": "rimraf --glob {dist,*.tsbuildinfo}",
     "dev": "tsc -w",
-    "test": "cd dev && pnpm test",
+    "format": "prettier --write src",
+    "test": "pnpm test:localized && pnpm test:unlocalized && pnpm test:multi-tenant",
+    "test:localized": "pnpm test:localized:mongodb && pnpm test:localized:sqlite",
+    "test:localized:mongodb": "cd dev && pnpm test:mongodb",
+    "test:localized:sqlite": "cd dev && pnpm test:sqlite",
+    "test:unlocalized": "pnpm test:unlocalized:mongodb && pnpm test:unlocalized:sqlite",
+    "test:unlocalized:mongodb": "cd dev_unlocalized && pnpm test:mongodb",
+    "test:unlocalized:sqlite": "cd dev_unlocalized && pnpm test:sqlite",
+    "test:multi-tenant": "pnpm test:multi-tenant:mongodb && pnpm test:multi-tenant:sqlite",
+    "test:multi-tenant:mongodb": "cd dev_multi_tenant && pnpm test:mongodb",
+    "test:multi-tenant:sqlite": "cd dev_multi_tenant && pnpm test:sqlite",
     "test:watch": "cd dev && pnpm test:watch",
     "lint": "eslint ./src",
     "lint:fix": "eslint ./src --fix",
@@ -31,18 +41,23 @@
     "qs-esm": "^7.0.2"
   },
   "peerDependencies": {
-    "@payloadcms/ui": "3.23.0",
-    "next": "15.1.7",
-    "payload": "3.23.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "@payloadcms/ui": "^3.65.0",
+    "next": "15.5.6",
+    "payload": "^3.65.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
-    "@types/react": "19.0.8",
-    "@types/react-dom": "19.0.3",
-    "typescript": "5.7.3",
+    "@payloadcms/eslint-config": "3.28.0",
+    "@swc/cli": "^0.7.9",
+    "@swc/core": "^1.15.3",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
     "copyfiles": "2.4.1",
-    "rimraf": "6.0.1"
+    "eslint": "^9.39.1",
+    "prettier": "^3.7.3",
+    "rimraf": "6.1.2",
+    "typescript": "5.9.3"
   },
   "files": [
     "dist"

@@ -6,80 +6,226 @@ The Payload Pages plugin simplifies website building by adding essential fields 
 
 ## Setup
 
-Add the plugin to your payload config as follows:
+First, add the plugin to your payload config. The `generatePageURL` function is required and must provide a function that returns the full URL to the frontend page. 
 
 ```ts
-plugins: [payloadPagesPlugin({})]
+import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+
+// Add to plugins array
+plugins: [
+  payloadPagesPlugin({
+      // Example generatePageURL function:
+      generatePageURL: ({ path, preview }) =>
+        path && process.env.NEXT_PUBLIC_FRONTEND_URL
+          ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
+          : null,
+    }),
+]
 ```
 
-Use the `createPagesCollectionConfig` function to create a collection config for the Pages collection. This adds all necessary fields and hooks to the collection. The `page` field must be specified as follows:
+Next, create a page collections using the `PageCollectionConfig` type. This type extends Payload's `CollectionConfig` type with a `page` field that contains configurations for the page collection. The `page` field must be specified as follows:
 
-- `parentCollection`: The slug of the collection that will be used as the parent of the current collection.
-- `parentField`: The name of the field on the parent collection that will be used to relate to the current collection.
+- `parent.collection`: The slug of the collection that will be used as the parent of the current collection.
+- `parent.name`: The name of the field on the parent collection that will be used to relate to the current collection.
 - `isRootCollection`: Whether the collection is the root collection (collection which contains the root page). If true, the parent field is optional. Defaults to `false`.
-- `sharedParentDocument` (optional, defaults to `false`): If true, the parent document will be shared between all documents in the collection.
-- `breadcrumbLabelField` (optional, defaults to `admin.useAsTitle`): The name of the field that will be used to label the document in the breadcrumb.
-- `slugFallbackField` (optional, defaults to `title`): The name of the field that will be used as the fallback for the slug.
+- `parent.sharedDocument` (optional, defaults to `false`): If true, the parent document will be shared between all documents in the collection.
+- `breadcrumbs.labelField` (optional, defaults to `admin.useAsTitle`): The name of the field that will be used to label the document in the breadcrumb.
+- `slug.fallbackField` (optional, defaults to `title`): The name of the field that will be used as the fallback for the slug.
 
-First, the root collection must be created. This is the collection that will contain the root page.
+Here is an example of the page collection config of the root collection:
 
 ```ts
-import { createPagesCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
-const Pages: CollectionConfig = createPageCollectionConfig({
+const Pages: PageCollectionConfig = {
   slug: 'pages',
+  admin: {
+    useAsTitle: 'title',
+  },
   page: {
-    parentCollection: 'pages',
-    parentField: 'parent',
+    parent: {
+      collection: 'pages',
+      name: 'parent',
+    },
     isRootCollection: true,
   },
-  // configure the rest as normal
-})
+  fields: [
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+    },
+    // other fields
+  ],
+}
 ```
 
 Then additional collections can be created. Documents in these collections will be nested under documents in the root collection.
 
 ```ts
-import { createPagesCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
-const Projects: CollectionConfig = createPageCollectionConfig({
-  slug: 'projects',
+const Posts: PageCollectionConfig = {
+  slug: 'posts',
   page: {
-    parentCollection: 'pages',
-    parentField: 'parent',
-    sharedParentDocument: true,
+    parent: {
+      collection: 'pages',
+      name: 'parent',
+      sharedDocument: true,
+    },
   },
-  // configure the rest as normal
-})
+  fields: [
+    // your fields
+  ],
+}
 ```
 
-Additionally create the redirect collection:
+The plugin also includes a `RedirectsCollectionConfig` type that can be used to create a redirects collection. This type extends Payload's `CollectionConfig` type with a `redirects` field that contains configurations for the redirects collection.
 
 ```ts
-import { createRedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import { RedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
-const redirectsCollection = createRedirectsCollectionConfig({})
+const Redirects: RedirectsCollectionConfig = {
+  slug: 'redirects',
+  admin: {
+    defaultColumns: ['sourcePath', 'destinationPath', 'permanent', 'createdAt'],
+    listSearchableFields: ['sourcePath', 'destinationPath'],
+  },
+  redirects: {},
+  fields: [
+    // the fields are added by the plugin automatically
+  ],
+}
 ```
 
-In order for the official payload SEO plugin to use the generated URL, you need to pass the `generateUrl` function to the `generateUrl` field in the `seo` plugin config inside your payload config. Also add the `alternatePathsField` field to the fields array.
+### SEO Plugin Integration
+
+To integrate with the official Payload SEO plugin, store the `generatePageURL` function you defined for the pages plugin in a variable outside of the Payload config and pass it to the `generateURL` option of the SEO plugin. 
+If your collections are localized, also add the `alternatePathsField` which is exported by the plugin to the fields option of the SEO plugin.
 
 ```ts
+import { alternatePathsField, payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+import { seoPlugin } from '@payloadcms/plugin-seo'
+
+// Example generatePageURL function:
+const generatePageURL = ({ path, preview }: {
+  path: string | null
+  preview: boolean
+}): string | null => {
+  return path && process.env.NEXT_PUBLIC_FRONTEND_URL
+    ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
+    : null
+}
+
 export default buildConfig({
   // ...
   plugins: [
+    payloadPagesPlugin({
+      generatePageURL,
+    }),
     seoPlugin({
-      generateURL: ({ doc }) => getPageUrl({ path: doc.path })!,
+      generateURL: ({ doc }) => generatePageURL({ path: doc.path, preview: false }),
+      // If your collections are localized, also add the alternatePathsField
       fields: ({ defaultFields }) => [...defaultFields, alternatePathsField()],
     }),
   ],
 })
 ```
 
-### Environment variables
+### Multi-tenant support
 
-The following environment variables are required:
+> ⚠️ **Warning**: The multi-tenant support is currently experimental and may change in the future.
 
-- `NEXT_PUBLIC_FRONTEND_URL`
+The plugin supports multi-tenant setups via the official [Multi-tenant plugin](https://payloadcms.com/docs/plugins/multi-tenant).
+
+By default the plugin adds a unique constraint to the slug field of all page collections. In a multi-tenant setup you can disable this constraint by setting the `unique` field to `false` in the page collection config. To ensure uniqueness for a tenant to now have pages with multiple slugs, you can create a compound unique index.
+
+Example:    
+
+```ts
+export const Pages: PageCollectionConfig = {
+  slug: 'pages',
+  page: {
+    slug: {
+      // Disable the slug uniqueness because of the multi-tenant setup (see indexes below)
+      unique: false,
+    },
+  },
+  indexes: [
+    {
+      fields: ['slug', 'tenant'],
+      unique: true,
+    },
+  ],
+  fields: [ /* your fields */],
+} 
+```
+
+Some features (e.g. the parent and isRootPage fields) internally fetch documents from the database. To ensure only documents from the current tenant are fetched, you need to pass the `baseFilter` function to the plugin config. It receives the current request object and should return a `Where` object which will be added to the query.
+For the validation of the redirects, you need to pass the `redirectValidationFilter` function to the plugin config. It receives the current request object and the document object and should return a `Where` object which will be added to the query.
+
+To generate the URL based on the tenant the page belongs to, pass an async function to the `generatePageURL` option of the plugin config. It receives the current request object and document data so you could for example fetch the tenant from the database and use its website URL.
+
+Example:
+
+```ts
+import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+
+
+export default buildConfig({
+  // ...
+  plugins: [
+    payloadPagesPlugin({
+      generatePageURL: async ({ path, preview, data, req }) => {
+        if (data.tenant && typeof data.tenant === 'string') {
+          const tenant = await req.payload.findByID({
+            collection: 'tenants',
+            id: data.tenant,
+            select: {
+              websiteUrl: true,
+            },
+            req,
+          })
+
+          if (tenant && 'websiteUrl' in tenant && tenant.websiteUrl) {
+            return `${tenant.websiteUrl}${preview ? '/preview' : ''}${path}`
+          }
+        }
+
+        return null
+      },
+      baseFilter: ({ req }) => {
+        const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+        return { tenant: { equals: tenant } }
+      },
+      redirectValidationFilter: ({ doc }) => {
+        return { tenant: { equals: doc.tenant } }
+      },
+    }),
+  ],
+})
+```
+
+### Parent Deletion Prevention
+
+The plugin automatically prevents the deletion of parent documents that are referenced by child documents, protecting your data integrity and preventing orphaned references. This feature is enabled by default but can be disabled by setting the `preventParentDeletion` plugin config option to `false` if needed.
+
+#### Resolving Deletion Conflicts
+
+To delete a parent document that has child references, you have two options:
+
+1. **Reassign child documents**: Update the child documents to reference a different parent
+2. **Remove child documents**: Delete the child documents first, then delete the parent
+
+
+### Payload Select API
+
+When using the [Payload Select API](https://payloadcms.com/docs/queries/select), the plugin automatically extends the selection to include all virtual fields if any of them are selected. This ensures that virtual fields can be generated correctly. 
+For example, when querying for a page and selecting only the `path` field, the plugin will also select the `slug`, `parent` and `title` fields as theses fields are required to generate the virtual `path` field.
+
+Therefore it is highly recommended to specify the [defaultPopulate](https://payloadcms.com/docs/queries/select#defaultpopulate-collection-config-property) property on all of your page collections.
 
 ## About this plugin
 

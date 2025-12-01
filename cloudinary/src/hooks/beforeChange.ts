@@ -1,11 +1,12 @@
-import { CollectionBeforeChangeHook } from 'payload'
-import { CloudinaryPluginConfig } from '../types/CloudinaryPluginConfig'
+import type { CollectionBeforeChangeHook } from 'payload'
+
+import type { CloudinaryPluginConfig } from '../types/CloudinaryPluginConfig'
+
 import { streamUpload } from '../utils/streamUpload'
 
 const beforeChangeHook = (pluginConfig: CloudinaryPluginConfig) => {
-  const hook: CollectionBeforeChangeHook = async ({ data, req, operation }) => {
+  const hook: CollectionBeforeChangeHook = async ({ data, operation, req }) => {
     if (operation === 'create' && !req.file) {
-      console.error('req.file undefined. Returning data unchanged.')
       return data
     }
 

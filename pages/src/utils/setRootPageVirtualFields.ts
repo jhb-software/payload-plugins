@@ -1,6 +1,6 @@
-import { Breadcrumb } from '../types/Breadcrumb.js'
-import { Locale } from '../types/Locale.js'
-import { SeoMetadata } from '../types/SeoMetadata.js'
+import type { Breadcrumb } from '../types/Breadcrumb.js'
+import type { Locale } from '../types/Locale.js'
+import type { SeoMetadata } from '../types/SeoMetadata.js'
 
 /**
  * The slug of the root page.
@@ -14,76 +14,90 @@ export const ROOT_PAGE_SLUG = ''
 
 /** Sets the slug field and virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
 export function setRootPageDocumentVirtualFields({
+  breadcrumbLabelField,
   doc,
   locale,
   locales,
-  breadcrumbLabelField,
 }: {
-  doc: Record<string, any>
-  locale: Locale 
-  locales: Locale[]
   breadcrumbLabelField: string
+  doc: Record<string, any>
+  locale: Locale | undefined
+  locales: Locale[] | undefined
 }) {
-  const paths = locales.reduce(
-    (acc, locale) => {
-      // If the doc does not have a slug for this locale, exclude the path to not generate a 404 path
-      if (
-        (typeof doc.slug === 'object' && doc.slug[locale] === ROOT_PAGE_SLUG) ||
-        (typeof doc.slug === 'string' && doc.slug === ROOT_PAGE_SLUG)
-      ) {
-        acc[locale] = `/${locale}`
-      }
-      return acc
-    },
-    {} as Record<Locale, string>,
-  )
-
-  const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
-    ([locale, path]) => ({
-      hreflang: locale as Locale,
-      path,
-    }),
-  )
-
-  if (locale === 'all') {
-    const breadcrumbs: Record<Locale, Breadcrumb[]> = locales.reduce(
+  if (locales && locale) {
+    const paths = locales.reduce(
       (acc, locale) => {
-        acc[locale] = [
-          {
-            path: paths[locale],
-            label: doc[breadcrumbLabelField][locale],
-            slug: ROOT_PAGE_SLUG,
-          },
-        ]
+        // If the doc does not have a slug for this locale, exclude the path to not generate a 404 path
+        if (
+          (typeof doc.slug === 'object' && doc.slug[locale] === ROOT_PAGE_SLUG) ||
+          (typeof doc.slug === 'string' && doc.slug === ROOT_PAGE_SLUG)
+        ) {
+          acc[locale] = `/${locale}`
+        }
         return acc
       },
-      {} as Record<Locale, Breadcrumb[]>,
+      {} as Record<Locale, string>,
     )
 
-    return {
-      ...doc,
-      path: paths,
-      breadcrumbs: breadcrumbs,
-      meta: {
-        ...doc.meta,
-        alternatePaths: alternatePaths,
-      },
+    const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
+      ([locale, path]) => ({
+        hreflang: locale,
+        path,
+      }),
+    )
+
+    if (locale === 'all') {
+      const breadcrumbs: Record<Locale, Breadcrumb[]> = locales.reduce(
+        (acc, locale) => {
+          acc[locale] = [
+            {
+              slug: ROOT_PAGE_SLUG,
+              label: doc[breadcrumbLabelField][locale],
+              path: paths[locale],
+            },
+          ]
+          return acc
+        },
+        {} as Record<Locale, Breadcrumb[]>,
+      )
+
+      return {
+        ...doc,
+        breadcrumbs,
+        meta: {
+          ...doc.meta,
+          alternatePaths,
+        },
+        path: paths,
+      }
+    } else {
+      return {
+        ...doc,
+        breadcrumbs: [
+          {
+            slug: ROOT_PAGE_SLUG,
+            label: doc[breadcrumbLabelField],
+            path: `/${locale}`,
+          },
+        ],
+        meta: {
+          ...doc.meta,
+          alternatePaths,
+        },
+        path: paths[locale],
+      }
     }
   } else {
     return {
       ...doc,
-      path: paths[locale],
       breadcrumbs: [
         {
-          path: `/${locale}`,
-          label: doc[breadcrumbLabelField],
           slug: ROOT_PAGE_SLUG,
+          label: doc[breadcrumbLabelField],
+          path: '/',
         },
       ],
-      meta: {
-        ...doc.meta,
-        alternatePaths: alternatePaths,
-      },
+      path: '/',
     }
   }
 }

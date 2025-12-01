@@ -1,6 +1,13 @@
 import type { Config } from 'payload'
 
+import type { IncomingPageCollectionConfig } from './types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from './types/PagesPluginConfig.js'
+import type { IncomingRedirectsCollectionConfig } from './types/RedirectsCollectionConfig.js'
+
+import { createPageCollectionConfig } from './collections/PageCollectionConfig.js'
+import { createRedirectsCollectionConfig } from './collections/RedirectsCollectionConfig.js'
+import { translations } from './translations/index.js'
+import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
 /** Payload plugin which integrates fields for managing website pages. */
 export const payloadPagesPlugin =
@@ -17,18 +24,34 @@ export const payloadPagesPlugin =
       if (incomingConfig.onInit) {
         await incomingConfig.onInit(payload)
       }
-
-      const neededEnvVars = ['NEXT_PUBLIC_FRONTEND_URL']
-
-      const missingEnvVars = neededEnvVars.filter((envVar) => !process.env[envVar])
-      if (missingEnvVars.length > 0) {
-        throw new Error(
-          `The following environment variables are required for the pages plugin but not defined: ${missingEnvVars.join(
-            ', ',
-          )}`,
-        )
-      }
     }
 
-    return config
+    // Ensure collections array exists
+    config.collections = config.collections || []
+
+    // Find and transform collections
+    config.collections = config.collections.map((collection) => {
+      if ('page' in collection) {
+        // Create page collection using the page configuration
+        return createPageCollectionConfig({
+          collectionConfig: collection as IncomingPageCollectionConfig,
+          pluginConfig: pluginOptions,
+        })
+      } else if ('redirects' in collection) {
+        // Create redirects collection using the redirects configuration
+        return createRedirectsCollectionConfig({
+          collectionConfig: collection as IncomingRedirectsCollectionConfig,
+          pluginConfig: pluginOptions,
+        })
+      }
+      return collection
+    })
+
+    return {
+      ...config,
+      i18n: {
+        ...config.i18n,
+        translations: deepMergeSimple(translations, incomingConfig.i18n?.translations ?? {}),
+      },
+    }
   }

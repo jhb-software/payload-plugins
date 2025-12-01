@@ -1,16 +1,20 @@
+import type { RelationshipFieldServerComponent } from 'payload'
+
 import { RelationshipField } from '@payloadcms/ui'
-import { RelationshipFieldServerComponent } from 'payload'
+
 import { getPageCollectionConfigAttributes } from '../../utils/getPageCollectionConfigAttributes.js'
 
 /**
  * Parent field which sets the field to be read only if the collection has a shared parent document and the field has a value.
  */
-export const ParentField: RelationshipFieldServerComponent = async ({
-  path,
-  collectionSlug,
-  payload,
+export const ParentField: RelationshipFieldServerComponent = ({
   clientField,
+  collectionSlug,
   data,
+  path,
+  payload,
+  permissions,
+  readOnly,
 }) => {
   const {
     parent: { name: parentField, sharedDocument: sharedParentDocument },
@@ -19,8 +23,12 @@ export const ParentField: RelationshipFieldServerComponent = async ({
     payload,
   })
 
-  var parentValue: string | undefined = data?.[parentField] ?? undefined
-  var readOnly = Boolean(sharedParentDocument && parentValue)
+  const parentValue: string | undefined = data?.[parentField] ?? undefined
+  // Check both shared parent document and permissions
+  const isReadOnly =
+    Boolean(sharedParentDocument && parentValue) ||
+    readOnly ||
+    (permissions !== true && permissions?.update !== true)
 
-  return <RelationshipField path={path as string} field={clientField} readOnly={readOnly} />
+  return <RelationshipField field={clientField} path={path} readOnly={isReadOnly} />
 }

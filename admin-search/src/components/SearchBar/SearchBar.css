@@ -1,0 +1,59 @@
+@layer payload-default {
+  .admin-search-plugin-bar {
+    padding: 0;
+    max-width: 270px;
+  }
+
+  .admin-search-plugin-bar .btn__label {
+    width: 100%;
+  }
+
+  /* Only apply to .shortcut-key and .placeholder when inside .search-bar__wrap */
+  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__shortcut,
+  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__placeholder {
+    display: inline;
+  }
+
+  .admin-search-plugin-bar__wrap {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    background-color: var(--theme-elevation-50);
+    border-radius: var(--style-radius-m);
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .admin-search-plugin-bar__wrap svg {
+    height: 16px;
+    width: 16px;
+  }
+
+  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__placeholder {
+    flex: 1;
+    font-size: 14px;
+    color: var(--theme-elevation-500);
+    margin-right: 32px;
+  }
+
+  .admin-search-plugin-bar__wrap .admin-search-plugin-bar__shortcut {
+    padding: 3px 3px;
+    line-height: 1;
+  }
+
+  .admin-search-plugin-bar.position-actions {
+    margin-right: 100px;
+  }
+
+  @media (max-width: 780px) {
+    .admin-search-plugin-bar.position-actions {
+      margin-right: 0px;
+    }
+
+    /* Only hide when inside .search-bar__wrap */
+    .admin-search-plugin-bar__wrap .admin-search-plugin-bar__shortcut,
+    .admin-search-plugin-bar__wrap .admin-search-plugin-bar__placeholder {
+      display: none;
+    }
+  }
+}

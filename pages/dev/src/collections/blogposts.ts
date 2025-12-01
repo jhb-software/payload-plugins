@@ -1,16 +1,15 @@
-import { createPageCollectionConfig } from '@jhb.software/payload-pages-plugin'
-import { CollectionConfig } from 'payload'
+import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
-export const Blogposts: CollectionConfig = createPageCollectionConfig({
+export const Blogposts: PageCollectionConfig = {
   slug: 'blogposts',
   admin: {
     useAsTitle: 'title',
   },
   page: {
     parent: {
-      collection: 'authors',
-      name: 'author',
-      sharedDocument: false,
+      collection: 'pages',
+      name: 'parent',
+      sharedDocument: true,
     },
     breadcrumbs: {
       labelField: 'shortTitle',
@@ -35,5 +34,12 @@ export const Blogposts: CollectionConfig = createPageCollectionConfig({
       required: true,
       localized: true,
     },
+    {
+      name: 'author',
+      type: 'relationship',
+      required: true,
+      relationTo: 'authors',
+      hasMany: false,
+    },
   ],
-})
+}

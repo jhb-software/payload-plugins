@@ -1,86 +1,96 @@
-import { PayloadRequest } from 'payload'
-import { Breadcrumb } from '../types/Breadcrumb.js'
-import { Locale } from '../types/Locale.js'
-import { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
-import { SeoMetadata } from '../types/SeoMetadata.js'
+import type { PayloadRequest } from 'payload'
+
+import type { Breadcrumb } from '../types/Breadcrumb.js'
+import type { Locale } from '../types/Locale.js'
+import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { SeoMetadata } from '../types/SeoMetadata.js'
+
 import { getBreadcrumbs } from './getBreadcrumbs.js'
-import { validateBreadcrumbs } from './validateBreadcrumbs.js'
-import { validatePath } from './validatePath.js'
 
 /** Sets the virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
 export async function setPageDocumentVirtualFields({
-  req,
   doc,
   locale,
   locales,
   pageConfigAttributes,
+  req,
 }: {
-  req: PayloadRequest | undefined
   doc: Record<string, any>
-  locale: Locale | 'all'
-  locales: Locale[]
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  locale: 'all' | Locale | undefined
+  locales: Locale[] | undefined
   pageConfigAttributes: PageCollectionConfigAttributes
+  req: PayloadRequest | undefined
 }) {
-  const breadcrumbs = (await getBreadcrumbs({
-    req,
-    locales: locales,
-    breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
-    parentField: pageConfigAttributes.parent.name,
-    parentCollection: pageConfigAttributes.parent.collection,
-    data: doc,
-    // we need to fetch the breadcrumbs for all locales in order to correctly set the alternate paths
-    locale: 'all',
-  })) as Record<Locale, Breadcrumb[]>
+  if (locales && locale) {
+    const breadcrumbs = (await getBreadcrumbs({
+      breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
+      data: doc,
+      locales,
+      parentCollection: pageConfigAttributes.parent.collection,
+      parentField: pageConfigAttributes.parent.name,
+      req,
+      // For localized pages, we need to fetch the breadcrumbs for all locales in order to correctly set the alternate paths
+      locale: 'all',
+    })) as Record<Locale, Breadcrumb[]>
 
-  const paths: Record<Locale, string> = locales.reduce(
-    (acc, locale) => {
-      // If the slug is not set for this locale, exclude the path to not generate a 404 path
-      if (
-        (typeof doc.slug === 'object' && doc.slug[locale]) ||
-        (typeof doc.slug === 'string' && doc.slug)
-      ) {
-        acc[locale] = breadcrumbs[locale].at(-1)!.path
-      }
-      return acc
-    },
-    {} as Record<Locale, string>,
-  )
-
-  const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
-    ([locale, path]) => ({
-      hreflang: locale as Locale,
-      path,
-    }),
-  )
-
-  if (locale === 'all') {
-    // TODO: remove these validations in favor of more unit tests?
-    Object.entries(paths).forEach(([_, path]) => validatePath(path, doc.id, 'all'))
-    Object.entries(paths).forEach(([locale, _]) =>
-      validateBreadcrumbs(locale as Locale, breadcrumbs[locale as Locale]),
+    const paths: Record<Locale, string> = locales.reduce(
+      (acc, locale) => {
+        // If the slug is not set for this locale, exclude the path to not generate a 404 path
+        if (
+          (typeof doc.slug === 'object' && doc.slug[locale]) ||
+          (typeof doc.slug === 'string' && doc.slug)
+        ) {
+          acc[locale] = breadcrumbs[locale].at(-1)!.path
+        }
+        return acc
+      },
+      {} as Record<Locale, string>,
     )
 
-    return {
-      ...doc,
-      path: paths,
-      breadcrumbs,
-      meta: {
-        ...doc.meta,
-        alternatePaths,
-      },
+    const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
+      ([locale, path]) => ({
+        hreflang: locale,
+        path,
+      }),
+    )
+
+    if (locale === 'all') {
+      return {
+        ...doc,
+        breadcrumbs,
+        meta: {
+          ...doc.meta,
+          alternatePaths,
+        },
+        path: paths,
+      }
+    } else {
+      return {
+        ...doc,
+        breadcrumbs: breadcrumbs[locale],
+        meta: {
+          ...doc.meta,
+          alternatePaths,
+        },
+        path: paths[locale],
+      }
     }
   } else {
-    validatePath(paths[locale], doc.id, locale)
-    validateBreadcrumbs(locale, breadcrumbs[locale])
+    const breadcrumbs = (await getBreadcrumbs({
+      breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
+      data: doc,
+      locale: undefined,
+      locales,
+      parentCollection: pageConfigAttributes.parent.collection,
+      parentField: pageConfigAttributes.parent.name,
+      req,
+    })) as Breadcrumb[]
 
     return {
       ...doc,
-      path: paths[locale],
-      breadcrumbs: breadcrumbs[locale],
-      meta: {
-        ...doc.meta,
-        alternatePaths,
-      },
+      breadcrumbs,
+      path: breadcrumbs.at(-1)!.path,
     }
   }
 }

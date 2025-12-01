@@ -1,0 +1,25 @@
+import type { Locale } from 'payload'
+
+import { getTranslation } from '@payloadcms/translations'
+import { ChevronIcon, useTranslation } from '@payloadcms/ui'
+
+import { useTranslator } from '../../providers/Translator/context.js'
+
+const baseClass = 'localizer-button'
+
+export const LocaleLabel = ({ locale }: { locale: Locale }) => {
+  const { i18n } = useTranslation()
+  const { translatorT } = useTranslator()
+
+  return (
+    <div aria-label={translatorT('modalSourceLanguage')} className={baseClass}>
+      <div className={`${baseClass}__label`}>{translatorT('modalSourceLanguage')}:</div>
+      &nbsp;&nbsp;
+      <span className={`${baseClass}__current-label`}>
+        {`${getTranslation(locale.label, i18n)}`}
+      </span>
+      &nbsp;
+      <ChevronIcon className={`${baseClass}__chevron`} />
+    </div>
+  )
+}

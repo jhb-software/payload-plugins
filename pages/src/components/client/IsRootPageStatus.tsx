@@ -1,42 +1,32 @@
 'use client'
+import type { CheckboxFieldClientProps } from '@payloadcms/ui/fields/Checkbox'
+
 import { CheckboxField, useField } from '@payloadcms/ui'
-import { CheckboxFieldClientProps } from '@payloadcms/ui/fields/Checkbox'
+
+import { HomeIcon } from '../../icons/HomeIcon.js'
+import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 
 /**
  * Field which displays either a checkbox to set the page to be root page or a message if the page is the root page.
  */
-export const IsRootPageStatus = ({
-  field,
-  path,
-  hasRootPage,
-}: CheckboxFieldClientProps & {
-  hasRootPage: boolean
-}) => {
-  const { value } = useField<boolean>({ path: path! })
+export const IsRootPageStatus: React.FC<
+  { hasRootPage: boolean; readOnly?: boolean } & CheckboxFieldClientProps
+> = ({ field, hasRootPage, path, readOnly }) => {
+  const { value } = useField<boolean>({ path })
   const isRootPage = value ?? false
+  const { t } = usePluginTranslation()
 
   if (isRootPage) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '3rem' }}>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ marginRight: '0.5rem', verticalAlign: 'text-bottom' }}
-        >
-          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-        Root page
+      <div style={{ alignItems: 'center', display: 'flex', marginBottom: '3rem' }}>
+        <div style={{ marginRight: '0.5rem', verticalAlign: 'text-bottom' }}>
+          <HomeIcon />
+        </div>
+        {t('rootPage')}
       </div>
     )
   } else if (!hasRootPage && !isRootPage) {
-    return <CheckboxField path={path} field={field} />
+    return <CheckboxField field={field} path={path} readOnly={readOnly} />
   }
 
   return null

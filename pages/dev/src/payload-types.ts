@@ -64,6 +64,7 @@ export type SupportedTimezones =
   | 'Asia/Singapore'
   | 'Asia/Tokyo'
   | 'Asia/Seoul'
+  | 'Australia/Brisbane'
   | 'Australia/Sydney'
   | 'Pacific/Guam'
   | 'Pacific/Noumea'
@@ -74,14 +75,17 @@ export interface Config {
   auth: {
     users: UserAuthOperations;
   };
+  blocks: {};
   collections: {
     pages: Page;
     authors: Author;
     blogposts: Blogpost;
+    'blogpost-categories': BlogpostCategory;
     redirects: Redirect;
     countries: Country;
     'country-travel-tips': CountryTravelTip;
     users: User;
+    'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -91,10 +95,12 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     authors: AuthorsSelect<false> | AuthorsSelect<true>;
     blogposts: BlogpostsSelect<false> | BlogpostsSelect<true>;
+    'blogpost-categories': BlogpostCategoriesSelect<false> | BlogpostCategoriesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     countries: CountriesSelect<false> | CountriesSelect<true>;
     'country-travel-tips': CountryTravelTipsSelect<false> | CountryTravelTipsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -102,6 +108,7 @@ export interface Config {
   db: {
     defaultIDType: string;
   };
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('de' | 'en') | ('de' | 'en')[];
   globals: {};
   globalsSelect: {};
   locale: 'de' | 'en';
@@ -144,6 +151,13 @@ export interface Page {
   breadcrumbs: Breadcrumbs;
   title: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -160,6 +174,13 @@ export interface Author {
   breadcrumbs: Breadcrumbs;
   name: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -170,12 +191,24 @@ export interface Author {
 export interface Blogpost {
   id: string;
   slug: string;
-  author: string | Author;
+  parent: string | Page;
   path: string;
   breadcrumbs: Breadcrumbs;
   title: string;
   shortTitle: string;
   content: string;
+  author: string | Author;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blogpost-categories".
+ */
+export interface BlogpostCategory {
+  id: string;
+  title: string;
+  slug: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -204,6 +237,13 @@ export interface Country {
   breadcrumbs: Breadcrumbs;
   title: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -220,6 +260,13 @@ export interface CountryTravelTip {
   breadcrumbs: Breadcrumbs;
   title: string;
   content: string;
+  meta: {
+    alternatePaths: {
+      hreflang: string;
+      path: string;
+      id?: string | null;
+    }[];
+  };
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -239,7 +286,31 @@ export interface User {
   hash?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
   password?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-kv".
+ */
+export interface PayloadKv {
+  id: string;
+  key: string;
+  data:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -259,6 +330,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'blogposts';
         value: string | Blogpost;
+      } | null)
+    | ({
+        relationTo: 'blogpost-categories';
+        value: string | BlogpostCategory;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -330,6 +405,17 @@ export interface PagesSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -355,6 +441,17 @@ export interface AuthorsSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   name?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -364,12 +461,23 @@ export interface AuthorsSelect<T extends boolean = true> {
  */
 export interface BlogpostsSelect<T extends boolean = true> {
   slug?: T;
-  author?: T;
+  parent?: T;
   path?: T;
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   shortTitle?: T;
   content?: T;
+  author?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blogpost-categories_select".
+ */
+export interface BlogpostCategoriesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -396,6 +504,17 @@ export interface CountriesSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -411,6 +530,17 @@ export interface CountryTravelTipsSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        alternatePaths?:
+          | T
+          | {
+              hreflang?: T;
+              path?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -429,6 +559,21 @@ export interface UsersSelect<T extends boolean = true> {
   hash?: T;
   loginAttempts?: T;
   lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-kv_select".
+ */
+export interface PayloadKvSelect<T extends boolean = true> {
+  key?: T;
+  data?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

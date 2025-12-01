@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "@jhb.software/payload-alt-text-plugin": {
+      "type": "object",
+      "properties": {
+        "alternateText": { "type": "string" },
+        "keywords": { "type": "string" },
+        "keywordsDescription": { "type": "string" },
+        "generateAltText": { "type": "string" },
+        "generateAltTextFor": { "type": "string" },
+        "image": { "type": "string" },
+        "images": { "type": "string" },
+        "cannotGenerateMissingFields": { "type": "string" },
+        "failedToGenerate": { "type": "string" },
+        "altTextGeneratedSuccess": { "type": "string" },
+        "noAltTextGenerated": { "type": "string" },
+        "errorGeneratingAltText": { "type": "string" },
+        "failedToGenerateForXImages": { "type": "string" },
+        "xOfYImagesUpdated": { "type": "string" },
+        "altTextDescription": { "type": "string" },
+        "altTextRequirement1": { "type": "string" },
+        "altTextRequirement2": { "type": "string" },
+        "altTextRequirement3": { "type": "string" },
+        "pleaseSaveDocumentFirst": { "type": "string" },
+        "theAlternateTextIsRequired": { "type": "string" }
+      },
+      "required": [
+        "alternateText",
+        "keywords",
+        "keywordsDescription",
+        "generateAltText",
+        "generateAltTextFor",
+        "image",
+        "images",
+        "cannotGenerateMissingFields",
+        "failedToGenerate",
+        "altTextGeneratedSuccess",
+        "noAltTextGenerated",
+        "errorGeneratingAltText",
+        "failedToGenerateForXImages",
+        "xOfYImagesUpdated",
+        "altTextDescription",
+        "altTextRequirement1",
+        "altTextRequirement2",
+        "altTextRequirement3",
+        "pleaseSaveDocumentFirst",
+        "theAlternateTextIsRequired"
+      ]
+    }
+  },
+  "required": ["@jhb.software/payload-alt-text-plugin"]
+}

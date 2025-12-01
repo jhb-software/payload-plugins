@@ -1,0 +1,4 @@
+packages:
+  - './' # Plugin at the root
+  - 'dev/' # Testing environment
+  - 'dev_unlocalized/' # Testing environment without localization
