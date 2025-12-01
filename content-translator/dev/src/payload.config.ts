@@ -1,4 +1,7 @@
-import { payloadContentTranslatorPlugin } from '@jhb.software/payload-content-translator-plugin'
+import {
+  openAIResolver,
+  payloadContentTranslatorPlugin,
+} from '@jhb.software/payload-content-translator-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -79,11 +82,11 @@ export default buildConfig({
     payloadContentTranslatorPlugin({
       collections: ['pages', 'posts', 'authors'],
       globals: [],
-      resolver: mockResolver(),
-      // resolver: openAIResolver({
-      //   apiKey: process.env.OPENAI_API_KEY || '',
-      //   model: 'gpt-4o-mini',
-      // }),
+      // resolver: mockResolver(), // custom resolver for testing
+      resolver: openAIResolver({
+        apiKey: process.env.OPENAI_API_KEY || '',
+        model: 'gpt-4o-mini',
+      }),
     }),
   ],
 })
