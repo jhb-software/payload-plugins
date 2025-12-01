@@ -1,4 +1,4 @@
-import { payloadAltTextPlugin } from '@jhb.software/payload-alt-text-plugin'
+import { openAIResolver, payloadAltTextPlugin } from '@jhb.software/payload-alt-text-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -34,8 +34,10 @@ export default buildConfig({
   plugins: [
     payloadAltTextPlugin({
       collections: ['media'], // Specify which upload collections should have alt text fields
-      openAIApiKey: process.env.OPENAI_API_KEY!,
-      model: 'gpt-4.1-mini',
+      resolver: openAIResolver({
+        apiKey: process.env.OPENAI_API_KEY!,
+        model: 'gpt-4.1-mini',
+      }),
       locale: 'de', // Required when localization is disabled
       getImageThumbnail: (doc: Record<string, unknown>) => {
         // in a real application, you would use a function to get a thumbnail URL (e.g. from the sizes)
