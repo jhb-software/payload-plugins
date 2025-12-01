@@ -9,7 +9,7 @@ This package provides a simple way to use [Cloudinary](https://cloudinary.com/) 
 - When deploying to Vercel, server uploads are limited with 4.5MB. Set `clientUploads` to `true` to do uploads directly on the client.
 
 ```ts
-import { cloudinaryStorage } from '@jhb.software/payload-storage-cloudinary'
+import { cloudinaryStorage } from '@jhb.software/payload-cloudinary-plugin'
 import { Media } from './collections/Media'
 import { MediaWithPrefix } from './collections/MediaWithPrefix'
 

@@ -70,7 +70,7 @@ const defaultUploadOptions: Partial<CloudinaryStorageOptions> = {
 
 type CloudinaryStoragePlugin = (cloudinaryStorageOpts: CloudinaryStorageOptions) => Plugin
 
-export const cloudinaryStorage: CloudinaryStoragePlugin =
+export const payloadCloudinaryPlugin: CloudinaryStoragePlugin =
   (incomingOptions: CloudinaryStorageOptions) =>
   (incomingConfig: Config): Config => {
     cloudinary.config({
@@ -104,8 +104,7 @@ export const cloudinaryStorage: CloudinaryStoragePlugin =
       CloudinaryClientUploadHandlerExtra,
       CloudinaryStorageOptions['collections'][keyof CloudinaryStorageOptions['collections']]
     >({
-      clientHandler:
-        '@jhb.software/payload-storage-cloudinary/client#CloudinaryClientUploadHandler',
+      clientHandler: '@jhb.software/payload-cloudinary-plugin/client#CloudinaryClientUploadHandler',
       collections: options.collections,
       config: incomingConfig,
       enabled: !isPluginDisabled && Boolean(options.clientUploads),
@@ -116,7 +115,7 @@ export const cloudinaryStorage: CloudinaryStoragePlugin =
           folder: options.folder,
           prefix: (typeof collection === 'object' && collection.prefix) || '',
           useFilename: options.useFilename,
-        } satisfies CloudinaryClientUploadHandlerExtra),
+        }) satisfies CloudinaryClientUploadHandlerExtra,
       serverHandler: getGenerateSignature({
         access:
           typeof options.clientUploads === 'object' ? options.clientUploads.access : undefined,

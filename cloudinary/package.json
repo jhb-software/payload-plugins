@@ -1,5 +1,5 @@
 {
-  "name": "@jhb.software/payload-storage-cloudinary",
+  "name": "@jhb.software/payload-cloudinary-plugin",
   "version": "0.0.1",
   "description": "Payload CMS storage adapter for Cloudinary",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",

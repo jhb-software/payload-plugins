@@ -16,7 +16,7 @@
     "generate:importmap": "payload generate:importmap"
   },
   "dependencies": {
-    "@jhb.software/payload-storage-cloudinary": "workspace:*",
+    "@jhb.software/payload-cloudinary-plugin": "workspace:*",
     "@payloadcms/db-mongodb": "^3.65.0",
     "@payloadcms/next": "^3.65.0",
     "next": "15.5.6",

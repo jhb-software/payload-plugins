@@ -1,4 +1,4 @@
-import { cloudinaryStorage } from '@jhb.software/payload-storage-cloudinary'
+import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -34,7 +34,7 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   plugins: [
-    cloudinaryStorage({
+    payloadCloudinaryPlugin({
       collections: {
         images: true,
         videos: {
