@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- fix: use collection label instead of slug in document search result
+
 ## 0.2.0
 
 - feat: add support for searching collections and globals
