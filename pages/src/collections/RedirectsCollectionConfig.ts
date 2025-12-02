@@ -30,6 +30,13 @@ export const createRedirectsCollectionConfig = ({
 
   return {
     ...incomingCollectionConfig,
+    admin: {
+      ...incomingCollectionConfig.admin,
+      listSearchableFields: incomingCollectionConfig.admin?.listSearchableFields ?? [
+        'sourcePath',
+        'destinationPath',
+      ],
+    },
     custom: {
       ...incomingCollectionConfig.custom,
       // This makes the baseFilter available in hooks etc.
