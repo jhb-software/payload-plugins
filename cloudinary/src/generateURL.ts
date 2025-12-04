@@ -28,12 +28,21 @@ export const getGenerateUrl = ({ options }: { options: CloudinaryStorageOptions 
 
     const baseUrl = 'https://res.cloudinary.com/' + options.cloudName
 
-    if (mimeType?.startsWith('image/')) {
-      return `${baseUrl}/image/upload/${cloudinaryPublicId}`
-    } else if (mimeType?.startsWith('video/')) {
-      return `${baseUrl}/video/upload/${cloudinaryPublicId}`
-    } else {
-      return `${baseUrl}/auto/upload/${cloudinaryPublicId}`
+    let resourceType: string
+    switch (true) {
+      case mimeType?.startsWith('image/'):
+      case mimeType === 'application/pdf': // Cloudinary treats PDFs as images
+        resourceType = 'image'
+        break
+      case mimeType?.startsWith('video/'): // Cloudinary treats audio as a subset of video
+      case mimeType?.startsWith('audio/'):
+        resourceType = 'video'
+        break
+      default:
+        resourceType = 'raw'
+        break
     }
+
+    return `${baseUrl}/${resourceType}/upload/${cloudinaryPublicId}`
   }
 }
