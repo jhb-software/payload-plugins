@@ -16,7 +16,14 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   context,
   operation,
 }) => {
-  if (operation == 'read' && args.select) {
+  // Workaround for Payload 3.67.0 bug where operation is undefined for findByID operations.
+  // The bug occurs because findByID.ts passes operation: 'read' to buildBeforeOperation,
+  // but operationToHookOperation doesn't have 'read' as a key (it maps find/findByID TO 'read'),
+  // so hookOperation becomes undefined. We detect read operations by checking for 'id' in args.
+  const isReadOperation =
+    operation === 'read' || (operation === undefined && 'id' in args && 'collection' in args)
+
+  if (isReadOperation && args.select) {
     const pageConfig = asPageCollectionConfigOrThrow(args.collection.config)
     const selectMode = getSelectMode(args.select)
     const dependendSelectedFields = dependentFields(pageConfig)
@@ -45,7 +52,7 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
       // Indicate that the virtual fields should be generated in the setVirtualFields hook
       context.generateVirtualFields = true
     }
-  } else if (operation == 'read' && !args.select) {
+  } else if (isReadOperation && !args.select) {
     // Indicate that the virtual fields should be generated in the setVirtualFields hook
     // if no select is provided
     context.generateVirtualFields = true
