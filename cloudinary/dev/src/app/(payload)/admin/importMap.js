@@ -1,5 +1,5 @@
-import { CloudinaryClientUploadHandler as CloudinaryClientUploadHandler_987c18f4346655a1d9ddfcaea7aa0b1a } from '@jhb.software/payload-cloudinary-plugin/client'
+import { CloudinaryClientUploadHandler as CloudinaryClientUploadHandler_d082512b0d29edcf3859a7c92c33e4db } from '@jhb.software/payload-cloudinary-plugin/client'
 
 export const importMap = {
-  "@jhb.software/payload-cloudinary-plugin/client#CloudinaryClientUploadHandler": CloudinaryClientUploadHandler_987c18f4346655a1d9ddfcaea7aa0b1a
+  "@jhb.software/payload-cloudinary-plugin/client#CloudinaryClientUploadHandler": CloudinaryClientUploadHandler_d082512b0d29edcf3859a7c92c33e4db
 }
