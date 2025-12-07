@@ -14,6 +14,9 @@ export const usePluginTranslation = () => {
 
   return {
     t: (key: PluginAdminSearchTranslationKeys) => {
+      if (!pluginTranslations) {
+        return key
+      }
       const translation = pluginTranslations[key] as string
 
       if (!translation) {
