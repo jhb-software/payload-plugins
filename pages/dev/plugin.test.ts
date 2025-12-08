@@ -989,9 +989,7 @@ describe('Parent deletion prevention hook', () => {
   })
 })
 
-// TODO: remove the skip once Payload fixed the issue that findVersions operations do not excecute
-// the beforeOperation hook (https://github.com/payloadcms/payload/issues/14726) because the plugin depends on it.
-describe.skip('Virtual fields in findVersions operation', () => {
+describe('Virtual fields in findVersions operation', () => {
   beforeEach(async () => await deleteCollection('pages'))
 
   test('are correctly set when reading versions', async () => {
