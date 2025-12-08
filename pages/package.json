@@ -41,11 +41,11 @@
     "qs-esm": "^7.0.2"
   },
   "peerDependencies": {
-    "@payloadcms/ui": "^3.65.0",
-    "next": "15.5.6",
-    "payload": "^3.65.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "@payloadcms/ui": "^3.67.0",
+    "next": "15.5.7",
+    "payload": "^3.67.0",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "3.28.0",
@@ -55,7 +55,7 @@
     "@types/react-dom": "19.2.3",
     "copyfiles": "2.4.1",
     "eslint": "^9.39.1",
-    "prettier": "^3.7.3",
+    "prettier": "^3.7.4",
     "rimraf": "6.1.2",
     "typescript": "5.9.3"
   },
