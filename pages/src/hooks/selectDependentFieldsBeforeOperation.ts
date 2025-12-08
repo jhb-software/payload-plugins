@@ -17,7 +17,8 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   operation,
 }) => {
   // Workaround for Payload 3.67.0 bug (see https://github.com/payloadcms/payload/issues/14847)
-  // where operation is undefined for findByID operations.
+  // where operation is undefined for findByID operations. This bug is fixed in
+  // https://github.com/payloadcms/payload/pull/14853 but not yet released.
   const isReadOperation =
     operation === 'read' || (operation === undefined && 'id' in args && 'collection' in args)
 
