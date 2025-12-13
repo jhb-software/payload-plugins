@@ -41,21 +41,21 @@ update_dependencies() {
 
     # Pin Next.js to 15.x - version 16 has breaking changes with @payloadcms/next peer dependency
     if grep -q '"next"' package.json; then
-        log_info "Pinning Next.js to 15.5.7"
+        log_info "Pinning Next.js to 15.5.9"
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' 's/"next": "[^"]*"/"next": "15.5.7"/g' package.json || return 1
+            sed -i '' 's/"next": "[^"]*"/"next": "15.5.9"/g' package.json || return 1
         else
-            sed -i 's/"next": "[^"]*"/"next": "15.5.7"/g' package.json || return 1
+            sed -i 's/"next": "[^"]*"/"next": "15.5.9"/g' package.json || return 1
         fi
         pnpm install || return 1
     fi
 
     if grep -q '"eslint-config-next"' package.json; then
-        log_info "Pinning eslint-config-next to 15.5.7"
+        log_info "Pinning eslint-config-next to 15.5.9"
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.7"/g' package.json || return 1
+            sed -i '' 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.9"/g' package.json || return 1
         else
-            sed -i 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.7"/g' package.json || return 1
+            sed -i 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.9"/g' package.json || return 1
         fi
         pnpm install || return 1
     fi
