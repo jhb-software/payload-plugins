@@ -36,29 +36,15 @@ update_dependencies() {
 
     log_info "Updating dependencies in $dir"
 
-    # Update all dependencies to latest
-    pnpm up --latest || return 1
+    # Update all dependencies to latest, excluding next and eslint-config-next
+    # Next.js 16 has breaking changes with @payloadcms/next peer dependency
+    pnpm up --latest '!next' '!eslint-config-next' || return 1
 
-    # Pin Next.js to 15.x - version 16 has breaking changes with @payloadcms/next peer dependency
-    if grep -q '"next"' package.json; then
-        log_info "Pinning Next.js to 15.5.7"
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' 's/"next": "[^"]*"/"next": "15.5.7"/g' package.json || return 1
-        else
-            sed -i 's/"next": "[^"]*"/"next": "15.5.7"/g' package.json || return 1
-        fi
-        pnpm install || return 1
-    fi
+    # Update peerDependencies (pnpm up doesn't handle these)
+    npx npm-check-updates -u --target latest --dep peer --reject next,eslint-config-next || return 1
 
-    if grep -q '"eslint-config-next"' package.json; then
-        log_info "Pinning eslint-config-next to 15.5.7"
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.7"/g' package.json || return 1
-        else
-            sed -i 's/"eslint-config-next": "[^"]*"/"eslint-config-next": "15.5.7"/g' package.json || return 1
-        fi
-        pnpm install || return 1
-    fi
+    # Reinstall to update lockfile after peerDependencies change
+    pnpm install || return 1
 
     return 0
 }
