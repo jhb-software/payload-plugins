@@ -16,7 +16,13 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   context,
   operation,
 }) => {
-  if (operation === 'read' && args.select) {
+  // Workaround for Payload 3.67.0 bug (see https://github.com/payloadcms/payload/issues/14847)
+  // where operation is undefined for findByID operations. This bug is fixed in
+  // https://github.com/payloadcms/payload/pull/14853 but not yet released.
+  const isReadOperation =
+    operation === 'read' || (operation === undefined && 'id' in args && 'collection' in args)
+
+  if (isReadOperation && args.select) {
     const pageConfig = asPageCollectionConfigOrThrow(args.collection.config)
     const selectMode = getSelectMode(args.select)
     const dependendSelectedFields = dependentFields(pageConfig)
@@ -45,7 +51,7 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
       // Indicate that the virtual fields should be generated in the setVirtualFields hook
       context.generateVirtualFields = true
     }
-  } else if (operation === 'read' && !args.select) {
+  } else if (isReadOperation && !args.select) {
     // Indicate that the virtual fields should be generated in the setVirtualFields hook
     // if no select is provided
     context.generateVirtualFields = true
