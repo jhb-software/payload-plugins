@@ -14,7 +14,7 @@
 - the `uploadOptions` config option has been removed. `useFilename` is now a top-level config option.
 - the `cloudinary` config option has been removed. The `cloudName` and `folder` are now top-level config options.
 - the `uploadCollections` config option has been renamed to `collections` to match the Storage Adapter API.
-- To replicate the previous behavior of using direct URLs to Cloudinary, you must now enable the `disableAccessControl` option in your plugin configuration. Without this option, file access will instead be restricted by Payload's access controls.
+- To replicate the previous behavior of using direct URLs to Cloudinary, you must now set `disablePayloadAccessControl: true` on the collection options in your plugin configuration.
 
 Plugin config migration example:
 
@@ -40,8 +40,12 @@ After:
 ```ts
 payloadCloudinaryPlugin({
   collections: {
-    images: true,
-    videos: true,
+    images: {
+      disablePayloadAccessControl: true,
+    }
+    videos: {
+      disablePayloadAccessControl: true,
+    }
   },
   cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
   folder: 'uploads',

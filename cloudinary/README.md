@@ -19,6 +19,9 @@ export default buildConfig({
     cloudinaryStorage({
       collections: {
         media: true,
+        'media-with-direct-urls': {
+          disablePayloadAccessControl: true,
+        },
         'media-with-prefix': {
           prefix: 'my-prefix',
         },
