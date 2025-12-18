@@ -10,10 +10,11 @@
 ### Breaking Changes
 
 - the `useFilename` config option now defaults to `true` (instead of `false`)
-- the custom `cloudinaryUrl` field previously added by the plugin is removed in favor of Payloads build-in `url` field. A migration might be need to update your existing data.
-- the `uploadOptions` config option has been removed. `useFilename` is now a top level config option.
-- the `cloudinary` config option has been removed. The `cloudName` and `folder` are now top level config options.
+- the custom `cloudinaryUrl` field previously added by the plugin is removed in favor of Payload's built-in `url` field. A migration might be needed to update your existing data.
+- the `uploadOptions` config option has been removed. `useFilename` is now a top-level config option.
+- the `cloudinary` config option has been removed. The `cloudName` and `folder` are now top-level config options.
 - the `uploadCollections` config option has been renamed to `collections` to match the Storage Adapter API.
+- To replicate the previous behavior of using direct URLs to Cloudinary, you must now enable the `disableAccessControl` option in your plugin configuration. Without this option, file access will instead be restricted by Payload's access controls.
 
 Plugin config migration example:
 
