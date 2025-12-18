@@ -33,17 +33,17 @@
     "he": "^1.2.0"
   },
   "peerDependencies": {
-    "@payloadcms/translations": "^3.68.0",
-    "@payloadcms/ui": "^3.68.0",
+    "@payloadcms/translations": "^3.68.5",
+    "@payloadcms/ui": "^3.68.5",
     "next": "15.5.9",
-    "payload": "^3.68.0",
+    "payload": "^3.68.5",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
     "@swc/cli": "^0.7.9",
-    "@swc/core": "^1.15.4",
+    "@swc/core": "^1.15.7",
     "@types/he": "^1.2.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
