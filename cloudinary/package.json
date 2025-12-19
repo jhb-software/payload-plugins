@@ -45,8 +45,8 @@
     "typescript": "5.9.3"
   },
   "peerDependencies": {
-    "next": "15.5.9",
-    "payload": "^3.68.5"
+    "next": "15.x",
+    "payload": "3.x"
   },
   "files": [
     "dist"
