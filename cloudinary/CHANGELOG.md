@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- add support for chunked uploads for files larger than 100MB
+- update peer dependencies to support any minor version of Next.js 15 and Payload 3
+
 ## 0.3.0
 
 > ⚠️ **Warning**: This release includes major breaking changes. Please read this carefully before upgrading.
