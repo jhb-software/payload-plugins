@@ -2,7 +2,7 @@
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-admin-search)](https://www.npmjs.com/package/@jhb.software/payload-admin-search)
 
-A plugin for [Payload CMS](https://payloadcms.com) that adds a search modal to quickly find documents across collections in the admin panel.
+A plugin that adds a global search modal to the Payload CMS admin panel, enabling quick navigation across documents and collections with keyboard shortcuts.
 
 ## Features
 
@@ -40,15 +40,18 @@ You can control which collections you can search by adjusting the `collections` 
 The plugin accepts the following configuration options:
 
 ### `enabled`
+
 - **Type**: `boolean`
 - **Default**: `true`
 
 ### `headerSearchComponentStyle`
+
 - **Type**: `'button' | 'bar'`
 - **Default**: `'button'`
 - **Description**: Choose the style of the search component in the admin header
 
 #### Button Style (Default)
+
 The default button style shows a compact search button with "Search" text and keyboard shortcut:
 
 ```ts
@@ -58,6 +61,7 @@ adminSearchPlugin({
 ```
 
 #### Bar Style
+
 The bar style shows a full search input bar similar to modern search interfaces:
 
 ```ts

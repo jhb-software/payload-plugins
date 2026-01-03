@@ -10,7 +10,7 @@ This repository contains a collection of powerful plugins designed to enhance [P
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-admin-search)](https://www.npmjs.com/package/@jhb.software/payload-admin-search)
 
-A plugin that adds a global search modal to the Payload admin panel, enabling quick navigation across documents and collections with keyboard shortcuts (`Cmd + K` / `Ctrl + K`).
+A plugin that adds a global search modal to the Payload CMS admin panel, enabling quick navigation across documents and collections with keyboard shortcuts.
 
 <img width="659" height="489" alt="image" src="https://github.com/user-attachments/assets/ba52d56e-7365-46ee-80e3-416d07946727" />
 
@@ -20,7 +20,7 @@ A plugin that adds a global search modal to the Payload admin panel, enabling qu
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-alt-text-plugin)](https://www.npmjs.com/package/@jhb.software/payload-alt-text-plugin)
 
-A minimal plugin to generate image alt texts using OpenAI's Vision API. Automatically adds an alt text field with AI-generation capability to upload collections, including a bulk generation feature for processing multiple images at once.
+A Payload CMS plugin that adds AI-powered alt text generation for images. It automatically adds an alt text field with a button to generate the alt text to specified upload collections, and includes a bulk generation feature in the list view for processing multiple images at once.
 
 [Learn more about the Alt Text plugin →](./alt-text)
 
@@ -28,7 +28,7 @@ A minimal plugin to generate image alt texts using OpenAI's Vision API. Automati
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-geocoding-plugin)](https://www.npmjs.com/package/@jhb.software/payload-geocoding-plugin)
 
-The geocoding plugin simplifies location management in your content by adding a autocomplete search field that allows you to easily populate coordinates in a [Payload Point Field](https://payloadcms.com/docs/fields/point) by entering an address powered by the Google Places API.
+A geocoding plugin for Payload CMS that simplifies location management in your content. This plugin allows you to easily populate coordinates in a [Payload Point Field](https://payloadcms.com/docs/fields/point) by entering an address through an autocomplete interface powered by the Google Places API.
 
 ![Screenshot showing the added autocomplete select field](https://github.com/user-attachments/assets/13e0b9f8-dc69-47de-9691-384ebf1d0868)
 
@@ -46,7 +46,7 @@ The Pages plugin simplifies website building by adding essential fields like `sl
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-cloudinary-plugin)](https://www.npmjs.com/package/@jhb.software/payload-cloudinary-plugin)
 
-Seamlessly integrate [Cloudinary](https://cloudinary.com/) with Payload CMS for media asset management. This plugin enables direct uploading your media files through Cloudinary's platform.
+This package provides a Payload CMS Storage Adapter for [Cloudinary](https://cloudinary.com/) to seamlessly integrate Cloudinary with Payload CMS for media asset management.
 
 [Learn more about the Cloudinary plugin →](./cloudinary)
 
