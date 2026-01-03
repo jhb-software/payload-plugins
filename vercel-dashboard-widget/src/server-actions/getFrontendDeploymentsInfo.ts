@@ -3,7 +3,7 @@
 import { unstable_cache } from 'next/cache.js'
 
 import type { VercelDashboardPluginConfig } from '../types.js'
-import type { VercelDeployment } from '../utilities/vercelApiClient.js';
+import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
 import { VercelApiClient } from '../utilities/vercelApiClient.js'
 
