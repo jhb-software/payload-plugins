@@ -3,14 +3,14 @@ import { Button, toast } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import React, { useTransition } from 'react'
 
-import type { VercelDashboardPluginConfig } from '../../../types.js'
-import type { VercelDeployment } from '../../../utilities/vercelApiClient.js'
+import type { VercelDashboardPluginConfig } from '../types.js'
+import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
-import { useDashboardTranslation } from '../../../react-hooks/useDashboardTranslation.js'
-import { getFrontendDeploymentInfo } from '../../../server-actions/getFrontendDeploymentInfo.js'
-import { triggerFrontendDeployment } from '../../../server-actions/triggerFrontendDeployment.js'
-import { RefreshIcon } from '../../icons/refresh.js'
-import { SpinnerIcon } from '../../icons/spinner.js'
+import { useDashboardTranslation } from '../react-hooks/useDashboardTranslation.js'
+import { getFrontendDeploymentInfo } from '../server-actions/getFrontendDeploymentInfo.js'
+import { triggerFrontendDeployment } from '../server-actions/triggerFrontendDeployment.js'
+import { RefreshIcon } from './icons/refresh.js'
+import { SpinnerIcon } from './icons/spinner.js'
 
 export const TriggerFrontendDeploymentButton: React.FC<{
   pluginConfig: VercelDashboardPluginConfig
@@ -63,8 +63,8 @@ export const TriggerFrontendDeploymentButton: React.FC<{
 
   return (
     <div>
-      <Button buttonStyle="pill" className="my-0!" onClick={handleClick} type="button">
-        <span className="flex items-center gap-4">
+      <Button buttonStyle="pill" margin={false} onClick={handleClick} type="button">
+        <span style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
           {t('vercel-dashboard:deploymentInfoTriggerRebuild')}
           {isPending ? <SpinnerIcon /> : <RefreshIcon />}
         </span>

@@ -2,7 +2,7 @@ import type { WidgetServerProps } from 'payload'
 
 import type { VercelDashboardPluginConfig } from '../types.js'
 
-import { DeploymentInfoCard } from './cards/deployment-info/DeploymentInfoCard.js'
+import { DeploymentInfoCard } from './DeploymentInfoCard.js'
 
 export type VercelDeploymentWidgetProps = WidgetServerProps
 

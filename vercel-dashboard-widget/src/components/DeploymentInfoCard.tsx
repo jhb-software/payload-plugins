@@ -4,18 +4,18 @@ import type { PillProps } from '@payloadcms/ui/elements/Pill'
 import { Pill } from '@payloadcms/ui/elements/Pill'
 import { Suspense } from 'react'
 
-import type { DeploymentsInfo } from '../../../server-actions/getFrontendDeploymentsInfo.js'
-import type { VercelDashboardTranslationKeys } from '../../../translations/index.js'
-import type { VercelDashboardPluginConfig } from '../../../types.js'
-import type { VercelDeployment } from '../../../utilities/vercelApiClient.js'
+import type { DeploymentsInfo } from '../server-actions/getFrontendDeploymentsInfo.js'
+import type { VercelDashboardTranslationKeys } from '../translations/index.js'
+import type { VercelDashboardPluginConfig } from '../types.js'
+import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
-import { getFrontendDeploymentsInfo } from '../../../server-actions/getFrontendDeploymentsInfo.js'
-import { Card } from '../../Card.js'
-import { FormattedDate } from '../../FormattedDate.js'
-import { ClockIcon } from '../../icons/clock.js'
-import { ClockDashedIcon } from '../../icons/clock-dashed.js'
-import { InfoIcon } from '../../icons/info.js'
-import { SpinnerIcon } from '../../icons/spinner.js'
+import { getFrontendDeploymentsInfo } from '../server-actions/getFrontendDeploymentsInfo.js'
+import { Card } from './Card.js'
+import { FormattedDate } from './FormattedDate.js'
+import { ClockIcon } from './icons/clock.js'
+import { ClockDashedIcon } from './icons/clock-dashed.js'
+import { InfoIcon } from './icons/info.js'
+import { SpinnerIcon } from './icons/spinner.js'
 import { TriggerFrontendDeploymentButton } from './TriggerDeploymentButton.js'
 
 export function DeploymentInfoCard({
@@ -69,7 +69,14 @@ export default async function DeploymentInfo({
 
   if (error) {
     return (
-      <div style={{ alignItems: 'center', color: 'var(--theme-error-500)', display: 'flex', gap: '0.5rem' }}>
+      <div
+        style={{
+          alignItems: 'center',
+          color: 'var(--theme-error-500)',
+          display: 'flex',
+          gap: '0.5rem',
+        }}
+      >
         <span>
           {t('vercel-dashboard:deploymentInfoError')}: {error}
         </span>
@@ -124,7 +131,9 @@ function DeploymentInfoRow({
 }) {
   const t = i18n.t as TFunction<VercelDashboardTranslationKeys>
 
-  const deploymentStatusToPillStyle = (status: VercelDeployment['status']): PillProps['pillStyle'] => {
+  const deploymentStatusToPillStyle = (
+    status: VercelDeployment['status'],
+  ): PillProps['pillStyle'] => {
     switch (status) {
       case 'BUILDING':
         return 'warning'
@@ -163,7 +172,9 @@ function DeploymentInfoRow({
         >
           <Pill
             pillStyle={
-              deploymentInfo?.status ? deploymentStatusToPillStyle(deploymentInfo.status) : 'light-gray'
+              deploymentInfo?.status
+                ? deploymentStatusToPillStyle(deploymentInfo.status)
+                : 'light-gray'
             }
             size="small"
           >
