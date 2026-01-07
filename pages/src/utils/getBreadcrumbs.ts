@@ -58,7 +58,7 @@ export async function getBreadcrumbs({
       : data[parentField].id
 
   if (!parentId) {
-    throw new Error('Parent ID not found for document ' + data.id)
+    throw new Error('Parent ID not found for document with id ' + data.id)
   }
 
   const parent = req
@@ -68,10 +68,14 @@ export async function getBreadcrumbs({
         depth: 0,
         disableErrors: true,
         locale,
+        req: {
+          // passing the transactionID ensures that the parent document can also be found if it was created in the same uncommitted transaction
+          transactionID: req.transactionID,
+          // do not pass the full req here, otherwise there will be issues with the locale flattening
+        },
         select: {
           breadcrumbs: true,
         },
-        // IMPORTANT: do not pass the req here, otherwise there will be issues with the locale flattening
       })
     : await fetchRestApi<{ breadcrumbs: Breadcrumb[]; id: number | string }>(
         `/${parentCollection}/${parentId}`,
@@ -86,7 +90,9 @@ export async function getBreadcrumbs({
 
   if (!parent) {
     // This can be the case, when the parent document got deleted.
-    throw new Error('Parent document of document ' + data.id + ' not found.')
+    throw new Error(
+      'Parent document with id ' + parentId + ' of document with id ' + data.id + ' not found.',
+    )
   }
 
   if (locale === 'all' && locales) {
