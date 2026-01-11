@@ -8,6 +8,8 @@ Extends the official [SEO plugin](https://payloadcms.com/docs/plugins/seo) with 
 - Focus keyword tracking with intelligent warnings when keywords are missing from crucial elements (title, description, content)
 - Multi-keyword support with content usage analytics
 
+![SEO Plugin - AI-powered Meta Description and Keyword Tracking](./images/screenshot-1.png)
+
 ## Setup
 
 Add the plugin to your payload config as follows:

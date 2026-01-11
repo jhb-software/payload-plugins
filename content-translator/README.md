@@ -4,6 +4,8 @@
 
 A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
 
+![Content Translator Plugin - Translation Interface](./images/screenshot-1.png)
+
 ## Features
 
 - translate content in the Payload Admin UI between locales

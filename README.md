@@ -22,6 +22,8 @@ A plugin that adds a global search modal to the Payload CMS admin panel, enablin
 
 A Payload CMS plugin that adds AI-powered alt text generation for images. It automatically adds an alt text field with a button to generate the alt text to specified upload collections, and includes a bulk generation feature in the list view for processing multiple images at once.
 
+![Alt Text Plugin - AI-powered Alt Text Generation](./alt-text/images/screenshot-1.png)
+
 [Learn more about the Alt Text plugin →](./alt-text)
 
 ### Geocoding Plugin
@@ -40,6 +42,8 @@ A geocoding plugin for Payload CMS that simplifies location management in your c
 
 The Pages plugin simplifies website building by adding essential fields like `slug`, `parent`, `path`, `breadcrumbs`, and `alternatePaths` to your collections. These fields enable hierarchical page structures and dynamic URL management.
 
+![Pages Plugin - Hierarchical Page Structure](./pages/images/screenshot-1.png)
+
 [Learn more about the Pages plugin →](./pages)
 
 ### Cloudinary Plugin
@@ -47,6 +51,8 @@ The Pages plugin simplifies website building by adding essential fields like `sl
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-cloudinary-plugin)](https://www.npmjs.com/package/@jhb.software/payload-cloudinary-plugin)
 
 This package provides a Payload CMS Storage Adapter for [Cloudinary](https://cloudinary.com/) to seamlessly integrate Cloudinary with Payload CMS for media asset management.
+
+![Cloudinary Plugin - File Upload Interface](./cloudinary/images/screenshot-1.png)
 
 [Learn more about the Cloudinary plugin →](./cloudinary)
 
@@ -60,6 +66,8 @@ Extends the official [SEO plugin](https://payloadcms.com/docs/plugins/seo) with 
 - Focus keyword tracking with intelligent warnings when keywords are missing from crucial elements (title, description, content)
 - Multi-keyword support with content usage analytics
 
+![SEO Plugin - AI-powered Meta Description and Keyword Tracking](./seo/images/screenshot-1.png)
+
 [Learn more about the SEO plugin →](./seo)
 
 ### Content Translator Plugin
@@ -67,6 +75,8 @@ Extends the official [SEO plugin](https://payloadcms.com/docs/plugins/seo) with 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
 
 A plugin that enables content translation directly within the Payload CMS admin panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
+
+![Content Translator Plugin - Translation Interface](./content-translator/images/screenshot-1.png)
 
 [Learn more about the Content Translator plugin →](./content-translator)
 
