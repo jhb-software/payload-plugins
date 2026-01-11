@@ -2,6 +2,8 @@
 
 This package provides a Payload CMS Storage Adapter for [Cloudinary](https://cloudinary.com/) to seamlessly integrate Cloudinary with Payload CMS for media asset management.
 
+![Cloudinary Plugin - File Upload Interface](./images/screenshot-1.png)
+
 ## Usage
 
 - Configure the `collections` object to specify which collections should use the Cloudinary adapter. The slug _must_ match one of your existing collection slugs.
