@@ -4,6 +4,8 @@
 
 The Payload Pages plugin simplifies website building by adding essential fields to your collections. These fields enable hierarchical page structures and dynamic URL management.
 
+![Pages Plugin - Hierarchical Page Structure](./images/screenshot-1.png)
+
 ## Setup
 
 First, add the plugin to your payload config. The `generatePageURL` function is required and must provide a function that returns the full URL to the frontend page. 
