@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ESNext",
+    "strict": false,
+    "jsx": "preserve"
+  },
+  "extends": "astro/tsconfigs/base",
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "include": ["./*.astro", "./**/*.ts"],
+  "exclude": [
+    "node_modules/*",
+    "./vite*.ts",
+    "**/*.spec.ts",
+    "dist",
+    "./RichTextLexical.ts"
+  ]
+}

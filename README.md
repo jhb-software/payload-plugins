@@ -70,4 +70,12 @@ A plugin that enables content translation directly within the Payload CMS admin 
 
 [Learn more about the Content Translator plugin →](./content-translator)
 
+## Astro Components
 
+### Astro Payload RichText Lexical
+
+[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fastro-payload-richtext-lexical)](https://www.npmjs.com/package/@jhb.software/astro-payload-richtext-lexical)
+
+An Astro component that renders Payload CMS Lexical rich text content. Supports dependency injection for custom Block and Upload renderers.
+
+[Learn more about Astro Payload RichText Lexical →](./astro-payload-richtext-lexical)

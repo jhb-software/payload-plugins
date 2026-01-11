@@ -1,0 +1,377 @@
+---
+import RichTextLexical from '@jhb.software/astro-payload-richtext-lexical/RichTextLexical.astro'
+import CustomUpload from '../components/CustomUpload.astro'
+import CustomBlock from '../components/CustomBlock.astro'
+
+// Sample Payload Lexical JSON data for testing
+const sampleLexicalContent = {
+  root: {
+    children: [
+      {
+        type: 'heading',
+        tag: 'h1',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Welcome to the RichTextLexical Demo',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        version: 1,
+        indent: 0,
+        format: '',
+        children: [
+          {
+            type: 'text',
+            text: 'This is a ',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: 'bold',
+            format: 1,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: ' and ',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: 'italic',
+            format: 2,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: ' text example.',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h2',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Features',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'list',
+        tag: 'ul',
+        listType: 'bullet',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Renders Payload CMS Lexical JSON',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Supports dependency injection for custom renderers',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Works with Astro 3.x and above',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        version: 1,
+        indent: 0,
+        format: '',
+        children: [
+          {
+            type: 'text',
+            text: 'Here is a ',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'link',
+            version: 1,
+            indent: 0,
+            fields: {
+              linkType: 'custom',
+              url: 'https://payloadcms.com',
+              newTab: true,
+            },
+            children: [
+              {
+                type: 'text',
+                text: 'link to Payload CMS',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+          {
+            type: 'text',
+            text: '.',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'quote',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'This is a blockquote example.',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h2',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Upload Example',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'upload',
+        version: 1,
+        indent: 0,
+        relationTo: 'images',
+        value: {
+          id: '123',
+          url: 'https://placehold.co/600x400',
+          alt: 'Placeholder image',
+          width: 600,
+          height: 400,
+          filename: 'placeholder.jpg',
+        },
+      },
+      {
+        type: 'heading',
+        tag: 'h2',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Block Example',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'block',
+        version: 1,
+        indent: 0,
+        fields: {
+          id: '456',
+          blockType: 'cta',
+          blockName: 'Call to Action',
+          title: 'Get Started Today',
+          description: 'Sign up for our newsletter.',
+        },
+      },
+      {
+        type: 'horizontalrule',
+        version: 1,
+        indent: 0,
+      },
+      {
+        type: 'paragraph',
+        version: 1,
+        indent: 0,
+        format: '',
+        children: [
+          {
+            type: 'text',
+            text: 'Text with ',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: 'underline',
+            format: 8,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: ' and ',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: 'strikethrough',
+            format: 4,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: ' and ',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: 'code',
+            format: 16,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'text',
+            text: '.',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+    ],
+  },
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RichTextLexical Demo</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        line-height: 1.6;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #333;
+      }
+      blockquote {
+        border-left: 4px solid #ddd;
+        margin: 1rem 0;
+        padding-left: 1rem;
+        color: #666;
+      }
+      a {
+        color: #0066cc;
+      }
+      code {
+        background: #f4f4f4;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+      hr {
+        border: none;
+        border-top: 1px solid #ddd;
+        margin: 2rem 0;
+      }
+      ul,
+      ol {
+        padding-left: 2rem;
+      }
+      .custom-upload {
+        border: 2px dashed #ccc;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 8px;
+      }
+      .custom-block {
+        background: #f0f7ff;
+        border: 1px solid #0066cc;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <RichTextLexical
+      nodes={sampleLexicalContent.root.children}
+      UploadRenderer={CustomUpload}
+      BlockRenderer={CustomBlock}
+    />
+  </body>
+</html>

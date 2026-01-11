@@ -1,0 +1,62 @@
+---
+import type { LinkNode, TextNode } from '../types.js'
+
+type Props = {
+  node: LinkNode
+}
+
+const { node } = Astro.props
+
+function createLinkElement(node: LinkNode) {
+  let href = ''
+
+  if (node.fields.linkType === 'internal') {
+    if (typeof node.fields.doc?.value === 'string') {
+      throw new Error(
+        'Error: internal Link Node is missing populated doc fields. Node Text: ' +
+          JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
+      )
+    }
+
+    const path = node.fields.doc?.value?.path ?? node.fields.doc?.value?.slug
+
+    if (!path) {
+      throw new Error(
+        'Error: internal Link Node is missing path in doc value. Children: ' +
+          JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
+      )
+    }
+    href = path.startsWith('/') ? path : `/${path}`
+  } else {
+    href = sanitizeUrl(node.fields.url ?? '')
+  }
+
+  const target = node.fields.newTab ? '_blank' : undefined
+  const rel = target ? 'noopener' : undefined
+
+  return { href, target, rel, style: (node as unknown as TextNode).style }
+}
+
+const SUPPORTED_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'sms:', 'tel:'])
+function sanitizeUrl(url: string): string {
+  try {
+    const parsedUrl = new URL(url)
+
+    if (!SUPPORTED_URL_PROTOCOLS.has(parsedUrl.protocol)) {
+      return 'about:blank'
+    }
+  } catch {
+    return url.startsWith('/') ? url : `/${url}`
+  }
+  return url
+}
+
+const linkElement = createLinkElement(node)
+---
+
+<a
+  href={linkElement.href}
+  target={linkElement.target}
+  rel={linkElement.rel}
+  style={linkElement.style}><slot /></a
+>

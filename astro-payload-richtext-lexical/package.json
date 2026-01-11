@@ -1,0 +1,17 @@
+{
+  "name": "astro-payload-richtext-lexical-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm --filter @jhb.software/astro-payload-richtext-lexical build",
+    "dev": "pnpm --filter dev dev",
+    "dev:lib": "pnpm --filter @jhb.software/astro-payload-richtext-lexical dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.7.4",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^5.7.3"
+  }
+}

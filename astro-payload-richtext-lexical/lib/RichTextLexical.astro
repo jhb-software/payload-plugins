@@ -1,0 +1,131 @@
+---
+import type { AstroComponentFactory } from 'astro/runtime/server'
+import type {
+  BlockNode,
+  HeadingNode,
+  InlineBlockNode,
+  LexicalNode,
+  LinkNode,
+  ListNode,
+  ParagraphNode,
+  TextNode,
+  UploadNode,
+} from './src/types.js'
+
+import HeadingComponent from './src/nodes/HeadingComponent.astro'
+import LinkComponent from './src/nodes/LinkComponent.astro'
+import ListComponent from './src/nodes/ListComponent.astro'
+import TableComponent from './src/nodes/TableComponent.astro'
+import TextComponent from './src/nodes/TextComponent.astro'
+
+type Props = {
+  nodes: LexicalNode[]
+  BlockRenderer?: AstroComponentFactory
+  UploadRenderer?: AstroComponentFactory
+}
+
+const { nodes, BlockRenderer, UploadRenderer } = Astro.props
+---
+
+{
+  nodes?.map((node) => {
+    let textIndent = ''
+    if (node.indent) {
+      textIndent = `indent-${node.indent * 6}`
+    }
+
+    switch (node.type) {
+      case 'link':
+      case 'autolink':
+        return (
+          <LinkComponent node={node as LinkNode}>
+            <Astro.self
+              nodes={(node as LinkNode).children ?? []}
+              BlockRenderer={BlockRenderer}
+              UploadRenderer={UploadRenderer}
+            />
+          </LinkComponent>
+        )
+      case 'text':
+        return <TextComponent node={node as TextNode} />
+      case 'heading':
+        return (
+          <HeadingComponent node={node as HeadingNode}>
+            <Astro.self
+              nodes={(node as HeadingNode).children ?? []}
+              BlockRenderer={BlockRenderer}
+              UploadRenderer={UploadRenderer}
+            />
+          </HeadingComponent>
+        )
+      case 'list':
+        return (
+          <ListComponent node={node as ListNode}>
+            <Astro.self
+              nodes={(node as ListNode).children ?? []}
+              BlockRenderer={BlockRenderer}
+              UploadRenderer={UploadRenderer}
+            />
+          </ListComponent>
+        )
+      case 'listitem':
+        return (
+          <li>
+            <Astro.self
+              nodes={node.children ?? []}
+              BlockRenderer={BlockRenderer}
+              UploadRenderer={UploadRenderer}
+            />
+          </li>
+        )
+      case 'quote':
+        return (
+          <blockquote>
+            <Astro.self
+              nodes={node.children ?? []}
+              BlockRenderer={BlockRenderer}
+              UploadRenderer={UploadRenderer}
+            />
+          </blockquote>
+        )
+      case 'paragraph':
+        return (
+          <p class:list={[textIndent]} style={{ 'text-align': (node as ParagraphNode).format }}>
+            <Astro.self
+              nodes={node.children ?? []}
+              BlockRenderer={BlockRenderer}
+              UploadRenderer={UploadRenderer}
+            />
+          </p>
+        )
+      case 'upload':
+        if (UploadRenderer) {
+          return <UploadRenderer node={node as UploadNode} />
+        }
+        return null
+      case 'inlineBlock':
+        if (BlockRenderer) {
+          return <BlockRenderer node={node as InlineBlockNode} inline={true} />
+        }
+        return null
+      case 'block':
+        if (BlockRenderer) {
+          return <BlockRenderer node={node as BlockNode} inline={false} />
+        }
+        return null
+      case 'table':
+        return (
+          <TableComponent
+            node={node}
+            RichTextRenderer={Astro.self}
+            BlockRenderer={BlockRenderer}
+            UploadRenderer={UploadRenderer}
+          />
+        )
+      case 'horizontalrule':
+        return <hr />
+      case 'linebreak':
+        return <br />
+    }
+  })
+}

@@ -1,0 +1,57 @@
+{
+  "name": "@jhb.software/astro-payload-richtext-lexical",
+  "version": "0.1.0",
+  "description": "Renders Payload CMS Lexical rich text content to Astro elements.",
+  "keywords": [
+    "payload",
+    "astro",
+    "lexical",
+    "rich text",
+    "renderer"
+  ],
+  "homepage": "https://github.com/jhb-software/payload-plugins",
+  "bugs": "https://github.com/jhb-software/payload-plugins/issues",
+  "repository": "https://github.com/jhb-software/payload-plugins",
+  "license": "MIT",
+  "author": "JHB Software",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./RichTextLexical.astro": {
+      "import": "./RichTextLexical.astro",
+      "types": "./RichTextLexical.ts"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "RichTextLexical.astro",
+    "RichTextLexical.ts"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "prepublishOnly": "pnpm run build",
+    "ts:check": "tsc"
+  },
+  "devDependencies": {
+    "astro": "^5.15.9",
+    "vite": "^6.4.1",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "peerDependencies": {
+    "astro": ">=3.x"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": "^18.20.2 || >=20.9.0"
+  }
+}
