@@ -1,14 +1,17 @@
 'use client'
 
-import { Button, toast, useDocumentInfo, useField, useLocale } from '@payloadcms/ui'
+import { Button, toast, useDocumentInfo, useField, useLocale, useTranslation } from '@payloadcms/ui'
 import { useTransition } from 'react'
 
-import { usePluginTranslation } from '../utils/usePluginTranslation.js'
+import type {
+  PluginAltTextTranslationKeys,
+  PluginAltTextTranslations,
+} from '../translations/index.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 
 export function GenerateAltTextButton() {
-  const { t } = usePluginTranslation()
+  const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
   const { id, collectionSlug } = useDocumentInfo()
   const locale = useLocale()
   const [isPending, startTransition] = useTransition()
@@ -18,7 +21,7 @@ export function GenerateAltTextButton() {
 
   const handleGenerateAltText = () => {
     if (!collectionSlug || !id) {
-      toast.error(t('cannotGenerateMissingFields'))
+      toast.error(t('@jhb.software/payload-alt-text-plugin:cannotGenerateMissingFields'))
       throw new Error('Missing required fields')
     }
 
@@ -34,7 +37,7 @@ export function GenerateAltTextButton() {
         })
 
         if (!response.ok) {
-          let errorMessage = t('failedToGenerate')
+          let errorMessage = t('@jhb.software/payload-alt-text-plugin:failedToGenerate')
           try {
             const errorData = (await response.json()) as { error: string }
             errorMessage = errorData.error
@@ -54,13 +57,13 @@ export function GenerateAltTextButton() {
         if (data.altText && data.keywords) {
           setAltText(data.altText)
           setKeywords(data.keywords)
-          toast.success(t('altTextGeneratedSuccess'))
+          toast.success(t('@jhb.software/payload-alt-text-plugin:altTextGeneratedSuccess'))
         } else {
-          toast.error(t('noAltTextGenerated'))
+          toast.error(t('@jhb.software/payload-alt-text-plugin:noAltTextGenerated'))
         }
       } catch (error) {
         console.error('Error generating alt text:', error)
-        toast.error(t('errorGeneratingAltText'))
+        toast.error(t('@jhb.software/payload-alt-text-plugin:errorGeneratingAltText'))
       }
     })
   }
@@ -68,11 +71,11 @@ export function GenerateAltTextButton() {
   return (
     <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
       <div style={{ color: 'var(--theme-elevation-400)', flex: '1' }}>
-        <p>{t('altTextDescription')}</p>
+        <p>{t('@jhb.software/payload-alt-text-plugin:altTextDescription')}</p>
         <ol style={{ margin: '10px 0', paddingLeft: '20px' }}>
-          <li>{t('altTextRequirement1')}</li>
-          <li>{t('altTextRequirement2')}</li>
-          <li>{t('altTextRequirement3')}</li>
+          <li>{t('@jhb.software/payload-alt-text-plugin:altTextRequirement1')}</li>
+          <li>{t('@jhb.software/payload-alt-text-plugin:altTextRequirement2')}</li>
+          <li>{t('@jhb.software/payload-alt-text-plugin:altTextRequirement3')}</li>
         </ol>
       </div>
       <div style={{ alignItems: 'center', display: 'flex' }}>
@@ -80,9 +83,9 @@ export function GenerateAltTextButton() {
           disabled={isPending || !id}
           icon={isPending ? <Spinner /> : <Lightning />}
           onClick={handleGenerateAltText}
-          tooltip={!id ? t('pleaseSaveDocumentFirst') : undefined}
+          tooltip={!id ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst') : undefined}
         >
-          {t('generateAltText')}
+          {t('@jhb.software/payload-alt-text-plugin:generateAltText')}
         </Button>
       </div>
     </div>

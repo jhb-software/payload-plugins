@@ -1,11 +1,15 @@
 'use client'
 import type React from 'react'
 
-import { Button, Pill, SearchIcon, useHotkey } from '@payloadcms/ui'
+import { Button, Pill, SearchIcon, useHotkey, useTranslation } from '@payloadcms/ui'
 import { useEffect, useState } from 'react'
 
+import type {
+  PluginAdminSearchTranslationKeys,
+  PluginAdminSearchTranslations,
+} from '../../translations/index.js'
+
 import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
-import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 import './SearchBar.css'
 
@@ -14,7 +18,7 @@ const baseClass = 'admin-search-plugin-bar'
 export function SearchBar(): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [shortcut, setShortcut] = useState('')
-  const { t } = usePluginTranslation()
+  const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()
 
   // Determine shortcut on client to avoid SSR hydration mismatch (navigator unavailable on server)
   useEffect(() => {
@@ -42,7 +46,7 @@ export function SearchBar(): React.ReactElement {
       >
         <div className="admin-search-plugin-bar__wrap">
           <SearchIcon />
-          <span className="admin-search-plugin-bar__placeholder">{t('searchPlaceholder')}</span>
+          <span className="admin-search-plugin-bar__placeholder">{t('@jhb.software/payload-admin-search:searchPlaceholder')}</span>
           <Pill className="admin-search-plugin-bar__shortcut">{shortcut || '⌘K'}</Pill>
         </div>
       </Button>

@@ -1,15 +1,18 @@
 'use client'
 
-import { Button, toast, useSelection } from '@payloadcms/ui'
+import { Button, toast, useSelection, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { useTransition } from 'react'
 
-import { usePluginTranslation } from '../utils/usePluginTranslation.js'
+import type {
+  PluginAltTextTranslationKeys,
+  PluginAltTextTranslations,
+} from '../translations/index.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 
 export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug: string }) {
-  const { t } = usePluginTranslation()
+  const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
   const [isPending, startTransition] = useTransition()
   const { selected, setSelection } = useSelection()
 
@@ -35,7 +38,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
         })
 
         if (!response.ok) {
-          toast.error(t('failedToGenerate'))
+          toast.error(t('@jhb.software/payload-alt-text-plugin:failedToGenerate'))
           return
         }
 
@@ -47,20 +50,20 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
 
         if (data.erroredDocs.length > 0) {
           toast.error(
-            t('failedToGenerateForXImages').replace('{X}', data.erroredDocs.length.toString()),
+            t('@jhb.software/payload-alt-text-plugin:failedToGenerateForXImages').replace('{X}', data.erroredDocs.length.toString()),
           )
         }
 
         // in case not all images were updated, show a warning instead of a success message:
         if (data.updatedDocs === data.totalDocs) {
           toast.success(
-            t('xOfYImagesUpdated')
+            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated')
               .replace('{X}', data.updatedDocs.toString())
               .replace('{Y}', data.totalDocs.toString()),
           )
         } else {
           toast.warning(
-            t('xOfYImagesUpdated')
+            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated')
               .replace('{X}', data.updatedDocs.toString())
               .replace('{Y}', data.totalDocs.toString()),
           )
@@ -74,7 +77,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
         router.refresh()
       } catch (error) {
         console.error('Error generating alt text:', error)
-        toast.error(t('errorGeneratingAltText'))
+        toast.error(t('@jhb.software/payload-alt-text-plugin:errorGeneratingAltText'))
       }
     })
   }
@@ -88,8 +91,8 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
           icon={isPending ? <Spinner /> : <Lightning />}
           onClick={handleGenerateAltTexts}
         >
-          {t('generateAltTextFor')} {selectedIds.length}{' '}
-          {selectedIds.length === 1 ? t('image') : t('images')}
+          {t('@jhb.software/payload-alt-text-plugin:generateAltTextFor')} {selectedIds.length}{' '}
+          {selectedIds.length === 1 ? t('@jhb.software/payload-alt-text-plugin:image') : t('@jhb.software/payload-alt-text-plugin:images')}
         </Button>
       </div>
     )
