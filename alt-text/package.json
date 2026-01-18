@@ -1,7 +1,7 @@
 {
   "name": "@jhb.software/payload-alt-text-plugin",
-  "version": "0.2.1",
-  "description": "A minimal Payload CMS plugin to generate image alt texts using OpenAI's Vision API.",
+  "version": "0.3.0",
+  "description": "A Payload CMS plugin that adds AI-powered alt text generation for images.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
   "keywords": [
@@ -24,30 +24,32 @@
     "clean": "rimraf --glob {dist,*.tsbuildinfo}",
     "dev": "tsc -w",
     "format": "prettier --write src",
-    "lint": "eslint ./src",
-    "lint:fix": "eslint ./src --fix",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
-    "openai": "^6.8.1",
-    "p-map": "^7.0.3",
-    "zod": "^4.1.12"
+    "openai": "^6.14.0",
+    "p-map": "^7.0.4",
+    "zod": "^4.2.1"
   },
   "peerDependencies": {
-    "@payloadcms/ui": "^3.62.1",
-    "next": "15.5.6",
-    "payload": "^3.62.1",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "@payloadcms/ui": "^3.68.5",
+    "next": "15.5.9",
+    "payload": "^3.68.5",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "@payloadcms/eslint-config": "^3.28.0",
     "@swc/cli": "^0.7.9",
-    "@swc/core": "^1.15.0",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@swc/core": "^1.15.7",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
     "copyfiles": "2.4.1",
-    "prettier": "^3.6.2",
-    "rimraf": "6.1.0",
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "rimraf": "6.1.2",
     "typescript": "5.9.3"
   },
   "files": [

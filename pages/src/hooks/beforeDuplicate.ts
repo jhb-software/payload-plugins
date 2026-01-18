@@ -1,4 +1,5 @@
-import { FieldHook } from 'payload'
+import type { FieldHook } from 'payload'
+
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
 
 /** Hooks which adjusts the slug to make sure the slug is still unique after duplication. */

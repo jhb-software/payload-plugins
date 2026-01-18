@@ -25,10 +25,10 @@ export const defaultESLintIgnores = [
 export default [
   ...payloadEsLintConfig,
   {
-    // Modify any rules from payload's config that you want to override/disable
-    'no-restricted-exports': 'off',
+    rules: {
+      'no-restricted-exports': 'off',
+    },
   },
-  // TODO: Bring in '@payloadcms/eslint-plugin' for 'payload/proper-payload-logger-usage' rule
   {
     ignores: defaultESLintIgnores,
   },

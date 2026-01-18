@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from 'react'
 import { toast, useConfig, useTranslation } from '@payloadcms/ui'
-import { PluginPagesTranslationKeys, PluginPagesTranslations } from 'src/translations/index.js'
+import { useState } from 'react'
+
+import type {
+  PluginPagesTranslationKeys,
+  PluginPagesTranslations,
+} from '../translations/index.js'
 
 export const useCreateRedirect = (redirectsCollectionSlug: string) => {
   const [isCreating, setIsCreating] = useState(false)
@@ -23,17 +27,17 @@ export const useCreateRedirect = (redirectsCollectionSlug: string) => {
 
     try {
       const response = await fetch(`${serverURL}${api}/${redirectsCollectionSlug}`, {
-        method: 'POST',
+        body: JSON.stringify({
+          destinationPath,
+          reason: t('@jhb.software/payload-pages-plugin:redirectReasonSlugChange'),
+          sourcePath,
+          type: 'permanent',
+        }),
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sourcePath,
-          destinationPath,
-          type: 'permanent',
-          reason: t('@jhb.software/payload-pages-plugin:redirectReasonSlugChange'),
-        }),
+        method: 'POST',
       })
 
       const result = await response.json()

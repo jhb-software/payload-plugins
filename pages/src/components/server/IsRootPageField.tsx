@@ -1,4 +1,5 @@
-import { CheckboxFieldServerComponent, Where } from 'payload'
+import type { CheckboxFieldServerComponent, Where } from 'payload'
+
 import { IsRootPageStatus } from '../client/IsRootPageStatus.js'
 
 /**
@@ -6,17 +7,17 @@ import { IsRootPageStatus } from '../client/IsRootPageStatus.js'
  */
 export const IsRootPageField: CheckboxFieldServerComponent = async ({
   clientField,
-  path,
-  field,
   collectionSlug,
+  field,
+  path,
   payload,
-  req,
   permissions,
   readOnly,
+  req,
   // @ts-expect-error: TODO: extend the CheckboxFieldServerComponent type to allow passing the baseFilter
   baseFilter,
 }) => {
-  const baseFilterWhere: Where | undefined =
+  const baseFilterWhere: undefined | Where =
     typeof baseFilter === 'function' ? baseFilter({ req }) : undefined
 
   const response = await payload.count({
@@ -34,8 +35,8 @@ export const IsRootPageField: CheckboxFieldServerComponent = async ({
   return (
     <IsRootPageStatus
       field={clientField}
-      path={(path as string | undefined) ?? field?.name!}
       hasRootPage={hasRootPage}
+      path={(path as string | undefined) ?? field?.name}
       readOnly={isReadOnly}
     />
   )

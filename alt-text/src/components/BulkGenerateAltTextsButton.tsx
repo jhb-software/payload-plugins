@@ -4,9 +4,9 @@ import { Button, toast, useSelection } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { useTransition } from 'react'
 
+import { usePluginTranslation } from '../utils/usePluginTranslation.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
-import { usePluginTranslation } from '../utils/usePluginTranslation.js'
 
 export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug: string }) {
   const { t } = usePluginTranslation()
@@ -19,7 +19,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
 
   const router = useRouter()
 
-  const handleGenerateAltTexts = async () => {
+  const handleGenerateAltTexts = () => {
     startTransition(async () => {
       if (!collectionSlug) {
         throw new Error('Collection slug is required')
@@ -27,11 +27,11 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
 
       try {
         const response = await fetch('/api/alt-text-plugin/bulk-generate-alt-texts', {
-          method: 'POST',
           body: JSON.stringify({
             collection: collectionSlug,
             ids: selectedIds,
           }),
+          method: 'POST',
         })
 
         if (!response.ok) {
@@ -40,9 +40,9 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
         }
 
         const data = (await response.json()) as {
-          updatedDocs: number
-          totalDocs: number
           erroredDocs: string[]
+          totalDocs: number
+          updatedDocs: number
         }
 
         if (data.erroredDocs.length > 0) {
@@ -81,12 +81,12 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
 
   return (
     selectedIds.length > 0 && (
-      <div style={{ display: 'flex', justifyContent: 'right' }} className="m-0">
+      <div className="m-0" style={{ display: 'flex', justifyContent: 'right' }}>
         <Button
-          onClick={handleGenerateAltTexts}
+          className="m-0"
           disabled={isPending || selectedIds.length === 0}
           icon={isPending ? <Spinner /> : <Lightning />}
-          className="m-0"
+          onClick={handleGenerateAltTexts}
         >
           {t('generateAltTextFor')} {selectedIds.length}{' '}
           {selectedIds.length === 1 ? t('image') : t('images')}

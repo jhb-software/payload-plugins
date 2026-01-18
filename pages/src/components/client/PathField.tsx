@@ -1,32 +1,34 @@
 'use client'
+import type { TextFieldClientComponent } from 'payload'
+
 import {
   FieldLabel,
-  TextField,
   TextInput,
   useConfig,
   useField,
   useFormFields,
   useLocale,
 } from '@payloadcms/ui'
-import { TextFieldClientComponent } from 'payload'
-import { Breadcrumb } from '../../types/Breadcrumb.js'
-import { Locale } from '../../types/Locale.js'
+
+import type { Breadcrumb } from '../../types/Breadcrumb.js'
+import type { Locale } from '../../types/Locale.js'
+
 import { getBreadcrumbs as getBreadcrumbsForDoc } from '../../utils/getBreadcrumbs.js'
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useDidUpdateEffect } from '../../utils/useDidUpdateEffect.js'
-import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConfigAtrributes.js'
-import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 import { BreadcrumbsFieldModalButton } from './BreadcrumbsField.js'
+import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
+import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConfigAtrributes.js'
 
-export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, schemaPath }) => {
+export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) => {
   const { config } = useConfig()
   const {
-    parent: { name: parentField, collection: parentCollection },
     breadcrumbs: { labelField: breadcrumbLabelFieldName },
+    parent: { name: parentField, collection: parentCollection },
   } = usePageCollectionConfigAttributes()
   const { code: locale } = useLocale() as unknown as { code: Locale | undefined }
   const { getBreadcrumbs, setBreadcrumbs } = useBreadcrumbs()
-  const { setValue: setPathRaw, value: path } = useField<string>({ path: fieldPath! })
+  const { setValue: setPathRaw, value: path } = useField<string>({ path: fieldPath })
   const { setValue: setSlugRaw, value: slug } = useField<string>({ path: 'slug' })
   const breadcrumbLabel = useFormFields(([fields, _]) => fields[breadcrumbLabelFieldName])
     ?.value as string | undefined
@@ -59,23 +61,23 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
   async function fetchBreadcrumbs(): Promise<Breadcrumb[]> {
     // Construct the document with all necessary fields
     const doc: Record<string, any> = {
-      slug: slug,
-      isRootPage: isRootPage,
+      slug,
+      isRootPage,
     }
     doc[parentField] = parent
     doc[breadcrumbLabelFieldName] = breadcrumbLabel
 
     const fechtchedBreadcrumbs = (await getBreadcrumbsForDoc({
-      req: undefined, // payload req is not available here
+      breadcrumbLabelField: breadcrumbLabelFieldName,
+      data: doc,
+      locale,
       locales:
         typeof config.localization === 'object' && config.localization.localeCodes
           ? config.localization.localeCodes
           : undefined,
-      breadcrumbLabelField: breadcrumbLabelFieldName,
-      parentField: parentField,
-      parentCollection: parentCollection,
-      data: doc,
-      locale: locale,
+      parentCollection,
+      parentField,
+      req: undefined, // payload req is not available here
     })) as Breadcrumb[]
 
     return fechtchedBreadcrumbs
@@ -90,8 +92,8 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
         const fechtchedBreadcrumbs = await fetchBreadcrumbs()
 
         const updatedPath = pathFromBreadcrumbs({
-          locale: locale,
           breadcrumbs: fechtchedBreadcrumbs,
+          locale,
         })
 
         setBreadcrumbs(fechtchedBreadcrumbs)
@@ -102,16 +104,15 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
 
         // remove all breadcrumbs except the last one of this doc if the parent was removed
         const updatedBreadcrumbs = breadcrumbs.length >= 2 ? breadcrumbs.slice(-1) : []
-        const updatedPath = pathFromBreadcrumbs({ locale: locale, breadcrumbs: updatedBreadcrumbs })
+        const updatedPath = pathFromBreadcrumbs({ breadcrumbs: updatedBreadcrumbs, locale })
 
         setPath(updatedPath)
         setBreadcrumbs(updatedBreadcrumbs)
       }
     }
-    fetchAndSetData()
+    void fetchAndSetData()
 
     // This effect should only be executed when the parent changes:
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parent])
 
   // Update the breadcrumbs and path when
@@ -131,8 +132,8 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
           // there should always be at least one breadcrumb
           breadcrumbs = [
             {
-              label: '',
               slug: '',
+              label: '',
               path: '',
             },
           ]
@@ -143,21 +144,21 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
       const updatedBreadcrumbsSlug: Breadcrumb[] = breadcrumbs.map((breadcrumb, index) =>
         index === breadcrumbs.length - 1
           ? {
-              path: breadcrumb.path,
-              slug: slug as string,
+              slug,
               label: breadcrumbLabel as string,
+              path: breadcrumb.path,
             }
           : {
-              path: breadcrumb.path,
               slug: breadcrumb.slug,
               label: breadcrumb.label,
+              path: breadcrumb.path,
             },
       )
 
       // generate the path
       const updatedPath = pathFromBreadcrumbs({
-        locale: locale,
         breadcrumbs: updatedBreadcrumbsSlug,
+        locale,
       })
 
       // update the path in the breadcrumbs
@@ -165,14 +166,14 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
         (breadcrumb, index) =>
           index === breadcrumbs.length - 1
             ? {
-                path: updatedPath,
                 slug: breadcrumb.slug,
                 label: breadcrumb.label,
+                path: updatedPath,
               }
             : {
-                path: breadcrumb.path,
                 slug: breadcrumb.slug,
                 label: breadcrumb.label,
+                path: breadcrumb.path,
               },
       )
 
@@ -180,10 +181,9 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
       setBreadcrumbs(updatedBreadcrumbsPath)
     }
 
-    fetchAndSetData()
+    void fetchAndSetData()
 
     // this effect should only be executed when the slug or the breadcrumb label changes:
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, breadcrumbLabel])
 
   // Update the breadcrumbs and path, when
@@ -192,11 +192,10 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
     if (isRootPage === true) {
       setSlug('')
       setPath('/' + locale + '/')
-      setBreadcrumbs([{ label: breadcrumbLabel ?? '', slug: '', path: '/' + (locale ?? '') }])
+      setBreadcrumbs([{ slug: '', label: breadcrumbLabel ?? '', path: '/' + (locale ?? '') }])
     }
 
-    // this effect should only be executed when the slug or the breadcrumb label changes:
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // this effect should only be executed when isRootPage changes:
   }, [isRootPage])
 
   return (
@@ -204,15 +203,15 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath, sc
       <FieldLabel
         htmlFor={`field-${path}`}
         label={field.label}
-        required={field.required}
         localized={field.localized}
+        required={field.required}
       />
 
       <div style={{ position: 'relative' }}>
-        <TextInput value={path} path={path!} readOnly />
+        <TextInput path={path} readOnly value={path} />
 
         <div
-          style={{ position: 'absolute', top: '50%', right: '0', transform: 'translateY(-50%)' }}
+          style={{ position: 'absolute', right: '0', top: '50%', transform: 'translateY(-50%)' }}
         >
           <BreadcrumbsFieldModalButton />
         </div>

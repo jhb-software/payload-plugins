@@ -1,11 +1,13 @@
 import type { Config } from 'payload'
+
+import type { IncomingPageCollectionConfig } from './types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from './types/PagesPluginConfig.js'
+import type { IncomingRedirectsCollectionConfig } from './types/RedirectsCollectionConfig.js'
+
+import { createPageCollectionConfig } from './collections/PageCollectionConfig.js'
+import { createRedirectsCollectionConfig } from './collections/RedirectsCollectionConfig.js'
 import { translations } from './translations/index.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
-import { createPageCollectionConfig } from './collections/PageCollectionConfig.js'
-import { IncomingPageCollectionConfig } from './types/PageCollectionConfig.js'
-import { createRedirectsCollectionConfig } from './collections/RedirectsCollectionConfig.js'
-import { IncomingRedirectsCollectionConfig } from './types/RedirectsCollectionConfig.js'
 
 /** Payload plugin which integrates fields for managing website pages. */
 export const payloadPagesPlugin =

@@ -1,4 +1,5 @@
 import type { ClientComponentProps, FieldPaths, ServerComponentProps } from 'payload'
+
 import React from 'react'
 
 import { GeocodingFieldClient } from './GeocodingFieldClient.js'
@@ -18,6 +19,6 @@ export const GeocodingField: React.FC<
   }
 
   return (
-    <GeocodingFieldClient field={clientField} path={path} googleMapsApiKey={googleMapsApiKey} />
+    <GeocodingFieldClient field={clientField} googleMapsApiKey={googleMapsApiKey} path={path} />
   )
 }

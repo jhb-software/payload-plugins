@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Plugin Translator Translations",
+  "description": "Schema for content translator plugin translations",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "plugin-translator": {
+        "type": "object",
+        "properties": {
+          "buttonLabel": {
+            "type": "string",
+            "description": "Label for the translate button"
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Error message when translation fails"
+          },
+          "modalDescription": {
+            "type": "string",
+            "description": "Description text in the translation modal"
+          },
+          "modalSourceLanguage": {
+            "type": "string",
+            "description": "Label for source language selector"
+          },
+          "modalTitle": {
+            "type": "string",
+            "description": "Title of the translation modal"
+          },
+          "modalTranslating": {
+            "type": "string",
+            "description": "Text shown while translation is in progress"
+          },
+          "submitButtonLabelEmpty": {
+            "type": "string",
+            "description": "Label for button to translate only empty fields"
+          },
+          "submitButtonLabelFull": {
+            "type": "string",
+            "description": "Label for button to translate all fields"
+          },
+          "successMessage": {
+            "type": "string",
+            "description": "Success message after translation completes"
+          }
+        },
+        "required": [
+          "buttonLabel",
+          "errorMessage",
+          "modalDescription",
+          "modalSourceLanguage",
+          "modalTitle",
+          "modalTranslating",
+          "submitButtonLabelEmpty",
+          "submitButtonLabelFull",
+          "successMessage"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": ["plugin-translator"],
+    "additionalProperties": false
+  }
+}

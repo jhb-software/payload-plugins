@@ -4,7 +4,6 @@ export const Redirects: RedirectsCollectionConfig = {
   slug: 'redirects',
   admin: {
     defaultColumns: ['sourcePath', 'destinationPath', 'permanent', 'createdAt'],
-    listSearchableFields: ['sourcePath', 'destinationPath'],
   },
   redirects: {},
   fields: [

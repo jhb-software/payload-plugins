@@ -1,11 +1,8 @@
-import type { FieldHook } from 'payload'
-import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
-
 const germanCharacterReplacements: Record<string, string> = {
+  ß: 'ss',
   ä: 'ae',
   ö: 'oe',
   ü: 'ue',
-  ß: 'ss',
 }
 
 export const formatSlug = (val: string): string =>
@@ -16,9 +13,9 @@ export const formatSlug = (val: string): string =>
     .normalize('NFKD') // The normalize() using NFKD method returns the Unicode Normalization Form of a given string.
     .trim() // Remove whitespace from both sides of a string
     .replace(/\s+/g, '-') // Replace spaces with hyphen
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^\-+|\-+$/g, '') // Trim hyphens from start and end
+    .replace(/[^\w-]+/g, '') // Remove all non-word chars
+    .replace(/-{2,}/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, '') // Trim hyphens from start and end
 
 /**
  * Same as formatSlug, except that it does not remove hyphens from the end of the string. Also converts spaces at the end of the string to hyphens.
@@ -32,8 +29,8 @@ export const liveFormatSlug = (val: string): string =>
     .replace(/[äöüß]/g, (match) => germanCharacterReplacements[match])
     .normalize('NFKD') // The normalize() using NFKD method returns the Unicode Normalization Form of a given string.
     .replace(/\s+/g, '-') // Replace spaces with hyphen
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/[^\w-]+/g, '') // Remove all non-word chars
+    .replace(/-{2,}/g, '-') // Replace multiple hyphens with single hyphen
     .replace(/^-+/, '') // Trim hyphens from start
     // place trim at the end to replace inner whitespaces with hyphens:
     .trim() // Remove whitespace from both sides of a string

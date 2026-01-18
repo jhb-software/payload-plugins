@@ -1,30 +1,25 @@
-import { Field } from 'payload'
+import type { Field } from 'payload'
+
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 /** Virtual field which holds the paths for the alternate languages. */
 export function alternatePathsField(): Field {
   return {
     name: 'alternatePaths',
+    type: 'array',
     label: translatedLabel('alternatePaths'),
     labels: {
-      singular: translatedLabel('alternatePath'),
       plural: translatedLabel('alternatePaths'),
+      singular: translatedLabel('alternatePath'),
     },
-    type: 'array',
-    required: true,
     localized: false,
+    required: true,
     virtual: true,
     // Validate by default to allow the document to be updated, without having to set the alternatePaths field.
-    validate: (_: any): true => true,
     admin: {
-      readOnly: true,
       disableBulkEdit: true,
       hidden: true,
-    },
-    hooks: {
-      afterRead: [
-        // The alternate paths are generated in the setVirtualFields collection hook
-      ],
+      readOnly: true,
     },
     fields: [
       {
@@ -38,5 +33,11 @@ export function alternatePathsField(): Field {
         required: true,
       },
     ],
+    hooks: {
+      afterRead: [
+        // The alternate paths are generated in the setVirtualFields collection hook
+      ],
+    },
+    validate: (_: any): true => true,
   }
 }

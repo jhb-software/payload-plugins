@@ -1,12 +1,12 @@
 import { stringify } from 'qs-esm'
 
 /** Fetches a document via the Payload REST API. This should only be used if the local API is not available. */
-export async function fetchRestApi(path: string, options: Record<string, any>) {
+export async function fetchRestApi<T>(path: string, options: Record<string, any>): Promise<T> {
   const response = await fetch('/api' + path + '?' + stringify(options), {
-    method: 'GET',
     headers: {
       'Content-Type': 'application/json',
     },
+    method: 'GET',
   })
 
   if (!response.ok) {

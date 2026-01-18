@@ -94,6 +94,7 @@ export interface Config {
   db: {
     defaultIDType: string;
   };
+  fallbackLocale: null;
   globals: {};
   globalsSelect: {};
   locale: null;
@@ -251,6 +252,10 @@ export interface Search {
     | {
         relationTo: 'authors';
         value: string | Author;
+      }
+    | {
+        relationTo: 'media';
+        value: string | Media;
       };
   updatedAt: string;
   createdAt: string;

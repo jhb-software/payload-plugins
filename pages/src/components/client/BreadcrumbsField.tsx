@@ -1,7 +1,9 @@
 'use client'
 
-import { ArrayField, Drawer, Button, useModal, useTranslation } from '@payloadcms/ui'
-import { ArrayFieldClientComponent } from 'payload'
+import type { ArrayFieldClientComponent } from 'payload'
+
+import { ArrayField, Button, Drawer, useModal, useTranslation } from '@payloadcms/ui'
+
 import { BreadcrumbsIcon } from '../../icons/BreadcrumbsIcon.js'
 import type {
   PluginPagesTranslations,
@@ -16,11 +18,11 @@ export const BreadcrumbsFieldModalButton: React.FC = () => {
 
   return (
     <Button
-      onClick={() => toggleModal(breadcrumbsModalSlug)}
       buttonStyle="transparent"
+      icon={<BreadcrumbsIcon />}
+      onClick={() => toggleModal(breadcrumbsModalSlug)}
       size="small"
       tooltip={t('@jhb.software/payload-pages-plugin:showBreadcrumbs')}
-      icon={<BreadcrumbsIcon />}
     />
   )
 }

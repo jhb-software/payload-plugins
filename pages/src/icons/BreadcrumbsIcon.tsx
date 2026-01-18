@@ -9,10 +9,10 @@ export const BreadcrumbsIcon: React.FC<{
     <svg
       aria-label={ariaLabel}
       className={className}
-      width={size}
+      fill="none"
       height={size}
       viewBox="0 0 16 16"
-      fill="none"
+      width={size}
       xmlns="http://www.w3.org/2000/svg"
     >
       <g transform="translate(1, -2)">

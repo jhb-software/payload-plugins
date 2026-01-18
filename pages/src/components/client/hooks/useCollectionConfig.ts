@@ -1,7 +1,8 @@
 'use client'
 
+import type { ClientCollectionConfig } from 'payload'
+
 import { useConfig, useDocumentInfo } from '@payloadcms/ui'
-import { ClientCollectionConfig } from 'payload'
 
 /**
  * Returns the collection config for the collection of the document.

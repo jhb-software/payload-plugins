@@ -4,6 +4,8 @@ import { searchPlugin } from '@payloadcms/plugin-search'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
+import { de } from 'payload/i18n/de'
+import { en } from 'payload/i18n/en'
 import { fileURLToPath } from 'url'
 
 import { authorsSchema } from './collections/authors'
@@ -39,6 +41,10 @@ export default buildConfig({
 
   editor: lexicalEditor(),
 
+  i18n: {
+    supportedLanguages: { de, en },
+  },
+
   secret: process.env.PAYLOAD_SECRET || 'secret',
 
   typescript: {
@@ -70,10 +76,15 @@ export default buildConfig({
       beforeSync: ({ originalDoc, searchDoc }) => {
         return {
           ...searchDoc,
-          title: searchDoc.doc.relationTo === 'authors' ? originalDoc.name : originalDoc.title,
+          title:
+            searchDoc.doc.relationTo === 'authors'
+              ? originalDoc.name
+              : searchDoc.doc.relationTo === 'media'
+                ? originalDoc.filename
+                : originalDoc.title,
         }
       },
-      collections: ['pages', 'posts', 'authors'],
+      collections: ['pages', 'posts', 'authors', 'media'],
     }),
   ],
 })

@@ -1,18 +1,17 @@
-import { CollectionSlug, Field } from 'payload'
+import type { CollectionSlug, Field } from 'payload'
+
+import type { AltTextResolver } from '../resolvers/types.js'
 
 /** Configuration options for the alt text plugin. */
 export type IncomingAltTextPluginConfig = {
-  /** Whether the plugin is enabled. */
-  enabled?: boolean
-
-  /** OpenAI API key for authentication. */
-  openAIApiKey: string
-
   /** Collection slugs to enable the plugin for. */
   collections: CollectionSlug[]
 
-  /** Maximum number of concurrent API requests for bulk operations. */
-  maxBulkGenerateConcurrency?: number
+  /** Whether the plugin is enabled. */
+  enabled?: boolean
+
+  /** Override the default fields inserted by the plugin via a function that receives the default fields and returns the new fields */
+  fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
   /**
    * Function to get the thumbnail URL of an image document.
@@ -24,46 +23,48 @@ export type IncomingAltTextPluginConfig = {
    */
   getImageThumbnail: (doc: Record<string, unknown>) => string
 
-  /** The OpenAI LLM model to use for alt text generation. */
-  model?: 'gpt-4.1-nano' | 'gpt-4.1-mini'
-
-  /** Override the default fields inserted by the plugin via a function that receives the default fields and returns the new fields */
-  fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
-
   /**
    * The locale to generate alt texts in when localization is disabled.
+   *
    * Required when localization is disabled, ignored when localization is enabled.
-   * @example 'en', 'de'
+   * @example 'en'
    */
   locale?: string
+
+  /**
+   * Maximum number of concurrent API requests for bulk generate operations.
+   *
+   * @default 16
+   */
+  maxBulkGenerateConcurrency?: number
+
+  /** The resolver to use for generating alt text (e.g., openAIResolver) */
+  resolver: AltTextResolver
 }
 
 /** Configuration of the alt text plugin after defaults have been applied. */
 export type AltTextPluginConfig = {
-  /** Whether the plugin is enabled. */
-  enabled: boolean
-
-  /** OpenAI API key for authentication. */
-  openAIApiKey: string
-
   /** Collection slugs to enable the plugin for. */
   collections: CollectionSlug[]
 
-  /** Maximum number of concurrent API requests for bulk generate operations. */
-  maxBulkGenerateConcurrency: number
-
-  /** Function to get the thumbnail URL of an image document. */
-  getImageThumbnail: (doc: Record<string, unknown>) => string
-
-  /** The OpenAI LLM model to use for alt text generation. */
-  model: 'gpt-4.1-nano' | 'gpt-4.1-mini'
+  /** Whether the plugin is enabled. */
+  enabled: boolean
 
   /** Override the default fields inserted by the plugin via a function that receives the default fields and returns the new fields */
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
-  /** The locales to generate alt texts for. */
-  locales: string[]
+  /** Function to get the thumbnail URL of an image document. */
+  getImageThumbnail: (doc: Record<string, unknown>) => string
 
   /** The locale to generate alt texts in when localization is disabled. */
   locale?: string
+
+  /** The locales to generate alt texts for. */
+  locales: string[]
+
+  /** Maximum number of concurrent API requests for bulk generate operations. */
+  maxBulkGenerateConcurrency: number
+
+  /** The resolver to use for generating alt text */
+  resolver: AltTextResolver
 }
