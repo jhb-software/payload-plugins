@@ -36,7 +36,9 @@ export default buildConfig({
   plugins: [
     payloadCloudinaryPlugin({
       collections: {
-        images: true,
+        images: {
+          disablePayloadAccessControl: true,
+        },
         videos: {
           prefix: 'videos',
         },

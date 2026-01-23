@@ -74,9 +74,8 @@ export const getHandleUpload = ({
     const result = await uploadStream()
 
     if (result && typeof result === 'object' && 'public_id' in result && 'secure_url' in result) {
+      // these fields will be stored in the database
       data.cloudinaryPublicId = result.public_id
-      // TODO: find out if the URL should be stored in the DB or generated in the generateURL function?
-      // It looks like the official s3 plugin does not store it in the DB initially, but it gets stored after the first update...
       data.url = result.secure_url
 
       return data

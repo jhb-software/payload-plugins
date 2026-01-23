@@ -14,7 +14,7 @@ import type { CloudinaryClientUploadHandlerExtra } from './client/CloudinaryClie
 import type { CloudinaryStorageOptions } from './types.js'
 
 import { getGenerateUrl } from './generateURL.js'
-import { getAdminThumbnail } from './getAdminThumbnail.js'
+import { getAdminThumbnailFactory } from './getAdminThumbnail.js'
 import { getGenerateSignature } from './getGenerateSignature.js'
 import { getHandleDelete } from './handleDelete.js'
 import { getHandleUpload } from './handleUpload.js'
@@ -112,7 +112,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
           fields: [...fields, ...(collection.fields || [])],
           upload: {
             ...(typeof collection.upload === 'object' ? collection.upload : {}),
-            adminThumbnail: getAdminThumbnail,
+            adminThumbnail: getAdminThumbnailFactory(options.cloudName),
             crop: false,
             disableLocalStorage: true,
           },
