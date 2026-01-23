@@ -151,7 +151,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
               type="text"
               value={query}
             />
-            <span className="admin-search-plugin-modal__escape-hint">{t('@jhb.software/payload-admin-search:escapeHint')}</span>
+            <span className="admin-search-plugin-modal__escape-hint">
+              {t('@jhb.software/payload-admin-search:escapeHint')}
+            </span>
           </div>
         </div>
 
@@ -163,11 +165,20 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
               ))}
             </ul>
           )}
-          {isError && <Banner type="error">{t('@jhb.software/payload-admin-search:errorSearching')}</Banner>}
+          {isError && (
+            <Banner type="error">{t('@jhb.software/payload-admin-search:errorSearching')}</Banner>
+          )}
           {!isError && results.length === 0 && displayedQuery && (
             <div className="admin-search-plugin-modal__no-results-message">
-              <p>{t('@jhb.software/payload-admin-search:noResultsFound').replace('{query}', displayedQuery)}</p>
-              <p className="admin-search-plugin-modal__no-results-hint">{t('@jhb.software/payload-admin-search:noResultsHint')}</p>
+              <p>
+                {t('@jhb.software/payload-admin-search:noResultsFound').replace(
+                  '{query}',
+                  displayedQuery,
+                )}
+              </p>
+              <p className="admin-search-plugin-modal__no-results-hint">
+                {t('@jhb.software/payload-admin-search:noResultsHint')}
+              </p>
             </div>
           )}
           {!isError && results.length > 0 && (
@@ -195,7 +206,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
             {[
               { key: '↑↓', label: t('@jhb.software/payload-admin-search:toNavigate') },
               { key: '↵', label: t('@jhb.software/payload-admin-search:toOpen') },
-              { key: t('@jhb.software/payload-admin-search:escapeHint'), label: t('@jhb.software/payload-admin-search:toClose') },
+              {
+                key: t('@jhb.software/payload-admin-search:escapeHint'),
+                label: t('@jhb.software/payload-admin-search:toClose'),
+              },
             ].map(({ key, label }) => (
               <div className="admin-search-plugin-modal__shortcut-item" key={key}>
                 <span className="admin-search-plugin-modal__shortcut-key">{key}</span>

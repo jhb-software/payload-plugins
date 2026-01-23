@@ -50,7 +50,10 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
 
         if (data.erroredDocs.length > 0) {
           toast.error(
-            t('@jhb.software/payload-alt-text-plugin:failedToGenerateForXImages').replace('{X}', data.erroredDocs.length.toString()),
+            t('@jhb.software/payload-alt-text-plugin:failedToGenerateForXImages').replace(
+              '{X}',
+              data.erroredDocs.length.toString(),
+            ),
           )
         }
 
@@ -92,7 +95,9 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
           onClick={handleGenerateAltTexts}
         >
           {t('@jhb.software/payload-alt-text-plugin:generateAltTextFor')} {selectedIds.length}{' '}
-          {selectedIds.length === 1 ? t('@jhb.software/payload-alt-text-plugin:image') : t('@jhb.software/payload-alt-text-plugin:images')}
+          {selectedIds.length === 1
+            ? t('@jhb.software/payload-alt-text-plugin:image')
+            : t('@jhb.software/payload-alt-text-plugin:images')}
         </Button>
       </div>
     )

@@ -46,7 +46,9 @@ export function SearchBar(): React.ReactElement {
       >
         <div className="admin-search-plugin-bar__wrap">
           <SearchIcon />
-          <span className="admin-search-plugin-bar__placeholder">{t('@jhb.software/payload-admin-search:searchPlaceholder')}</span>
+          <span className="admin-search-plugin-bar__placeholder">
+            {t('@jhb.software/payload-admin-search:searchPlaceholder')}
+          </span>
           <Pill className="admin-search-plugin-bar__shortcut">{shortcut || '⌘K'}</Pill>
         </div>
       </Button>

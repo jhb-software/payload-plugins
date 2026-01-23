@@ -33,7 +33,10 @@ export function SearchButton(): React.ReactElement {
         buttonStyle="icon-label"
         onClick={() => setIsModalOpen(true)}
         size="small"
-        tooltip={t('@jhb.software/payload-admin-search:searchTooltip').replace('{shortcut}', getSearchShortcut())}
+        tooltip={t('@jhb.software/payload-admin-search:searchTooltip').replace(
+          '{shortcut}',
+          getSearchShortcut(),
+        )}
       >
         <SearchIcon />
       </Button>

@@ -3,10 +3,7 @@
 import { toast, useConfig, useTranslation } from '@payloadcms/ui'
 import { useState } from 'react'
 
-import type {
-  PluginPagesTranslationKeys,
-  PluginPagesTranslations,
-} from '../translations/index.js'
+import type { PluginPagesTranslationKeys, PluginPagesTranslations } from '../translations/index.js'
 
 export const useCreateRedirect = (redirectsCollectionSlug: string) => {
   const [isCreating, setIsCreating] = useState(false)

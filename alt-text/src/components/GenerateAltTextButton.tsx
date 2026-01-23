@@ -83,7 +83,9 @@ export function GenerateAltTextButton() {
           disabled={isPending || !id}
           icon={isPending ? <Spinner /> : <Lightning />}
           onClick={handleGenerateAltText}
-          tooltip={!id ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst') : undefined}
+          tooltip={
+            !id ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst') : undefined
+          }
         >
           {t('@jhb.software/payload-alt-text-plugin:generateAltText')}
         </Button>

@@ -57,7 +57,10 @@ const getAriaLabel = (
       .replace('{title}', displayTitle)
       .replace('{collection}', collectionLabel)
   } else if (result.type === 'collection') {
-    return t('@jhb.software/payload-admin-search:openCollectionLabel').replace('{label}', result.label)
+    return t('@jhb.software/payload-admin-search:openCollectionLabel').replace(
+      '{label}',
+      result.label,
+    )
   } else {
     return t('@jhb.software/payload-admin-search:openGlobalLabel').replace('{label}', result.label)
   }

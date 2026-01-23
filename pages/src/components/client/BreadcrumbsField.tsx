@@ -32,7 +32,10 @@ export const BreadcrumbsField: ArrayFieldClientComponent = (props) => {
 
   return (
     <div className="field-type breadcrumbs-field-component">
-      <Drawer slug={breadcrumbsModalSlug} title={t('@jhb.software/payload-pages-plugin:breadcrumbs')}>
+      <Drawer
+        slug={breadcrumbsModalSlug}
+        title={t('@jhb.software/payload-pages-plugin:breadcrumbs')}
+      >
         <div style={{ padding: '20px' }}>
           <ArrayField {...props} field={field} path={path} readOnly={true} />
         </div>
