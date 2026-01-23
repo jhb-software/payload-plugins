@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation.js'
 import { formatAdminURL } from 'payload/shared'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { SearchResult } from '../../types/SearchResult.js'
-
 import type {
   PluginAdminSearchTranslationKeys,
   PluginAdminSearchTranslations,
 } from '../../translations/index.js'
+import type { SearchResult } from '../../types/SearchResult.js'
+
 import { SearchResultItem } from '../SearchResultItem/SearchResultItem.js'
 import { SearchResultItemSkeleton } from '../SearchResultItem/SearchResultItemSkeleton.js'
 import './SearchModal.css'

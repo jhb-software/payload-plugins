@@ -2,12 +2,12 @@ import { getTranslation } from '@payloadcms/translations'
 import { Pill, useConfig, useTranslation } from '@payloadcms/ui'
 import React from 'react'
 
-import type { SearchResult } from '../../types/SearchResult.js'
-
 import type {
   PluginAdminSearchTranslationKeys,
   PluginAdminSearchTranslations,
 } from '../../translations/index.js'
+import type { SearchResult } from '../../types/SearchResult.js'
+
 import './SearchResultItem.css'
 
 interface SearchResultItemProps {

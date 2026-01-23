@@ -8,6 +8,7 @@ import type {
   PluginAdminSearchTranslationKeys,
   PluginAdminSearchTranslations,
 } from '../../translations/index.js'
+
 import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 
