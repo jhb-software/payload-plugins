@@ -18,17 +18,26 @@ export function altTextField({
     label: translatedLabel('alternateText'),
     localized,
     required: true,
-    validate: (value, { id, req: { t } }) => {
-      // if the document has an id, which means a media file was uploaded, the alt text is required
-      if (id) {
-        if (!value || value.trim().length === 0) {
-          // @ts-expect-error - the translation key type does not include the custom key
-          return t('@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
-        }
+    validate: (value, { data, operation, req: { t } }) => {
+      // Since https://github.com/payloadcms/payload/pull/14988, when using external storage (e.g., S3),
+      // it is no longer possible to detect whether this validation runs during the initial upload
+      // or a regular update by checking the existence of the ID.
+      // Instead, compare the timestamps of the createdAt and updatedAt fields.
+      const isInitialUpload =
+        operation === 'create' ||
+        ('createdAt' in data && 'updatedAt' in data && data.createdAt === data.updatedAt)
+
+      // initial upload: allow without alt text
+      if (isInitialUpload) {
+        return true
       }
 
-      // The alt text is not required when the media file was not uploaded yet
-      // (since the alt text generation needs an URL to fetch the file)
+      // regular update: require alt text
+      if (!value || value.trim().length === 0) {
+        // @ts-expect-error - the translation key type does not include the custom key
+        return t('@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
+      }
+
       return true
     },
   }
