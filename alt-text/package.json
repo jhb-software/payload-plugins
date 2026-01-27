@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-alt-text-plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A Payload CMS plugin that adds AI-powered alt text generation for images.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
