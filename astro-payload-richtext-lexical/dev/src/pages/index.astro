@@ -131,6 +131,419 @@ const sampleLexicalContent = {
           },
         ],
       },
+      // List Examples Section
+      {
+        type: 'heading',
+        tag: 'h2',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'List Examples',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h3',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Unordered List with Nested Sublists',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'list',
+        tag: 'ul',
+        listType: 'bullet',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'First level item',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Another first level item with subitems',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+              {
+                type: 'list',
+                tag: 'ul',
+                listType: 'bullet',
+                version: 1,
+                indent: 0,
+                children: [
+                  {
+                    type: 'listitem',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Second level item A',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
+                    ],
+                  },
+                  {
+                    type: 'listitem',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Second level item B',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
+                      {
+                        type: 'list',
+                        tag: 'ul',
+                        listType: 'bullet',
+                        version: 1,
+                        indent: 0,
+                        children: [
+                          {
+                            type: 'listitem',
+                            version: 1,
+                            indent: 0,
+                            children: [
+                              {
+                                type: 'text',
+                                text: 'Third level item',
+                                format: 0,
+                                version: 1,
+                                indent: 0,
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Back to first level',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h3',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Ordered List with Nested Sublists',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'list',
+        tag: 'ol',
+        listType: 'number',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'First step',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Second step with substeps',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+              {
+                type: 'list',
+                tag: 'ol',
+                listType: 'number',
+                version: 1,
+                indent: 0,
+                children: [
+                  {
+                    type: 'listitem',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Substep 2.1',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
+                    ],
+                  },
+                  {
+                    type: 'listitem',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Substep 2.2',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
+                    ],
+                  },
+                  {
+                    type: 'listitem',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Substep 2.3 with deeper nesting',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
+                      {
+                        type: 'list',
+                        tag: 'ol',
+                        listType: 'number',
+                        version: 1,
+                        indent: 0,
+                        children: [
+                          {
+                            type: 'listitem',
+                            version: 1,
+                            indent: 0,
+                            children: [
+                              {
+                                type: 'text',
+                                text: 'Substep 2.3.1',
+                                format: 0,
+                                version: 1,
+                                indent: 0,
+                              },
+                            ],
+                          },
+                          {
+                            type: 'listitem',
+                            version: 1,
+                            indent: 0,
+                            children: [
+                              {
+                                type: 'text',
+                                text: 'Substep 2.3.2',
+                                format: 0,
+                                version: 1,
+                                indent: 0,
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Third step',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h3',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Mixed List (Ordered with Unordered Sublists)',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'list',
+        tag: 'ol',
+        listType: 'number',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Install the package',
+                format: 1,
+                version: 1,
+                indent: 0,
+              },
+              {
+                type: 'list',
+                tag: 'ul',
+                listType: 'bullet',
+                version: 1,
+                indent: 0,
+                children: [
+                  {
+                    type: 'listitem',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Using npm: ',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
+                      {
+                        type: 'text',
+                        text: 'npm install',
+                        format: 16,
+                        version: 1,
+                        indent: 0,
+                      },
+                    ],
+                  },
+                  {
+                    type: 'listitem',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Using pnpm: ',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
+                      {
+                        type: 'text',
+                        text: 'pnpm add',
+                        format: 16,
+                        version: 1,
+                        indent: 0,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Import the component',
+                format: 1,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+          {
+            type: 'listitem',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'text',
+                text: 'Use it in your Astro page',
+                format: 1,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+        ],
+      },
       {
         type: 'paragraph',
         version: 1,
