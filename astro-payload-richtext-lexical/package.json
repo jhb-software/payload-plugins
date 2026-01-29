@@ -1,7 +1,6 @@
 {
-  "name": "astro-payload-richtext-lexical-workspace",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@jhb.software/astro-payload-richtext-lexical",
+  "version": "0.1.0",
   "scripts": {
     "build": "pnpm --filter @jhb.software/astro-payload-richtext-lexical build",
     "dev": "pnpm --filter dev dev",
