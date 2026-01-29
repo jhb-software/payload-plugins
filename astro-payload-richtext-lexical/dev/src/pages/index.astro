@@ -248,6 +248,499 @@ const sampleLexicalContent = {
         indent: 0,
       },
       {
+        type: 'heading',
+        tag: 'h2',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Indented Text Example',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        version: 1,
+        indent: 1,
+        format: '',
+        children: [
+          {
+            type: 'text',
+            text: 'This paragraph has indent level 1.',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        version: 1,
+        indent: 2,
+        format: '',
+        children: [
+          {
+            type: 'text',
+            text: 'This paragraph has indent level 2.',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        version: 1,
+        indent: 3,
+        format: '',
+        children: [
+          {
+            type: 'text',
+            text: 'This paragraph has indent level 3.',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h2',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Table Example',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'table',
+        version: 1,
+        indent: 0,
+        children: [
+          // Header row
+          {
+            type: 'tablerow',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 1,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Feature', format: 1, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 1,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Description', format: 1, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 1,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Status', format: 1, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          // Row 1: Text Formatting
+          {
+            type: 'tablerow',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Text Formatting', format: 1, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Supports ', format: 0, version: 1, indent: 0 },
+                      { type: 'text', text: 'bold', format: 1, version: 1, indent: 0 },
+                      { type: 'text', text: ', ', format: 0, version: 1, indent: 0 },
+                      { type: 'text', text: 'italic', format: 2, version: 1, indent: 0 },
+                      { type: 'text', text: ', ', format: 0, version: 1, indent: 0 },
+                      { type: 'text', text: 'underline', format: 8, version: 1, indent: 0 },
+                      { type: 'text', text: ', and ', format: 0, version: 1, indent: 0 },
+                      { type: 'text', text: 'code', format: 16, version: 1, indent: 0 },
+                      { type: 'text', text: '.', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: '✓ Complete', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          // Row 2: Links
+          {
+            type: 'tablerow',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Links', format: 1, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'External links like ', format: 0, version: 1, indent: 0 },
+                      {
+                        type: 'link',
+                        version: 1,
+                        indent: 0,
+                        fields: {
+                          linkType: 'custom',
+                          url: 'https://payloadcms.com',
+                          newTab: true,
+                        },
+                        children: [
+                          { type: 'text', text: 'Payload CMS', format: 0, version: 1, indent: 0 },
+                        ],
+                      },
+                      { type: 'text', text: ' and internal document links.', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: '✓ Complete', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          // Row 3: Lists
+          {
+            type: 'tablerow',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Lists', format: 1, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'list',
+                    tag: 'ul',
+                    listType: 'bullet',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      {
+                        type: 'listitem',
+                        version: 1,
+                        indent: 0,
+                        children: [
+                          { type: 'text', text: 'Bullet lists', format: 0, version: 1, indent: 0 },
+                        ],
+                      },
+                      {
+                        type: 'listitem',
+                        version: 1,
+                        indent: 0,
+                        children: [
+                          { type: 'text', text: 'Numbered lists', format: 0, version: 1, indent: 0 },
+                        ],
+                      },
+                      {
+                        type: 'listitem',
+                        version: 1,
+                        indent: 0,
+                        children: [
+                          { type: 'text', text: 'Nested items', format: 0, version: 1, indent: 0 },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: '✓ Complete', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          // Row 4: Complex formatting
+          {
+            type: 'tablerow',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Mixed Content', format: 1, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'You can have ', format: 0, version: 1, indent: 0 },
+                      { type: 'text', text: 'bold italic', format: 3, version: 1, indent: 0 },
+                      { type: 'text', text: ' text with ', format: 0, version: 1, indent: 0 },
+                      {
+                        type: 'link',
+                        version: 1,
+                        indent: 0,
+                        fields: {
+                          linkType: 'custom',
+                          url: 'https://astro.build',
+                          newTab: true,
+                        },
+                        children: [
+                          { type: 'text', text: 'styled links', format: 1, version: 1, indent: 0 },
+                        ],
+                      },
+                      { type: 'text', text: '.', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Multiple paragraphs work too!', format: 2, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: '✓ Complete', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          // Row 5: Subscript/Superscript
+          {
+            type: 'tablerow',
+            version: 1,
+            indent: 0,
+            children: [
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'Scientific Text', format: 1, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: 'H', format: 0, version: 1, indent: 0 },
+                      { type: 'text', text: '2', format: 32, version: 1, indent: 0 },
+                      { type: 'text', text: 'O and E=mc', format: 0, version: 1, indent: 0 },
+                      { type: 'text', text: '2', format: 64, version: 1, indent: 0 },
+                      { type: 'text', text: ' with subscript and superscript.', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: 'tablecell',
+                version: 1,
+                indent: 0,
+                headerState: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    indent: 0,
+                    children: [
+                      { type: 'text', text: '✓ Complete', format: 0, version: 1, indent: 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
         type: 'paragraph',
         version: 1,
         indent: 0,
@@ -315,7 +808,7 @@ const sampleLexicalContent = {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RichTextLexical Demo</title>
-    <style>
+    <style is:global>
       body {
         font-family:
           system-ui,
@@ -354,6 +847,29 @@ const sampleLexicalContent = {
       ul,
       ol {
         padding-left: 2rem;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 0.75rem;
+        text-align: left;
+        min-width: 8rem;
+      }
+      th {
+        background: #f4f4f4;
+      }
+      tbody tr:nth-child(even) {
+        background: #f0f0f0;
+      }
+      @media (min-width: 640px) {
+        td {
+          min-width: 0;
+        }
       }
       .custom-upload {
         border: 2px dashed #ccc;

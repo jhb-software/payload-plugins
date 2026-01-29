@@ -29,10 +29,7 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
 
 {
   nodes?.map((node) => {
-    let textIndent = ''
-    if (node.indent) {
-      textIndent = `indent-${node.indent * 6}`
-    }
+    const indentStyle = node.indent ? `${node.indent * 1.5}rem` : undefined
 
     switch (node.type) {
       case 'link':
@@ -90,7 +87,7 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
         )
       case 'paragraph':
         return (
-          <p class:list={[textIndent]} style={{ 'text-align': (node as ParagraphNode).format }}>
+          <p style={{ 'text-indent': indentStyle, 'text-align': (node as ParagraphNode).format }}>
             <Astro.self
               nodes={node.children ?? []}
               BlockRenderer={BlockRenderer}

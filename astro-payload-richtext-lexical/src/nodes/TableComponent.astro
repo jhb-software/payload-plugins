@@ -20,44 +20,42 @@ type Props = {
 const { node, RichTextRenderer, BlockRenderer, UploadRenderer } = Astro.props
 ---
 
-<div class="overflow-x-auto">
-  <table>
+<table>
+  {
+    node.children?.at(0) && (
+      <thead>
+        <tr>
+          {node.children.at(0)?.children.map((cell) => (
+            <th>
+              <RichTextRenderer
+                nodes={cell.children}
+                BlockRenderer={BlockRenderer}
+                UploadRenderer={UploadRenderer}
+              />
+            </th>
+          ))}
+        </tr>
+      </thead>
+    )
+  }
+
+  <tbody>
     {
-      node.children?.at(0) && (
-        <thead>
+      node.children?.slice(1).map((row) => {
+        return (
           <tr>
-            {node.children.at(0)?.children.map((cell) => (
-              <th class="text-left">
+            {row.children.map((cell) => (
+              <td>
                 <RichTextRenderer
                   nodes={cell.children}
                   BlockRenderer={BlockRenderer}
                   UploadRenderer={UploadRenderer}
                 />
-              </th>
+              </td>
             ))}
           </tr>
-        </thead>
-      )
+        )
+      })
     }
-
-    <tbody>
-      {
-        node.children?.slice(1).map((row) => {
-          return (
-            <tr class="even:bg-gray-50">
-              {row.children.map((cell) => (
-                <td class="min-w-32 sm:min-w-0">
-                  <RichTextRenderer
-                    nodes={cell.children}
-                    BlockRenderer={BlockRenderer}
-                    UploadRenderer={UploadRenderer}
-                  />
-                </td>
-              ))}
-            </tr>
-          )
-        })
-      }
-    </tbody>
-  </table>
-</div>
+  </tbody>
+</table>
