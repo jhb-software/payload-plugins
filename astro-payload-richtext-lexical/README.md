@@ -31,11 +31,11 @@ const { content } = Astro.props
 
 ## Props
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `nodes` | `LexicalNode[]` | Yes | The array of Lexical nodes from `content.root.children` |
-| `UploadRenderer` | `AstroComponentFactory` | No | Custom component to render upload nodes |
-| `BlockRenderer` | `AstroComponentFactory` | No | Custom component to render block and inline block nodes |
+| Prop             | Type                    | Required | Description                                             |
+| ---------------- | ----------------------- | -------- | ------------------------------------------------------- |
+| `nodes`          | `LexicalNode[]`         | Yes      | The array of Lexical nodes from `content.root.children` |
+| `UploadRenderer` | `AstroComponentFactory` | No       | Custom component to render upload nodes                 |
+| `BlockRenderer`  | `AstroComponentFactory` | No       | Custom component to render block and inline block nodes |
 
 ## Custom Renderers
 
@@ -70,7 +70,7 @@ The `BlockRenderer` component receives:
 ```ts
 type Props = {
   node: BlockNode | InlineBlockNode
-  inline: boolean  // true for inline blocks, false for regular blocks
+  inline: boolean // true for inline blocks, false for regular blocks
 }
 
 interface BlockNode {
