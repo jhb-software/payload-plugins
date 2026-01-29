@@ -1,0 +1,29 @@
+---
+import type { HeadingNode, TextNode } from '../types.js'
+
+type Props = {
+  node: HeadingNode
+}
+
+const { node } = Astro.props
+
+const HeadingTag = node.tag ?? 'h1'
+
+function slugifyId(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+const headingId =
+  (node.children?.[0] as TextNode)?.text && ['h2', 'h3'].includes(node.tag)
+    ? slugifyId((node.children?.[0] as TextNode).text)
+    : undefined
+---
+
+<HeadingTag id={headingId}>
+  <slot />
+</HeadingTag>

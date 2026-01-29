@@ -1,0 +1,64 @@
+---
+import type { TextNode } from '../types.js'
+
+type Props = { node: TextNode }
+
+const { node } = Astro.props
+
+const BOLD_MASK = 1
+const ITALIC_MASK = 2
+const STRIKETHROUGH_MASK = 4
+const UNDERLINE_MASK = 8
+const CODE_MASK = 16
+const SUBSCRIPT_MASK = 32
+const SUPERSCRIPT_MASK = 64
+
+function getTextFormats(formatNumber: number) {
+  const bold = (formatNumber & BOLD_MASK) !== 0
+  const italic = (formatNumber & ITALIC_MASK) !== 0
+  const strikethrough = (formatNumber & STRIKETHROUGH_MASK) !== 0
+  const underline = (formatNumber & UNDERLINE_MASK) !== 0
+  const code = (formatNumber & CODE_MASK) !== 0
+  const subscript = (formatNumber & SUBSCRIPT_MASK) !== 0
+  const superscript = (formatNumber & SUPERSCRIPT_MASK) !== 0
+
+  return { bold, italic, strikethrough, underline, code, subscript, superscript }
+}
+---
+
+{
+  () => {
+    let domItem = node.style ? (
+      <span style={node.style} set:html={node.text ?? ''} />
+    ) : (
+      (node.text ?? '')
+    )
+
+    if (typeof node.format === 'number') {
+      const textFormat = getTextFormats(node.format)
+      if (textFormat.bold) {
+        domItem = <strong>{domItem}</strong>
+      }
+      if (textFormat.italic) {
+        domItem = <em>{domItem}</em>
+      }
+      if (textFormat.underline) {
+        domItem = <u>{domItem}</u>
+      }
+      if (textFormat.code) {
+        domItem = <code>{domItem}</code>
+      }
+      if (textFormat.strikethrough) {
+        domItem = <s>{domItem}</s>
+      }
+      if (textFormat.subscript) {
+        domItem = <sub>{domItem}</sub>
+      }
+      if (textFormat.superscript) {
+        domItem = <sup>{domItem}</sup>
+      }
+    }
+
+    return <>{domItem}</>
+  }
+}

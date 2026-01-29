@@ -1,0 +1,26 @@
+---
+import type { ListNode } from '../types.js'
+
+type Props = { node: ListNode }
+
+const { node } = Astro.props
+---
+
+{
+  () => {
+    switch (node.tag) {
+      case 'ol':
+        return (
+          <ol>
+            <slot />
+          </ol>
+        )
+      case 'ul':
+        return (
+          <ul>
+            <slot />
+          </ul>
+        )
+    }
+  }
+}

@@ -1,0 +1,43 @@
+---
+import type { UploadNode } from '@jhb.software/astro-payload-richtext-lexical'
+
+type Props = {
+  node: UploadNode
+}
+
+const { node } = Astro.props
+---
+
+<div class="custom-upload">
+  <p><strong>Upload Node</strong> (Custom Renderer)</p>
+  <img
+    src={node.value.url}
+    alt={node.value.alt}
+    width={node.value.width}
+    height={node.value.height}
+    loading="lazy"
+  />
+  <p class="caption">
+    {node.value.alt || node.value.filename}
+  </p>
+</div>
+
+<style>
+  .custom-upload {
+    border: 2px dashed #ccc;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .custom-upload img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  .caption {
+    margin-top: 0.5rem;
+    color: #666;
+    font-size: 0.9rem;
+  }
+</style>

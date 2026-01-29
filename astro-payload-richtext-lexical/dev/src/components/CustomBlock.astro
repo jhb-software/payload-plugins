@@ -1,0 +1,54 @@
+---
+import type { BlockNode, InlineBlockNode } from '@jhb.software/astro-payload-richtext-lexical'
+
+type Props = {
+  node: BlockNode | InlineBlockNode
+  inline?: boolean
+}
+
+const { node, inline } = Astro.props
+const fields = node.fields
+---
+
+{
+  inline ? (
+    <span class="custom-inline-block">
+      <strong>[{fields.blockType}]</strong> {fields.blockName || 'Inline Block'}
+    </span>
+  ) : (
+    <div class="custom-block">
+      <p>
+        <strong>Block: {fields.blockType}</strong>
+      </p>
+      {fields.title && <h3>{fields.title}</h3>}
+      {fields.description && <p>{fields.description}</p>}
+      <pre>{JSON.stringify(fields, null, 2)}</pre>
+    </div>
+  )
+}
+
+<style>
+  .custom-block {
+    background: #f0f7ff;
+    border: 1px solid #0066cc;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+  }
+  .custom-block h3 {
+    margin: 0.5rem 0;
+  }
+  .custom-block pre {
+    background: #fff;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    overflow-x: auto;
+  }
+  .custom-inline-block {
+    background: #e8f4ff;
+    padding: 0.2em 0.5em;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+</style>

@@ -1,0 +1,16 @@
+{
+  "name": "dev",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@jhb.software/astro-payload-richtext-lexical": "workspace:*",
+    "astro": "^5.15.9"
+  }
+}

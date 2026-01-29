@@ -1,0 +1,24 @@
+---
+import type { AstroComponentFactory } from 'astro/runtime/server'
+import type { LexicalNode } from './types.js'
+import RichTextNodes from './nodes/RichTextNodes.astro'
+
+type Props = {
+  nodes: LexicalNode[]
+  class?: string
+  BlockRenderer?: AstroComponentFactory
+  UploadRenderer?: AstroComponentFactory
+}
+
+const { nodes, class: className, BlockRenderer, UploadRenderer } = Astro.props
+---
+
+{
+  className ? (
+    <div class={className}>
+      <RichTextNodes nodes={nodes} BlockRenderer={BlockRenderer} UploadRenderer={UploadRenderer} />
+    </div>
+  ) : (
+    <RichTextNodes nodes={nodes} BlockRenderer={BlockRenderer} UploadRenderer={UploadRenderer} />
+  )
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "astro/tsconfigs/base",
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ESNext",
+    "strict": false,
+    "jsx": "preserve"
+  },
+  "include": ["./**/*.astro", "./**/*.ts"],
+  "exclude": ["node_modules", "dist", "vite.config.ts"]
+}
