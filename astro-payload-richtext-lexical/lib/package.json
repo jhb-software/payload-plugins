@@ -21,8 +21,8 @@
       "import": "./dist/index.mjs"
     },
     "./RichTextLexical.astro": {
-      "import": "./RichTextLexical.astro",
-      "types": "./RichTextLexical.ts"
+      "import": "./src/RichTextLexical.astro",
+      "types": "./src/RichTextLexical.ts"
     }
   },
   "main": "./dist/index.mjs",
@@ -30,9 +30,7 @@
   "types": "./dist/types/index.d.ts",
   "files": [
     "dist",
-    "src",
-    "RichTextLexical.astro",
-    "RichTextLexical.ts"
+    "src"
   ],
   "scripts": {
     "build": "vite build",
