@@ -1,15 +1,23 @@
 ---
-import type { HeadingNode, TextNode } from '../types.js'
+import type { HeadingNode, SlugifyHeadingId, TextNode } from '../types.js'
 
 type Props = {
   node: HeadingNode
+  slugifyHeadingId?: SlugifyHeadingId | false
 }
 
-const { node } = Astro.props
+const { node, slugifyHeadingId } = Astro.props
 
-const HeadingTag = node.tag ?? 'h1'
+const HeadingTag = node.tag
 
-function slugifyId(text: string): string {
+/**
+ * Default slugify function for heading IDs.
+ * Only generates IDs for h2 and h3 headings.
+ */
+function defaultSlugifyHeadingId(text: string, tag: string): string | undefined {
+  if (!['h2', 'h3'].includes(tag)) {
+    return undefined
+  }
   return text
     .toLowerCase()
     .trim()
@@ -18,9 +26,10 @@ function slugifyId(text: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+const text = (node.children?.[0] as TextNode)?.text
 const headingId =
-  (node.children?.[0] as TextNode)?.text && ['h2', 'h3'].includes(node.tag)
-    ? slugifyId((node.children?.[0] as TextNode).text)
+  text && slugifyHeadingId !== false
+    ? (slugifyHeadingId ?? defaultSlugifyHeadingId)(text, node.tag)
     : undefined
 ---
 

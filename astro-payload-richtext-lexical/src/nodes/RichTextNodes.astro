@@ -8,6 +8,7 @@ import type {
   LinkNode,
   ListNode,
   ParagraphNode,
+  SlugifyHeadingId,
   TextNode,
   UploadNode,
 } from '../types.js'
@@ -22,9 +23,10 @@ type Props = {
   nodes: LexicalNode[]
   BlockRenderer?: AstroComponentFactory
   UploadRenderer?: AstroComponentFactory
+  slugifyHeadingId?: SlugifyHeadingId | false
 }
 
-const { nodes, BlockRenderer, UploadRenderer } = Astro.props
+const { nodes, BlockRenderer, UploadRenderer, slugifyHeadingId } = Astro.props
 ---
 
 {
@@ -40,6 +42,7 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
               nodes={(node as LinkNode).children ?? []}
               BlockRenderer={BlockRenderer}
               UploadRenderer={UploadRenderer}
+              slugifyHeadingId={slugifyHeadingId}
             />
           </LinkComponent>
         )
@@ -47,11 +50,12 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
         return <TextComponent node={node as TextNode} />
       case 'heading':
         return (
-          <HeadingComponent node={node as HeadingNode}>
+          <HeadingComponent node={node as HeadingNode} slugifyHeadingId={slugifyHeadingId}>
             <Astro.self
               nodes={(node as HeadingNode).children ?? []}
               BlockRenderer={BlockRenderer}
               UploadRenderer={UploadRenderer}
+              slugifyHeadingId={slugifyHeadingId}
             />
           </HeadingComponent>
         )
@@ -62,6 +66,7 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
               nodes={(node as ListNode).children ?? []}
               BlockRenderer={BlockRenderer}
               UploadRenderer={UploadRenderer}
+              slugifyHeadingId={slugifyHeadingId}
             />
           </ListComponent>
         )
@@ -72,6 +77,7 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
               nodes={node.children ?? []}
               BlockRenderer={BlockRenderer}
               UploadRenderer={UploadRenderer}
+              slugifyHeadingId={slugifyHeadingId}
             />
           </li>
         )
@@ -82,6 +88,7 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
               nodes={node.children ?? []}
               BlockRenderer={BlockRenderer}
               UploadRenderer={UploadRenderer}
+              slugifyHeadingId={slugifyHeadingId}
             />
           </blockquote>
         )
@@ -92,6 +99,7 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
               nodes={node.children ?? []}
               BlockRenderer={BlockRenderer}
               UploadRenderer={UploadRenderer}
+              slugifyHeadingId={slugifyHeadingId}
             />
           </p>
         )

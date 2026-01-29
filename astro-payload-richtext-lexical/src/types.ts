@@ -4,6 +4,12 @@
 type IdType = string | number
 
 /**
+ * Function type for generating heading IDs.
+ * Return undefined to skip ID generation for a heading.
+ */
+export type SlugifyHeadingId = (text: string, tag: string) => string | undefined
+
+/**
  * Payload CMS Lexical Rich Text Node Types
  * Data format: { root: { children: LexicalNode[] } }
  * @see https://github.com/payloadcms/payload/tree/main/packages/richtext-lexical
