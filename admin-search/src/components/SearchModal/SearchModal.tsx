@@ -1,13 +1,16 @@
 'use client'
 
-import { Banner, SearchIcon, useConfig } from '@payloadcms/ui'
+import { Banner, SearchIcon, useConfig, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { formatAdminURL } from 'payload/shared'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import type {
+  PluginAdminSearchTranslationKeys,
+  PluginAdminSearchTranslations,
+} from '../../translations/index.js'
 import type { SearchResult } from '../../types/SearchResult.js'
 
-import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchResultItem } from '../SearchResultItem/SearchResultItem.js'
 import { SearchResultItemSkeleton } from '../SearchResultItem/SearchResultItemSkeleton.js'
 import './SearchModal.css'
@@ -22,7 +25,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [isKeyboardNav, setIsKeyboardNav] = useState(false)
 
-  const { t } = usePluginTranslation()
+  const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()
   const { config } = useConfig()
   const router = useRouter()
 
@@ -118,7 +121,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
 
   return (
     <div
-      aria-label={t('closeSearchModal')}
+      aria-label={t('@jhb.software/payload-admin-search:closeSearchModal')}
       className="admin-search-plugin-modal__overlay"
       onClick={handleClose}
       onKeyDown={(e) => e.key === 'Enter' && handleClose()}
@@ -126,7 +129,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
       tabIndex={0}
     >
       <div
-        aria-label={t('searchModalContent')}
+        aria-label={t('@jhb.software/payload-admin-search:searchModalContent')}
         className="admin-search-plugin-modal__content"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
@@ -139,16 +142,18 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
               <SearchIcon />
             </span>
             <input
-              aria-label={t('searchForDocuments')}
+              aria-label={t('@jhb.software/payload-admin-search:searchForDocuments')}
               className="admin-search-plugin-modal__input-field"
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyboardNavigation}
-              placeholder={t('searchPlaceholder')}
+              placeholder={t('@jhb.software/payload-admin-search:searchPlaceholder')}
               ref={inputRef}
               type="text"
               value={query}
             />
-            <span className="admin-search-plugin-modal__escape-hint">{t('escapeHint')}</span>
+            <span className="admin-search-plugin-modal__escape-hint">
+              {t('@jhb.software/payload-admin-search:escapeHint')}
+            </span>
           </div>
         </div>
 
@@ -160,11 +165,20 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
               ))}
             </ul>
           )}
-          {isError && <Banner type="error">{t('errorSearching')}</Banner>}
+          {isError && (
+            <Banner type="error">{t('@jhb.software/payload-admin-search:errorSearching')}</Banner>
+          )}
           {!isError && results.length === 0 && displayedQuery && (
             <div className="admin-search-plugin-modal__no-results-message">
-              <p>{t('noResultsFound').replace('{query}', displayedQuery)}</p>
-              <p className="admin-search-plugin-modal__no-results-hint">{t('noResultsHint')}</p>
+              <p>
+                {t('@jhb.software/payload-admin-search:noResultsFound').replace(
+                  '{query}',
+                  displayedQuery,
+                )}
+              </p>
+              <p className="admin-search-plugin-modal__no-results-hint">
+                {t('@jhb.software/payload-admin-search:noResultsHint')}
+              </p>
             </div>
           )}
           {!isError && results.length > 0 && (
@@ -190,9 +204,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
         <div className="admin-search-plugin-modal__footer">
           <div className="admin-search-plugin-modal__keyboard-shortcuts">
             {[
-              { key: '↑↓', label: t('toNavigate') },
-              { key: '↵', label: t('toOpen') },
-              { key: t('escapeHint'), label: t('toClose') },
+              { key: '↑↓', label: t('@jhb.software/payload-admin-search:toNavigate') },
+              { key: '↵', label: t('@jhb.software/payload-admin-search:toOpen') },
+              {
+                key: t('@jhb.software/payload-admin-search:escapeHint'),
+                label: t('@jhb.software/payload-admin-search:toClose'),
+              },
             ].map(({ key, label }) => (
               <div className="admin-search-plugin-modal__shortcut-item" key={key}>
                 <span className="admin-search-plugin-modal__shortcut-key">{key}</span>

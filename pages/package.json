@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-pages-plugin",
-  "version": "0.6.0-beta.6",
+  "version": "0.6.0",
   "description": "Payload CMS plugin that adds essential fields for hierarchical page structure to collections.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
@@ -38,24 +38,24 @@
     "prepublishOnly": "pnpm clean && pnpm build && pnpm test"
   },
   "dependencies": {
-    "qs-esm": "^7.0.2"
+    "qs-esm": "^7.0.3"
   },
   "peerDependencies": {
-    "@payloadcms/ui": "^3.68.5",
+    "@payloadcms/ui": "^3.72.0",
     "next": "15.5.9",
-    "payload": "^3.68.5",
+    "payload": "^3.72.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "3.28.0",
-    "@swc/cli": "^0.7.9",
-    "@swc/core": "^1.15.7",
-    "@types/react": "19.2.7",
+    "@swc/cli": "^0.7.10",
+    "@swc/core": "^1.15.10",
+    "@types/react": "19.2.8",
     "@types/react-dom": "19.2.3",
     "copyfiles": "2.4.1",
     "eslint": "^9.39.2",
-    "prettier": "^3.7.4",
+    "prettier": "^3.8.0",
     "rimraf": "6.1.2",
     "typescript": "5.9.3"
   },

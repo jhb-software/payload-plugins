@@ -14,7 +14,7 @@ A plugin that adds a global search modal to the Payload CMS admin panel, enablin
 
 <img width="659" height="489" alt="image" src="https://github.com/user-attachments/assets/ba52d56e-7365-46ee-80e3-416d07946727" />
 
-[Learn more about the Admin Search plugin →](./admin-search)
+[→ Admin Search plugin ](./admin-search)
 
 ### Alt Text Plugin
 
@@ -22,7 +22,9 @@ A plugin that adds a global search modal to the Payload CMS admin panel, enablin
 
 A Payload CMS plugin that adds AI-powered alt text generation for images. It automatically adds an alt text field with a button to generate the alt text to specified upload collections, and includes a bulk generation feature in the list view for processing multiple images at once.
 
-[Learn more about the Alt Text plugin →](./alt-text)
+<img width="956" height="425" alt="image" src="https://github.com/user-attachments/assets/075d9d12-9949-425d-bd7f-15fb5b2507bd" />
+
+[→ Alt Text plugin ](./alt-text)
 
 ### Geocoding Plugin
 
@@ -32,7 +34,7 @@ A geocoding plugin for Payload CMS that simplifies location management in your c
 
 ![Screenshot showing the added autocomplete select field](https://github.com/user-attachments/assets/13e0b9f8-dc69-47de-9691-384ebf1d0868)
 
-[Learn more about the Geocoding plugin →](./geocoding)
+[→ Geocoding plugin ](./geocoding)
 
 ### Pages Plugin
 
@@ -40,7 +42,9 @@ A geocoding plugin for Payload CMS that simplifies location management in your c
 
 The Pages plugin simplifies website building by adding essential fields like `slug`, `parent`, `path`, `breadcrumbs`, and `alternatePaths` to your collections. These fields enable hierarchical page structures and dynamic URL management.
 
-[Learn more about the Pages plugin →](./pages)
+<img width="1442" height="795" alt="Frame 1 (1)" src="https://github.com/user-attachments/assets/a066cb2f-b243-452c-8277-7a208d3494ee" />
+
+[→ Pages plugin ](./pages)
 
 ### Cloudinary Plugin
 
@@ -48,7 +52,7 @@ The Pages plugin simplifies website building by adding essential fields like `sl
 
 This package provides a Payload CMS Storage Adapter for [Cloudinary](https://cloudinary.com/) to seamlessly integrate Cloudinary with Payload CMS for media asset management.
 
-[Learn more about the Cloudinary plugin →](./cloudinary)
+[→ Cloudinary plugin ](./cloudinary)
 
 ### SEO Plugin
 
@@ -60,7 +64,7 @@ Extends the official [SEO plugin](https://payloadcms.com/docs/plugins/seo) with 
 - Focus keyword tracking with intelligent warnings when keywords are missing from crucial elements (title, description, content)
 - Multi-keyword support with content usage analytics
 
-[Learn more about the SEO plugin →](./seo)
+[→ SEO plugin ](./seo)
 
 ### Content Translator Plugin
 
@@ -68,9 +72,9 @@ Extends the official [SEO plugin](https://payloadcms.com/docs/plugins/seo) with 
 
 A plugin that enables content translation directly within the Payload CMS admin panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
 
-[Learn more about the Content Translator plugin →](./content-translator)
+<img width="1320" height="678" alt="image" src="https://github.com/user-attachments/assets/5fc80378-7b45-42e5-808c-8cd042e2ad14" />
 
-## Astro Components
+[→ Content Translator plugin ](./content-translator)
 
 ### Astro Payload RichText Lexical
 

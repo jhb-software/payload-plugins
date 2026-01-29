@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 (Beta)
+## 0.6.0
 
 > ⚠️ **Warning**: This release includes breaking changes.
 
@@ -9,6 +9,8 @@
 - feat!: the plugin now uses Payload's build-in preview button instead of a custom one. Preview and live preview are automatically enabled. To opt out, set the `preview` and `livePreview` options to `false` in the page collection config.
 - feat: add support for multi-tenant setups via the official [Multi-tenant plugin](https://payloadcms.com/docs/plugins/multi-tenant). See the [README](./README.md#multi-tenant-support) for more information.
 - feat: add a redirect creation and discard button to the 'changed slug' warning banner below the slug field.
+- feat: add discard and redirect creation button to slug change banner
+- fix: pass transasction id to find operations in generate virtual fields hook
 
 ### Migration Guide
 

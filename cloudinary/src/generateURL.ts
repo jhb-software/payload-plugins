@@ -2,6 +2,8 @@ import type { GenerateURL } from '@payloadcms/plugin-cloud-storage/types'
 
 import type { CloudinaryStorageOptions } from './types.js'
 
+import { generateCloudinaryUrl } from './utilities/generateCloudinaryUrl.js'
+
 export const getGenerateUrl = ({ options }: { options: CloudinaryStorageOptions }): GenerateURL => {
   return ({ data }) => {
     const mimeType = (
@@ -20,29 +22,18 @@ export const getGenerateUrl = ({ options }: { options: CloudinaryStorageOptions 
         ? data.cloudinaryPublicId
         : undefined
     if (!cloudinaryPublicId) {
-      throw new Error(
-        'CloudinaryPublicId field is missing in data passed to the generateURL function. This can happen if a find query contains select without cloudinaryPublicId.',
+      console.warn(
+        'CloudinaryPublicId field is missing in data passed to the generateURL function. This can happen if a find query contains select without cloudinaryPublicId. Falling back to undefined.',
         data,
       )
+      // since Payload 3.7X this is called during upload, therefore its not possible to throw an error here, otherwise the upload fails
+      return undefined as unknown as string
     }
 
-    const baseUrl = 'https://res.cloudinary.com/' + options.cloudName
-
-    let resourceType: string
-    switch (true) {
-      case mimeType?.startsWith('image/'):
-      case mimeType === 'application/pdf': // Cloudinary treats PDFs as images
-        resourceType = 'image'
-        break
-      case mimeType?.startsWith('video/'): // Cloudinary treats audio as a subset of video
-      case mimeType?.startsWith('audio/'):
-        resourceType = 'video'
-        break
-      default:
-        resourceType = 'raw'
-        break
-    }
-
-    return `${baseUrl}/${resourceType}/upload/${cloudinaryPublicId}`
+    return generateCloudinaryUrl({
+      cloudinaryPublicId,
+      cloudName: options.cloudName,
+      mimeType,
+    })
   }
 }

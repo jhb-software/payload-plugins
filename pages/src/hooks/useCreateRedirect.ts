@@ -1,14 +1,14 @@
 'use client'
 
-import { toast, useConfig } from '@payloadcms/ui'
+import { toast, useConfig, useTranslation } from '@payloadcms/ui'
 import { useState } from 'react'
 
-import { usePluginTranslation } from '../utils/usePluginTranslations.js'
+import type { PluginPagesTranslationKeys, PluginPagesTranslations } from '../translations/index.js'
 
 export const useCreateRedirect = (redirectsCollectionSlug: string) => {
   const [isCreating, setIsCreating] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const { t } = usePluginTranslation()
+  const { t } = useTranslation<PluginPagesTranslations, PluginPagesTranslationKeys>()
   const {
     config: {
       routes: { api },
@@ -20,15 +20,15 @@ export const useCreateRedirect = (redirectsCollectionSlug: string) => {
     setIsCreating(true)
     setIsSuccess(false)
 
-    const loadingToast = toast.loading(t('creatingRedirect'))
+    const loadingToast = toast.loading(t('@jhb.software/payload-pages-plugin:creatingRedirect'))
 
     try {
       const response = await fetch(`${serverURL}${api}/${redirectsCollectionSlug}`, {
         body: JSON.stringify({
-          type: 'permanent',
           destinationPath,
-          reason: t('redirectReasonSlugChange'),
+          reason: t('@jhb.software/payload-pages-plugin:redirectReasonSlugChange'),
           sourcePath,
+          type: 'permanent',
         }),
         credentials: 'include',
         headers: {
@@ -41,15 +41,18 @@ export const useCreateRedirect = (redirectsCollectionSlug: string) => {
 
       if (response.ok) {
         toast.dismiss(loadingToast)
-        toast.success(t('redirectCreatedSuccessfully'))
+        toast.success(t('@jhb.software/payload-pages-plugin:redirectCreatedSuccessfully'))
         setIsSuccess(true)
         return result.doc
       } else {
-        throw new Error(result.errors?.[0]?.message || t('redirectCreationFailed'))
+        throw new Error(
+          result.errors?.[0]?.message ||
+            t('@jhb.software/payload-pages-plugin:redirectCreationFailed'),
+        )
       }
     } catch (error) {
       toast.dismiss(loadingToast)
-      toast.error(t('redirectCreationFailed'), {
+      toast.error(t('@jhb.software/payload-pages-plugin:redirectCreationFailed'), {
         description: error instanceof Error ? error.message : undefined,
       })
       throw error

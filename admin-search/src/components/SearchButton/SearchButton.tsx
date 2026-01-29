@@ -1,16 +1,20 @@
 'use client'
 import type React from 'react'
 
-import { Button, SearchIcon, useHotkey } from '@payloadcms/ui'
+import { Button, SearchIcon, useHotkey, useTranslation } from '@payloadcms/ui'
 import { useState } from 'react'
 
+import type {
+  PluginAdminSearchTranslationKeys,
+  PluginAdminSearchTranslations,
+} from '../../translations/index.js'
+
 import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
-import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 
 export function SearchButton(): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const { t } = usePluginTranslation()
+  const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()
 
   useHotkey(
     {
@@ -30,7 +34,10 @@ export function SearchButton(): React.ReactElement {
         buttonStyle="icon-label"
         onClick={() => setIsModalOpen(true)}
         size="small"
-        tooltip={t('searchTooltip').replace('{shortcut}', getSearchShortcut())}
+        tooltip={t('@jhb.software/payload-admin-search:searchTooltip').replace(
+          '{shortcut}',
+          getSearchShortcut(),
+        )}
       >
         <SearchIcon />
       </Button>

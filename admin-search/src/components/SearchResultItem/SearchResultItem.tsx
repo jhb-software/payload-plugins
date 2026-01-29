@@ -2,9 +2,12 @@ import { getTranslation } from '@payloadcms/translations'
 import { Pill, useConfig, useTranslation } from '@payloadcms/ui'
 import React from 'react'
 
+import type {
+  PluginAdminSearchTranslationKeys,
+  PluginAdminSearchTranslations,
+} from '../../translations/index.js'
 import type { SearchResult } from '../../types/SearchResult.js'
 
-import { usePluginTranslation } from '../../utils/usePluginTranslations.js'
 import './SearchResultItem.css'
 
 interface SearchResultItemProps {
@@ -47,16 +50,19 @@ const getAriaLabel = (
   result: SearchResult,
   displayTitle: string,
   collectionLabel: string,
-  t: (key: string) => string,
+  t: (key: PluginAdminSearchTranslationKeys) => string,
 ): string => {
   if (result.type === 'document') {
-    return t('openDocumentIn')
+    return t('@jhb.software/payload-admin-search:openDocumentIn')
       .replace('{title}', displayTitle)
       .replace('{collection}', collectionLabel)
   } else if (result.type === 'collection') {
-    return t('openCollectionLabel').replace('{label}', result.label)
+    return t('@jhb.software/payload-admin-search:openCollectionLabel').replace(
+      '{label}',
+      result.label,
+    )
   } else {
-    return t('openGlobalLabel').replace('{label}', result.label)
+    return t('@jhb.software/payload-admin-search:openGlobalLabel').replace('{label}', result.label)
   }
 }
 
@@ -69,7 +75,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
   selectedIndex,
 }) => {
   const { i18n, t: payloadT } = useTranslation()
-  const { t } = usePluginTranslation()
+  const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()
   const { config } = useConfig()
 
   const getCollectionLabel = (slug: string): string => {
@@ -111,8 +117,8 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
             {result.type === 'document'
               ? collectionLabel
               : result.type === 'collection'
-                ? t('pillCollection')
-                : t('pillGlobal')}
+                ? t('@jhb.software/payload-admin-search:pillCollection')
+                : t('@jhb.software/payload-admin-search:pillGlobal')}
           </Pill>
         </div>
       </button>

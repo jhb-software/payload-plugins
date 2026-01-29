@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- fix: update validate function to correctly detect initial upload in Payload >=3.70
+
 ## 0.3.0
 
 ### Breaking Changes
