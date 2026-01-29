@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Fix: Only render wrapper `<div>` when `class` prop is provided
+- Refactor: Extract node rendering logic into separate `RichTextNodes` component
+
 ## 0.2.0
 
 - Add optional `class` prop for styling the wrapper div
