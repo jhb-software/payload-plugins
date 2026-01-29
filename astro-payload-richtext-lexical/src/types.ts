@@ -6,11 +6,12 @@
 
 export interface LexicalNode {
   type: string
-  indent: number
   version: number
+  indent?: number
   children?: LexicalNode[]
-  direction?: 'ltr' | 'rtl'
+  direction?: 'ltr' | 'rtl' | null
   detail?: number
+  [key: string]: unknown
 }
 
 /**
@@ -45,7 +46,7 @@ export interface HeadingNode extends LexicalNode {
 
 export interface ParagraphNode extends LexicalNode {
   type: 'paragraph'
-  format: 'justify' | 'left' | 'right' | 'center'
+  format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | ''
 }
 
 /**
