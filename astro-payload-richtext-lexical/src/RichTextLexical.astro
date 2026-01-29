@@ -20,15 +20,17 @@ import TextComponent from './nodes/TextComponent.astro'
 
 type Props = {
   nodes: LexicalNode[]
+  class?: string
   BlockRenderer?: AstroComponentFactory
   UploadRenderer?: AstroComponentFactory
 }
 
-const { nodes, BlockRenderer, UploadRenderer } = Astro.props
+const { nodes, class: className, BlockRenderer, UploadRenderer } = Astro.props
 ---
 
-{
-  nodes?.map((node) => {
+<div class={className}>
+  {
+    nodes?.map((node) => {
     const indentStyle = node.indent ? `${node.indent * 1.5}rem` : undefined
 
     switch (node.type) {
@@ -126,3 +128,4 @@ const { nodes, BlockRenderer, UploadRenderer } = Astro.props
     }
   })
 }
+</div>

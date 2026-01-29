@@ -34,8 +34,22 @@ const { content } = Astro.props
 | Prop             | Type                    | Required | Description                                             |
 | ---------------- | ----------------------- | -------- | ------------------------------------------------------- |
 | `nodes`          | `LexicalNode[]`         | Yes      | The array of Lexical nodes from `content.root.children` |
+| `class`          | `string`                | No       | CSS class to apply to the wrapper div                   |
 | `UploadRenderer` | `AstroComponentFactory` | No       | Custom component to render upload nodes                 |
 | `BlockRenderer`  | `AstroComponentFactory` | No       | Custom component to render block and inline block nodes |
+
+## Usage with Tailwind CSS Typography
+
+The component outputs semantic HTML without any styling. You can use [Tailwind CSS Typography](https://tailwindcss.com/docs/typography-plugin) (`@tailwindcss/typography`) to style the content by adding the `prose` class to the wrapper div.
+
+```astro
+<RichTextLexical
+  nodes={content.root.children}
+  class="prose"
+  UploadRenderer={CustomUpload}
+  BlockRenderer={CustomBlock}
+/>
+```
 
 ## Custom Renderers
 
