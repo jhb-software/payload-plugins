@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/astro-payload-richtext-lexical",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Renders Payload CMS Lexical rich text content to Astro elements.",
   "keywords": [
     "payload",

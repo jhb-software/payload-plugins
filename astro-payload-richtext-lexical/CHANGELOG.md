@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Add optional `class` prop for styling the wrapper div
+- Add Tailwind CSS Typography usage example in README
+- Remove Tailwind CSS dependencies - component now outputs pure semantic HTML
+- Align types with Payload CMS generated types (optional `indent`, `direction` accepts `null`, expanded `format` values)
+- Add table and nested list examples to dev demo
+
 ## 0.1.0
 
 - Initial release
