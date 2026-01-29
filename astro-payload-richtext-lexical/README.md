@@ -1,4 +1,4 @@
-# JHB Software - Astro Payload RichText Lexical
+# JHB Software - Astro Payload RichText Lexical Renderer
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fastro-payload-richtext-lexical)](https://www.npmjs.com/package/@jhb.software/astro-payload-richtext-lexical)
 
@@ -7,8 +7,6 @@ Renders Payload CMS Lexical rich text content to Astro elements.
 ## Installation
 
 ```bash
-npm install @jhb.software/astro-payload-richtext-lexical
-# or
 pnpm add @jhb.software/astro-payload-richtext-lexical
 ```
 
@@ -20,7 +18,7 @@ import RichTextLexical from '@jhb.software/astro-payload-richtext-lexical/RichTe
 import CustomUpload from '../components/CustomUpload.astro'
 import CustomBlock from '../components/CustomBlock.astro'
 
-// content.root.children is the Lexical JSON from Payload CMS
+// content is the Lexical JSON from Payload CMS
 const { content } = Astro.props
 ---
 
