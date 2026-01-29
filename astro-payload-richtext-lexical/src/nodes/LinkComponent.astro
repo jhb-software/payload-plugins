@@ -11,22 +11,20 @@ function createLinkElement(node: LinkNode) {
   let href = ''
 
   if (node.fields.linkType === 'internal') {
-    if (typeof node.fields.doc?.value === 'string') {
+    const docValue = node.fields.doc?.value
+
+    if (typeof docValue === 'object') {
+      // If the pages plugin (https://github.com/jhb-software/payload-plugins/tree/main/pages) is used,
+      // the populated doc value will have a path field, use it to build the href:
+      if ('path' in docValue && typeof docValue.path === 'string') {
+        href = docValue.path
+      }
+    } else {
       throw new Error(
-        'Error: internal Link Node is missing populated doc fields. Node Text: ' +
+        'Error: internal Link Node includes unpopulated document value. Node Text: ' +
           JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
       )
     }
-
-    const path = node.fields.doc?.value?.path ?? node.fields.doc?.value?.slug
-
-    if (!path) {
-      throw new Error(
-        'Error: internal Link Node is missing path in doc value. Children: ' +
-          JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
-      )
-    }
-    href = path.startsWith('/') ? path : `/${path}`
   } else {
     href = sanitizeUrl(node.fields.url ?? '')
   }

@@ -1,9 +1,13 @@
 /**
+ * ID Type. Depends on the database adapter used.
+ */
+type IdType = string | number
+
+/**
  * Payload CMS Lexical Rich Text Node Types
  * Data format: { root: { children: LexicalNode[] } }
  * @see https://github.com/payloadcms/payload/tree/main/packages/richtext-lexical
  */
-
 export interface LexicalNode {
   type: string
   version: number
@@ -28,11 +32,9 @@ export interface LinkFields {
     value:
       | {
           [key: string]: unknown
-          id: string
-          slug?: string
-          path?: string
+          id: IdType
         }
-      | string
+      | IdType
   } | null
   linkType: 'custom' | 'internal'
   newTab: boolean
@@ -90,7 +92,7 @@ export interface BlockNode extends LexicalNode {
 export interface InlineBlockNode extends LexicalNode {
   type: 'inlineBlock'
   fields: {
-    id: string
+    id: IdType
     blockName: string
     blockType: string
     [key: string]: unknown
@@ -105,11 +107,10 @@ export interface UploadNode extends LexicalNode {
   relationTo: string
   value: {
     [key: string]: unknown
-    id: string
+    id: IdType
     width: number
     height: number
     url: string
-    alt: string
     filename: string
   }
 }
