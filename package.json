@@ -42,7 +42,7 @@
     "format:seo": "cd ./seo && pnpm format",
 
     "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:astro-payload-richtext-lexical && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:seo && pnpm install:content-translator",
-    "install:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm install --frozen-lockfile",
+    "install:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm install",
     "install:admin-search": "cd ./admin-search && pnpm install --frozen-lockfile",
     "install:alt-text": "cd ./alt-text && pnpm install --frozen-lockfile",
     "install:cloudinary": "cd ./cloudinary && pnpm install --frozen-lockfile",
