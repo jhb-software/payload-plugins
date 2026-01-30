@@ -1,24 +1,32 @@
 ---
-import type { LinkNode, TextNode } from '../types.js'
+import type { LinkNode, ResolveInternalLink, TextNode } from '../types.js'
 
 type Props = {
   node: LinkNode
+  resolveInternalLink?: ResolveInternalLink
 }
 
-const { node } = Astro.props
+const { node, resolveInternalLink } = Astro.props
 
-function createLinkElement(node: LinkNode) {
+/**
+ * Default resolver for internal links.
+ * Uses the `path` field from the populated document (works with @jhb.software/payload-pages-plugin).
+ */
+function defaultResolveInternalLink(doc: Record<string, unknown>): string | undefined {
+  if ('path' in doc && typeof doc.path === 'string') {
+    return doc.path
+  }
+  return undefined
+}
+
+function createLinkElement(node: LinkNode, resolve: ResolveInternalLink) {
   let href = ''
 
   if (node.fields.linkType === 'internal') {
-    const docValue = node.fields.doc?.value
+    const doc = node.fields.doc
 
-    if (typeof docValue === 'object') {
-      // If the pages plugin (https://github.com/jhb-software/payload-plugins/tree/main/pages) is used,
-      // the populated doc value will have a path field, use it to build the href:
-      if ('path' in docValue && typeof docValue.path === 'string') {
-        href = docValue.path
-      }
+    if (typeof doc?.value === 'object') {
+      href = resolve(doc.value, doc.relationTo) ?? ''
     } else {
       throw new Error(
         'Error: internal Link Node includes unpopulated document value. Node Text: ' +
@@ -49,7 +57,7 @@ function sanitizeUrl(url: string): string {
   return url
 }
 
-const linkElement = createLinkElement(node)
+const linkElement = createLinkElement(node, resolveInternalLink ?? defaultResolveInternalLink)
 ---
 
 <a

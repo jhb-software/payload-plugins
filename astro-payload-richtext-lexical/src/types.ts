@@ -10,6 +10,16 @@ type IdType = string | number
 export type SlugifyHeadingId = (text: string, tag: string) => string | undefined
 
 /**
+ * Function type for resolving internal link hrefs.
+ * Receives the populated document value and relationTo collection name.
+ * Return undefined if the link cannot be resolved.
+ */
+export type ResolveInternalLink = (
+  doc: Record<string, unknown>,
+  relationTo: string,
+) => string | undefined
+
+/**
  * Payload CMS Lexical Rich Text Node Types
  * Data format: { root: { children: LexicalNode[] } }
  * @see https://github.com/payloadcms/payload/tree/main/packages/richtext-lexical

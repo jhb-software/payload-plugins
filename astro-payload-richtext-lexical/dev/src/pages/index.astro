@@ -1,7 +1,26 @@
 ---
 import RichTextLexical from '@jhb.software/astro-payload-richtext-lexical/RichTextLexical.astro'
+import type { ResolveInternalLink } from '@jhb.software/astro-payload-richtext-lexical'
 import CustomUpload from '../components/CustomUpload.astro'
 import CustomBlock from '../components/CustomBlock.astro'
+
+// Custom resolver that handles both `path` and `slug` fields
+const resolveInternalLink: ResolveInternalLink = (doc, relationTo) => {
+  // Use path field if available (e.g., from @jhb.software/payload-pages-plugin)
+  if ('path' in doc && typeof doc.path === 'string') {
+    return doc.path
+  }
+
+  // Fallback to slug for blog posts
+  if ('slug' in doc && typeof doc.slug === 'string') {
+    if (relationTo === 'posts') {
+      return `/blog/${doc.slug}`
+    }
+    return `/${doc.slug}`
+  }
+
+  return undefined
+}
 
 // Sample Payload Lexical JSON data for testing
 const sampleLexicalContent = {
@@ -544,6 +563,37 @@ const sampleLexicalContent = {
           },
         ],
       },
+      // Link Examples Section
+      {
+        type: 'heading',
+        tag: 'h2',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Link Examples',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h3',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'External Link',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
       {
         type: 'paragraph',
         version: 1,
@@ -579,6 +629,132 @@ const sampleLexicalContent = {
           {
             type: 'text',
             text: '.',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h3',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Internal Link (with path field)',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        version: 1,
+        indent: 0,
+        format: '',
+        children: [
+          {
+            type: 'text',
+            text: 'This is an ',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'link',
+            version: 1,
+            indent: 0,
+            fields: {
+              linkType: 'internal',
+              doc: {
+                relationTo: 'pages',
+                value: {
+                  id: '123',
+                  title: 'About Us',
+                  path: '/about',
+                },
+              },
+              newTab: false,
+            },
+            children: [
+              {
+                type: 'text',
+                text: 'internal link to About page',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+          {
+            type: 'text',
+            text: ' using the default resolver (path field).',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'heading',
+        tag: 'h3',
+        version: 1,
+        indent: 0,
+        children: [
+          {
+            type: 'text',
+            text: 'Internal Link (with slug field)',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        version: 1,
+        indent: 0,
+        format: '',
+        children: [
+          {
+            type: 'text',
+            text: 'This is an ',
+            format: 0,
+            version: 1,
+            indent: 0,
+          },
+          {
+            type: 'link',
+            version: 1,
+            indent: 0,
+            fields: {
+              linkType: 'internal',
+              doc: {
+                relationTo: 'posts',
+                value: {
+                  id: '456',
+                  title: 'Hello World',
+                  slug: 'hello-world',
+                },
+              },
+              newTab: false,
+            },
+            children: [
+              {
+                type: 'text',
+                text: 'internal link to a blog post',
+                format: 0,
+                version: 1,
+                indent: 0,
+              },
+            ],
+          },
+          {
+            type: 'text',
+            text: ' (requires custom resolver for slug field).',
             format: 0,
             version: 1,
             indent: 0,
@@ -756,9 +932,7 @@ const sampleLexicalContent = {
                     type: 'paragraph',
                     version: 1,
                     indent: 0,
-                    children: [
-                      { type: 'text', text: 'Feature', format: 1, version: 1, indent: 0 },
-                    ],
+                    children: [{ type: 'text', text: 'Feature', format: 1, version: 1, indent: 0 }],
                   },
                 ],
               },
@@ -788,9 +962,7 @@ const sampleLexicalContent = {
                     type: 'paragraph',
                     version: 1,
                     indent: 0,
-                    children: [
-                      { type: 'text', text: 'Status', format: 1, version: 1, indent: 0 },
-                    ],
+                    children: [{ type: 'text', text: 'Status', format: 1, version: 1, indent: 0 }],
                   },
                 ],
               },
@@ -876,9 +1048,7 @@ const sampleLexicalContent = {
                     type: 'paragraph',
                     version: 1,
                     indent: 0,
-                    children: [
-                      { type: 'text', text: 'Links', format: 1, version: 1, indent: 0 },
-                    ],
+                    children: [{ type: 'text', text: 'Links', format: 1, version: 1, indent: 0 }],
                   },
                 ],
               },
@@ -893,7 +1063,13 @@ const sampleLexicalContent = {
                     version: 1,
                     indent: 0,
                     children: [
-                      { type: 'text', text: 'External links like ', format: 0, version: 1, indent: 0 },
+                      {
+                        type: 'text',
+                        text: 'External links like ',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
                       {
                         type: 'link',
                         version: 1,
@@ -907,7 +1083,13 @@ const sampleLexicalContent = {
                           { type: 'text', text: 'Payload CMS', format: 0, version: 1, indent: 0 },
                         ],
                       },
-                      { type: 'text', text: ' and internal document links.', format: 0, version: 1, indent: 0 },
+                      {
+                        type: 'text',
+                        text: ' and internal document links.',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
                     ],
                   },
                 ],
@@ -946,9 +1128,7 @@ const sampleLexicalContent = {
                     type: 'paragraph',
                     version: 1,
                     indent: 0,
-                    children: [
-                      { type: 'text', text: 'Lists', format: 1, version: 1, indent: 0 },
-                    ],
+                    children: [{ type: 'text', text: 'Lists', format: 1, version: 1, indent: 0 }],
                   },
                 ],
               },
@@ -978,7 +1158,13 @@ const sampleLexicalContent = {
                         version: 1,
                         indent: 0,
                         children: [
-                          { type: 'text', text: 'Numbered lists', format: 0, version: 1, indent: 0 },
+                          {
+                            type: 'text',
+                            text: 'Numbered lists',
+                            format: 0,
+                            version: 1,
+                            indent: 0,
+                          },
                         ],
                       },
                       {
@@ -1068,7 +1254,13 @@ const sampleLexicalContent = {
                     version: 1,
                     indent: 0,
                     children: [
-                      { type: 'text', text: 'Multiple paragraphs work too!', format: 2, version: 1, indent: 0 },
+                      {
+                        type: 'text',
+                        text: 'Multiple paragraphs work too!',
+                        format: 2,
+                        version: 1,
+                        indent: 0,
+                      },
                     ],
                   },
                 ],
@@ -1128,7 +1320,13 @@ const sampleLexicalContent = {
                       { type: 'text', text: '2', format: 32, version: 1, indent: 0 },
                       { type: 'text', text: 'O and E=mc', format: 0, version: 1, indent: 0 },
                       { type: 'text', text: '2', format: 64, version: 1, indent: 0 },
-                      { type: 'text', text: ' with subscript and superscript.', format: 0, version: 1, indent: 0 },
+                      {
+                        type: 'text',
+                        text: ' with subscript and superscript.',
+                        format: 0,
+                        version: 1,
+                        indent: 0,
+                      },
                     ],
                   },
                 ],
@@ -1304,6 +1502,7 @@ const sampleLexicalContent = {
       nodes={sampleLexicalContent.root.children}
       UploadRenderer={CustomUpload}
       BlockRenderer={CustomBlock}
+      resolveInternalLink={resolveInternalLink}
     />
   </body>
 </html>

@@ -31,12 +31,14 @@ const { content } = Astro.props
 
 ## Props
 
-| Prop             | Type                    | Required | Description                                             |
-| ---------------- | ----------------------- | -------- | ------------------------------------------------------- |
-| `nodes`          | `LexicalNode[]`         | Yes      | The array of Lexical nodes from `content.root.children` |
-| `class`          | `string`                | No       | CSS class to apply to the wrapper div                   |
-| `UploadRenderer` | `AstroComponentFactory` | No       | Custom component to render upload nodes                 |
-| `BlockRenderer`  | `AstroComponentFactory` | No       | Custom component to render block and inline block nodes |
+| Prop                  | Type                        | Required | Description                                             |
+| --------------------- | --------------------------- | -------- | ------------------------------------------------------- |
+| `nodes`               | `LexicalNode[]`             | Yes      | The array of Lexical nodes from `content.root.children` |
+| `class`               | `string`                    | No       | CSS class to apply to the wrapper div                   |
+| `UploadRenderer`      | `AstroComponentFactory`     | No       | Custom component to render upload nodes                 |
+| `BlockRenderer`       | `AstroComponentFactory`     | No       | Custom component to render block and inline block nodes |
+| `slugifyHeadingId`    | `SlugifyHeadingId \| false` | No       | Custom function for heading IDs, or `false` to disable  |
+| `resolveInternalLink` | `ResolveInternalLink`       | No       | Custom function to resolve internal link hrefs          |
 
 ## Usage with Tailwind CSS Typography
 
@@ -66,9 +68,8 @@ interface UploadNode {
   type: 'upload'
   relationTo: string
   value: {
-    id: string
+    id: string | number
     url: string
-    alt: string
     width: number
     height: number
     filename: string
@@ -98,6 +99,71 @@ interface BlockNode {
 }
 ```
 
+## Configuration Options
+
+### slugifyHeadingId
+
+By default, `h2` and `h3` headings automatically get an `id` attribute generated from their text content (useful for anchor links and table of contents).
+
+```astro
+<!-- Default behavior: h2/h3 get auto-generated IDs -->
+<RichTextLexical nodes={content.root.children} />
+
+<!-- Disable heading IDs entirely -->
+<RichTextLexical nodes={content.root.children} slugifyHeadingId={false} />
+
+<!-- Custom slugify function -->
+<RichTextLexical
+  nodes={content.root.children}
+  slugifyHeadingId={(text, tag) => {
+    // Generate IDs for all headings, not just h2/h3
+    return text.toLowerCase().replace(/\s+/g, '-')
+  }}
+/>
+```
+
+The function signature:
+
+```ts
+type SlugifyHeadingId = (text: string, tag: string) => string | undefined
+```
+
+### resolveInternalLink
+
+Internal links in Payload CMS reference documents by their ID. By default, the renderer uses the `path` field from the populated document (works with [@jhb.software/payload-pages-plugin](https://github.com/jhb-software/payload-plugins/tree/main/pages)).
+
+For custom URL structures, provide your own resolver:
+
+```astro
+---
+import RichTextLexical from '@jhb.software/astro-payload-richtext-lexical/RichTextLexical.astro'
+import type { ResolveInternalLink } from '@jhb.software/astro-payload-richtext-lexical'
+
+const resolveInternalLink: ResolveInternalLink = (doc, relationTo) => {
+  // Use path field if available
+  if ('path' in doc && typeof doc.path === 'string') {
+    return doc.path
+  }
+  // Fallback to slug for blog posts
+  if ('slug' in doc && typeof doc.slug === 'string') {
+    if (relationTo === 'posts') {
+      return `/blog/${doc.slug}`
+    }
+    return `/${doc.slug}`
+  }
+  return undefined
+}
+---
+
+<RichTextLexical nodes={content.root.children} resolveInternalLink={resolveInternalLink} />
+```
+
+The function signature:
+
+```ts
+type ResolveInternalLink = (doc: Record<string, unknown>, relationTo: string) => string | undefined
+```
+
 ## Supported Node Types
 
 - `heading` (h1-h6)
@@ -115,7 +181,7 @@ interface BlockNode {
 
 ## Types
 
-You can import types for use in your custom renderers:
+You can import types for use in your custom renderers and configuration:
 
 ```ts
 import type {
@@ -128,6 +194,8 @@ import type {
   UploadNode,
   BlockNode,
   InlineBlockNode,
+  SlugifyHeadingId,
+  ResolveInternalLink,
 } from '@jhb.software/astro-payload-richtext-lexical'
 ```
 

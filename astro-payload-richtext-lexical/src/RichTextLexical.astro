@@ -1,6 +1,6 @@
 ---
 import type { AstroComponentFactory } from 'astro/runtime/server'
-import type { LexicalNode, SlugifyHeadingId } from './types.js'
+import type { LexicalNode, ResolveInternalLink, SlugifyHeadingId } from './types.js'
 import RichTextNodes from './nodes/RichTextNodes.astro'
 
 type Props = {
@@ -9,17 +9,37 @@ type Props = {
   BlockRenderer?: AstroComponentFactory
   UploadRenderer?: AstroComponentFactory
   slugifyHeadingId?: SlugifyHeadingId | false
+  resolveInternalLink?: ResolveInternalLink
 }
 
-const { nodes, class: className, BlockRenderer, UploadRenderer, slugifyHeadingId } = Astro.props
+const {
+  nodes,
+  class: className,
+  BlockRenderer,
+  UploadRenderer,
+  slugifyHeadingId,
+  resolveInternalLink,
+} = Astro.props
 ---
 
 {
   className ? (
     <div class={className}>
-      <RichTextNodes nodes={nodes} BlockRenderer={BlockRenderer} UploadRenderer={UploadRenderer} slugifyHeadingId={slugifyHeadingId} />
+      <RichTextNodes
+        nodes={nodes}
+        BlockRenderer={BlockRenderer}
+        UploadRenderer={UploadRenderer}
+        slugifyHeadingId={slugifyHeadingId}
+        resolveInternalLink={resolveInternalLink}
+      />
     </div>
   ) : (
-    <RichTextNodes nodes={nodes} BlockRenderer={BlockRenderer} UploadRenderer={UploadRenderer} slugifyHeadingId={slugifyHeadingId} />
+    <RichTextNodes
+      nodes={nodes}
+      BlockRenderer={BlockRenderer}
+      UploadRenderer={UploadRenderer}
+      slugifyHeadingId={slugifyHeadingId}
+      resolveInternalLink={resolveInternalLink}
+    />
   )
 }
