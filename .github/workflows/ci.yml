@@ -78,6 +78,9 @@ jobs:
       - name: Run ESLint (content-translator)
         run: cd content-translator && pnpm lint
 
+      - name: Run ESLint (astro-payload-richtext-lexical)
+        run: cd astro-payload-richtext-lexical && pnpm lint
+
   test-pages-localized:
     runs-on: ubuntu-latest
     needs: format

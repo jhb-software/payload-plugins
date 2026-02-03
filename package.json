@@ -23,8 +23,9 @@
     "publish:pages": "cd ./pages && pnpm publish",
     "publish:seo": "cd ./seo && pnpm publish",
 
-    "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator",
+    "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:astro-payload-richtext-lexical && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator",
     "lint:admin-search": "cd ./admin-search && pnpm lint",
+    "lint:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm lint",
     "lint:alt-text": "cd ./alt-text && pnpm lint",
     "lint:cloudinary": "cd ./cloudinary && pnpm lint",
     "lint:content-translator": "cd ./content-translator && pnpm lint",
