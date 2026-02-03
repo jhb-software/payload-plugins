@@ -32,8 +32,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
     "prepublishOnly": "pnpm run build",
     "ts:check": "tsc"
   },
