@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Add `resolveInternalLink` config option for custom internal link resolution
+- Add `slugifyHeadingId` config option for customizing heading ID generation
+- Fix: Correct `LinkNode` type and internal link handling
+
 ## 0.2.1
 
 - Fix: Only render wrapper `<div>` when `class` prop is provided
