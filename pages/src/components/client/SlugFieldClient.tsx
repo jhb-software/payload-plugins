@@ -16,13 +16,14 @@ import {
 } from '@payloadcms/ui'
 import { useCallback, useEffect, useState } from 'react'
 
+import type {
+  PluginPagesTranslationKeys,
+  PluginPagesTranslations,
+} from '../../translations/index.js'
+
 import { useCreateRedirect } from '../../hooks/useCreateRedirect.js'
 import { formatSlug, liveFormatSlug } from '../../hooks/validateSlug.js'
 import { RefreshIcon } from '../../icons/RefreshIcon.js'
-import type {
-  PluginPagesTranslations,
-  PluginPagesTranslationKeys,
-} from '../../translations/index.js'
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 

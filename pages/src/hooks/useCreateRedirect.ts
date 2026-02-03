@@ -25,10 +25,10 @@ export const useCreateRedirect = (redirectsCollectionSlug: string) => {
     try {
       const response = await fetch(`${serverURL}${api}/${redirectsCollectionSlug}`, {
         body: JSON.stringify({
+          type: 'permanent',
           destinationPath,
           reason: t('@jhb.software/payload-pages-plugin:redirectReasonSlugChange'),
           sourcePath,
-          type: 'permanent',
         }),
         credentials: 'include',
         headers: {

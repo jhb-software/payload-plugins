@@ -8,6 +8,7 @@ import type {
   PluginAltTextTranslationKeys,
   PluginAltTextTranslations,
 } from '../translations/index.js'
+
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 

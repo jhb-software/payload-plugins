@@ -4,11 +4,12 @@ import type { CheckboxFieldClientProps } from '@payloadcms/ui/fields/Checkbox'
 
 import { CheckboxField, useField, useTranslation } from '@payloadcms/ui'
 
-import { HomeIcon } from '../../icons/HomeIcon.js'
 import type {
-  PluginPagesTranslations,
   PluginPagesTranslationKeys,
+  PluginPagesTranslations,
 } from '../../translations/index.js'
+
+import { HomeIcon } from '../../icons/HomeIcon.js'
 
 /**
  * Field which displays either a checkbox to set the page to be root page or a message if the page is the root page.

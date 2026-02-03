@@ -4,11 +4,12 @@ import type { ArrayFieldClientComponent } from 'payload'
 
 import { ArrayField, Button, Drawer, useModal, useTranslation } from '@payloadcms/ui'
 
-import { BreadcrumbsIcon } from '../../icons/BreadcrumbsIcon.js'
 import type {
-  PluginPagesTranslations,
   PluginPagesTranslationKeys,
+  PluginPagesTranslations,
 } from '../../translations/index.js'
+
+import { BreadcrumbsIcon } from '../../icons/BreadcrumbsIcon.js'
 
 const breadcrumbsModalSlug = 'breadcrumbs-drawer'
 
