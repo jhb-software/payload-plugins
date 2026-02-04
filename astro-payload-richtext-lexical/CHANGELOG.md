@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Fix: Nested ordered and unordered lists now render correctly
+
 ## 0.3.0
 
 - Add `resolveInternalLink` config option for custom internal link resolution
