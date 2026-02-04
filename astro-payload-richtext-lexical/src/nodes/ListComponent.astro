@@ -1,26 +1,118 @@
 ---
-import type { ListNode } from '../types.js'
+import type { AstroComponentFactory } from 'astro/runtime/server'
+import type { LexicalNode, ListNode, ResolveInternalLink, SlugifyHeadingId } from '../types.js'
 
-type Props = { node: ListNode }
+type Props = {
+  node: ListNode
+  RichTextRenderer: AstroComponentFactory
+  BlockRenderer?: AstroComponentFactory
+  UploadRenderer?: AstroComponentFactory
+  slugifyHeadingId?: SlugifyHeadingId | false
+  resolveInternalLink?: ResolveInternalLink
+}
 
-const { node } = Astro.props
+const {
+  node,
+  RichTextRenderer,
+  BlockRenderer,
+  UploadRenderer,
+  slugifyHeadingId,
+  resolveInternalLink,
+} = Astro.props
+
+/**
+ * Processed listitem with pre-partitioned children for efficient rendering.
+ * - content: non-list children (text, links, etc.) to render as inline content
+ * - nestedLists: list children to render as nested <ol>/<ul> elements
+ */
+interface ProcessedListItem {
+  content: LexicalNode[]
+  nestedLists: LexicalNode[]
+}
+
+/**
+ * Single-pass processing of list items that:
+ * 1. Partitions each item's children into content vs nested lists (avoiding double iteration)
+ * 2. Merges "nested-list-only" items with their preceding sibling
+ *
+ * In Lexical, when you indent list items, the nested list becomes a separate listitem
+ * containing only the nested list. This must be merged with the previous item for valid HTML.
+ */
+function processListItems(children: LexicalNode[]): ProcessedListItem[] {
+  const result: ProcessedListItem[] = []
+
+  for (let i = 0; i < children.length; i++) {
+    const item = children[i]
+    if (item.type !== 'listitem') continue
+
+    const itemChildren = item.children
+    if (!itemChildren || itemChildren.length === 0) {
+      // Empty listitem - still render it
+      result.push({ content: [], nestedLists: [] })
+      continue
+    }
+
+    // Check for nested-list-only item (single child that is a list)
+    if (itemChildren.length === 1 && itemChildren[0].type === 'list') {
+      // Merge with previous item if exists
+      if (result.length > 0) {
+        result[result.length - 1].nestedLists.push(itemChildren[0])
+      } else {
+        // Edge case: nested list at start - render empty content with the nested list
+        result.push({ content: [], nestedLists: [itemChildren[0]] })
+      }
+      continue
+    }
+
+    // Regular item - partition children in single pass
+    let content: LexicalNode[] | null = null
+    let nestedLists: LexicalNode[] | null = null
+
+    for (let j = 0; j < itemChildren.length; j++) {
+      const child = itemChildren[j]
+      if (child.type === 'list') {
+        ;(nestedLists ??= []).push(child)
+      } else {
+        ;(content ??= []).push(child)
+      }
+    }
+
+    result.push({
+      content: content ?? [],
+      nestedLists: nestedLists ?? [],
+    })
+  }
+
+  return result
+}
+
+const processedItems = processListItems(node.children ?? [])
+const Tag = node.tag
 ---
 
-{
-  () => {
-    switch (node.tag) {
-      case 'ol':
-        return (
-          <ol>
-            <slot />
-          </ol>
-        )
-      case 'ul':
-        return (
-          <ul>
-            <slot />
-          </ul>
-        )
-    }
+<Tag>
+  {
+    processedItems.map(({ content, nestedLists }) => (
+      <li>
+        {content.length > 0 && (
+          <RichTextRenderer
+            nodes={content}
+            BlockRenderer={BlockRenderer}
+            UploadRenderer={UploadRenderer}
+            slugifyHeadingId={slugifyHeadingId}
+            resolveInternalLink={resolveInternalLink}
+          />
+        )}
+        {nestedLists.map((nestedList) => (
+          <RichTextRenderer
+            nodes={[nestedList]}
+            BlockRenderer={BlockRenderer}
+            UploadRenderer={UploadRenderer}
+            slugifyHeadingId={slugifyHeadingId}
+            resolveInternalLink={resolveInternalLink}
+          />
+        ))}
+      </li>
+    ))
   }
-}
+</Tag>

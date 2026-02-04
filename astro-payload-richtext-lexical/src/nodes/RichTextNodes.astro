@@ -65,27 +65,14 @@ const { nodes, BlockRenderer, UploadRenderer, slugifyHeadingId, resolveInternalL
         )
       case 'list':
         return (
-          <ListComponent node={node as ListNode}>
-            <Astro.self
-              nodes={(node as ListNode).children ?? []}
-              BlockRenderer={BlockRenderer}
-              UploadRenderer={UploadRenderer}
-              slugifyHeadingId={slugifyHeadingId}
-              resolveInternalLink={resolveInternalLink}
-            />
-          </ListComponent>
-        )
-      case 'listitem':
-        return (
-          <li>
-            <Astro.self
-              nodes={node.children ?? []}
-              BlockRenderer={BlockRenderer}
-              UploadRenderer={UploadRenderer}
-              slugifyHeadingId={slugifyHeadingId}
-              resolveInternalLink={resolveInternalLink}
-            />
-          </li>
+          <ListComponent
+            node={node as ListNode}
+            RichTextRenderer={Astro.self}
+            BlockRenderer={BlockRenderer}
+            UploadRenderer={UploadRenderer}
+            slugifyHeadingId={slugifyHeadingId}
+            resolveInternalLink={resolveInternalLink}
+          />
         )
       case 'quote':
         return (
