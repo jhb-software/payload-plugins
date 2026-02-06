@@ -54,18 +54,6 @@ This package provides a Payload CMS Storage Adapter for [Cloudinary](https://clo
 
 [→ Cloudinary plugin ](./cloudinary)
 
-### SEO Plugin
-
-[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-seo-plugin)](https://www.npmjs.com/package/@jhb.software/payload-seo-plugin)
-
-Extends the official [SEO plugin](https://payloadcms.com/docs/plugins/seo) with additional features:
-
-- AI-powered meta description generation for compelling search results
-- Focus keyword tracking with intelligent warnings when keywords are missing from crucial elements (title, description, content)
-- Multi-keyword support with content usage analytics
-
-[→ SEO plugin ](./seo)
-
 ### Content Translator Plugin
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
@@ -82,4 +70,4 @@ A plugin that enables content translation directly within the Payload CMS admin 
 
 An Astro component that renders Payload CMS Lexical rich text content. Supports dependency injection for custom Block and Upload renderers.
 
-[Learn more about Astro Payload RichText Lexical →](./astro-payload-richtext-lexical)
+[→ Astro Payload RichText Lexical](./astro-payload-richtext-lexical)
