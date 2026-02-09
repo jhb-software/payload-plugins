@@ -22,10 +22,6 @@ export const getGenerateUrl = ({ options }: { options: CloudinaryStorageOptions 
         ? data.cloudinaryPublicId
         : undefined
     if (!cloudinaryPublicId) {
-      console.warn(
-        'CloudinaryPublicId field is missing in data passed to the generateURL function. This can happen if a find query contains select without cloudinaryPublicId. Falling back to undefined.',
-        data,
-      )
       // since Payload 3.7X this is called during upload, therefore its not possible to throw an error here, otherwise the upload fails
       return undefined as unknown as string
     }

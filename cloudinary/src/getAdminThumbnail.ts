@@ -20,7 +20,8 @@ export const getAdminThumbnailFactory: GetAdminThumbnailFactory = (cloudName) =>
       typeof cloudinaryPublicId !== 'string' ||
       typeof mimeType !== 'string'
     ) {
-      return false
+      // since Payload 3.7X this is called during upload, therefore its not possible to throw an error here, otherwise the upload fails
+      return undefined as unknown as string
     }
 
     const transformOptions = 'w_300,h_300,c_fill,f_auto,q_auto,dpr_auto'
