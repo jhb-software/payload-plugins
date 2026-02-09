@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.3
+- fix: `getAdminThumbnail` now returns `undefined` instead of `false` if the `cloudinaryPublicId` or `mimeType` field is missing in the getAdminThumbnail function (e.g. during the upload process).
+
 ## 0.3.2
 
 - fix: `thumbnailURL` now correctly points to Cloudinary in Payload 3.7X
