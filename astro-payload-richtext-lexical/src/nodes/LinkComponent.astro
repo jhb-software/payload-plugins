@@ -12,11 +12,15 @@ const { node, resolveInternalLink } = Astro.props
  * Default resolver for internal links.
  * Uses the `path` field from the populated document (works with @jhb.software/payload-pages-plugin).
  */
-function defaultResolveInternalLink(doc: Record<string, unknown>): string | undefined {
+function defaultResolveInternalLink(doc: Record<string, unknown>): string {
   if ('path' in doc && typeof doc.path === 'string') {
     return doc.path
   }
-  return undefined
+
+  throw new Error(
+    'Error: Could not resolve internal link. Path field not found in document. Node Text: ' +
+      JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
+  )
 }
 
 function createLinkElement(node: LinkNode, resolve: ResolveInternalLink) {
@@ -33,28 +37,41 @@ function createLinkElement(node: LinkNode, resolve: ResolveInternalLink) {
           JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
       )
     }
+  } else if (node.fields.linkType === 'custom') {
+    const url = node.fields.url
+
+    if (!url) {
+      throw new Error(
+        'Error: custom Link Node includes unpopulated URL. Node Text: ' +
+          JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
+      )
+    }
+
+    if (url.startsWith('/')) {
+      href = url
+    } else {
+      try {
+        new URL(url)
+
+        href = url
+      } catch {
+        throw new Error(
+          'Error: invalid URL. Node Text: ' +
+            JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
+        )
+      }
+    }
   } else {
-    href = sanitizeUrl(node.fields.url ?? '')
+    throw new Error(
+      'Error: invalid link type. Node Text: ' +
+        JSON.stringify((node.children?.at(0) as TextNode)?.text ?? node.children),
+    )
   }
 
   const target = node.fields.newTab ? '_blank' : undefined
   const rel = target ? 'noopener' : undefined
 
   return { href, target, rel, style: (node as unknown as TextNode).style }
-}
-
-const SUPPORTED_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'sms:', 'tel:'])
-function sanitizeUrl(url: string): string {
-  try {
-    const parsedUrl = new URL(url)
-
-    if (!SUPPORTED_URL_PROTOCOLS.has(parsedUrl.protocol)) {
-      return 'about:blank'
-    }
-  } catch {
-    return url.startsWith('/') ? url : `/${url}`
-  }
-  return url
 }
 
 const linkElement = createLinkElement(node, resolveInternalLink ?? defaultResolveInternalLink)
