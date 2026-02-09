@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- fix: throw an error instead of building an invalid href for invalid URLs in custom links
+
 ## 0.3.1
 
 - Fix: Nested ordered and unordered lists now render correctly
