@@ -1,5 +1,5 @@
 import payload, { CollectionSlug, SanitizedConfig, ValidationError } from 'payload'
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 import {
@@ -36,6 +36,10 @@ afterAll(async () => {
   } else {
     console.log('Could not destroy database')
   }
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('Path and breadcrumb virtual fields are returned correctly for find operation.', () => {
@@ -717,7 +721,233 @@ describe('Path and breadcrumb virtual fields are set correctly for find operatio
   })
 })
 
+describe('Find operation gracefully handles missing parent documents.', () => {
+  beforeEach(async () => {
+    // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
+    await deleteCollection('authors')
+    await deleteCollection('pages')
+  })
+
+  test('findByID logs error and returns doc without virtual fields when parent was deleted', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root',
+        slug: '',
+        content: 'Root',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Child',
+        slug: 'child',
+        content: 'Child',
+        parent: rootPage.id,
+        ...virtualFields,
+      },
+    })
+
+    // Verify the child has correct virtual fields before deleting the parent
+    const childBeforeDeletion = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+    })
+    expect(childBeforeDeletion.path).toBe('/de/child')
+    expect(childBeforeDeletion.breadcrumbs).toHaveLength(2)
+
+    // Delete the parent directly via the DB adapter (bypassing the preventParentDeletion hook)
+    // — the child's parent reference becomes a dangling pointer
+    await payload.db.deleteMany({
+      collection: 'pages',
+      where: { id: { equals: rootPage.id } },
+    })
+
+    const loggerErrorSpy = vi.spyOn(payload.logger, 'error')
+
+    // Reading the child should not throw, even though its parent no longer exists
+    const result = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+    })
+
+    // Non-virtual fields should still be returned correctly
+    expect(result.id).toBe(childPage.id)
+    expect(result.title).toBe('Child')
+    expect(result.slug).toBe('child')
+
+    if (result.parent === null) {
+      // SQLite/Postgres: Payload resolves the dangling reference to null,
+      // so the child is treated as a top-level page.
+      expect(result.path).toBe('/de/child')
+      expect(result.breadcrumbs).toHaveLength(1)
+      expect(result.breadcrumbs[0].slug).toBe('child')
+    } else {
+      // MongoDB: the raw parent ID is retained, the parent lookup fails,
+      // and the try-catch logs an error and returns the doc without virtual fields.
+      expect(result.parent).toBe(rootPage.id)
+      expect(result.path).toBeUndefined()
+      expect(result.breadcrumbs).toEqual([])
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Failed to compute virtual fields for doc'),
+      )
+    }
+  })
+
+  test('find (list) logs error and returns docs without virtual fields when parent was deleted', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root',
+        slug: '',
+        content: 'Root',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Child',
+        slug: 'child',
+        content: 'Child',
+        parent: rootPage.id,
+        ...virtualFields,
+      },
+    })
+
+    await payload.db.deleteMany({
+      collection: 'pages',
+      where: { id: { equals: rootPage.id } },
+    })
+
+    const loggerErrorSpy = vi.spyOn(payload.logger, 'error')
+
+    // Using find (list) instead of findByID — should also not throw
+    const result = await payload.find({
+      collection: 'pages',
+      locale: 'de',
+    })
+
+    expect(result.docs).toHaveLength(1)
+    const child = result.docs[0]
+    expect(child.title).toBe('Child')
+
+    if (child.parent === null) {
+      // SQLite/Postgres: dangling reference resolved to null, treated as top-level page
+      expect(child.path).toBe('/de/child')
+      expect(child.breadcrumbs).toHaveLength(1)
+    } else {
+      // MongoDB: parent ID retained, virtual field computation fails gracefully
+      expect(child.path).toBeUndefined()
+      expect(child.breadcrumbs).toEqual([])
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Failed to compute virtual fields for doc'),
+      )
+    }
+  })
+
+  test('deeply nested page handles missing grandparent gracefully', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root',
+        slug: '',
+        content: 'Root',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Parent',
+        slug: 'parent',
+        content: 'Parent',
+        parent: rootPage.id,
+        ...virtualFields,
+      },
+    })
+
+    const grandchild = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Grandchild',
+        slug: 'grandchild',
+        content: 'Grandchild',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    // Verify correct virtual fields before deletion
+    const grandchildBefore = await payload.findByID({
+      collection: 'pages',
+      id: grandchild.id,
+      locale: 'de',
+    })
+    expect(grandchildBefore.path).toBe('/de/parent/grandchild')
+    expect(grandchildBefore.breadcrumbs).toHaveLength(3)
+
+    // Delete the middle parent — the grandchild's parent reference becomes dangling
+    await payload.db.deleteMany({
+      collection: 'pages',
+      where: { id: { equals: parentPage.id } },
+    })
+
+    const loggerErrorSpy = vi.spyOn(payload.logger, 'error')
+
+    // Grandchild should still be readable
+    const result = await payload.findByID({
+      collection: 'pages',
+      id: grandchild.id,
+      locale: 'de',
+    })
+
+    expect(result.id).toBe(grandchild.id)
+    expect(result.title).toBe('Grandchild')
+
+    if (result.parent === null) {
+      // SQLite/Postgres: dangling reference resolved to null, treated as top-level page
+      expect(result.path).toBe('/de/grandchild')
+      expect(result.breadcrumbs).toHaveLength(1)
+      expect(result.breadcrumbs[0].slug).toBe('grandchild')
+    } else {
+      // MongoDB: parent ID retained, virtual field computation fails gracefully
+      expect(result.parent).toBe(parentPage.id)
+      expect(result.path).toBeUndefined()
+      expect(result.breadcrumbs).toEqual([])
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Failed to compute virtual fields for doc'),
+      )
+    }
+  })
+})
+
 describe('Slug field behaves as expected for create and update operations', () => {
+  beforeEach(async () => {
+    // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
+    await deleteCollection('authors')
+    await deleteCollection('pages')
+  })
+
   test('Slug remains unchanged when title is updated', async () => {
     // Create initial page
     const page = await payload.create({
@@ -994,7 +1224,11 @@ describe('Parent deletion prevention hook', () => {
 })
 
 describe('Virtual fields in findVersions operation', () => {
-  beforeEach(async () => await deleteCollection('pages'))
+  beforeEach(async () => {
+    // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
+    await deleteCollection('authors')
+    await deleteCollection('pages')
+  })
 
   test('are correctly set when reading versions', async () => {
     const locale = 'de'
@@ -1525,6 +1759,8 @@ describe('Select during read operation', () => {
 
 describe('The afterChange hook doc and previousDoc contain the path of the page.', () => {
   beforeEach(async () => {
+    // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
+    await deleteCollection('authors')
     await deleteCollection('pages')
     clearCapturedAfterChanges()
   })
@@ -1865,6 +2101,93 @@ describe('The afterChange hook doc and previousDoc contain the path of the page.
     // On create, previousDoc has no slug so path cannot be computed
     expect(previousDoc.path).toBeUndefined()
   })
+
+  test('logs error for previousDoc but still returns correct doc when previousDoc parent was deleted.', async () => {
+    // Create a parent (root page) and a child page under it
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root',
+        slug: '',
+        content: 'Root',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    const childId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child',
+          slug: 'child',
+          content: 'Child',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    // Delete the parent directly via the DB adapter (bypassing the preventParentDeletion hook)
+    // — the child's parent reference becomes a dangling pointer
+    await payload.db.deleteMany({
+      collection: 'pages',
+      where: { id: { equals: rootPage.id } },
+    })
+
+    clearCapturedAfterChanges()
+    const loggerErrorSpy = vi.spyOn(payload.logger, 'error')
+
+    // Change parent from rootPage to null. On MongoDB this makes dependentFieldsUnchanged=false,
+    // so the afterChange hook computes previousDoc path separately (which will fail
+    // because the parent no longer exists in the database).
+    const updatedPage = await payload.update({
+      collection: 'pages',
+      id: childId,
+      locale: 'de',
+      data: { parent: null },
+    })
+
+    // The update operation itself should succeed and return the updated doc
+    expect(updatedPage.id).toBe(childId)
+    expect(updatedPage.path).toBe('/de/child')
+    expect(updatedPage.parent).toBeNull()
+
+    // doc.path should be computed as top-level (no parent)
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child')
+    expect(doc.breadcrumbs).toHaveLength(1)
+    expect(doc.breadcrumbs[0].slug).toBe('child')
+
+    if (previousDoc.parent === null) {
+      // SQLite/Postgres: Payload resolves previousDoc.parent to null (dangling reference),
+      // so dependentFieldsUnchanged=true and previousDoc reuses doc's virtual fields.
+      expect(previousDoc.path).toBe('/de/child')
+      expect(previousDoc.breadcrumbs).toHaveLength(1)
+    } else {
+      // MongoDB: previousDoc retains the raw parent ID. dependentFieldsUnchanged=false,
+      // so the hook tries to look up the deleted parent, fails, and logs an error.
+      expect(previousDoc.parent).toBe(rootPage.id)
+      expect(previousDoc.path).toBeUndefined()
+      expect(previousDoc.breadcrumbs).toEqual([])
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Failed to compute virtual fields for previousDoc'),
+      )
+      // Only one error should have been logged (for previousDoc, not for doc)
+      const virtualFieldErrors = loggerErrorSpy.mock.calls.filter(
+        (call) => typeof call[1] === 'string' && call[1].includes('Failed to compute virtual fields'),
+      )
+      expect(virtualFieldErrors).toHaveLength(1)
+    }
+  })
+
+  // Note: A test for "doc virtual fields fall back when doc parent was deleted during update"
+  // is not possible because Payload's built-in relationship field validation rejects the
+  // update before the afterChange hook runs. The doc error path in afterChange is still
+  // covered by the beforeRead tests (find/findByID with missing parent).
 })
 
 /**

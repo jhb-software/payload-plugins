@@ -3,6 +3,7 @@
 ## Unreleased
 
 - fix: populate virtual fields (`path`, `breadcrumbs`) on `previousDoc` in the `afterChange` hook, and run the plugin's hook before user-defined hooks so that `doc` also contains the virtual fields
+- fix: gracefully handle errors when computing virtual fields (e.g. when a parent document no longer exists) instead of crashing the operation
 
 ## 0.6.0
 

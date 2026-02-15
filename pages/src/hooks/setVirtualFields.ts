@@ -41,35 +41,40 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   const locales = localesFromRequest(req)
 
   if (doc.isRootPage) {
-    const docWithVirtualFields = setRootPageDocumentVirtualFields({
+    // Root pages don't need async lookups, so no try-catch needed
+    return setRootPageDocumentVirtualFields({
       breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
       doc,
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
     })
+  }
 
-    return docWithVirtualFields
-  } else {
-    // When the slug is not (yet) set, it is not possible to generate the virtual fields
-    if ((locale && locale !== 'all' && !doc.slug?.[locale]) || !doc.slug) {
-      return doc
-    }
+  // When the slug is not (yet) set, it is not possible to generate the virtual fields
+  if ((locale && locale !== 'all' && !doc.slug?.[locale]) || !doc.slug) {
+    return doc
+  }
 
-    if (locales && typeof doc.slug !== 'object') {
-      throw new Error(
-        'The slug must be an object with all available locales. Is the slug field set to be localized?',
-      )
-    }
+  if (locales && typeof doc.slug !== 'object') {
+    throw new Error(
+      'The slug must be an object with all available locales. Is the slug field set to be localized?',
+    )
+  }
 
-    const docWithVirtualFields = await setPageDocumentVirtualFields({
+  try {
+    return await setPageDocumentVirtualFields({
       doc,
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
       pageConfigAttributes: pageConfig.page,
       req,
     })
-
-    return docWithVirtualFields
+  } catch (error) {
+    req.payload.logger.error(
+      { err: error },
+      `Failed to compute virtual fields for doc (id: ${doc.id})`,
+    )
+    return doc
   }
 }
 
@@ -104,55 +109,83 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     // When the slug is not (yet) set, it is not possible to generate the path and breadcrumbs
     docWithVirtualFields = doc
   } else {
-    docWithVirtualFields = await setPageDocumentVirtualFields({
-      doc,
-      locale,
-      locales,
-      pageConfigAttributes: pageConfig.page,
-      req,
-    })
+    try {
+      docWithVirtualFields = await setPageDocumentVirtualFields({
+        doc,
+        locale,
+        locales,
+        pageConfigAttributes: pageConfig.page,
+        req,
+      })
+    } catch (error) {
+      req.payload.logger.error(
+        { err: error },
+        `Failed to compute virtual fields for doc (id: ${doc.id})`,
+      )
+      // Note: docWithVirtualFields falls back to the raw doc, so virtual fields
+      // (path, breadcrumbs, meta) will be undefined. If dependentFieldsUnchanged
+      // is true below, previousDoc will also receive these undefined values —
+      // keeping both doc and previousDoc consistently without virtual fields.
+      docWithVirtualFields = doc
+    }
   }
 
   // Set virtual fields on previousDoc (mutated in place) so that subsequent
-  // afterChange hooks can access the previous path.
-  const dependentFieldsUnchanged =
-    extractID(doc[parentField]) === extractID(previousDoc[parentField]) &&
-    doc.slug === previousDoc.slug &&
-    doc.isRootPage === previousDoc.isRootPage
+  // afterChange hooks can access the previous path (e.g. for ISR revalidation).
+  // Wrapped in try-catch because previousDoc's parent may no longer exist.
+  try {
+    const dependentFieldsUnchanged =
+      extractID(doc[parentField]) === extractID(previousDoc[parentField]) &&
+      doc.slug === previousDoc.slug &&
+      doc.isRootPage === previousDoc.isRootPage
 
-  if (dependentFieldsUnchanged) {
-    // Reuse the already-computed virtual fields to avoid redundant DB queries
-    Object.assign(previousDoc, {
-      breadcrumbs: docWithVirtualFields.breadcrumbs,
-      path: docWithVirtualFields.path,
-      ...(docWithVirtualFields.meta ? { meta: docWithVirtualFields.meta } : {}),
-    })
-  } else if (previousDoc.isRootPage) {
-    const result = setRootPageDocumentVirtualFields({
-      breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
-      doc: previousDoc,
-      locale,
-      locales,
-    })
-    Object.assign(previousDoc, result)
-  } else if (previousDoc.slug) {
-    const result = await setPageDocumentVirtualFields({
-      doc: previousDoc,
-      locale,
-      locales,
-      pageConfigAttributes: pageConfig.page,
-      req,
-    })
-    Object.assign(previousDoc, result)
+    if (dependentFieldsUnchanged) {
+      // Reuse the already-computed virtual fields to avoid redundant DB queries
+      Object.assign(previousDoc, {
+        breadcrumbs: docWithVirtualFields.breadcrumbs,
+        path: docWithVirtualFields.path,
+        ...(docWithVirtualFields.meta ? { meta: docWithVirtualFields.meta } : {}),
+      })
+    } else if (previousDoc.isRootPage) {
+      const result = setRootPageDocumentVirtualFields({
+        breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+        doc: previousDoc,
+        locale,
+        locales,
+      })
+      Object.assign(previousDoc, result)
+    } else if (previousDoc.slug) {
+      const result = await setPageDocumentVirtualFields({
+        doc: previousDoc,
+        locale,
+        locales,
+        pageConfigAttributes: pageConfig.page,
+        req,
+      })
+      Object.assign(previousDoc, result)
+    }
+  } catch (error) {
+    // If previousDoc's virtual fields cannot be computed (e.g. its parent was deleted),
+    // log the error but don't break the afterChange hook — doc's virtual fields are still returned correctly.
+    req.payload.logger.error(
+      { err: error },
+      `Failed to compute virtual fields for previousDoc (id: ${previousDoc.id})`,
+    )
   }
 
   return docWithVirtualFields
 }
 
 /** Extracts a plain ID from a value that may be a raw ID or a populated document object. */
-function extractID(value: unknown): string | number | null | undefined {
-  if (value === null || value === undefined) return value
-  if (typeof value === 'string' || typeof value === 'number') return value
-  if (typeof value === 'object' && 'id' in value) return (value as { id: string | number }).id
+function extractID(value: unknown): null | number | string | undefined {
+  if (value === null || value === undefined) {
+    return value
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value
+  }
+  if (typeof value === 'object' && 'id' in value) {
+    return (value as { id: number | string }).id
+  }
   return undefined
 }
