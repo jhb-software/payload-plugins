@@ -81,7 +81,10 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
 /**
  * A `CollectionAfterChangeHook` that sets the values for all virtual fields.
  *
- * This "after change" hook is needed to re-fill the virtual fields after a document is changed/saved in the admin panel.
+ * This hook is NOT redundant with `setVirtualFieldsBeforeRead` — Payload does not call
+ * `beforeRead` hooks during create/update operations (only `afterRead` hooks fire).
+ * Therefore this `afterChange` hook is the only way to compute virtual fields on `doc`
+ * and `previousDoc` after a document is created or updated.
  */
 export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   collection,
