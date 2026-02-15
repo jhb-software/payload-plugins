@@ -29,18 +29,18 @@
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
-    "@payloadcms/plugin-cloud-storage": "^3.72.0",
+    "@payloadcms/plugin-cloud-storage": "^3.76.1",
     "cloudinary": "^2.9.0"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
-    "@swc/cli": "^0.7.10",
-    "@swc/core": "^1.15.10",
-    "@types/react": "19.2.8",
+    "@swc/cli": "^0.8.0",
+    "@swc/core": "^1.15.11",
+    "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "copyfiles": "2.4.1",
     "eslint": "^9.39.2",
-    "prettier": "^3.8.0",
+    "prettier": "^3.8.1",
     "rimraf": "6.1.2",
     "typescript": "5.9.3"
   },
