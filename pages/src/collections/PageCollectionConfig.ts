@@ -129,8 +129,8 @@ export const createPageCollectionConfig = ({
     hooks: {
       ...incomingCollectionConfig.hooks,
       afterChange: [
-        ...(incomingCollectionConfig.hooks?.afterChange || []),
         setVirtualFieldsAfterChange,
+        ...(incomingCollectionConfig.hooks?.afterChange || []),
       ],
       beforeDelete: [
         ...(incomingCollectionConfig.hooks?.beforeDelete || []),

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: populate virtual fields (`path`, `breadcrumbs`) on `previousDoc` in the `afterChange` hook, and run the plugin's hook before user-defined hooks so that `doc` also contains the virtual fields
+
 ## 0.6.0
 
 > ⚠️ **Warning**: This release includes breaking changes.

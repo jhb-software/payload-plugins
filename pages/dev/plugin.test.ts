@@ -2,6 +2,10 @@ import payload, { CollectionSlug, SanitizedConfig, ValidationError } from 'paylo
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
+import {
+  clearCapturedAfterChanges,
+  getLastAfterChangeHookArgs,
+} from './src/test/afterChangeCapture'
 
 type DefaultIDType = Config['db']['defaultIDType']
 
@@ -1516,6 +1520,350 @@ describe('Select during read operation', () => {
     expect(Object.keys(fetchWithPathAndParent.country!).sort()).toStrictEqual(
       Object.keys(fetchedWithAllFields.country!).sort(),
     )
+  })
+})
+
+describe('The afterChange hook doc and previousDoc contain the path of the page.', () => {
+  beforeEach(async () => {
+    await deleteCollection('pages')
+    clearCapturedAfterChanges()
+  })
+
+  test('doc.path is set on create for a root page.', async () => {
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root Page DE',
+        slug: '',
+        content: 'Root Page DE',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de')
+  })
+
+  test('doc.path is set on create for a nested page.', async () => {
+    const rootPageId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Root Page DE',
+          slug: 'root-page-de',
+          content: 'Root Page DE',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Nested Page DE',
+        slug: 'nested-page-de',
+        content: 'Nested Page DE',
+        parent: rootPageId,
+        ...virtualFields,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/root-page-de/nested-page-de')
+  })
+
+  test('doc.path and previousDoc.path are set on update when slug is unchanged.', async () => {
+    const rootPageId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Root Page DE',
+          slug: 'root-page-de',
+          content: 'Root Page DE',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+
+    await payload.update({
+      collection: 'pages',
+      id: rootPageId,
+      locale: 'de',
+      data: {
+        title: 'Root Page DE Updated',
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/root-page-de')
+    expect(previousDoc.path).toBe('/de/root-page-de')
+  })
+
+  test('previousDoc.path reflects the old path when slug changes.', async () => {
+    const pageId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Page DE',
+          slug: 'old-slug',
+          content: 'Page DE',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+
+    await payload.update({
+      collection: 'pages',
+      id: pageId,
+      locale: 'de',
+      data: {
+        slug: 'new-slug',
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/new-slug')
+    expect(previousDoc.path).toBe('/de/old-slug')
+  })
+
+  test('previousDoc.path reflects the old path when parent changes.', async () => {
+    const parentA = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Parent A',
+          slug: 'parent-a',
+          content: 'Parent A',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    const parentB = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Parent B',
+          slug: 'parent-b',
+          content: 'Parent B',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    const childId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child',
+          slug: 'child',
+          content: 'Child',
+          parent: parentA,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+
+    await payload.update({
+      collection: 'pages',
+      id: childId,
+      locale: 'de',
+      data: {
+        parent: parentB,
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/parent-b/child')
+    expect(previousDoc.path).toBe('/de/parent-a/child')
+  })
+
+  test('paths are correct for deeply nested page slug change.', async () => {
+    const grandparentId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Grandparent',
+          slug: 'grandparent',
+          content: 'Grandparent',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    const parentId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Parent',
+          slug: 'parent',
+          content: 'Parent',
+          parent: grandparentId,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    const childId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child',
+          slug: 'old-child',
+          content: 'Child',
+          parent: parentId,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+
+    await payload.update({
+      collection: 'pages',
+      id: childId,
+      locale: 'de',
+      data: {
+        slug: 'new-child',
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/grandparent/parent/new-child')
+    expect(previousDoc.path).toBe('/de/grandparent/parent/old-child')
+  })
+
+  test('doc.breadcrumbs is set in afterChange hook.', async () => {
+    const parentId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Parent',
+          slug: 'parent',
+          content: 'Parent',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Child',
+        slug: 'child',
+        content: 'Child',
+        parent: parentId,
+        ...virtualFields,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    const breadcrumbs = doc.breadcrumbs as Array<{ slug: string; path: string }>
+    expect(breadcrumbs).toHaveLength(2)
+    expect(breadcrumbs[0].path).toBe('/de/parent')
+    expect(breadcrumbs[1].path).toBe('/de/parent/child')
+  })
+
+  test('previousDoc.path and doc.path when slug and parent change simultaneously.', async () => {
+    const parentA = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Parent A',
+          slug: 'parent-a',
+          content: 'Parent A',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    const parentB = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Parent B',
+          slug: 'parent-b',
+          content: 'Parent B',
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    const childId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child',
+          slug: 'old-child',
+          content: 'Child',
+          parent: parentA,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+
+    await payload.update({
+      collection: 'pages',
+      id: childId,
+      locale: 'de',
+      data: {
+        slug: 'new-child',
+        parent: parentB,
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/parent-b/new-child')
+    expect(previousDoc.path).toBe('/de/parent-a/old-child')
+  })
+
+  test('previousDoc has no path when page is newly created.', async () => {
+    clearCapturedAfterChanges()
+
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'New Page',
+        slug: 'new-page',
+        content: 'New Page',
+        ...virtualFields,
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/new-page')
+    // On create, previousDoc has no slug so path cannot be computed
+    expect(previousDoc.path).toBeUndefined()
   })
 })
 

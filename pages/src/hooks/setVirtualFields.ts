@@ -81,6 +81,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
 export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   collection,
   doc,
+  previousDoc,
   req,
 }) => {
   // This type of hook is only called for one locale (therefore the locale cannot be set to 'all')
@@ -88,30 +89,70 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   const locales = localesFromRequest(req)
 
   const pageConfig = asPageCollectionConfigOrThrow(collection)
+  const parentField = pageConfig.page.parent.name
+
+  let docWithVirtualFields: Record<string, unknown>
 
   if (doc.isRootPage) {
-    const docWithVirtualFields = setRootPageDocumentVirtualFields({
+    docWithVirtualFields = setRootPageDocumentVirtualFields({
       breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
       doc,
       locale,
       locales,
     })
-
-    return docWithVirtualFields
-  } else {
+  } else if (!doc.slug) {
     // When the slug is not (yet) set, it is not possible to generate the path and breadcrumbs
-    if (!doc.slug) {
-      return doc
-    }
-
-    const docWithVirtualFields = await setPageDocumentVirtualFields({
+    docWithVirtualFields = doc
+  } else {
+    docWithVirtualFields = await setPageDocumentVirtualFields({
       doc,
       locale,
       locales,
       pageConfigAttributes: pageConfig.page,
       req,
     })
-
-    return docWithVirtualFields
   }
+
+  // Set virtual fields on previousDoc (mutated in place) so that subsequent
+  // afterChange hooks can access the previous path.
+  const dependentFieldsUnchanged =
+    extractID(doc[parentField]) === extractID(previousDoc[parentField]) &&
+    doc.slug === previousDoc.slug &&
+    doc.isRootPage === previousDoc.isRootPage
+
+  if (dependentFieldsUnchanged) {
+    // Reuse the already-computed virtual fields to avoid redundant DB queries
+    Object.assign(previousDoc, {
+      breadcrumbs: docWithVirtualFields.breadcrumbs,
+      path: docWithVirtualFields.path,
+      ...(docWithVirtualFields.meta ? { meta: docWithVirtualFields.meta } : {}),
+    })
+  } else if (previousDoc.isRootPage) {
+    const result = setRootPageDocumentVirtualFields({
+      breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+      doc: previousDoc,
+      locale,
+      locales,
+    })
+    Object.assign(previousDoc, result)
+  } else if (previousDoc.slug) {
+    const result = await setPageDocumentVirtualFields({
+      doc: previousDoc,
+      locale,
+      locales,
+      pageConfigAttributes: pageConfig.page,
+      req,
+    })
+    Object.assign(previousDoc, result)
+  }
+
+  return docWithVirtualFields
+}
+
+/** Extracts a plain ID from a value that may be a raw ID or a populated document object. */
+function extractID(value: unknown): string | number | null | undefined {
+  if (value === null || value === undefined) return value
+  if (typeof value === 'string' || typeof value === 'number') return value
+  if (typeof value === 'object' && 'id' in value) return (value as { id: string | number }).id
+  return undefined
 }
