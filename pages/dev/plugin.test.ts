@@ -2190,6 +2190,134 @@ describe('The afterChange hook doc and previousDoc contain the path of the page.
   // covered by the beforeRead tests (find/findByID with missing parent).
 })
 
+describe('Request-scoped ancestor caching', () => {
+  let grandparent: { id: DefaultIDType }
+  let parent: { id: DefaultIDType }
+
+  beforeAll(async () => {
+    await deleteCollection('pages')
+
+    grandparent = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Grandparent',
+        slug: 'grandparent',
+        content: 'grandparent',
+        ...virtualFields,
+      },
+    })
+
+    parent = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Parent',
+        slug: 'parent',
+        content: 'parent',
+        parent: grandparent.id,
+        ...virtualFields,
+      },
+    })
+
+    for (const slug of ['child-a', 'child-b', 'child-c']) {
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: slug,
+          slug,
+          content: slug,
+          parent: parent.id,
+          ...virtualFields,
+        },
+      })
+    }
+  })
+
+  test('shared parent is only fetched once when listing siblings', async () => {
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    await payload.find({
+      collection: 'pages',
+      locale: 'de',
+      where: { parent: { equals: parent.id } },
+    })
+
+    const parentFetches = findByIDSpy.mock.calls.filter(
+      (call) => call[0].id === parent.id && call[0].collection === 'pages',
+    )
+    expect(parentFetches).toHaveLength(1)
+  })
+
+  test('shared grandparent is only fetched once when listing siblings', async () => {
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    await payload.find({
+      collection: 'pages',
+      locale: 'de',
+      where: { parent: { equals: parent.id } },
+    })
+
+    // Each child fetches the parent, which in turn fetches the grandparent for its breadcrumbs.
+    // The grandparent should be fetched only once because the cache is passed through via req.context.
+    const grandparentFetches = findByIDSpy.mock.calls.filter(
+      (call) => call[0].id === grandparent.id && call[0].collection === 'pages',
+    )
+    expect(grandparentFetches).toHaveLength(1)
+  })
+
+  test('virtual fields are still computed correctly despite caching', async () => {
+    const result = await payload.find({
+      collection: 'pages',
+      locale: 'de',
+      where: { parent: { equals: parent.id } },
+      sort: 'slug',
+    })
+
+    expect(result.docs).toHaveLength(3)
+
+    for (const child of result.docs) {
+      // Each child should have the full breadcrumb chain: grandparent -> parent -> child
+      expect(child.breadcrumbs).toHaveLength(3)
+      expect(child.breadcrumbs[0].slug).toBe('grandparent')
+      expect(child.breadcrumbs[1].slug).toBe('parent')
+      expect(child.path).toBe(`/de/grandparent/parent/${child.slug}`)
+    }
+  })
+
+  test('different locales are cached separately', async () => {
+    // Add English locale to the parent
+    await payload.update({
+      collection: 'pages',
+      id: parent.id,
+      locale: 'en',
+      data: {
+        title: 'Parent EN',
+        slug: 'parent-en',
+        content: 'parent en',
+        parent: grandparent.id,
+        ...virtualFields,
+      },
+    })
+
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    // Fetch children with locale 'all' — this fetches the parent once per locale
+    await payload.find({
+      collection: 'pages',
+      locale: 'all',
+      where: { parent: { equals: parent.id } },
+    })
+
+    // The parent should be fetched once for locale 'all' (not once per child)
+    const parentFetches = findByIDSpy.mock.calls.filter(
+      (call) => call[0].id === parent.id && call[0].collection === 'pages',
+    )
+    expect(parentFetches).toHaveLength(1)
+  })
+})
+
 /**
  * Helper function to remove id field from objects in an array
  */

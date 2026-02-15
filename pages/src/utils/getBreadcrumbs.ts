@@ -62,20 +62,11 @@ export async function getBreadcrumbs({
   }
 
   const parent = req
-    ? await req.payload.findByID({
+    ? await findByIDCached({
         id: parentId,
         collection: parentCollection,
-        depth: 0,
-        disableErrors: true,
         locale,
-        req: {
-          // passing the transactionID ensures that the parent document can also be found if it was created in the same uncommitted transaction
-          transactionID: req.transactionID,
-          // do not pass the full req here, otherwise there will be issues with the locale flattening
-        },
-        select: {
-          breadcrumbs: true,
-        },
+        req,
       })
     : await fetchRestApi<{ breadcrumbs: Breadcrumb[]; id: number | string }>(
         `/${parentCollection}/${parentId}`,
@@ -144,4 +135,59 @@ function pickFieldValue(field: any, locale: Locale | undefined): string | undefi
   }
 
   return undefined
+}
+
+const ANCESTOR_CACHE_KEY = 'pagesPluginAncestorCache'
+
+/** Fetches a parent document by ID with request-scoped caching to avoid redundant DB queries. */
+async function findByIDCached({
+  id,
+  collection,
+  locale,
+  req,
+}: {
+  collection: CollectionSlug
+  id: number | string
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  locale: 'all' | Locale | undefined
+  req: PayloadRequest
+}): Promise<null | Record<string, unknown>> {
+  const cacheKey = `${collection}:${id}:${locale ?? ''}`
+  // Cache the Promise (not the resolved value) so that concurrent lookups for the same
+  // parent (e.g. beforeRead hooks running in parallel via Promise.all) share a single DB query.
+  const cache = (req.context[ANCESTOR_CACHE_KEY] ??= new Map()) as Map<
+    string,
+    Promise<null | Record<string, unknown>>
+  >
+
+  let parentPromise = cache.get(cacheKey)
+
+  if (!parentPromise) {
+    parentPromise = req.payload
+      .findByID({
+        id,
+        collection,
+        depth: 0,
+        disableErrors: true,
+        locale,
+        req: {
+          // passing the transactionID ensures that the parent document can also be found if it was created in the same uncommitted transaction
+          transactionID: req.transactionID,
+          // do not pass the full req here, otherwise there will be issues with the locale flattening
+          context: { [ANCESTOR_CACHE_KEY]: cache },
+        },
+        select: {
+          breadcrumbs: true,
+        },
+      })
+      .then((result) => result ?? null)
+      .catch((error) => {
+        cache.delete(cacheKey)
+        throw error
+      })
+
+    cache.set(cacheKey, parentPromise)
+  }
+
+  return parentPromise
 }
