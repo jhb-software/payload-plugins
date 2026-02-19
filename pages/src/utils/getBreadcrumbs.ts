@@ -139,7 +139,15 @@ function pickFieldValue(field: any, locale: Locale | undefined): string | undefi
 
 const ANCESTOR_CACHE_KEY = 'pagesPluginAncestorCache'
 
-/** Fetches a parent document by ID with request-scoped caching to avoid redundant DB queries. */
+/**
+ * Fetches a parent document by ID with request-scoped caching to avoid redundant DB queries.
+ *
+ * The cache stores Promises rather than resolved values. This is important because Payload's
+ * beforeRead hooks run concurrently (via Promise.all) for all docs in a list query. If we cached
+ * the resolved value, every sibling would fire its own DB query before the first one resolves and
+ * populates the cache. By caching the Promise immediately, all concurrent lookups for the same
+ * ancestor receive the same in-flight Promise and only a single DB query is executed.
+ */
 async function findByIDCached({
   id,
   collection,
