@@ -32,7 +32,7 @@ type OpenAIResponse = {
 }
 
 const defaultPrompt: OpenAIPrompt = ({ localeFrom, localeTo, texts }) => {
-  return `Translate the following array of strings from ${localeFrom.toUpperCase()} to ${localeTo.toUpperCase()}.
+  return `Translate the following array of strings from the language with ISO 639 code "${localeFrom}" to the language with ISO 639 code "${localeTo}".
 
 IMPORTANT: You must return ONLY a valid JSON object with a "translations" key containing the array of translated strings. The array must maintain the exact same length and order as the input. Properly escape all special characters including quotes, newlines, and backslashes according to JSON standards.
 
