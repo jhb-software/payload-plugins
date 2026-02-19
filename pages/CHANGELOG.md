@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0-beta
 
 - feat: add request-scoped ancestor caching to avoid redundant DB queries when computing virtual fields for sibling pages
 - fix: populate virtual fields (`path`, `breadcrumbs`) on `previousDoc` in the `afterChange` hook, and run the plugin's hook before user-defined hooks so that `doc` also contains the virtual fields
