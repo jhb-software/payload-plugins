@@ -55,6 +55,9 @@ export const openAIResolver = ({
   return {
     key: 'openai',
     resolve: async ({ localeFrom, localeTo, req, texts }) => {
+      // ISO 639 language codes should always be lowercase
+      localeFrom = localeFrom.toLowerCase()
+      localeTo = localeTo.toLowerCase()
       const apiUrl = `${baseUrl || 'https://api.openai.com'}/v1/chat/completions`
 
       try {
