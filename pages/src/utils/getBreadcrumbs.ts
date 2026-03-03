@@ -179,10 +179,8 @@ async function findByIDCached({
         disableErrors: true,
         locale,
         req: {
-          // passing the transactionID ensures that the parent document can also be found if it was created in the same uncommitted transaction
-          transactionID: req.transactionID,
-          // do not pass the full req here, otherwise there will be issues with the locale flattening
-          context: { [ANCESTOR_CACHE_KEY]: cache },
+          ...req,
+          context: { ...req.context, [ANCESTOR_CACHE_KEY]: cache },
         },
         select: {
           breadcrumbs: true,

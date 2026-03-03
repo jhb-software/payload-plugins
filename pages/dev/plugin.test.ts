@@ -2318,6 +2318,80 @@ describe('Request-scoped ancestor caching', () => {
   })
 })
 
+describe('Request context is forwarded to nested findByID calls during breadcrumb computation', () => {
+  let parentPage: { id: DefaultIDType }
+
+  beforeAll(async () => {
+    await deleteCollection('pages')
+
+    parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Context Parent',
+        slug: 'context-parent',
+        content: 'parent',
+        ...virtualFields,
+      },
+    })
+  })
+
+  test('nested findByID receives the full req including user and context', async () => {
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Context Child',
+        slug: 'context-child',
+        content: 'child',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    // Find the nested findByID call that fetches the parent during breadcrumb computation
+    const parentFetch = findByIDSpy.mock.calls.find(
+      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
+    )
+
+    expect(parentFetch).toBeDefined()
+    const reqArg = parentFetch![0].req
+
+    // The nested call should receive a req with the payload instance (not a bare object)
+    expect(reqArg).toBeDefined()
+    expect(reqArg!.payload).toBeDefined()
+    expect(reqArg!.transactionID).toBeDefined()
+
+    // The full req should include context (not just the ancestor cache)
+    expect(reqArg!.context).toBeDefined()
+  })
+
+  test('custom req.context properties are preserved in nested findByID calls', async () => {
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    // Use payload.find with a custom context property
+    await payload.find({
+      collection: 'pages',
+      locale: 'de',
+      where: { parent: { equals: parentPage.id } },
+      context: { customProperty: 'test-value' },
+    })
+
+    // Find the nested findByID call for the parent
+    const parentFetch = findByIDSpy.mock.calls.find(
+      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
+    )
+
+    expect(parentFetch).toBeDefined()
+    const reqArg = parentFetch![0].req
+
+    // The custom context property should be forwarded through to the nested call
+    expect(reqArg!.context).toHaveProperty('customProperty', 'test-value')
+  })
+})
+
 /**
  * Helper function to remove id field from objects in an array
  */
