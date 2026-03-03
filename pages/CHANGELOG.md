@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1-beta
+
+- feat: pass full req to payload.findByID in getBreadcrumbs
+
 ## 0.7.0-beta
 
 - feat: add request-scoped ancestor caching to avoid redundant DB queries when computing virtual fields for sibling pages
