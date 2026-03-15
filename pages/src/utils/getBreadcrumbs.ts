@@ -11,6 +11,7 @@ import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 export async function getBreadcrumbs({
   breadcrumbLabelField,
   data,
+  draft,
   locale,
   locales,
   parentCollection,
@@ -19,6 +20,11 @@ export async function getBreadcrumbs({
 }: {
   breadcrumbLabelField: string
   data: Record<string, any>
+  /**
+   * Whether to fetch parent documents as drafts. When true, draft-only parents (never published)
+   * are included and draft changes to slugs/titles are reflected in the breadcrumbs.
+   */
+  draft?: boolean
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
@@ -65,6 +71,7 @@ export async function getBreadcrumbs({
     ? await findByIDCached({
         id: parentId,
         collection: parentCollection,
+        draft,
         locale,
         req,
       })
@@ -151,16 +158,18 @@ const ANCESTOR_CACHE_KEY = 'pagesPluginAncestorCache'
 async function findByIDCached({
   id,
   collection,
+  draft,
   locale,
   req,
 }: {
   collection: CollectionSlug
+  draft?: boolean
   id: number | string
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   req: PayloadRequest
 }): Promise<null | Record<string, unknown>> {
-  const cacheKey = `${collection}:${id}:${locale ?? ''}`
+  const cacheKey = `${collection}:${id}:${locale ?? ''}:${draft ? 'draft' : 'published'}`
   // Cache the Promise (not the resolved value) so that concurrent lookups for the same
   // parent (e.g. beforeRead hooks running in parallel via Promise.all) share a single DB query.
   const cache = (req.context[ANCESTOR_CACHE_KEY] ??= new Map()) as Map<
@@ -177,6 +186,7 @@ async function findByIDCached({
         collection,
         depth: 0,
         disableErrors: true,
+        draft,
         locale,
         req: {
           ...req,

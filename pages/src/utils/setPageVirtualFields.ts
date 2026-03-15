@@ -10,12 +10,14 @@ import { getBreadcrumbs } from './getBreadcrumbs.js'
 /** Sets the virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
 export async function setPageDocumentVirtualFields({
   doc,
+  draft,
   locale,
   locales,
   pageConfigAttributes,
   req,
 }: {
   doc: Record<string, any>
+  draft?: boolean
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
@@ -26,6 +28,7 @@ export async function setPageDocumentVirtualFields({
     const breadcrumbs = (await getBreadcrumbs({
       breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
       data: doc,
+      draft,
       locales,
       parentCollection: pageConfigAttributes.parent.collection,
       parentField: pageConfigAttributes.parent.name,
@@ -80,6 +83,7 @@ export async function setPageDocumentVirtualFields({
     const breadcrumbs = (await getBreadcrumbs({
       breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
       data: doc,
+      draft,
       locale: undefined,
       locales,
       parentCollection: pageConfigAttributes.parent.collection,
