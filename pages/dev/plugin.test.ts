@@ -2390,6 +2390,32 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
     // The custom context property should be forwarded through to the nested call
     expect(reqArg!.context).toHaveProperty('customProperty', 'test-value')
   })
+
+  test('nested findByID uses overrideAccess: true to bypass access control on ancestor documents', async () => {
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Access Control Child',
+        slug: 'access-control-child',
+        content: 'child',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    // Find the nested findByID call that fetches the parent during breadcrumb computation
+    const parentFetch = findByIDSpy.mock.calls.find(
+      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
+    )
+
+    expect(parentFetch).toBeDefined()
+    // overrideAccess must be true so breadcrumbs are generated even when the requesting
+    // user does not have read access to the parent document
+    expect(parentFetch![0].overrideAccess).toBe(true)
+  })
 })
 
 /**
