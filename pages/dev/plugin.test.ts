@@ -2392,6 +2392,155 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
   })
 })
 
+describe('Circular parent reference prevention', () => {
+  beforeEach(async () => await deleteAllCollections(config, ['users']))
+
+  test('prevents a document from being set as its own parent', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Self Reference Page',
+        slug: 'self-reference-page',
+        content: 'Content',
+        ...virtualFields,
+      },
+    })
+
+    await expect(
+      payload.update({
+        collection: 'pages',
+        id: page.id,
+        locale: 'de',
+        data: {
+          parent: page.id,
+        },
+      }),
+    ).rejects.toThrow()
+  })
+
+  test('prevents a two-node cycle (A -> B -> A)', async () => {
+    const pageA = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page A',
+        slug: 'page-a-cycle',
+        content: 'Content A',
+        ...virtualFields,
+      },
+    })
+
+    const pageB = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page B',
+        slug: 'page-b-cycle',
+        content: 'Content B',
+        parent: pageA.id,
+        ...virtualFields,
+      },
+    })
+
+    // Setting A's parent to B would create a cycle: A -> B -> A
+    await expect(
+      payload.update({
+        collection: 'pages',
+        id: pageA.id,
+        locale: 'de',
+        data: {
+          parent: pageB.id,
+        },
+      }),
+    ).rejects.toThrow()
+  })
+
+  test('prevents a deep cycle (A -> B -> C -> A)', async () => {
+    const pageA = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page A Deep',
+        slug: 'page-a-deep',
+        content: 'Content A',
+        ...virtualFields,
+      },
+    })
+
+    const pageB = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page B Deep',
+        slug: 'page-b-deep',
+        content: 'Content B',
+        parent: pageA.id,
+        ...virtualFields,
+      },
+    })
+
+    const pageC = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page C Deep',
+        slug: 'page-c-deep',
+        content: 'Content C',
+        parent: pageB.id,
+        ...virtualFields,
+      },
+    })
+
+    // Setting A's parent to C would create a cycle: A -> B -> C -> A
+    await expect(
+      payload.update({
+        collection: 'pages',
+        id: pageA.id,
+        locale: 'de',
+        data: {
+          parent: pageC.id,
+        },
+      }),
+    ).rejects.toThrow()
+  })
+
+  test('allows setting a valid (non-circular) parent', async () => {
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Valid Parent',
+        slug: 'valid-parent',
+        content: 'Parent content',
+        ...virtualFields,
+      },
+    })
+
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Valid Child',
+        slug: 'valid-child',
+        content: 'Child content',
+        ...virtualFields,
+      },
+    })
+
+    const result = await payload.update({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      data: {
+        parent: parentPage.id,
+      },
+    })
+
+    expect(result.id).toBe(childPage.id)
+  })
+})
+
 /**
  * Helper function to remove id field from objects in an array
  */
