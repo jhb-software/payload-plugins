@@ -38,5 +38,17 @@ export const en: GenericTranslationsObject = {
 
     // Validation messages
     theAlternateTextIsRequired: 'An alternate text is required.',
+
+    // Dashboard widget
+    altTextHealthDescription: 'Coverage across all configured upload collections.',
+    altTextHealthWidget: 'Alt text health',
+    collectionCheckFailed: 'Health check unavailable',
+    collectionLabel: 'Collection',
+    fullyCoveredImages: 'Fully covered',
+    healthCheckPartialWarning: 'Some collections could not be checked right now.',
+    imagesWithMissingLocales: 'Missing locales',
+    missingAltTextImages: 'Missing alt text',
+    noImagesFound: 'No images found in the configured collections yet.',
+    totalImages: 'Total images',
   },
 }

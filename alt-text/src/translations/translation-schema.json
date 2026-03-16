@@ -24,7 +24,17 @@
         "altTextRequirement2": { "type": "string" },
         "altTextRequirement3": { "type": "string" },
         "pleaseSaveDocumentFirst": { "type": "string" },
-        "theAlternateTextIsRequired": { "type": "string" }
+        "theAlternateTextIsRequired": { "type": "string" },
+        "altTextHealthWidget": { "type": "string" },
+        "altTextHealthDescription": { "type": "string" },
+        "totalImages": { "type": "string" },
+        "fullyCoveredImages": { "type": "string" },
+        "missingAltTextImages": { "type": "string" },
+        "imagesWithMissingLocales": { "type": "string" },
+        "noImagesFound": { "type": "string" },
+        "healthCheckPartialWarning": { "type": "string" },
+        "collectionLabel": { "type": "string" },
+        "collectionCheckFailed": { "type": "string" }
       },
       "required": [
         "alternateText",
@@ -46,7 +56,17 @@
         "altTextRequirement2",
         "altTextRequirement3",
         "pleaseSaveDocumentFirst",
-        "theAlternateTextIsRequired"
+        "theAlternateTextIsRequired",
+        "altTextHealthWidget",
+        "altTextHealthDescription",
+        "totalImages",
+        "fullyCoveredImages",
+        "missingAltTextImages",
+        "imagesWithMissingLocales",
+        "noImagesFound",
+        "healthCheckPartialWarning",
+        "collectionLabel",
+        "collectionCheckFailed"
       ]
     }
   },

@@ -93,6 +93,7 @@ export interface Config {
   globalsSelect: {};
   locale: 'en' | 'de';
   widgets: {
+    'alt-text-health': AltTextHealthWidget;
     collections: CollectionsWidget;
   };
   user: User;
@@ -367,6 +368,16 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "alt-text-health_widget".
+ */
+export interface AltTextHealthWidget {
+  data?: {
+    [k: string]: unknown;
+  };
+  width: 'medium' | 'large' | 'x-large' | 'full';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
