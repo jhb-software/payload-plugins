@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- feat: add a cached alt text health dashboard widget with localization-aware coverage reporting
+- feat: invalidate dashboard health cache after create, update, and delete operations in configured upload collections
+
 ## 0.3.1
 
 - fix: update validate function to correctly detect initial upload in Payload >=3.70

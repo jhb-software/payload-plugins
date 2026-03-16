@@ -10,6 +10,7 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 - Automatic keyword extraction for improved admin search
 - Bulk generation for processing multiple images at once
 - Full localization support
+- Dashboard health widget with cached coverage insights across all configured upload collections
 
 
 When the plugin is enabled for an upload collection, it will:
@@ -22,6 +23,10 @@ When the plugin is enabled for an upload collection, it will:
    - It will be used for improving the search of images in the admin panel
 2. Add a bulk generate button to the collection list view
    - This button will allow you to generate alt text for multiple images at once
+3. Register an `Alt text health` dashboard widget
+   - The widget is available in Payload's dashboard editor
+   - It is added to the default dashboard layout for first-time and reset layouts
+   - Results are cached and revalidated when documents in the configured upload collections change
 
 ## Installation
 
@@ -68,6 +73,19 @@ Note: When localization is disabled in your Payload config (default), you need t
 | `locale`                     | `string`           | No       | Locale for alt text generation (required when localization is disabled)  |
 | `maxBulkGenerateConcurrency` | `number`           | No       | Maximum concurrent API requests for bulk operations (default: 16)        |
 | `fieldsOverride`             | `Function`         | No       | Override the default fields inserted by the plugin                       |
+
+## Dashboard Widget
+
+The plugin automatically registers an `Alt text health` dashboard widget using Payload's modular dashboard API.
+
+The widget:
+
+- Aggregates health across all plugin-enabled upload collections
+- Distinguishes between fully covered, missing, and partially localized alt text
+- Uses cached server-side queries to avoid re-fetching every media document on each dashboard request
+- Revalidates automatically when documents in the configured upload collections are created, updated, or deleted
+
+If your project replaces the default dashboard via `admin.components.views.dashboard`, Payload will not render modular dashboard widgets automatically. In that setup, you need to integrate the exported server helper or widget into your custom dashboard yourself.
 
 ### Resolvers
 
