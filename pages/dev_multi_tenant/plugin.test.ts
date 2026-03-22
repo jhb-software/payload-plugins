@@ -23,10 +23,6 @@ beforeAll(async () => {
 
   // clear all collections except users
   await deleteAllCollections(['users'])
-
-  // For MongoDB runs, remove stale unique slug indexes from previous schema versions.
-  // Multi-tenant collections rely on compound unique indexes (slug + tenant).
-  await removeStaleUniqueSlugIndexes()
 })
 
 afterAll(async () => {
@@ -457,40 +453,5 @@ const deleteAllCollections = async (except: CollectionSlug[] = []) => {
   // Delete any remaining collections not in the order list
   for (const slug of Array.from(collectionSlugs)) {
     await deleteCollection(slug)
-  }
-}
-
-const removeStaleUniqueSlugIndexes = async () => {
-  if (process.env.PAYLOAD_DATABASE !== 'mongodb') {
-    return
-  }
-
-  const tenantScopedSlugCollections: CollectionSlug[] = [
-    'authors',
-    'blogposts',
-    'countries',
-    'country-travel-tips',
-    'pages',
-  ]
-
-  for (const slug of tenantScopedSlugCollections) {
-    const collectionModel = (payload.db.collections as Record<string, any>)[slug]
-    const collection = collectionModel?.collection
-
-    if (!collection || typeof collection.indexes !== 'function') {
-      continue
-    }
-
-    const indexes = await collection.indexes()
-
-    for (const index of indexes) {
-      const key = index?.key
-      const keys = key && typeof key === 'object' ? Object.keys(key) : []
-      const isSingleSlugIndex = keys.length === 1 && keys[0].startsWith('slug')
-
-      if (index?.unique && isSingleSlugIndex && index?.name) {
-        await collection.dropIndex(index.name)
-      }
-    }
   }
 }
