@@ -3,18 +3,17 @@ import { Button, toast } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import React, { useTransition } from 'react'
 
-import type { VercelDashboardPluginConfig } from '../types.js'
+import type { DeploymentInfo } from '../server-actions/getFrontendDeploymentInfo.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
 import { useDashboardTranslation } from '../react-hooks/useDashboardTranslation.js'
-import { getFrontendDeploymentInfo } from '../server-actions/getFrontendDeploymentInfo.js'
-import { triggerFrontendDeployment } from '../server-actions/triggerFrontendDeployment.js'
 import { RefreshIcon } from './icons/refresh.js'
 import { SpinnerIcon } from './icons/spinner.js'
 
 export const TriggerFrontendDeploymentButton: React.FC<{
-  pluginConfig: VercelDashboardPluginConfig
-}> = ({ pluginConfig }) => {
+  getDeploymentInfo: (deploymentId: string) => Promise<DeploymentInfo>
+  triggerDeployment: () => Promise<string>
+}> = ({ getDeploymentInfo, triggerDeployment }) => {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { t } = useDashboardTranslation()
@@ -22,7 +21,7 @@ export const TriggerFrontendDeploymentButton: React.FC<{
   const handleClick = () => {
     startTransition(async () => {
       try {
-        const deploymentId = await triggerFrontendDeployment(pluginConfig)
+        const deploymentId = await triggerDeployment()
         toast.success(t('vercel-dashboard:deploymentInfoDeploymentTriggeredSuccessfully'))
 
         // refresh the page so that the deployment info card re-fetches the latest deployment info
@@ -31,7 +30,7 @@ export const TriggerFrontendDeploymentButton: React.FC<{
         startPolling(deploymentId)
       } catch (error) {
         toast.error(t('vercel-dashboard:deploymentInfoDeploymentTriggeredFailed'))
-        console.error('Failed to trigger website rebuild', error)
+        console.error('Failed to redeploy website', error)
       }
     })
   }
@@ -42,7 +41,7 @@ export const TriggerFrontendDeploymentButton: React.FC<{
     let lastStatus: VercelDeployment['status']
 
     const interval = setInterval(() => {
-      void getFrontendDeploymentInfo(deploymentId, pluginConfig).then((deployment) => {
+      void getDeploymentInfo(deploymentId).then((deployment) => {
         if (deployment.status !== lastStatus) {
           lastStatus = deployment.status
 
@@ -65,7 +64,7 @@ export const TriggerFrontendDeploymentButton: React.FC<{
     <div>
       <Button buttonStyle="pill" margin={false} onClick={handleClick} type="button">
         <span style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
-          {t('vercel-dashboard:deploymentInfoTriggerRebuild')}
+          {t('vercel-dashboard:deploymentInfoTriggerRedeploy')}
           {isPending ? <SpinnerIcon /> : <RefreshIcon />}
         </span>
       </Button>

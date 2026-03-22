@@ -9,7 +9,9 @@ import type { VercelDashboardTranslationKeys } from '../translations/index.js'
 import type { VercelDashboardPluginConfig } from '../types.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
+import { getFrontendDeploymentInfo } from '../server-actions/getFrontendDeploymentInfo.js'
 import { getFrontendDeploymentsInfo } from '../server-actions/getFrontendDeploymentsInfo.js'
+import { triggerFrontendDeployment } from '../server-actions/triggerFrontendDeployment.js'
 import { Card } from './Card.js'
 import { FormattedDate } from './FormattedDate.js'
 import { ClockIcon } from './icons/clock.js'
@@ -26,10 +28,17 @@ export function DeploymentInfoCard({
   pluginConfig: VercelDashboardPluginConfig
 }) {
   const t = i18n.t as TFunction<VercelDashboardTranslationKeys>
+  const triggerDeploymentAction = triggerFrontendDeployment.bind(null, pluginConfig)
+  const getDeploymentInfoAction = getFrontendDeploymentInfo.bind(null, pluginConfig)
 
   return (
     <Card
-      actions={<TriggerFrontendDeploymentButton pluginConfig={pluginConfig} />}
+      actions={
+        <TriggerFrontendDeploymentButton
+          getDeploymentInfo={getDeploymentInfoAction}
+          triggerDeployment={triggerDeploymentAction}
+        />
+      }
       icon={<InfoIcon />}
       title={t('vercel-dashboard:deploymentInfoTitle')}
     >

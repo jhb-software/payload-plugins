@@ -16,8 +16,8 @@ export type DeploymentInfo = {
  * @returns {Promise<DeploymentInfo>} An object containing the deployment information.
  */
 export const getFrontendDeploymentInfo = async (
-  id: string,
   pluginConfig: VercelDashboardPluginConfig,
+  id: string,
 ): Promise<DeploymentInfo> => {
   const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
 

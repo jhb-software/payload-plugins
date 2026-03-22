@@ -5,15 +5,16 @@ export const en: GenericTranslationsObject = {
     // Deployment Info Feature
     deploymentInfoActiveDeployment: 'Active Deployment',
     deploymentInfoDeploymentCompletedSuccessfully: 'New deployment completed successfully',
-    deploymentInfoDeploymentTriggeredFailed: 'Failed to trigger new deployment',
-    deploymentInfoDeploymentTriggeredSuccessfully: 'New deployment triggered successfully',
+    deploymentInfoDeploymentTriggeredFailed: 'Failed to redeploy the latest production deployment',
+    deploymentInfoDeploymentTriggeredSuccessfully:
+      'Latest production deployment redeployed successfully',
     deploymentInfoDescription:
       'Since the website is static for performance reasons, a new deployment must be created when content changes in the CMS, rebuilding the website with the latest published content from the CMS. The build process usually takes 1-2 minutes.',
     deploymentInfoError: 'Error fetching deployment info',
     deploymentInfoInspectDeployment: 'Inspect Deployment',
     deploymentInfoLatestDeployment: 'Latest Deployment',
     deploymentInfoTitle: 'Vercel Deployments',
-    deploymentInfoTriggerRebuild: 'Trigger New Deployment',
+    deploymentInfoTriggerRedeploy: 'Redeploy Latest Production',
 
     // Vercel Deployment Status
     vercelDeploymentStatusBuilding: 'Building',
