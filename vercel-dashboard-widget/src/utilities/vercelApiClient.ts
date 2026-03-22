@@ -24,32 +24,9 @@ export interface VercelDeploymentsResponse {
   }
 }
 
-export interface VercelProject {
-  id: string
-  link?: {
-    org: string
-    productionBranch: string
-    repo: string
-    type: 'github'
-  }
-  name: string
-}
-
 export interface CreateDeploymentRequest {
-  gitSource: {
-    org: string
-    ref: string
-    repo: string
-    type: 'github'
-  }
-  meta?: {
-    githubCommitAuthorLogin?: string
-  }
+  deploymentId: string
   name: string
-  project: string
-  projectSettings?: {
-    commandForIgnoringBuildStep?: string
-  }
   target: 'preview' | 'production'
 }
 
@@ -146,6 +123,7 @@ export class VercelApiClient {
   async getDeployments(params: {
     limit?: number
     projectId: string
+    state?: VercelDeployment['state']
     target?: 'preview' | 'production'
     teamId?: string
   }): Promise<VercelDeploymentsResponse> {
@@ -159,26 +137,14 @@ export class VercelApiClient {
     if (params.target) {
       searchParams.target = params.target
     }
+    if (params.state) {
+      searchParams.state = params.state
+    }
     if (params.limit) {
       searchParams.limit = params.limit.toString()
     }
 
     return this.request<VercelDeploymentsResponse>('/v6/deployments', {
-      searchParams,
-    })
-  }
-
-  /**
-   * Get project details by ID
-   */
-  async getProject(params: { projectId: string; teamId?: string }): Promise<VercelProject> {
-    const searchParams: Record<string, string> = {}
-
-    if (params.teamId) {
-      searchParams.teamId = params.teamId
-    }
-
-    return this.request<VercelProject>(`/v9/projects/${params.projectId}`, {
       searchParams,
     })
   }

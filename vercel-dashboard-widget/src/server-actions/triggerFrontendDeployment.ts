@@ -11,21 +11,12 @@ export async function triggerFrontendDeployment(
   pluginConfig: VercelDashboardPluginConfig,
 ): Promise<string> {
   const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
-  const projectDetails = await getProjectDetails(vercelClient, pluginConfig)
+  const latestReadyDeployment = await getLatestReadyProductionDeployment(vercelClient, pluginConfig)
 
   const deployment = await vercelClient.createDeployment({
     requestBody: {
-      name: projectDetails.name,
-      gitSource: projectDetails.gitSource,
-      meta: {
-        // Override to show the deployment was triggered by the CMS in the Vercel dashboard
-        githubCommitAuthorLogin: 'cms-dashboard',
-      },
-      project: pluginConfig.vercel.projectId,
-      projectSettings: {
-        // IMPORTANT: Override the ignore build step so that a deployment is always triggered, even though there were no git changes
-        commandForIgnoringBuildStep: 'exit 1',
-      },
+      name: pluginConfig.vercel.projectId,
+      deploymentId: latestReadyDeployment.uid,
       target: 'production',
     },
     teamId: pluginConfig.vercel.teamId,
@@ -36,43 +27,27 @@ export async function triggerFrontendDeployment(
   return deployment.id
 }
 
-/** Fetches details about the project which are needed to trigger a deployment from the Vercel API. */
-async function getProjectDetails(
+/** Finds the latest READY production deployment that can be redeployed. */
+async function getLatestReadyProductionDeployment(
   vercelClient: VercelApiClient,
   pluginConfig: VercelDashboardPluginConfig,
 ): Promise<{
-  gitSource: {
-    org: string
-    ref: string
-    repo: string
-    type: 'github'
-  }
-  name: string
+  uid: string
 }> {
-  const project = await vercelClient.getProject({
+  const deploymentsResponse = await vercelClient.getDeployments({
+    limit: 1,
     projectId: pluginConfig.vercel.projectId,
+    state: 'READY',
+    target: 'production',
     teamId: pluginConfig.vercel.teamId,
   })
 
-  if (!project) {
-    throw new Error('Project not found')
-  }
-
-  if (!project.link || project.link.type !== 'github') {
-    throw new Error('Project link not found')
-  }
-
-  if (!project.link?.productionBranch || !project.link?.repo || !project.link?.org) {
-    throw new Error('Project link is missing required fields')
+  const latestReadyDeployment = deploymentsResponse.deployments.at(0)
+  if (!latestReadyDeployment) {
+    throw new Error('No READY production deployment found to redeploy')
   }
 
   return {
-    name: project.name,
-    gitSource: {
-      type: 'github',
-      org: project.link.org,
-      ref: project.link.productionBranch,
-      repo: project.link.repo,
-    },
+    uid: latestReadyDeployment.uid,
   }
 }
