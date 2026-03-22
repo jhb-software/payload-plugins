@@ -33,10 +33,10 @@
     "he": "^1.2.0"
   },
   "peerDependencies": {
-    "@payloadcms/translations": "^3.78.0",
-    "@payloadcms/ui": "^3.78.0",
+    "@payloadcms/translations": "^3.79.0",
+    "@payloadcms/ui": "^3.79.0",
     "next": "15.4.11",
-    "payload": "^3.78.0",
+    "payload": "^3.79.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -48,7 +48,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "copyfiles": "^2.4.1",
-    "eslint": "^9.39.2",
+    "eslint": "^10.0.3",
     "prettier": "^3.8.1",
     "rimraf": "^6.1.3",
     "typescript": "^5.9.3"
