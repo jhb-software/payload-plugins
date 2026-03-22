@@ -17,14 +17,6 @@ export default buildConfig({
     },
     user: 'users',
   },
-  localization: {
-    locales: ['en', 'de'],
-    defaultLocale: 'en',
-    fallback: true,
-  },
-  i18n: {
-    supportedLanguages: { en, de },
-  },
   collections: [
     {
       slug: 'users',
@@ -35,23 +27,14 @@ export default buildConfig({
   db: mongooseAdapter({
     url: process.env.MONGODB_URL!,
   }),
-  secret: process.env.PAYLOAD_SECRET!,
-  typescript: {
-    outputFile: path.resolve(dirname, 'payload-types.ts'),
+  i18n: {
+    supportedLanguages: { de, en },
   },
-  plugins: [
-    vercelDashboardPlugin({
-      vercel: {
-        apiToken: process.env.VERCEL_API_TOKEN!,
-        projectId: process.env.VERCEL_PROJECT_ID!,
-        teamId: process.env.VERCEL_TEAM_ID,
-      },
-      widget: {
-        minWidth: 'medium',
-        maxWidth: 'full',
-      },
-    }),
-  ],
+  localization: {
+    defaultLocale: 'en',
+    fallback: true,
+    locales: ['en', 'de'],
+  },
   async onInit(payload) {
     const existingUsers = await payload.find({
       collection: 'users',
@@ -67,5 +50,22 @@ export default buildConfig({
         },
       })
     }
+  },
+  plugins: [
+    vercelDashboardPlugin({
+      vercel: {
+        apiToken: process.env.VERCEL_API_TOKEN!,
+        projectId: process.env.VERCEL_PROJECT_ID!,
+        teamId: process.env.VERCEL_TEAM_ID,
+      },
+      widget: {
+        maxWidth: 'full',
+        minWidth: 'medium',
+      },
+    }),
+  ],
+  secret: process.env.PAYLOAD_SECRET!,
+  typescript: {
+    outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
 })

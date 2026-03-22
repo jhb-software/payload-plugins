@@ -1,19 +1,19 @@
 # Vercel Dashboard Widget for Payload CMS
 
-A [Payload CMS](https://payloadcms.com/) plugin that adds a Vercel deployment info widget to the admin dashboard. The widget displays the current deployment status, allows triggering new deployments, and provides real-time status updates.
+A [Payload CMS](https://payloadcms.com/) plugin that adds a Vercel deployment info widget to the admin dashboard. The widget displays the current deployment status, allows redeploying the latest production deployment, and provides real-time status updates.
 
 ## Features
 
 - Dashboard widget showing current production deployment status
-- One-click production deployment trigger
+- One-click production redeploy of the latest READY deployment
 - Real-time deployment status polling
 - Multi-language support (English and German included)
 - Configurable widget size
 
 ## Requirements
 
-- Payload CMS 3.69.0 or higher
-- Next.js 15.0.0 or higher
+- Payload CMS 3.80.0 or higher
+- Next.js 15.4.11
 - A Vercel project with API access
 
 ## Installation

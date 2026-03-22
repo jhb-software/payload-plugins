@@ -18,12 +18,12 @@
   },
   "dependencies": {
     "@jhb.software/payload-vercel-dashboard-widget": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.67.0",
-    "@payloadcms/next": "^3.67.0",
-    "@payloadcms/translations": "^3.67.0",
-    "@payloadcms/ui": "^3.67.0",
-    "next": "15.5.7",
-    "payload": "^3.67.0",
+    "@payloadcms/db-mongodb": "^3.80.0",
+    "@payloadcms/next": "^3.80.0",
+    "@payloadcms/translations": "^3.80.0",
+    "@payloadcms/ui": "^3.80.0",
+    "next": "15.4.11",
+    "payload": "^3.80.0",
     "react": "19.2.1",
     "react-dom": "19.2.1"
   },

@@ -25,7 +25,7 @@ export const vercelDashboardPlugin =
             ...(config.admin?.dashboard?.widgets ?? []),
             {
               slug: 'vercel-deployments',
-              ComponentPath:
+              Component:
                 '@jhb.software/payload-vercel-dashboard-widget/client#VercelDeploymentWidget',
               maxWidth: pluginConfig.widget?.maxWidth ?? 'full',
               minWidth: pluginConfig.widget?.minWidth ?? 'medium',
