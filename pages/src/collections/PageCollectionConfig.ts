@@ -134,8 +134,8 @@ export const createPageCollectionConfig = ({
         ...(incomingCollectionConfig.hooks?.afterChange || []),
       ],
       beforeChange: [
-        preventCircularParentReference,
         ...(incomingCollectionConfig.hooks?.beforeChange || []),
+        preventCircularParentReference,
       ],
       beforeDelete: [
         ...(incomingCollectionConfig.hooks?.beforeDelete || []),
