@@ -17,16 +17,22 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
   originalDoc,
   req,
 }) => {
-  const pageConfig = collection.custom?.pageConfig as { parent: { collection: string; name: string } }
+  const pageConfig = collection.custom?.pageConfig as {
+    parent: { collection: string; name: string }
+  }
 
-  if (!pageConfig) {return data}
+  if (!pageConfig) {
+    return data
+  }
 
   const parentFieldName = pageConfig.parent.name
   const parentCollection = pageConfig.parent.collection
 
   // Only validate if the parent collection is the same as the current collection
   // (cross-collection parents cannot create cycles within this collection)
-  if (parentCollection !== collection.slug) {return data}
+  if (parentCollection !== collection.slug) {
+    return data
+  }
 
   // Resolve the parent id from the incoming data
   const newParentValue = data[parentFieldName]
@@ -36,7 +42,9 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
       : newParentValue
 
   // No parent set – nothing to validate
-  if (!newParentId) {return data}
+  if (!newParentId) {
+    return data
+  }
 
   // Determine the id of the current document
   const currentId = operation === 'update' ? originalDoc?.id : undefined
