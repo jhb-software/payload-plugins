@@ -49,6 +49,18 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
   // Determine the id of the current document
   const currentId = operation === 'update' ? originalDoc?.id : undefined
 
+  // On updates, skip the ancestor walk if the parent hasn't changed
+  if (operation === 'update' && originalDoc) {
+    const originalParentValue = originalDoc[parentFieldName]
+    const originalParentId =
+      originalParentValue && typeof originalParentValue === 'object' && 'id' in originalParentValue
+        ? originalParentValue.id
+        : originalParentValue
+    if (String(newParentId) === String(originalParentId)) {
+      return data
+    }
+  }
+
   // Direct self-reference check
   if (currentId !== undefined && String(newParentId) === String(currentId)) {
     throw new ValidationError({

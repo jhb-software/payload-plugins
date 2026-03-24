@@ -370,4 +370,5 @@ $RECYCLE.BIN/
 /media
 *.db
 tsconfig.tsbuildinfo
-/distpackage-lock.json
+/dist
+
