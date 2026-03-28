@@ -129,8 +129,9 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                 )}
               </div>
 
-              {status === 'unhealthy' ? (
-                <span
+              {status === 'unhealthy' && collection.invalidDocIds?.length > 0 ? (
+                <a
+                  href={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
                   style={{
                     background: badge.background,
                     borderRadius: '999px',
@@ -139,12 +140,13 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     fontSize: '12px',
                     fontWeight: 600,
                     padding: '4px 10px',
+                    textDecoration: 'none',
                     whiteSpace: 'nowrap',
                   }}
                 >
                   {collection.missingDocs + collection.partialDocs}{' '}
-                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
-                </span>
+                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')} →
+                </a>
               ) : (
                 <span
                   style={{

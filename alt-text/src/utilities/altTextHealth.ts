@@ -18,6 +18,7 @@ export type AltTextHealthCollectionSummary = {
   collection: string
   completeDocs: number
   error?: string
+  invalidDocIds: (number | string)[]
   missingDocs: number
   partialDocs: number
   totalDocs: number
@@ -62,48 +63,53 @@ const countFilledLocales = (altValue: unknown, localeCodes: string[]): number =>
 }
 
 const summarizeCollection = ({
-  altValues,
   collection,
+  docs,
   isLocalized,
   localeCodes,
 }: {
-  altValues: unknown[]
   collection: string
+  docs: { alt: unknown; id: number | string }[]
   isLocalized: boolean
   localeCodes: string[]
 }): AltTextHealthCollectionSummary => {
   let completeDocs = 0
   let missingDocs = 0
   let partialDocs = 0
+  const invalidDocIds: (number | string)[] = []
 
-  for (const altValue of altValues) {
+  for (const doc of docs) {
     if (!isLocalized) {
-      if (hasAltValue(altValue)) {
+      if (hasAltValue(doc.alt)) {
         completeDocs++
       } else {
         missingDocs++
+        invalidDocIds.push(doc.id)
       }
 
       continue
     }
 
-    const filledLocales = countFilledLocales(altValue, localeCodes)
+    const filledLocales = countFilledLocales(doc.alt, localeCodes)
 
-    if (filledLocales === 0) {
-      missingDocs++
-    } else if (filledLocales === localeCodes.length) {
+    if (filledLocales === localeCodes.length) {
       completeDocs++
+    } else if (filledLocales === 0) {
+      missingDocs++
+      invalidDocIds.push(doc.id)
     } else {
       partialDocs++
+      invalidDocIds.push(doc.id)
     }
   }
 
   return {
     collection,
     completeDocs,
+    invalidDocIds,
     missingDocs,
     partialDocs,
-    totalDocs: altValues.length,
+    totalDocs: docs.length,
   }
 }
 
@@ -128,11 +134,14 @@ async function computeAltTextHealth({
           },
         })
 
-        const altValues = result.docs.map((doc) => ('alt' in doc ? doc.alt : undefined))
+        const docs = result.docs.map((doc) => ({
+          alt: 'alt' in doc ? doc.alt : undefined,
+          id: doc.id,
+        }))
 
         return summarizeCollection({
-          altValues,
           collection,
+          docs,
           isLocalized,
           localeCodes,
         })
@@ -145,6 +154,7 @@ async function computeAltTextHealth({
           collection,
           completeDocs: 0,
           error: message,
+          invalidDocIds: [],
           missingDocs: 0,
           partialDocs: 0,
           totalDocs: 0,
