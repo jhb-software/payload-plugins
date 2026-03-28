@@ -261,12 +261,12 @@ export function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthSumm
   ]
 
   const getCachedHealth = unstable_cache(
-    async () =>
+    async (freshPayload: Payload) =>
       computeAltTextHealth({
         collections,
         isLocalized,
         localeCodes,
-        payload,
+        payload: freshPayload,
       }),
     cacheKeyParts,
     {
@@ -275,5 +275,5 @@ export function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthSumm
     },
   )
 
-  return getCachedHealth()
+  return getCachedHealth(payload)
 }
