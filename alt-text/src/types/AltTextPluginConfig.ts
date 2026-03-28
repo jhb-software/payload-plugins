@@ -14,14 +14,6 @@ export type IncomingAltTextPluginConfig = {
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
   /**
-   * Enable alt text health tracking (REST endpoint, cache revalidation hooks, and dashboard widget).
-   * Set to `false` to disable the entire feature.
-   *
-   * @default true
-   */
-  healthCheck?: boolean
-
-  /**
    * Function to get the thumbnail URL of an image document.
    * This URL will be sent to the LLM for analysis.
    *
@@ -30,6 +22,14 @@ export type IncomingAltTextPluginConfig = {
    * - Use a thumbnail/preview version of the image when possible (e.g. from the sizes field)
    */
   getImageThumbnail: (doc: Record<string, unknown>) => string
+
+  /**
+   * Enable alt text health tracking (REST endpoint, cache revalidation hooks, and dashboard widget).
+   * Set to `false` to disable the entire feature.
+   *
+   * @default true
+   */
+  healthCheck?: boolean
 
   /**
    * The locale to generate alt texts in when localization is disabled.

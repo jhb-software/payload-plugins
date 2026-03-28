@@ -113,6 +113,46 @@ const summarizeCollection = ({
   }
 }
 
+// Paginate instead of fetching all docs at once to keep memory bounded on large collections.
+const PAGE_SIZE = 500
+
+async function fetchAllDocs(
+  payload: Payload,
+  collection: string,
+  isLocalized: boolean,
+): Promise<{ alt: unknown; id: number | string }[]> {
+  const docs: { alt: unknown; id: number | string }[] = []
+  let page = 1
+  let hasMore = true
+
+  while (hasMore) {
+    const result = await payload.find({
+      collection,
+      depth: 0,
+      fallbackLocale: isLocalized ? false : undefined,
+      limit: PAGE_SIZE,
+      locale: isLocalized ? 'all' : undefined,
+      overrideAccess: true,
+      page,
+      select: {
+        alt: true,
+      },
+    })
+
+    for (const doc of result.docs) {
+      docs.push({
+        id: doc.id,
+        alt: 'alt' in doc ? doc.alt : undefined,
+      })
+    }
+
+    hasMore = result.hasNextPage
+    page++
+  }
+
+  return docs
+}
+
 async function computeAltTextHealth({
   collections,
   isLocalized,
@@ -122,22 +162,7 @@ async function computeAltTextHealth({
   const collectionSummaries = await Promise.all(
     collections.map(async (collection): Promise<AltTextHealthCollectionSummary> => {
       try {
-        const result = await payload.find({
-          collection,
-          depth: 0,
-          fallbackLocale: isLocalized ? false : undefined,
-          locale: isLocalized ? 'all' : undefined,
-          overrideAccess: true,
-          pagination: false,
-          select: {
-            alt: true,
-          },
-        })
-
-        const docs = result.docs.map((doc) => ({
-          alt: 'alt' in doc ? doc.alt : undefined,
-          id: doc.id,
-        }))
+        const docs = await fetchAllDocs(payload, collection, isLocalized)
 
         return summarizeCollection({
           collection,

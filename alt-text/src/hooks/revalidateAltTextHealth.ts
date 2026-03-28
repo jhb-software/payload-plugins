@@ -2,10 +2,7 @@ import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, PayloadReque
 
 import { revalidateTag } from 'next/cache.js'
 
-import {
-  ALT_TEXT_HEALTH_GLOBAL_TAG,
-  getAltTextHealthCollectionTag,
-} from '../utilities/altTextHealth.js'
+import { getAltTextHealthCollectionTag } from '../utilities/altTextHealth.js'
 
 function safeRevalidateTag(req: PayloadRequest, tag: string): void {
   try {
@@ -28,7 +25,6 @@ export const createRevalidateAltTextHealthAfterChangeHook =
   (collectionSlug: string): CollectionAfterChangeHook =>
   ({ doc, req }) => {
     if (!req.context?.disableRevalidate) {
-      safeRevalidateTag(req, ALT_TEXT_HEALTH_GLOBAL_TAG)
       safeRevalidateTag(req, getAltTextHealthCollectionTag(collectionSlug))
     }
 
@@ -39,7 +35,6 @@ export const createRevalidateAltTextHealthAfterDeleteHook =
   (collectionSlug: string): CollectionAfterDeleteHook =>
   ({ doc, req }) => {
     if (!req.context?.disableRevalidate) {
-      safeRevalidateTag(req, ALT_TEXT_HEALTH_GLOBAL_TAG)
       safeRevalidateTag(req, getAltTextHealthCollectionTag(collectionSlug))
     }
 
