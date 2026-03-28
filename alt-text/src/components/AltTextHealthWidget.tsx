@@ -21,10 +21,7 @@ const statusBadgeStyles: Record<Status, { background: string; color: string; lab
   unhealthy: { background: '#fee2e2', color: '#991b1b', label: 'statusUnhealthy' },
 }
 
-function getCollectionLabel(
-  slug: string,
-  req: WidgetServerProps['req'],
-): string {
+function getCollectionLabel(slug: string, req: WidgetServerProps['req']): string {
   const collectionConfig = req.payload.config.collections.find((c) => c.slug === slug)
   if (!collectionConfig?.labels?.plural) {
     return slug
@@ -101,7 +98,12 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                 <a
                   href={`${req.payload.config.routes.admin}/collections/${collection.collection}`}
-                  style={{ color: 'var(--theme-text)', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}
+                  style={{
+                    color: 'var(--theme-text)',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                  }}
                 >
                   {getCollectionLabel(collection.collection, req)}
                 </a>
@@ -129,7 +131,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                 )}
               </div>
 
-              {status === 'unhealthy' && collection.invalidDocIds?.length > 0 ? (
+              {status === 'unhealthy' && collection.invalidDocIds ? (
                 <a
                   href={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
                   style={{
@@ -160,7 +162,9 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')}
+                  {status === 'unhealthy'
+                    ? `${collection.missingDocs + collection.partialDocs} ${t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}`
+                    : t('@jhb.software/payload-alt-text-plugin:statusHealthy')}
                 </span>
               )}
             </div>

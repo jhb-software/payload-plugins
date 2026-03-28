@@ -18,7 +18,8 @@ export type AltTextHealthCollectionSummary = {
   collection: string
   completeDocs: number
   error?: string
-  invalidDocIds: (number | string)[]
+  /** `undefined` when there are too many invalid docs to link to individually. */
+  invalidDocIds: (number | string)[] | undefined
   missingDocs: number
   partialDocs: number
   totalDocs: number
@@ -40,7 +41,8 @@ type AltTextHealthComputationArgs = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const hasAltValue = (value: unknown): boolean => typeof value === 'string' && value.trim().length > 0
+const hasAltValue = (value: unknown): boolean =>
+  typeof value === 'string' && value.trim().length > 0
 
 const createEmptySummary = ({
   errors = [],
@@ -76,7 +78,8 @@ const summarizeCollection = ({
   let completeDocs = 0
   let missingDocs = 0
   let partialDocs = 0
-  const invalidDocIds: (number | string)[] = []
+  let invalidDocIds: (number | string)[] | undefined = []
+  let invalidOverflow = false
 
   for (const doc of docs) {
     if (!isLocalized) {
@@ -84,7 +87,14 @@ const summarizeCollection = ({
         completeDocs++
       } else {
         missingDocs++
-        invalidDocIds.push(doc.id)
+        if (!invalidOverflow) {
+          if (invalidDocIds!.length < MAX_INVALID_DOC_IDS) {
+            invalidDocIds!.push(doc.id)
+          } else {
+            invalidDocIds = undefined
+            invalidOverflow = true
+          }
+        }
       }
 
       continue
@@ -94,12 +104,20 @@ const summarizeCollection = ({
 
     if (filledLocales === localeCodes.length) {
       completeDocs++
-    } else if (filledLocales === 0) {
-      missingDocs++
-      invalidDocIds.push(doc.id)
     } else {
-      partialDocs++
-      invalidDocIds.push(doc.id)
+      if (filledLocales === 0) {
+        missingDocs++
+      } else {
+        partialDocs++
+      }
+      if (!invalidOverflow) {
+        if (invalidDocIds!.length < MAX_INVALID_DOC_IDS) {
+          invalidDocIds!.push(doc.id)
+        } else {
+          invalidDocIds = undefined
+          invalidOverflow = true
+        }
+      }
     }
   }
 
@@ -114,6 +132,9 @@ const summarizeCollection = ({
 }
 
 // Paginate instead of fetching all docs at once to keep memory bounded on large collections.
+// Cap tracked invalid doc IDs so cached payloads stay small and generated URLs remain within browser limits.
+const MAX_INVALID_DOC_IDS = 100
+
 const PAGE_SIZE = 500
 
 async function fetchAllDocs(
@@ -179,7 +200,7 @@ async function computeAltTextHealth({
           collection,
           completeDocs: 0,
           error: message,
-          invalidDocIds: [],
+          invalidDocIds: undefined,
           missingDocs: 0,
           partialDocs: 0,
           totalDocs: 0,
@@ -208,7 +229,8 @@ export const getAltTextHealthCollectionTag = (collectionSlug: string): string =>
 export function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthSummary> {
   const { payload } = req
   const pluginConfig = payload.config.custom?.altTextPluginConfig as AltTextPluginConfig | undefined
-  const localeCodes = localesFromConfig(payload.config) ?? (pluginConfig?.locale ? [pluginConfig.locale] : [])
+  const localeCodes =
+    localesFromConfig(payload.config) ?? (pluginConfig?.locale ? [pluginConfig.locale] : [])
   const isLocalized = Boolean(payload.config.localization)
 
   if (!pluginConfig) {
