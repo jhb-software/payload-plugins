@@ -2,8 +2,7 @@
 
 ## Unreleased
 
-- feat: add a cached alt text health dashboard widget with localization-aware coverage reporting
-- feat: invalidate dashboard health cache after create, update, and delete operations in configured upload collections
+- feat: add a alt text health dashboard widget with localization-aware coverage reporting (enabled by default, opt-out via `healthWidget: false`)
 
 ## 0.3.1
 
