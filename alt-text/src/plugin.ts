@@ -20,7 +20,7 @@ const altTextHealthWidgetDefinition: Widget = {
   slug: 'alt-text-health',
   ComponentPath: '@jhb.software/payload-alt-text-plugin/server#AltTextHealthWidget',
   label: {
-    de: 'Alt-Text-Zustand',
+    de: 'Alternativtexte Zustand',
     en: 'Alt text health',
   },
   maxWidth: 'full',

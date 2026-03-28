@@ -4,32 +4,49 @@ import type { AltTextHealthCollectionSummary } from '../utilities/altTextHealth.
 
 import { getAltTextHealth } from '../utilities/altTextHealth.js'
 
-type Status = 'green' | 'orange' | 'red'
+type Status = 'healthy' | 'unhealthy'
 
 function getCollectionStatus(collection: AltTextHealthCollectionSummary): Status {
   if (collection.error || collection.totalDocs === 0) {
-    return 'green'
+    return 'healthy'
   }
-  const missingRatio = (collection.missingDocs + collection.partialDocs) / collection.totalDocs
-  if (missingRatio === 0) {
-    return 'green'
+  if (collection.missingDocs + collection.partialDocs > 0) {
+    return 'unhealthy'
   }
-  if (missingRatio >= 0.5) {
-    return 'red'
-  }
-  return 'orange'
+  return 'healthy'
 }
 
 const statusBadgeStyles: Record<Status, { background: string; color: string; label: string }> = {
-  green: { background: '#dcfce7', color: '#15803d', label: 'statusGood' },
-  orange: { background: '#fef3c7', color: '#92400e', label: 'statusSomeMissing' },
-  red: { background: '#fee2e2', color: '#991b1b', label: 'statusManyMissing' },
+  healthy: { background: '#dcfce7', color: '#15803d', label: 'statusHealthy' },
+  unhealthy: { background: '#fee2e2', color: '#991b1b', label: 'statusUnhealthy' },
+}
+
+function getCollectionLabel(
+  slug: string,
+  req: WidgetServerProps['req'],
+): string {
+  const collectionConfig = req.payload.config.collections.find((c) => c.slug === slug)
+  if (!collectionConfig?.labels?.plural) {
+    return slug
+  }
+  const label = collectionConfig.labels.plural
+  if (typeof label === 'string') {
+    return label
+  }
+  if (typeof label === 'function') {
+    return slug
+  }
+  const record = label as Record<string, string>
+  return record[req.locale as string] ?? record[Object.keys(record)[0]] ?? slug
 }
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
   // Plugin translation keys are not in Payload's built-in key union
   const t = req.t as (key: string) => string
   const health = await getAltTextHealth(req)
+  const localeCount = req.payload.config.localization
+    ? req.payload.config.localization.localeCodes.length
+    : 0
 
   return (
     <div
@@ -82,9 +99,12 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                <code style={{ color: 'var(--theme-text)', fontSize: '14px' }}>
-                  {collection.collection}
-                </code>
+                <a
+                  href={`${req.payload.config.routes.admin}/collections/${collection.collection}`}
+                  style={{ color: 'var(--theme-text)', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}
+                >
+                  {getCollectionLabel(collection.collection, req)}
+                </a>
 
                 {collection.error ? (
                   <span style={{ color: '#92400e', fontSize: '13px' }}>
@@ -92,15 +112,16 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                   </span>
                 ) : (
                   <span style={{ fontSize: '13px', opacity: 0.7 }}>
-                    {t('@jhb.software/payload-alt-text-plugin:coverageSummary')
-                      .replace('{complete}', String(collection.completeDocs))
-                      .replace('{total}', String(collection.totalDocs))}
-                    {health.isLocalized && collection.partialDocs > 0 && (
+                    {t('@jhb.software/payload-alt-text-plugin:totalImageCount').replace(
+                      '{count}',
+                      String(collection.totalDocs),
+                    )}
+                    {health.isLocalized && (
                       <>
                         {' · '}
-                        {t('@jhb.software/payload-alt-text-plugin:partialLocalesSummary').replace(
+                        {t('@jhb.software/payload-alt-text-plugin:localeCount').replace(
                           '{count}',
-                          String(collection.partialDocs),
+                          String(localeCount),
                         )}
                       </>
                     )}
@@ -108,20 +129,38 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                 )}
               </div>
 
-              <span
-                style={{
-                  background: badge.background,
-                  borderRadius: '999px',
-                  color: badge.color,
-                  flexShrink: 0,
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  padding: '4px 10px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {t(`@jhb.software/payload-alt-text-plugin:${badge.label}`)}
-              </span>
+              {status === 'unhealthy' ? (
+                <span
+                  style={{
+                    background: badge.background,
+                    borderRadius: '999px',
+                    color: badge.color,
+                    flexShrink: 0,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '4px 10px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {collection.missingDocs + collection.partialDocs}{' '}
+                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
+                </span>
+              ) : (
+                <span
+                  style={{
+                    background: badge.background,
+                    borderRadius: '999px',
+                    color: badge.color,
+                    flexShrink: 0,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '4px 10px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')}
+                </span>
+              )}
             </div>
           )
         })}

@@ -2,6 +2,10 @@ import type { CollectionConfig } from 'payload'
 
 export const Media: CollectionConfig = {
   slug: 'media',
+  labels: {
+    plural: { de: 'Medien', en: 'Media' },
+    singular: { de: 'Medium', en: 'Media' },
+  },
   upload: {
     mimeTypes: ['image/*'],
   },

@@ -44,15 +44,14 @@ export const de: GenericTranslationsObject = {
     theAlternateTextIsRequired: 'Der Alternativtext ist erforderlich.',
 
     // Dashboard widget
-    altTextHealthDescription: 'Status der Bilder mit gesetztem Alt-Text.',
-    altTextHealthWidget: 'Alt-Text-Zustand',
+    altTextHealthDescription: 'Status der Bilder mit gesetztem Alternativtext.',
+    altTextHealthWidget: 'Alternativtexte Zustand',
     collectionCheckFailed: 'Prüfung nicht verfügbar',
-    coverageSummary: '{complete} von {total} Bildern haben Alt-Text',
     healthCheckPartialWarning: 'Einige Sammlungen konnten gerade nicht geprüft werden.',
+    localeCount: '{count} Sprachen',
     noImagesFound: 'In den konfigurierten Sammlungen wurden noch keine Bilder gefunden.',
-    partialLocalesSummary: '{count} mit unvollständigen Sprachen',
-    statusGood: 'Alle Alt-Texte vorhanden',
-    statusManyMissing: 'Viele Alt-Texte fehlen',
-    statusSomeMissing: 'Einige Alt-Texte fehlen',
+    statusHealthy: 'Alternativtexte vorhanden',
+    statusUnhealthy: 'fehlende Alternativtexte',
+    totalImageCount: '{count} Bilder',
   },
 }
