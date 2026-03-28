@@ -1,4 +1,4 @@
-import type { PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
 
 import { unstable_cache } from 'next/cache.js'
 
@@ -35,10 +35,10 @@ export type AltTextHealthSummary = {
 }
 
 type AltTextHealthComputationArgs = {
+  collections: string[]
   isLocalized: boolean
   localeCodes: string[]
-  pluginConfig: AltTextPluginConfig
-  req: PayloadRequest
+  payload: Payload
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -70,9 +70,7 @@ const countFilledLocales = (altValue: unknown, localeCodes: string[]): number =>
     return 0
   }
 
-  return localeCodes.reduce((count, localeCode) => {
-    return count + (hasAltValue(altValue[localeCode]) ? 1 : 0)
-  }, 0)
+  return localeCodes.filter((localeCode) => hasAltValue(altValue[localeCode])).length
 }
 
 const summarizeCollection = ({
@@ -122,23 +120,21 @@ const summarizeCollection = ({
 }
 
 async function computeAltTextHealth({
+  collections,
   isLocalized,
   localeCodes,
-  pluginConfig,
-  req,
+  payload,
 }: AltTextHealthComputationArgs): Promise<AltTextHealthSummary> {
-  const payload = req.payload
   const collectionSummaries = await Promise.all(
-    pluginConfig.collections.map(async (collection): Promise<AltTextHealthCollectionSummary> => {
+    collections.map(async (collection): Promise<AltTextHealthCollectionSummary> => {
       try {
         const result = await payload.find({
           collection,
           depth: 0,
           fallbackLocale: isLocalized ? false : undefined,
           locale: isLocalized ? 'all' : undefined,
-          overrideAccess: false,
+          overrideAccess: true,
           pagination: false,
-          req,
           select: {
             alt: true,
           },
@@ -176,31 +172,27 @@ async function computeAltTextHealth({
       message: summary.error!,
     }))
 
-  return collectionSummaries.reduce<AltTextHealthSummary>(
-    (summary, collectionSummary) => {
-      summary.collections.push(collectionSummary)
-      summary.completeDocs += collectionSummary.completeDocs
-      summary.missingDocs += collectionSummary.missingDocs
-      summary.partialDocs += collectionSummary.partialDocs
-      summary.totalDocs += collectionSummary.totalDocs
+  const summary = createEmptySummary({ errors, isLocalized, localeCodes })
 
-      return summary
-    },
-    createEmptySummary({
-      errors,
-      isLocalized,
-      localeCodes,
-    }),
-  )
+  for (const collectionSummary of collectionSummaries) {
+    summary.collections.push(collectionSummary)
+    summary.completeDocs += collectionSummary.completeDocs
+    summary.missingDocs += collectionSummary.missingDocs
+    summary.partialDocs += collectionSummary.partialDocs
+    summary.totalDocs += collectionSummary.totalDocs
+  }
+
+  return summary
 }
 
 export const getAltTextHealthCollectionTag = (collectionSlug: string): string =>
   `${ALT_TEXT_HEALTH_GLOBAL_TAG}:${collectionSlug}`
 
 export function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthSummary> {
-  const pluginConfig = req.payload.config.custom?.altTextPluginConfig as AltTextPluginConfig | undefined
-  const localeCodes = localesFromConfig(req.payload.config) ?? (pluginConfig?.locale ? [pluginConfig.locale] : [])
-  const isLocalized = Boolean(req.payload.config.localization)
+  const { payload } = req
+  const pluginConfig = payload.config.custom?.altTextPluginConfig as AltTextPluginConfig | undefined
+  const localeCodes = localesFromConfig(payload.config) ?? (pluginConfig?.locale ? [pluginConfig.locale] : [])
+  const isLocalized = Boolean(payload.config.localization)
 
   if (!pluginConfig) {
     return Promise.resolve(
@@ -217,25 +209,26 @@ export function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthSumm
     )
   }
 
+  const collections = pluginConfig.collections
+
   const cacheKeyParts = [
     ALT_TEXT_HEALTH_GLOBAL_TAG,
-    [...pluginConfig.collections].sort().join(','),
+    [...collections].sort().join(','),
     localeCodes.join(','),
-    `${req.user?.collection ?? 'anonymous'}:${String(req.user?.id ?? 'anonymous')}`,
   ]
 
   const tags = [
     ALT_TEXT_HEALTH_GLOBAL_TAG,
-    ...new Set(pluginConfig.collections.map((collection) => getAltTextHealthCollectionTag(collection))),
+    ...new Set(collections.map((collection) => getAltTextHealthCollectionTag(collection))),
   ]
 
   const getCachedHealth = unstable_cache(
     async () =>
       computeAltTextHealth({
+        collections,
         isLocalized,
         localeCodes,
-        pluginConfig,
-        req,
+        payload,
       }),
     cacheKeyParts,
     {

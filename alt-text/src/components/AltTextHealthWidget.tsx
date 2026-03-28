@@ -27,6 +27,7 @@ const valueStyle = {
 }
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
+  // Plugin translation keys are not in Payload's built-in key union
   const t = req.t as (key: string) => string
   const health = await getAltTextHealth(req)
   const formatNumber = (value: number): string =>
