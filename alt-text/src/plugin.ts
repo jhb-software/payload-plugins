@@ -172,10 +172,12 @@ export const payloadAltTextPlugin =
       return collectionConfig
     })
 
+    const showHealthWidget = incomingPluginConfig.healthWidget !== false
     const existingWidgets = config.admin?.dashboard?.widgets ?? []
-    const widgets = existingWidgets.some((widget) => widget.slug === 'alt-text-health')
-      ? existingWidgets
-      : [...existingWidgets, altTextHealthWidgetDefinition]
+    const widgets =
+      !showHealthWidget || existingWidgets.some((widget) => widget.slug === 'alt-text-health')
+        ? existingWidgets
+        : [...existingWidgets, altTextHealthWidgetDefinition]
 
     return {
       ...config,
@@ -183,7 +185,9 @@ export const payloadAltTextPlugin =
         ...config.admin,
         dashboard: {
           ...config.admin?.dashboard,
-          defaultLayout: getDashboardDefaultLayout(config.admin?.dashboard?.defaultLayout),
+          ...(showHealthWidget && {
+            defaultLayout: getDashboardDefaultLayout(config.admin?.dashboard?.defaultLayout),
+          }),
           widgets,
         },
       },

@@ -14,6 +14,13 @@ export type IncomingAltTextPluginConfig = {
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
   /**
+   * Whether to add the alt text health dashboard widget.
+   *
+   * @default true
+   */
+  healthWidget?: boolean
+
+  /**
    * Function to get the thumbnail URL of an image document.
    * This URL will be sent to the LLM for analysis.
    *

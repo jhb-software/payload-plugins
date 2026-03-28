@@ -50,6 +50,7 @@ export default buildConfig({
         apiKey: process.env.OPENAI_API_KEY!,
         model: 'gpt-4.1-mini',
       }),
+      healthWidget: true,
       getImageThumbnail: (doc: Record<string, unknown>) => {
         // in a real application, you would use a function to get a thumbnail URL (e.g. from the sizes)
         return doc.url as string
