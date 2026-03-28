@@ -1,37 +1,35 @@
 import type { WidgetServerProps } from 'payload'
 
+import type { AltTextHealthCollectionSummary } from '../utilities/altTextHealth.js'
+
 import { getAltTextHealth } from '../utilities/altTextHealth.js'
 
-const statCardStyle = {
-  background: 'var(--theme-elevation-50)',
-  border: '1px solid var(--theme-border-color)',
-  borderRadius: '10px',
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: '6px',
-  minWidth: 0,
-  padding: '14px 16px',
+type Status = 'green' | 'orange' | 'red'
+
+function getCollectionStatus(collection: AltTextHealthCollectionSummary): Status {
+  if (collection.error || collection.totalDocs === 0) {
+    return 'green'
+  }
+  const missingRatio = (collection.missingDocs + collection.partialDocs) / collection.totalDocs
+  if (missingRatio === 0) {
+    return 'green'
+  }
+  if (missingRatio >= 0.5) {
+    return 'red'
+  }
+  return 'orange'
 }
 
-const labelStyle = {
-  color: 'var(--theme-text)',
-  fontSize: '13px',
-  opacity: 0.7,
-}
-
-const valueStyle = {
-  color: 'var(--theme-text)',
-  fontSize: '28px',
-  fontWeight: 700,
-  lineHeight: 1,
+const statusBadgeStyles: Record<Status, { background: string; color: string; label: string }> = {
+  green: { background: '#dcfce7', color: '#15803d', label: 'statusGood' },
+  orange: { background: '#fef3c7', color: '#92400e', label: 'statusSomeMissing' },
+  red: { background: '#fee2e2', color: '#991b1b', label: 'statusManyMissing' },
 }
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
   // Plugin translation keys are not in Payload's built-in key union
   const t = req.t as (key: string) => string
   const health = await getAltTextHealth(req)
-  const formatNumber = (value: number): string =>
-    new Intl.NumberFormat(req.locale || undefined).format(value)
 
   return (
     <div
@@ -52,195 +50,82 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
         </p>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gap: '12px',
-          gridTemplateColumns: health.isLocalized
-            ? 'repeat(auto-fit, minmax(140px, 1fr))'
-            : 'repeat(auto-fit, minmax(160px, 1fr))',
-        }}
-      >
-        <div style={statCardStyle}>
-          <span style={labelStyle}>{t('@jhb.software/payload-alt-text-plugin:totalImages')}</span>
-          <span style={valueStyle}>{formatNumber(health.totalDocs)}</span>
-        </div>
-
-        <div style={statCardStyle}>
-          <span style={labelStyle}>
-            {t('@jhb.software/payload-alt-text-plugin:fullyCoveredImages')}
-          </span>
-          <span style={valueStyle}>{formatNumber(health.completeDocs)}</span>
-        </div>
-
-        <div style={statCardStyle}>
-          <span style={labelStyle}>
-            {t('@jhb.software/payload-alt-text-plugin:missingAltTextImages')}
-          </span>
-          <span style={valueStyle}>{formatNumber(health.missingDocs)}</span>
-        </div>
-
-        {health.isLocalized && (
-          <div style={statCardStyle}>
-            <span style={labelStyle}>
-              {t('@jhb.software/payload-alt-text-plugin:imagesWithMissingLocales')}
-            </span>
-            <span style={valueStyle}>{formatNumber(health.partialDocs)}</span>
-          </div>
-        )}
-      </div>
-
-      {health.totalDocs === 0 && health.errors.length === 0 && (
-        <div
-          style={{
-            background: 'var(--theme-elevation-50)',
-            border: '1px dashed var(--theme-border-color)',
-            borderRadius: '10px',
-            padding: '16px',
-          }}
-        >
-          <p style={{ color: 'var(--theme-text)', margin: 0, opacity: 0.75 }}>
-            {t('@jhb.software/payload-alt-text-plugin:noImagesFound')}
-          </p>
-        </div>
+      {health.collections.length === 0 && health.errors.length === 0 && (
+        <p style={{ color: 'var(--theme-text)', margin: 0, opacity: 0.75 }}>
+          {t('@jhb.software/payload-alt-text-plugin:noImagesFound')}
+        </p>
       )}
 
       {health.errors.length > 0 && (
-        <div
-          style={{
-            background: 'var(--theme-warning-100)',
-            border: '1px solid var(--theme-warning-300)',
-            borderRadius: '10px',
-            color: 'var(--theme-warning-900)',
-            padding: '12px 14px',
-          }}
-        >
-          <p style={{ fontWeight: 600, margin: '0 0 4px 0' }}>
-            {t('@jhb.software/payload-alt-text-plugin:healthCheckPartialWarning')}
-          </p>
-          <ul style={{ margin: 0, paddingInlineStart: '18px' }}>
-            {health.errors.map((error) => (
-              <li key={error.collection}>
-                <code>{error.collection}</code>: {error.message}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <p style={{ color: '#92400e', fontSize: '13px', margin: 0 }}>
+          {t('@jhb.software/payload-alt-text-plugin:healthCheckPartialWarning')}
+        </p>
       )}
 
-      {health.collections.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {health.collections.map((collection) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {health.collections.map((collection) => {
+          const status = getCollectionStatus(collection)
+          const badge = statusBadgeStyles[status]
+
+          return (
             <div
               key={collection.collection}
               style={{
+                alignItems: 'center',
                 background: 'var(--theme-elevation-50)',
                 border: '1px solid var(--theme-border-color)',
                 borderRadius: '10px',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                padding: '14px 16px',
+                gap: '12px',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
               }}
             >
-              <div
-                style={{
-                  alignItems: 'center',
-                  display: 'flex',
-                  gap: '12px',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div
-                  style={{
-                    alignItems: 'baseline',
-                    columnGap: '8px',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    rowGap: '2px',
-                  }}
-                >
-                  <span style={{ fontSize: '13px', opacity: 0.65 }}>
-                    {t('@jhb.software/payload-alt-text-plugin:collectionLabel')}
-                  </span>
-                  <code style={{ color: 'var(--theme-text)', fontSize: '14px' }}>
-                    {collection.collection}
-                  </code>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                <code style={{ color: 'var(--theme-text)', fontSize: '14px' }}>
+                  {collection.collection}
+                </code>
 
-                {collection.error && (
-                  <span
-                    style={{
-                      background: 'var(--theme-warning-150)',
-                      borderRadius: '999px',
-                      color: 'var(--theme-warning-900)',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      padding: '4px 10px',
-                    }}
-                  >
+                {collection.error ? (
+                  <span style={{ color: '#92400e', fontSize: '13px' }}>
                     {t('@jhb.software/payload-alt-text-plugin:collectionCheckFailed')}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '13px', opacity: 0.7 }}>
+                    {t('@jhb.software/payload-alt-text-plugin:coverageSummary')
+                      .replace('{complete}', String(collection.completeDocs))
+                      .replace('{total}', String(collection.totalDocs))}
+                    {health.isLocalized && collection.partialDocs > 0 && (
+                      <>
+                        {' · '}
+                        {t('@jhb.software/payload-alt-text-plugin:partialLocalesSummary').replace(
+                          '{count}',
+                          String(collection.partialDocs),
+                        )}
+                      </>
+                    )}
                   </span>
                 )}
               </div>
 
-              {!collection.error ? (
-                <div
-                  style={{
-                    display: 'grid',
-                    gap: '10px',
-                    gridTemplateColumns: health.isLocalized
-                      ? 'repeat(auto-fit, minmax(120px, 1fr))'
-                      : 'repeat(auto-fit, minmax(140px, 1fr))',
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <span style={labelStyle}>
-                      {t('@jhb.software/payload-alt-text-plugin:totalImages')}
-                    </span>
-                    <div style={{ color: 'var(--theme-text)', fontSize: '20px', fontWeight: 700 }}>
-                      {formatNumber(collection.totalDocs)}
-                    </div>
-                  </div>
-
-                  <div style={{ minWidth: 0 }}>
-                    <span style={labelStyle}>
-                      {t('@jhb.software/payload-alt-text-plugin:fullyCoveredImages')}
-                    </span>
-                    <div style={{ color: 'var(--theme-text)', fontSize: '20px', fontWeight: 700 }}>
-                      {formatNumber(collection.completeDocs)}
-                    </div>
-                  </div>
-
-                  <div style={{ minWidth: 0 }}>
-                    <span style={labelStyle}>
-                      {t('@jhb.software/payload-alt-text-plugin:missingAltTextImages')}
-                    </span>
-                    <div style={{ color: 'var(--theme-text)', fontSize: '20px', fontWeight: 700 }}>
-                      {formatNumber(collection.missingDocs)}
-                    </div>
-                  </div>
-
-                  {health.isLocalized && (
-                    <div style={{ minWidth: 0 }}>
-                      <span style={labelStyle}>
-                        {t('@jhb.software/payload-alt-text-plugin:imagesWithMissingLocales')}
-                      </span>
-                      <div style={{ color: 'var(--theme-text)', fontSize: '20px', fontWeight: 700 }}>
-                        {formatNumber(collection.partialDocs)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p style={{ color: 'var(--theme-text)', margin: 0, opacity: 0.75 }}>
-                  {collection.error}
-                </p>
-              )}
+              <span
+                style={{
+                  background: badge.background,
+                  borderRadius: '999px',
+                  color: badge.color,
+                  flexShrink: 0,
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {t(`@jhb.software/payload-alt-text-plugin:${badge.label}`)}
+              </span>
             </div>
-          ))}
-        </div>
-      )}
+          )
+        })}
+      </div>
     </div>
   )
 }

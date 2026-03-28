@@ -40,15 +40,15 @@ export const en: GenericTranslationsObject = {
     theAlternateTextIsRequired: 'An alternate text is required.',
 
     // Dashboard widget
-    altTextHealthDescription: 'Coverage across all configured upload collections.',
+    altTextHealthDescription: 'Alt text status across your upload collections.',
     altTextHealthWidget: 'Alt text health',
     collectionCheckFailed: 'Health check unavailable',
-    collectionLabel: 'Collection',
-    fullyCoveredImages: 'Fully covered',
+    coverageSummary: '{complete} of {total} images have alt text',
     healthCheckPartialWarning: 'Some collections could not be checked right now.',
-    imagesWithMissingLocales: 'Missing locales',
-    missingAltTextImages: 'Missing alt text',
     noImagesFound: 'No images found in the configured collections yet.',
-    totalImages: 'Total images',
+    partialLocalesSummary: '{count} with incomplete locales',
+    statusGood: 'All alt texts present',
+    statusManyMissing: 'Many alt texts missing',
+    statusSomeMissing: 'Some alt texts missing',
   },
 }

@@ -6,7 +6,7 @@ import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { localesFromConfig } from './localesFromConfig.js'
 
-export const ALT_TEXT_HEALTH_CACHE_TTL = 300
+export const ALT_TEXT_HEALTH_CACHE_TTL = 3600
 export const ALT_TEXT_HEALTH_GLOBAL_TAG = 'alt-text-health'
 
 type AltTextHealthCollectionError = {
@@ -25,13 +25,8 @@ export type AltTextHealthCollectionSummary = {
 
 export type AltTextHealthSummary = {
   collections: AltTextHealthCollectionSummary[]
-  completeDocs: number
   errors: AltTextHealthCollectionError[]
   isLocalized: boolean
-  localeCodes: string[]
-  missingDocs: number
-  partialDocs: number
-  totalDocs: number
 }
 
 type AltTextHealthComputationArgs = {
@@ -49,20 +44,13 @@ const hasAltValue = (value: unknown): boolean => typeof value === 'string' && va
 const createEmptySummary = ({
   errors = [],
   isLocalized,
-  localeCodes,
 }: {
   errors?: AltTextHealthCollectionError[]
   isLocalized: boolean
-  localeCodes: string[]
 }): AltTextHealthSummary => ({
   collections: [],
-  completeDocs: 0,
   errors,
   isLocalized,
-  localeCodes,
-  missingDocs: 0,
-  partialDocs: 0,
-  totalDocs: 0,
 })
 
 const countFilledLocales = (altValue: unknown, localeCodes: string[]): number => {
@@ -172,17 +160,11 @@ async function computeAltTextHealth({
       message: summary.error!,
     }))
 
-  const summary = createEmptySummary({ errors, isLocalized, localeCodes })
-
-  for (const collectionSummary of collectionSummaries) {
-    summary.collections.push(collectionSummary)
-    summary.completeDocs += collectionSummary.completeDocs
-    summary.missingDocs += collectionSummary.missingDocs
-    summary.partialDocs += collectionSummary.partialDocs
-    summary.totalDocs += collectionSummary.totalDocs
+  return {
+    collections: collectionSummaries,
+    errors,
+    isLocalized,
   }
-
-  return summary
 }
 
 export const getAltTextHealthCollectionTag = (collectionSlug: string): string =>
@@ -204,7 +186,6 @@ export function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthSumm
           },
         ],
         isLocalized,
-        localeCodes,
       }),
     )
   }
