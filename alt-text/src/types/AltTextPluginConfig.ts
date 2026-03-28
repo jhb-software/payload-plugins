@@ -14,11 +14,12 @@ export type IncomingAltTextPluginConfig = {
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
   /**
-   * Whether to add the alt text health dashboard widget.
+   * Enable alt text health tracking (REST endpoint, cache revalidation hooks, and dashboard widget).
+   * Set to `false` to disable the entire feature.
    *
    * @default true
    */
-  healthWidget?: boolean
+  healthCheck?: boolean
 
   /**
    * Function to get the thumbnail URL of an image document.

@@ -5,6 +5,7 @@ import type {
   IncomingAltTextPluginConfig,
 } from './types/AltTextPluginConfig.js'
 
+import { altTextHealthEndpoint } from './endpoints/altTextHealth.js'
 import { bulkGenerateAltTextsEndpoint } from './endpoints/bulkGenerateAltTexts.js'
 import { generateAltTextEndpoint } from './endpoints/generateAltText.js'
 import { altTextField } from './fields/altTextField.js'
@@ -117,6 +118,8 @@ export const payloadAltTextPlugin =
         ? incomingPluginConfig.fieldsOverride({ defaultFields })
         : defaultFields
 
+    const enableHealthCheck = incomingPluginConfig.healthCheck !== false
+
     // Ensure collections array exists
     config.collections = config.collections || []
 
@@ -157,14 +160,16 @@ export const payloadAltTextPlugin =
           fields: [...(collectionConfig.fields ?? []), ...fields],
           hooks: {
             ...collectionConfig.hooks,
-            afterChange: [
-              ...(collectionConfig.hooks?.afterChange ?? []),
-              createRevalidateAltTextHealthAfterChangeHook(collectionConfig.slug),
-            ],
-            afterDelete: [
-              ...(collectionConfig.hooks?.afterDelete ?? []),
-              createRevalidateAltTextHealthAfterDeleteHook(collectionConfig.slug),
-            ],
+            ...(enableHealthCheck && {
+              afterChange: [
+                ...(collectionConfig.hooks?.afterChange ?? []),
+                createRevalidateAltTextHealthAfterChangeHook(collectionConfig.slug),
+              ],
+              afterDelete: [
+                ...(collectionConfig.hooks?.afterDelete ?? []),
+                createRevalidateAltTextHealthAfterDeleteHook(collectionConfig.slug),
+              ],
+            }),
           },
         }
       }
@@ -172,10 +177,9 @@ export const payloadAltTextPlugin =
       return collectionConfig
     })
 
-    const showHealthWidget = incomingPluginConfig.healthWidget !== false
     const existingWidgets = config.admin?.dashboard?.widgets ?? []
     const widgets =
-      !showHealthWidget || existingWidgets.some((widget) => widget.slug === 'alt-text-health')
+      !enableHealthCheck || existingWidgets.some((widget) => widget.slug === 'alt-text-health')
         ? existingWidgets
         : [...existingWidgets, altTextHealthWidgetDefinition]
 
@@ -185,7 +189,7 @@ export const payloadAltTextPlugin =
         ...config.admin,
         dashboard: {
           ...config.admin?.dashboard,
-          ...(showHealthWidget && {
+          ...(enableHealthCheck && {
             defaultLayout: getDashboardDefaultLayout(config.admin?.dashboard?.defaultLayout),
           }),
           widgets,
@@ -208,6 +212,15 @@ export const payloadAltTextPlugin =
           method: 'post',
           path: '/alt-text-plugin/bulk-generate-alt-texts',
         },
+        ...(enableHealthCheck
+          ? [
+              {
+                handler: altTextHealthEndpoint,
+                method: 'get' as const,
+                path: '/alt-text-plugin/health',
+              },
+            ]
+          : []),
       ],
       i18n: {
         ...config.i18n,
