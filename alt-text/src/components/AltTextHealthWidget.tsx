@@ -1,49 +1,40 @@
 import type { WidgetServerProps } from 'payload'
 
-import type { AltTextHealthCollectionSummary } from '../utilities/altTextHealth.js'
+import { getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
+import { getAltTextHealthWidgetDisplayState } from '../utilities/altTextHealthWidgetDisplay.js'
 
-import { getAltTextHealth } from '../utilities/altTextHealth.js'
-
-type Status = 'healthy' | 'unhealthy'
-
-function getCollectionStatus(collection: AltTextHealthCollectionSummary): Status {
-  if (collection.error || collection.totalDocs === 0) {
-    return 'healthy'
-  }
-  if (collection.missingDocs + collection.partialDocs > 0) {
-    return 'unhealthy'
-  }
-  return 'healthy'
-}
-
-const statusBadgeStyles: Record<Status, { background: string; color: string; label: string }> = {
-  healthy: { background: '#dcfce7', color: '#15803d', label: 'statusHealthy' },
-  unhealthy: { background: '#fee2e2', color: '#991b1b', label: 'statusUnhealthy' },
+const badgeStyles = {
+  healthy: { background: '#dcfce7', color: '#15803d' },
+  unhealthy: { background: '#fee2e2', color: '#991b1b' },
 }
 
 function getCollectionLabel(slug: string, req: WidgetServerProps['req']): string {
   const collectionConfig = req.payload.config.collections.find((c) => c.slug === slug)
+
   if (!collectionConfig?.labels?.plural) {
     return slug
   }
+
   const label = collectionConfig.labels.plural
+
   if (typeof label === 'string') {
     return label
   }
+
   if (typeof label === 'function') {
     return slug
   }
+
   const record = label as Record<string, string>
+
   return record[req.locale as string] ?? record[Object.keys(record)[0]] ?? slug
 }
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
   // Plugin translation keys are not in Payload's built-in key union
   const t = req.t as (key: string) => string
-  const health = await getAltTextHealth(req)
-  const localeCount = req.payload.config.localization
-    ? req.payload.config.localization.localeCodes.length
-    : 0
+  const { collections, contract } = await getAltTextHealthWidgetData(req)
+  const localeCount = contract.summary.localeCount
 
   return (
     <div
@@ -64,22 +55,21 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
         </p>
       </div>
 
-      {health.collections.length === 0 && health.errors.length === 0 && (
+      {contract.summary.totalDocs === 0 && contract.errors.length === 0 && (
         <p style={{ color: 'var(--theme-text)', margin: 0, opacity: 0.75 }}>
           {t('@jhb.software/payload-alt-text-plugin:noImagesFound')}
         </p>
       )}
 
-      {health.errors.length > 0 && (
+      {contract.errors.length > 0 && (
         <p style={{ color: '#92400e', fontSize: '13px', margin: 0 }}>
           {t('@jhb.software/payload-alt-text-plugin:healthCheckPartialWarning')}
         </p>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {health.collections.map((collection) => {
-          const status = getCollectionStatus(collection)
-          const badge = statusBadgeStyles[status]
+        {collections.map((collection) => {
+          const displayState = getAltTextHealthWidgetDisplayState(collection)
 
           return (
             <div
@@ -108,7 +98,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                   {getCollectionLabel(collection.collection, req)}
                 </a>
 
-                {collection.error ? (
+                {displayState === 'unavailable' ? (
                   <span style={{ color: '#92400e', fontSize: '13px' }}>
                     {t('@jhb.software/payload-alt-text-plugin:collectionCheckFailed')}
                   </span>
@@ -118,7 +108,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                       '{count}',
                       String(collection.totalDocs),
                     )}
-                    {health.isLocalized && (
+                    {contract.summary.isLocalized && (
                       <>
                         {' · '}
                         {t('@jhb.software/payload-alt-text-plugin:localeCount').replace(
@@ -131,13 +121,15 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                 )}
               </div>
 
-              {status === 'unhealthy' && collection.invalidDocIds ? (
+              {displayState === 'unhealthy' &&
+              collection.invalidDocIds &&
+              collection.invalidDocIds.length > 0 ? (
                 <a
                   href={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
                   style={{
-                    background: badge.background,
+                    background: badgeStyles.unhealthy.background,
                     borderRadius: '999px',
-                    color: badge.color,
+                    color: badgeStyles.unhealthy.color,
                     flexShrink: 0,
                     fontSize: '12px',
                     fontWeight: 600,
@@ -146,15 +138,15 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {collection.missingDocs + collection.partialDocs}{' '}
+                  {collection.invalidDocCount}{' '}
                   {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')} →
                 </a>
-              ) : (
+              ) : displayState === 'healthy' ? (
                 <span
                   style={{
-                    background: badge.background,
+                    background: badgeStyles.healthy.background,
                     borderRadius: '999px',
-                    color: badge.color,
+                    color: badgeStyles.healthy.color,
                     flexShrink: 0,
                     fontSize: '12px',
                     fontWeight: 600,
@@ -162,9 +154,35 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {status === 'unhealthy'
-                    ? `${collection.missingDocs + collection.partialDocs} ${t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}`
-                    : t('@jhb.software/payload-alt-text-plugin:statusHealthy')}
+                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')}
+                </span>
+              ) : displayState === 'unhealthy' ? (
+                <span
+                  style={{
+                    background: badgeStyles.unhealthy.background,
+                    borderRadius: '999px',
+                    color: badgeStyles.unhealthy.color,
+                    flexShrink: 0,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '4px 10px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {collection.invalidDocCount}{' '}
+                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
+                </span>
+              ) : (
+                <span
+                  style={{
+                    color: '#92400e',
+                    flexShrink: 0,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t('@jhb.software/payload-alt-text-plugin:collectionCheckFailed')}
                 </span>
               )}
             </div>

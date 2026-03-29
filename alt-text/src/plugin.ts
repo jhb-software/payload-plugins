@@ -19,7 +19,7 @@ import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
 const altTextHealthWidgetDefinition: Widget = {
   slug: 'alt-text-health',
-  ComponentPath: '@jhb.software/payload-alt-text-plugin/server#AltTextHealthWidget',
+  Component: '@jhb.software/payload-alt-text-plugin/server#AltTextHealthWidget',
   label: {
     de: 'Alternativtexte Zustand',
     en: 'Alt text health',
