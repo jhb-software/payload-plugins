@@ -1,13 +1,25 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
 import { getAltTextHealth } from '../utilities/altTextHealth.js'
+import { ALT_TEXT_HEALTH_PLUGIN_SLUG } from '../utilities/altTextHealthContract.js'
 
 export const altTextHealthEndpoint: PayloadHandler = async (req: PayloadRequest) => {
   if (!req.user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const health = await getAltTextHealth(req)
+  try {
+    const health = await getAltTextHealth(req)
 
-  return Response.json(health)
+    return Response.json(health)
+  } catch (error) {
+    req.payload.logger.error({
+      err: error,
+      msg: 'Failed to build alt text health response.',
+      path: '/alt-text-plugin/health',
+      plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
+    })
+
+    return Response.json({ error: 'Failed to compute alt text health' }, { status: 500 })
+  }
 }

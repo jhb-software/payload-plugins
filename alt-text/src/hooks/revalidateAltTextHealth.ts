@@ -3,6 +3,7 @@ import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, PayloadReque
 import { revalidateTag } from 'next/cache.js'
 
 import { getAltTextHealthCollectionTag } from '../utilities/altTextHealth.js'
+import { ALT_TEXT_HEALTH_PLUGIN_SLUG } from '../utilities/altTextHealthContract.js'
 
 function safeRevalidateTag(req: PayloadRequest, tag: string): void {
   try {
@@ -11,9 +12,11 @@ function safeRevalidateTag(req: PayloadRequest, tag: string): void {
     const message = error instanceof Error ? error.message : String(error)
 
     if (message.includes('static generation store missing')) {
-      req.payload.logger.warn(
-        `Skipping alt text health cache revalidation for "${tag}" outside a Next.js request context.`,
-      )
+      req.payload.logger.warn({
+        msg: 'Skipping alt text health cache revalidation outside a Next.js request context.',
+        plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
+        tag,
+      })
       return
     }
 
