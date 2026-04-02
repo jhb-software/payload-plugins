@@ -2571,6 +2571,102 @@ describe('Circular parent reference prevention', () => {
   })
 })
 
+describe('Draft documents', () => {
+  beforeEach(async () => await deleteCollection('pages'))
+
+  test('virtual fields are correctly set when creating a draft nested page', async () => {
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Draft Parent',
+        slug: 'draft-parent',
+        content: 'Parent content',
+        ...virtualFields,
+      },
+    })
+
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Draft Child',
+        slug: 'draft-child',
+        content: 'Child content',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    expect(childPage.path).toBe('/de/draft-parent/draft-child')
+    expect(removeIdsFromArray(childPage.breadcrumbs)).toEqual(
+      removeIdsFromArray([
+        { id: undefined, path: '/de/draft-parent', label: 'Draft Parent', slug: 'draft-parent' },
+        {
+          id: undefined,
+          path: '/de/draft-parent/draft-child',
+          label: 'Draft Child',
+          slug: 'draft-child',
+        },
+      ]),
+    )
+  })
+
+  test('virtual fields are correctly set when reading a draft nested page', async () => {
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Draft Parent',
+        slug: 'draft-parent',
+        content: 'Parent content',
+        ...virtualFields,
+      },
+    })
+
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Draft Child',
+        slug: 'draft-child',
+        content: 'Child content',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    const results = await payload.find({
+      collection: 'pages',
+      locale: 'de',
+      draft: true,
+      where: {
+        slug: { equals: 'draft-child' },
+      },
+    })
+
+    expect(results.docs).toHaveLength(1)
+    const childPage = results.docs[0]
+
+    expect(childPage.path).toBe('/de/draft-parent/draft-child')
+    expect(removeIdsFromArray(childPage.breadcrumbs)).toEqual(
+      removeIdsFromArray([
+        { id: undefined, path: '/de/draft-parent', label: 'Draft Parent', slug: 'draft-parent' },
+        {
+          id: undefined,
+          path: '/de/draft-parent/draft-child',
+          label: 'Draft Child',
+          slug: 'draft-child',
+        },
+      ]),
+    )
+  })
+})
+
 /**
  * Helper function to remove id field from objects in an array
  */

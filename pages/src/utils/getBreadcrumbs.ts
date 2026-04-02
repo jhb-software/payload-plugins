@@ -177,6 +177,7 @@ async function findByIDCached({
         collection,
         depth: 0,
         disableErrors: true,
+        draft: req.context.draft === true,
         locale,
         overrideAccess: true,
         req: {
