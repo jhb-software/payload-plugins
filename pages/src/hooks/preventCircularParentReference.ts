@@ -1,4 +1,4 @@
-import type { CollectionBeforeChangeHook } from 'payload'
+import type { CollectionBeforeChangeHook, DefaultDocumentIDType } from 'payload'
 
 import { ValidationError } from 'payload'
 
@@ -88,18 +88,17 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
     visited.add(cursorStr)
 
     const parent = await req.payload.findByID({
-      id: cursor as string,
+      id: cursor,
       collection: parentCollection as any,
       depth: 0,
       req,
       select: { [parentFieldName]: true },
     })
 
-    const nextParentValue = (parent as Record<string, unknown>)?.[parentFieldName]
-    cursor =
-      nextParentValue && typeof nextParentValue === 'object' && 'id' in nextParentValue
-        ? (nextParentValue as { id: number | string }).id
-        : (nextParentValue as null | number | string | undefined)
+    const nextParentValue = (parent as Record<string, unknown>)?.[parentFieldName] as
+      | DefaultDocumentIDType
+      | undefined
+    cursor = nextParentValue ? nextParentValue : undefined
   }
 
   return data
