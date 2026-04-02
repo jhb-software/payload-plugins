@@ -2,32 +2,11 @@ import type { WidgetServerProps } from 'payload'
 
 import { getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
 import { getAltTextHealthWidgetDisplayState } from '../utilities/altTextHealthWidgetDisplay.js'
+import { getCollectionLabel } from '../utilities/getCollectionLabel.js'
 
 const badgeStyles = {
   healthy: { background: '#dcfce7', color: '#15803d' },
   unhealthy: { background: '#fee2e2', color: '#991b1b' },
-}
-
-function getCollectionLabel(slug: string, req: WidgetServerProps['req']): string {
-  const collectionConfig = req.payload.config.collections.find((c) => c.slug === slug)
-
-  if (!collectionConfig?.labels?.plural) {
-    return slug
-  }
-
-  const label = collectionConfig.labels.plural
-
-  if (typeof label === 'string') {
-    return label
-  }
-
-  if (typeof label === 'function') {
-    return slug
-  }
-
-  const record = label as Record<string, string>
-
-  return record[req.locale as string] ?? record[Object.keys(record)[0]] ?? slug
 }
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
@@ -95,7 +74,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     textDecoration: 'none',
                   }}
                 >
-                  {getCollectionLabel(collection.collection, req)}
+                  {getCollectionLabel(collection.collection, req.payload.config.collections, req.locale)}
                 </a>
 
                 {displayState === 'unavailable' ? (
