@@ -2,8 +2,10 @@ import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, PayloadReque
 
 import { revalidateTag } from 'next/cache.js'
 
-import { getAltTextHealthCollectionTag } from '../utilities/altTextHealth.js'
-import { ALT_TEXT_HEALTH_PLUGIN_SLUG } from '../utilities/altTextHealthContract.js'
+import {
+  ALT_TEXT_HEALTH_PLUGIN_SLUG,
+  getAltTextHealthCollectionTag,
+} from '../utilities/altTextHealth.js'
 
 function safeRevalidateTag(req: PayloadRequest, tag: string): void {
   try {

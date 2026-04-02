@@ -1,7 +1,6 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
-import { getAltTextHealth } from '../utilities/altTextHealth.js'
-import { ALT_TEXT_HEALTH_PLUGIN_SLUG } from '../utilities/altTextHealthContract.js'
+import { ALT_TEXT_HEALTH_PLUGIN_SLUG, getAltTextHealth } from '../utilities/altTextHealth.js'
 
 export const altTextHealthEndpoint: PayloadHandler = async (req: PayloadRequest) => {
   if (!req.user) {

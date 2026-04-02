@@ -1,15 +1,13 @@
-import type { AltTextHealthWidgetCollection } from './altTextHealthContract.js'
-
 export type AltTextHealthWidgetDisplayState = 'healthy' | 'unavailable' | 'unhealthy'
 
 export function getAltTextHealthWidgetDisplayState(
-  collection: Pick<AltTextHealthWidgetCollection, 'error' | 'invalidDocCount'>,
+  collection: Pick<{ error?: unknown; missingDocs: number; partialDocs: number }, 'error' | 'missingDocs' | 'partialDocs'>,
 ): AltTextHealthWidgetDisplayState {
   if (collection.error) {
     return 'unavailable'
   }
 
-  if (collection.invalidDocCount > 0) {
+  if (collection.missingDocs + collection.partialDocs > 0) {
     return 'unhealthy'
   }
 

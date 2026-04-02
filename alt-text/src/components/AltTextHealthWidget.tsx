@@ -12,8 +12,8 @@ const badgeStyles = {
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
   // Plugin translation keys are not in Payload's built-in key union
   const t = req.t as (key: string) => string
-  const { collections, contract } = await getAltTextHealthWidgetData(req)
-  const localeCount = contract.summary.localeCount
+  const { collections, errors, isLocalized, localeCount, totalDocs } =
+    await getAltTextHealthWidgetData(req)
 
   return (
     <div
@@ -34,13 +34,13 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
         </p>
       </div>
 
-      {contract.summary.totalDocs === 0 && contract.errors.length === 0 && (
+      {totalDocs === 0 && errors.length === 0 && (
         <p style={{ color: 'var(--theme-text)', margin: 0, opacity: 0.75 }}>
           {t('@jhb.software/payload-alt-text-plugin:noImagesFound')}
         </p>
       )}
 
-      {contract.errors.length > 0 && (
+      {errors.length > 0 && (
         <p style={{ color: '#92400e', fontSize: '13px', margin: 0 }}>
           {t('@jhb.software/payload-alt-text-plugin:healthCheckPartialWarning')}
         </p>
@@ -87,7 +87,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                       '{count}',
                       String(collection.totalDocs),
                     )}
-                    {contract.summary.isLocalized && (
+                    {isLocalized && (
                       <>
                         {' · '}
                         {t('@jhb.software/payload-alt-text-plugin:localeCount').replace(
@@ -117,7 +117,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {collection.invalidDocCount}{' '}
+                  {collection.missingDocs + collection.partialDocs}{' '}
                   {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')} →
                 </a>
               ) : displayState === 'healthy' ? (
@@ -148,7 +148,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {collection.invalidDocCount}{' '}
+                  {collection.missingDocs + collection.partialDocs}{' '}
                   {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
                 </span>
               ) : (

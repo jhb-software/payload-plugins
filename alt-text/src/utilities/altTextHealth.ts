@@ -3,23 +3,50 @@ import type { Payload, PayloadRequest } from 'payload'
 import { unstable_cache } from 'next/cache.js'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
-import type {
-  AltTextHealthContract,
-  AltTextHealthScan,
-  AltTextHealthScanCollection,
-  AltTextHealthWidgetData,
-} from './altTextHealthContract.js'
 
 import { createCachedAltTextHealthScan } from './altTextHealthCache.js'
-import {
-  ALT_TEXT_HEALTH_PLUGIN_SLUG,
-  mapAltTextHealthScanToContract,
-  mapAltTextHealthScanToWidgetData,
-} from './altTextHealthContract.js'
 import { localesFromConfig } from './localesFromConfig.js'
 
+export const ALT_TEXT_HEALTH_PLUGIN_SLUG = 'alt-text'
 export const ALT_TEXT_HEALTH_CACHE_TTL = 3600
 export const ALT_TEXT_HEALTH_GLOBAL_TAG = 'alt-text-health'
+
+export type AltTextHealthErrorCode =
+  | 'ALT_TEXT_COLLECTION_READ_FAILED'
+  | 'ALT_TEXT_PLUGIN_CONFIG_MISSING'
+
+export type AltTextHealthError = {
+  code: AltTextHealthErrorCode
+  collection?: string
+  message: string
+  operation?: 'find'
+}
+
+export type AltTextHealthScanCollection = {
+  collection: string
+  completeDocs: number
+  error?: AltTextHealthError
+  invalidDocIds: (number | string)[] | undefined
+  missingDocs: number
+  partialDocs: number
+  totalDocs: number
+}
+
+export type AltTextHealthScan = {
+  checkedAt: string
+  collections: AltTextHealthScanCollection[]
+  errors: AltTextHealthError[]
+  isLocalized: boolean
+  localeCodes: string[]
+}
+
+export type AltTextHealthWidgetData = {
+  collections: AltTextHealthScanCollection[]
+  errors: AltTextHealthError[]
+  isLocalized: boolean
+  localeCount: number
+  totalDocs: number
+}
 
 type AltTextHealthComputationArgs = {
   collections: string[]
@@ -282,10 +309,8 @@ async function getAltTextHealthScan(req: PayloadRequest): Promise<AltTextHealthS
   return getCachedHealthScan()
 }
 
-export async function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthContract> {
-  const scan = await getAltTextHealthScan(req)
-
-  return mapAltTextHealthScanToContract(scan, { ttlSeconds: ALT_TEXT_HEALTH_CACHE_TTL })
+export async function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthScan> {
+  return getAltTextHealthScan(req)
 }
 
 export async function getAltTextHealthWidgetData(
@@ -293,5 +318,11 @@ export async function getAltTextHealthWidgetData(
 ): Promise<AltTextHealthWidgetData> {
   const scan = await getAltTextHealthScan(req)
 
-  return mapAltTextHealthScanToWidgetData(scan, { ttlSeconds: ALT_TEXT_HEALTH_CACHE_TTL })
+  return {
+    collections: scan.collections,
+    errors: scan.errors,
+    isLocalized: scan.isLocalized,
+    localeCount: scan.localeCodes.length,
+    totalDocs: scan.collections.reduce((total, c) => total + c.totalDocs, 0),
+  }
 }
