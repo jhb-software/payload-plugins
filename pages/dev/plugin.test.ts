@@ -2574,93 +2574,123 @@ describe('Circular parent reference prevention', () => {
 describe('Draft documents', () => {
   beforeEach(async () => await deleteCollection('pages'))
 
-  test('virtual fields are correctly set when creating a draft nested page', async () => {
+  test('afterChange uses draft parent breadcrumbs when parent has a newer draft version', async () => {
+    // 1. Create and publish the parent
     const parentPage = await payload.create({
       collection: 'pages',
       locale: 'de',
-      draft: true,
       data: {
-        title: 'Draft Parent',
-        slug: 'draft-parent',
-        content: 'Parent content',
+        title: 'Parent Published',
+        slug: 'parent-published',
+        content: 'Published content',
         ...virtualFields,
       },
     })
 
+    // 2. Update the parent as a draft with a different slug
+    await payload.update({
+      collection: 'pages',
+      id: parentPage.id,
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Parent Draft',
+        slug: 'parent-draft',
+        content: 'Draft content',
+      },
+    })
+
+    // 3. Create a child page as a draft — the afterChange hook must resolve the
+    //    parent's *draft* breadcrumbs (slug: parent-draft), not the published ones.
     const childPage = await payload.create({
       collection: 'pages',
       locale: 'de',
       draft: true,
       data: {
-        title: 'Draft Child',
-        slug: 'draft-child',
+        title: 'Child Draft',
+        slug: 'child-draft',
         content: 'Child content',
         parent: parentPage.id,
         ...virtualFields,
       },
     })
 
-    expect(childPage.path).toBe('/de/draft-parent/draft-child')
+    expect(childPage.path).toBe('/de/parent-draft/child-draft')
     expect(removeIdsFromArray(childPage.breadcrumbs)).toEqual(
       removeIdsFromArray([
-        { id: undefined, path: '/de/draft-parent', label: 'Draft Parent', slug: 'draft-parent' },
+        { id: undefined, path: '/de/parent-draft', label: 'Parent Draft', slug: 'parent-draft' },
         {
           id: undefined,
-          path: '/de/draft-parent/draft-child',
-          label: 'Draft Child',
-          slug: 'draft-child',
+          path: '/de/parent-draft/child-draft',
+          label: 'Child Draft',
+          slug: 'child-draft',
         },
       ]),
     )
   })
 
-  test('virtual fields are correctly set when reading a draft nested page', async () => {
+  test('beforeRead uses draft parent breadcrumbs when parent has a newer draft version', async () => {
+    // 1. Create and publish the parent
     const parentPage = await payload.create({
       collection: 'pages',
       locale: 'de',
-      draft: true,
       data: {
-        title: 'Draft Parent',
-        slug: 'draft-parent',
-        content: 'Parent content',
+        title: 'Parent Published',
+        slug: 'parent-published',
+        content: 'Published content',
         ...virtualFields,
       },
     })
 
+    // 2. Create and publish a child page
     await payload.create({
       collection: 'pages',
       locale: 'de',
-      draft: true,
       data: {
-        title: 'Draft Child',
-        slug: 'draft-child',
+        title: 'Child Page',
+        slug: 'child-page',
         content: 'Child content',
         parent: parentPage.id,
         ...virtualFields,
       },
     })
 
+    // 3. Update the parent as a draft with a different slug
+    await payload.update({
+      collection: 'pages',
+      id: parentPage.id,
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Parent Draft',
+        slug: 'parent-draft',
+        content: 'Draft content',
+      },
+    })
+
+    // 4. Read the child with draft: true — the beforeRead hook must resolve the
+    //    parent's *draft* breadcrumbs (slug: parent-draft), not the published ones.
     const results = await payload.find({
       collection: 'pages',
       locale: 'de',
       draft: true,
       where: {
-        slug: { equals: 'draft-child' },
+        slug: { equals: 'child-page' },
       },
     })
 
     expect(results.docs).toHaveLength(1)
     const childPage = results.docs[0]
 
-    expect(childPage.path).toBe('/de/draft-parent/draft-child')
+    expect(childPage.path).toBe('/de/parent-draft/child-page')
     expect(removeIdsFromArray(childPage.breadcrumbs)).toEqual(
       removeIdsFromArray([
-        { id: undefined, path: '/de/draft-parent', label: 'Draft Parent', slug: 'draft-parent' },
+        { id: undefined, path: '/de/parent-draft', label: 'Parent Draft', slug: 'parent-draft' },
         {
           id: undefined,
-          path: '/de/draft-parent/draft-child',
-          label: 'Draft Child',
-          slug: 'draft-child',
+          path: '/de/parent-draft/child-page',
+          label: 'Child Page',
+          slug: 'child-page',
         },
       ]),
     )
