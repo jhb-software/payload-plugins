@@ -1,5 +1,5 @@
 import payload, { CollectionSlug, ValidationError } from 'payload'
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 
@@ -31,6 +31,10 @@ afterAll(async () => {
   } else {
     console.log('Could not destroy database')
   }
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('Path and breadcrumb virtual fields are returned correctly for find operation.', () => {
@@ -476,6 +480,98 @@ describe('Slug field behaves as expected for create and update operations', () =
     } catch (error) {
       expect(error).toBeInstanceOf(ValidationError)
     }
+  })
+})
+
+describe('Draft breadcrumbs reflect unpublished parent changes', () => {
+  let parentPage: { id: DefaultIDType }
+  let childPage: { id: DefaultIDType }
+
+  beforeAll(async () => {
+    // Delete dependent collections before pages to respect foreign key constraints
+    await deleteCollection('authors')
+    await deleteCollection('blogposts')
+    await deleteCollection('pages')
+
+    // Create a published parent page
+    parentPage = await payload.create({
+      collection: 'pages',
+      data: {
+        title: 'Draft Parent',
+        slug: 'draft-parent-published',
+        content: 'parent',
+        ...virtualFields,
+      },
+    })
+
+    // Update the parent with a draft version (new slug, not published)
+    await payload.update({
+      collection: 'pages',
+      id: parentPage.id,
+      draft: true,
+      data: {
+        title: 'Draft Parent Updated',
+        slug: 'draft-parent-draft',
+        content: 'parent updated',
+        ...virtualFields,
+      },
+    })
+
+    // Create a child page referencing the parent
+    childPage = await payload.create({
+      collection: 'pages',
+      data: {
+        title: 'Draft Child',
+        slug: 'draft-child',
+        content: 'child',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+  })
+
+  test('local API draft: true without req.query.draft still forwards draft to parent fetch', async () => {
+    // Known limitation: Payload does not expose the `draft` operation flag to
+    // beforeRead/afterChange hooks, so local API callers using draft: true without
+    // also setting req.query.draft will not get draft breadcrumbs.
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    // Fetch child as draft via local API (no req.query.draft)
+    await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      draft: true,
+    })
+
+    const parentFetch = findByIDSpy.mock.calls.find(
+      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
+    )
+    expect(parentFetch).toBeDefined()
+    expect(parentFetch![0].draft).toBe(true)
+  })
+
+  test('child breadcrumbs reflect draft parent slug changes when fetched in draft mode', async () => {
+    // Fetch child in non-draft mode -> should use the published parent slug
+    const childPublished = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+    })
+
+    // Fetch child in draft mode (simulating a REST request with ?draft=true)
+    const childDraft = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      draft: true,
+      req: { query: { draft: 'true' } },
+    })
+
+    // Non-draft mode: parent breadcrumb should use the published slug
+    expect(childPublished.breadcrumbs[0].slug).toBe('draft-parent-published')
+    expect(childPublished.path).toBe('/draft-parent-published/draft-child')
+
+    // Draft mode: parent breadcrumb should reflect the draft parent slug
+    expect(childDraft.breadcrumbs[0].slug).toBe('draft-parent-draft')
+    expect(childDraft.path).toBe('/draft-parent-draft/draft-child')
   })
 })
 
