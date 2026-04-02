@@ -64,6 +64,9 @@ export type AltTextPluginConfig = {
   /** Function to get the thumbnail URL of an image document. */
   getImageThumbnail: (doc: Record<string, unknown>) => string
 
+  /** Whether alt text health tracking is enabled. */
+  healthCheck: boolean
+
   /** The locale to generate alt texts in when localization is disabled. */
   locale?: string
 

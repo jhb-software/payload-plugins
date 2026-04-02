@@ -73,13 +73,13 @@ Note: When localization is disabled in your Payload config (default), you need t
 | `locale`                     | `string`           | No       | Locale for alt text generation (required when localization is disabled)  |
 | `maxBulkGenerateConcurrency` | `number`           | No       | Maximum concurrent API requests for bulk operations (default: 16)        |
 | `fieldsOverride`             | `Function`         | No       | Override the default fields inserted by the plugin                       |
-| `healthWidget`               | `boolean`          | No       | Whether to add the alt text health dashboard widget (default: `true`)    |
+| `healthCheck`                | `boolean`          | No       | Enable alt text health tracking: REST endpoint, cache revalidation hooks, and dashboard widget (default: `true`) |
 
 ## Dashboard Widget
 
 The plugin registers an `Alt text health` dashboard widget that shows alt text coverage across all configured upload collections, with cached queries that revalidate on document changes. Collections with missing alt text show a clickable badge linking to the affected images.
 
-Set `healthWidget: false` in the plugin config to disable it. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
+Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 
 ### Resolvers
 

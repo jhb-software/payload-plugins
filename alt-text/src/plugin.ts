@@ -84,11 +84,14 @@ export const payloadAltTextPlugin =
         )
       : []
 
+    const enableHealthCheck = incomingPluginConfig.healthCheck !== false
+
     const pluginConfig: AltTextPluginConfig = {
       collections: incomingPluginConfig.collections,
       enabled: incomingPluginConfig.enabled ?? true,
       fieldsOverride: incomingPluginConfig.fieldsOverride,
       getImageThumbnail: incomingPluginConfig.getImageThumbnail,
+      healthCheck: enableHealthCheck,
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
@@ -117,8 +120,6 @@ export const payloadAltTextPlugin =
       typeof incomingPluginConfig.fieldsOverride === 'function'
         ? incomingPluginConfig.fieldsOverride({ defaultFields })
         : defaultFields
-
-    const enableHealthCheck = incomingPluginConfig.healthCheck !== false
 
     // Ensure collections array exists
     config.collections = config.collections || []

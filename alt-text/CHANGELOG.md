@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- feat: add a alt text health dashboard widget with localization-aware coverage reporting (enabled by default, opt-out via `healthWidget: false`)
+- feat: add alt text health check with dashboard widget and REST endpoint (opt-out via `healthCheck: false`)
 
 ## 0.3.1
 
