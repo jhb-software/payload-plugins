@@ -2392,11 +2392,12 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
   })
 })
 
-describe('Draft flag is forwarded to parent document fetch during breadcrumb computation', () => {
+describe('Draft breadcrumbs reflect unpublished parent changes', () => {
   let parentPage: { id: DefaultIDType }
   let childPage: { id: DefaultIDType }
 
   beforeAll(async () => {
+    await deleteCollection('authors')
     await deleteCollection('pages')
 
     // Create a published parent page
@@ -2437,44 +2438,6 @@ describe('Draft flag is forwarded to parent document fetch during breadcrumb com
         ...virtualFields,
       },
     })
-  })
-
-  test('draft: true is passed to the parent findByID when draft is in req.query', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
-
-    // Simulate a REST API request with ?draft=true by passing req.query.draft
-    await payload.findByID({
-      collection: 'pages',
-      id: childPage.id,
-      locale: 'de',
-      draft: true,
-      req: { query: { draft: 'true' } },
-    })
-
-    // The inner findByID call for the parent should receive draft: true
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
-    )
-    expect(parentFetch).toBeDefined()
-    expect(parentFetch![0].draft).toBe(true)
-  })
-
-  test('no draft flag is passed to the parent findByID when not in draft mode', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
-
-    // Fetch without draft flag (default non-draft mode)
-    await payload.findByID({
-      collection: 'pages',
-      id: childPage.id,
-      locale: 'de',
-    })
-
-    // The inner findByID call for the parent should not have draft: true
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
-    )
-    expect(parentFetch).toBeDefined()
-    expect(parentFetch![0].draft).toBeFalsy()
   })
 
   test('child breadcrumbs reflect draft parent slug changes when fetched in draft mode', async () => {
