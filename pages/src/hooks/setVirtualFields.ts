@@ -22,10 +22,14 @@ export function dependentFields(collectionConfig: PageCollectionConfig): string[
 /**
  * Derives the draft flag from the request query parameters.
  * Handles both the string "true" (from REST API URL query params) and boolean true.
+ * Returns `true` when in draft mode, `undefined` otherwise (to omit the param).
+ *
+ * Note: Payload does not expose the `draft` operation flag to beforeRead/afterChange hooks,
+ * so local API callers that need draft breadcrumbs must pass `req: { query: { draft: 'true' } }`.
  */
-function draftFromRequest(req: { query?: Record<string, unknown> }): boolean {
+function draftFromRequest(req: { query?: Record<string, unknown> }): true | undefined {
   const draft = req.query?.draft
-  return draft === true || draft === 'true'
+  return draft === true || draft === 'true' ? true : undefined
 }
 
 /**
