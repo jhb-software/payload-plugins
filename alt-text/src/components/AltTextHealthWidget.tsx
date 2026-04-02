@@ -74,7 +74,11 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     textDecoration: 'none',
                   }}
                 >
-                  {getCollectionLabel(collection.collection, req.payload.config.collections, req.locale)}
+                  {getCollectionLabel(
+                    collection.collection,
+                    req.payload.config.collections,
+                    req.locale,
+                  )}
                 </a>
 
                 {displayState === 'unavailable' ? (
