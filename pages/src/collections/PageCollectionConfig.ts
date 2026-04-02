@@ -11,6 +11,7 @@ import { parentField } from '../fields/parentField.js'
 import { pathField } from '../fields/pathField.js'
 import { pageSlugField } from '../fields/slugField.js'
 import { beforeDuplicateTitle } from '../hooks/beforeDuplicate.js'
+import { preventCircularParentReference } from '../hooks/preventCircularParentReference.js'
 import { preventParentDeletion } from '../hooks/preventParentDeletion.js'
 import { selectDependentFieldsBeforeOperation } from '../hooks/selectDependentFieldsBeforeOperation.js'
 import {
@@ -131,6 +132,10 @@ export const createPageCollectionConfig = ({
       afterChange: [
         setVirtualFieldsAfterChange,
         ...(incomingCollectionConfig.hooks?.afterChange || []),
+      ],
+      beforeChange: [
+        ...(incomingCollectionConfig.hooks?.beforeChange || []),
+        preventCircularParentReference,
       ],
       beforeDelete: [
         ...(incomingCollectionConfig.hooks?.beforeDelete || []),
