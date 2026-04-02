@@ -133,7 +133,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')}
+                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')} ✓
                 </span>
               ) : displayState === 'unhealthy' ? (
                 <span
