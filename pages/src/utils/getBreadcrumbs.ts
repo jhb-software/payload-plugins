@@ -178,6 +178,7 @@ async function findByIDCached({
         depth: 0,
         disableErrors: true,
         locale,
+        overrideAccess: true,
         req: {
           ...req,
           context: { ...req.context, [ANCESTOR_CACHE_KEY]: cache },
