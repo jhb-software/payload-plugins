@@ -24,6 +24,14 @@ export type IncomingAltTextPluginConfig = {
   getImageThumbnail: (doc: Record<string, unknown>) => string
 
   /**
+   * Enable alt text health tracking (REST endpoint, cache revalidation hooks, and dashboard widget).
+   * Set to `false` to disable the entire feature.
+   *
+   * @default true
+   */
+  healthCheck?: boolean
+
+  /**
    * The locale to generate alt texts in when localization is disabled.
    *
    * Required when localization is disabled, ignored when localization is enabled.
@@ -55,6 +63,9 @@ export type AltTextPluginConfig = {
 
   /** Function to get the thumbnail URL of an image document. */
   getImageThumbnail: (doc: Record<string, unknown>) => string
+
+  /** Whether alt text health tracking is enabled. */
+  healthCheck: boolean
 
   /** The locale to generate alt texts in when localization is disabled. */
   locale?: string

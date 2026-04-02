@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: add alt text health check with dashboard widget and REST endpoint (opt-out via `healthCheck: false`)
+
 ## 0.3.1
 
 - fix: update validate function to correctly detect initial upload in Payload >=3.70

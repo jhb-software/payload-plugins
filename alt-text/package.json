@@ -26,6 +26,7 @@
     "format": "prettier --write src",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
+    "test:health": "node --experimental-strip-types --test test/altTextHealth.test.ts",
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {

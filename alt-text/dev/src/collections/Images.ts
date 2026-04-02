@@ -4,6 +4,10 @@ import type { CollectionConfig } from 'payload'
 
 export const Images: CollectionConfig = {
   slug: 'images',
+  labels: {
+    plural: { de: 'Bilder', en: 'Images' },
+    singular: { de: 'Bild', en: 'Image' },
+  },
   upload: {
     mimeTypes: ['image/*'],
   },

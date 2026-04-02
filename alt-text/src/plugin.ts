@@ -1,16 +1,72 @@
-import type { Config } from 'payload'
+import type { Config, PayloadRequest, Widget, WidgetInstance } from 'payload'
 
 import type {
   AltTextPluginConfig,
   IncomingAltTextPluginConfig,
 } from './types/AltTextPluginConfig.js'
 
+import { altTextHealthEndpoint } from './endpoints/altTextHealth.js'
 import { bulkGenerateAltTextsEndpoint } from './endpoints/bulkGenerateAltTexts.js'
 import { generateAltTextEndpoint } from './endpoints/generateAltText.js'
 import { altTextField } from './fields/altTextField.js'
 import { keywordsField } from './fields/keywordsField.js'
+import {
+  createRevalidateAltTextHealthAfterChangeHook,
+  createRevalidateAltTextHealthAfterDeleteHook,
+} from './hooks/revalidateAltTextHealth.js'
 import { translations } from './translations/index.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
+
+const altTextHealthWidgetDefinition: Widget = {
+  slug: 'alt-text-health',
+  Component: '@jhb.software/payload-alt-text-plugin/server#AltTextHealthWidget',
+  label: {
+    de: 'Alternativtexte Zustand',
+    en: 'Alt text health',
+  },
+  maxWidth: 'full',
+  minWidth: 'medium',
+}
+
+type DashboardDefaultLayout = Config['admin'] extends infer TAdmin
+  ? TAdmin extends { dashboard?: infer TDashboard }
+    ? TDashboard extends { defaultLayout?: infer TDefaultLayout }
+      ? TDefaultLayout
+      : never
+    : never
+  : never
+
+const defaultAltTextHealthWidgetLayout: WidgetInstance = {
+  widgetSlug: 'alt-text-health',
+  width: 'full',
+}
+
+function appendAltTextHealthWidgetToLayout(layout: WidgetInstance[]): WidgetInstance[] {
+  if (layout.some((widget) => widget.widgetSlug === 'alt-text-health')) {
+    return layout
+  }
+
+  return [...layout, defaultAltTextHealthWidgetLayout]
+}
+
+function getDashboardDefaultLayout(defaultLayout: DashboardDefaultLayout | undefined) {
+  if (!defaultLayout) {
+    return [
+      {
+        widgetSlug: 'collections',
+        width: 'full',
+      },
+      defaultAltTextHealthWidgetLayout,
+    ] satisfies WidgetInstance[]
+  }
+
+  if (Array.isArray(defaultLayout)) {
+    return appendAltTextHealthWidgetToLayout(defaultLayout)
+  }
+
+  return async ({ req }: { req: PayloadRequest }) =>
+    appendAltTextHealthWidgetToLayout(await defaultLayout({ req }))
+}
 
 export const payloadAltTextPlugin =
   (incomingPluginConfig: IncomingAltTextPluginConfig) =>
@@ -28,11 +84,14 @@ export const payloadAltTextPlugin =
         )
       : []
 
+    const enableHealthCheck = incomingPluginConfig.healthCheck !== false
+
     const pluginConfig: AltTextPluginConfig = {
       collections: incomingPluginConfig.collections,
       enabled: incomingPluginConfig.enabled ?? true,
       fieldsOverride: incomingPluginConfig.fieldsOverride,
       getImageThumbnail: incomingPluginConfig.getImageThumbnail,
+      healthCheck: enableHealthCheck,
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
@@ -100,14 +159,43 @@ export const payloadAltTextPlugin =
             ],
           },
           fields: [...(collectionConfig.fields ?? []), ...fields],
+          hooks: {
+            ...collectionConfig.hooks,
+            ...(enableHealthCheck && {
+              afterChange: [
+                ...(collectionConfig.hooks?.afterChange ?? []),
+                createRevalidateAltTextHealthAfterChangeHook(collectionConfig.slug),
+              ],
+              afterDelete: [
+                ...(collectionConfig.hooks?.afterDelete ?? []),
+                createRevalidateAltTextHealthAfterDeleteHook(collectionConfig.slug),
+              ],
+            }),
+          },
         }
       }
 
       return collectionConfig
     })
 
+    const existingWidgets = config.admin?.dashboard?.widgets ?? []
+    const widgets =
+      !enableHealthCheck || existingWidgets.some((widget) => widget.slug === 'alt-text-health')
+        ? existingWidgets
+        : [...existingWidgets, altTextHealthWidgetDefinition]
+
     return {
       ...config,
+      admin: {
+        ...config.admin,
+        dashboard: {
+          ...config.admin?.dashboard,
+          ...(enableHealthCheck && {
+            defaultLayout: getDashboardDefaultLayout(config.admin?.dashboard?.defaultLayout),
+          }),
+          widgets,
+        },
+      },
       custom: {
         ...config.custom,
         // Make plugin config available in hooks/actions
@@ -125,6 +213,15 @@ export const payloadAltTextPlugin =
           method: 'post',
           path: '/alt-text-plugin/bulk-generate-alt-texts',
         },
+        ...(enableHealthCheck
+          ? [
+              {
+                handler: altTextHealthEndpoint,
+                method: 'get' as const,
+                path: '/alt-text-plugin/health',
+              },
+            ]
+          : []),
       ],
       i18n: {
         ...config.i18n,

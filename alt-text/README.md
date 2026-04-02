@@ -10,6 +10,7 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 - Automatic keyword extraction for improved admin search
 - Bulk generation for processing multiple images at once
 - Full localization support
+- Dashboard health widget with cached coverage insights across all configured upload collections
 
 
 When the plugin is enabled for an upload collection, it will:
@@ -22,6 +23,10 @@ When the plugin is enabled for an upload collection, it will:
    - It will be used for improving the search of images in the admin panel
 2. Add a bulk generate button to the collection list view
    - This button will allow you to generate alt text for multiple images at once
+3. Register an `Alt text health` dashboard widget
+   - The widget is available in Payload's dashboard editor
+   - It is added to the default dashboard layout for first-time and reset layouts
+   - Results are cached and revalidated when documents in the configured upload collections change
 
 ## Installation
 
@@ -68,6 +73,13 @@ Note: When localization is disabled in your Payload config (default), you need t
 | `locale`                     | `string`           | No       | Locale for alt text generation (required when localization is disabled)  |
 | `maxBulkGenerateConcurrency` | `number`           | No       | Maximum concurrent API requests for bulk operations (default: 16)        |
 | `fieldsOverride`             | `Function`         | No       | Override the default fields inserted by the plugin                       |
+| `healthCheck`                | `boolean`          | No       | Enable alt text health tracking: REST endpoint, cache revalidation hooks, and dashboard widget (default: `true`) |
+
+## Dashboard Widget
+
+The plugin registers an `Alt text health` dashboard widget that shows alt text coverage across all configured upload collections, with cached queries that revalidate on document changes. Collections with missing alt text show a clickable badge linking to the affected images.
+
+Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 
 ### Resolvers
 
