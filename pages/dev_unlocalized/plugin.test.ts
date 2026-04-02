@@ -558,12 +558,32 @@ describe('Draft flag is forwarded to parent document fetch during breadcrumb com
       id: childPage.id,
     })
 
-    // The inner findByID call for the parent should not have draft: true
+    // The inner findByID call for the parent should not have draft set
     const parentFetch = findByIDSpy.mock.calls.find(
       (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
     )
     expect(parentFetch).toBeDefined()
-    expect(parentFetch![0].draft).toBeFalsy()
+    expect(parentFetch![0].draft).toBeUndefined()
+  })
+
+  test('local API draft: true without req.query.draft still forwards draft to parent fetch', async () => {
+    // Known limitation: Payload does not expose the `draft` operation flag to
+    // beforeRead/afterChange hooks, so local API callers using draft: true without
+    // also setting req.query.draft will not get draft breadcrumbs.
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    // Fetch child as draft via local API (no req.query.draft)
+    await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      draft: true,
+    })
+
+    const parentFetch = findByIDSpy.mock.calls.find(
+      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
+    )
+    expect(parentFetch).toBeDefined()
+    expect(parentFetch![0].draft).toBe(true)
   })
 
   test('child breadcrumbs reflect draft parent slug changes when fetched in draft mode', async () => {
