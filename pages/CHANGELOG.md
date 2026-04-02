@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0-beta
+
+- fix: use overrideAccess for parent document fetches in breadcrumb generation
+- fix: prevent circular parent references
+- chore: upgrade to Payload 3.79.0
+
 ## 0.7.1-beta
 
 - feat: pass full req to payload.findByID in getBreadcrumbs
