@@ -372,4 +372,3 @@ $RECYCLE.BIN/
 tsconfig.tsbuildinfo
 /dist
 .notes/
-package-lock.json
