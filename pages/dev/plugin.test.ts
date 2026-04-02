@@ -2391,10 +2391,13 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
     expect(reqArg!.context).toHaveProperty('customProperty', 'test-value')
   })
 
-  test('nested findByID uses overrideAccess: true to bypass access control on ancestor documents', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
-
-    await payload.create({
+  test('breadcrumbs include parent data even when access control would deny reading the parent', async () => {
+    // Create a child page while passing a context flag that restricts read access.
+    // The pages collection's read access control denies access when restrictPageAccess is true.
+    // The beforeChange hook internally fetches the parent for breadcrumb computation.
+    // Because that internal fetch uses overrideAccess: true, it bypasses the restriction
+    // and breadcrumbs are still computed correctly.
+    const childPage = await payload.create({
       collection: 'pages',
       locale: 'de',
       data: {
@@ -2404,17 +2407,18 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
         parent: parentPage.id,
         ...virtualFields,
       },
+      context: { restrictPageAccess: true },
     })
 
-    // Find the nested findByID call that fetches the parent during breadcrumb computation
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
-    )
-
-    expect(parentFetch).toBeDefined()
-    // overrideAccess must be true so breadcrumbs are generated even when the requesting
-    // user does not have read access to the parent document
-    expect(parentFetch![0].overrideAccess).toBe(true)
+    expect(childPage.breadcrumbs).toHaveLength(2)
+    expect(removeIdsFromArray(childPage.breadcrumbs!)).toEqual([
+      { slug: 'context-parent', label: 'Context Parent', path: '/de/context-parent' },
+      {
+        slug: 'access-control-child',
+        label: 'Access Control Child',
+        path: '/de/context-parent/access-control-child',
+      },
+    ])
   })
 })
 

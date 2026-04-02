@@ -3,6 +3,9 @@ import { captureAfterChangeDoc } from '../test/afterChangeCapture'
 
 export const Pages: PageCollectionConfig = {
   slug: 'pages',
+  access: {
+    read: ({ req }) => (req.context as Record<string, unknown>)?.restrictPageAccess !== true,
+  },
   admin: {
     useAsTitle: 'title',
   },
