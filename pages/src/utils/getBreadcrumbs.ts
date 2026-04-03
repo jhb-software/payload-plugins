@@ -160,7 +160,8 @@ async function findByIDCached({
   locale: 'all' | Locale | undefined
   req: PayloadRequest
 }): Promise<null | Record<string, unknown>> {
-  const cacheKey = `${collection}:${id}:${locale ?? ''}`
+  const draft = req.context.draft === true
+  const cacheKey = `${collection}:${id}:${locale ?? ''}:${draft ? 'draft' : 'published'}`
   // Cache the Promise (not the resolved value) so that concurrent lookups for the same
   // parent (e.g. beforeRead hooks running in parallel via Promise.all) share a single DB query.
   const cache = (req.context[ANCESTOR_CACHE_KEY] ??= new Map()) as Map<
@@ -177,7 +178,7 @@ async function findByIDCached({
         collection,
         depth: 0,
         disableErrors: true,
-        draft: req.context.draft === true,
+        draft,
         locale,
         overrideAccess: true,
         req: {
