@@ -160,6 +160,9 @@ async function findByIDCached({
   locale: 'all' | Locale | undefined
   req: PayloadRequest
 }): Promise<null | Record<string, unknown>> {
+  // Note: The cache key does not include draft status because the cache is request-scoped
+  // and context.draft is constant within a single request — a draft and non-draft lookup
+  // for the same parent cannot collide in the same cache.
   const cacheKey = `${collection}:${id}:${locale ?? ''}`
   // Cache the Promise (not the resolved value) so that concurrent lookups for the same
   // parent (e.g. beforeRead hooks running in parallel via Promise.all) share a single DB query.
