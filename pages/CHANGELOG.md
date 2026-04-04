@@ -3,6 +3,7 @@
 ## 0.7.1-beta
 
 - feat: pass full req to payload.findByID in getBreadcrumbs
+- fix: only set alternatePaths on previousDoc meta instead of copying entire meta
 
 ## 0.7.0-beta
 
