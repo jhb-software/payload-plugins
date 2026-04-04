@@ -4,6 +4,7 @@
 
 - fix: pass draft arg to parent document lookups in breadcrumb generation
 - feat: pass full req to payload.findByID in getBreadcrumbs
+- fix: only set alternatePaths on previousDoc meta instead of copying entire meta
 
 ## 0.7.0-beta
 

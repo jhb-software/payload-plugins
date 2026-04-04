@@ -2178,10 +2178,59 @@ describe('The afterChange hook doc and previousDoc contain the path of the page.
       )
       // Only one error should have been logged (for previousDoc, not for doc)
       const virtualFieldErrors = loggerErrorSpy.mock.calls.filter(
-        (call) => typeof call[1] === 'string' && call[1].includes('Failed to compute virtual fields'),
+        (call) =>
+          typeof call[1] === 'string' && call[1].includes('Failed to compute virtual fields'),
       )
       expect(virtualFieldErrors).toHaveLength(1)
     }
+  })
+
+  test('previousDoc.meta preserves its own values and only receives alternatePaths when slug is unchanged.', async () => {
+    const pageId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          ...virtualFields,
+          title: 'Page DE',
+          slug: 'meta-test-page',
+          content: 'Page DE',
+          meta: {
+            title: 'old meta title',
+            description: 'old description',
+            alternatePaths: [],
+          },
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+
+    // Update only meta.title and meta.description (slug unchanged → dependentFieldsUnchanged=true)
+    await payload.update({
+      collection: 'pages',
+      id: pageId,
+      locale: 'de',
+      data: {
+        meta: {
+          title: 'new meta title',
+          description: 'new description',
+          alternatePaths: [],
+        },
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+
+    // doc should have the new meta values
+    expect((doc.meta as any).title).toBe('new meta title')
+    expect((doc.meta as any).description).toBe('new description')
+    // previousDoc.meta must still have the old values, not overwritten by doc's meta
+    expect((previousDoc.meta as any).title).toBe('old meta title')
+    expect((previousDoc.meta as any).description).toBe('old description')
+    // Both should have alternatePaths set
+    expect((doc.meta as any).alternatePaths).toBeDefined()
+    expect((previousDoc.meta as any).alternatePaths).toBeDefined()
   })
 
   // Note: A test for "doc virtual fields fall back when doc parent was deleted during update"
