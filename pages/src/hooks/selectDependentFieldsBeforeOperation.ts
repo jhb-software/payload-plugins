@@ -16,6 +16,12 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   context,
   operation,
 }) => {
+  // Store the draft arg on the context so downstream hooks (e.g. getBreadcrumbs → findByIDCached)
+  // can pass it when fetching parent documents.
+  if ('draft' in args) {
+    context.draft = args.draft
+  }
+
   // Workaround for a bug in Payload 3.67.0 (see https://github.com/payloadcms/payload/issues/14847)
   // where operation is undefined for findByID operations. This bug is fixed in v3.68.0.
   const isReadOperation =

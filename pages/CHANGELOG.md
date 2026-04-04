@@ -9,6 +9,7 @@
 - fix: use overrideAccess for parent document fetches in breadcrumb generation
 - fix: prevent circular parent references
 - fix: only set alternatePaths on previousDoc meta instead of copying entire meta
+- fix: pass draft arg to parent document lookups in breadcrumb generation
 - chore: upgrade to Payload 3.79.0
 
 ## 0.6.0
