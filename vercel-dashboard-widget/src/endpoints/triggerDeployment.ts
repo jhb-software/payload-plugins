@@ -1,0 +1,62 @@
+import type { PayloadHandler, PayloadRequest } from 'payload'
+
+import type { VercelDashboardPluginConfig } from '../types.js'
+
+import { VercelApiClient } from '../utilities/vercelApiClient.js'
+
+/**
+ * POST /vercel-dashboard/trigger-deployment
+ * Triggers a new production deployment by redeploying the latest READY deployment.
+ * Requires authentication.
+ */
+export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequest) => {
+  if (!req.user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const pluginConfig = req.payload.config.custom?.vercelDashboardPluginConfig as
+    | VercelDashboardPluginConfig
+    | undefined
+
+  if (!pluginConfig) {
+    return Response.json({ error: 'Plugin config not found' }, { status: 500 })
+  }
+
+  try {
+    const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
+
+    // Find the latest READY production deployment to redeploy
+    const deploymentsResponse = await vercelClient.getDeployments({
+      limit: 1,
+      projectId: pluginConfig.vercel.projectId,
+      state: 'READY',
+      target: 'production',
+      teamId: pluginConfig.vercel.teamId,
+    })
+
+    const latestReadyDeployment = deploymentsResponse.deployments.at(0)
+    if (!latestReadyDeployment) {
+      return Response.json(
+        { error: 'No READY production deployment found to redeploy' },
+        { status: 404 },
+      )
+    }
+
+    const deployment = await vercelClient.createDeployment({
+      requestBody: {
+        deploymentId: latestReadyDeployment.uid,
+        name: pluginConfig.vercel.projectId,
+        target: 'production',
+      },
+      teamId: pluginConfig.vercel.teamId,
+    })
+
+    return Response.json({ id: deployment.id })
+  } catch (error) {
+    console.error('Error triggering deployment:', error)
+    return Response.json(
+      { error: `Error triggering deployment: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { status: 500 },
+    )
+  }
+}
