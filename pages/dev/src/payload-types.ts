@@ -153,6 +153,8 @@ export interface Page {
   title: string;
   content: string;
   meta: {
+    title?: string | null;
+    description?: string | null;
     alternatePaths: {
       hreflang: string;
       path: string;
@@ -410,6 +412,8 @@ export interface PagesSelect<T extends boolean = true> {
   meta?:
     | T
     | {
+        title?: T;
+        description?: T;
         alternatePaths?:
           | T
           | {
