@@ -8,6 +8,7 @@
 - fix: gracefully handle errors when computing virtual fields (e.g. when a parent document no longer exists) instead of crashing the operation
 - fix: use overrideAccess for parent document fetches in breadcrumb generation
 - fix: prevent circular parent references
+- fix: only set alternatePaths on previousDoc meta instead of copying entire meta
 - chore: upgrade to Payload 3.79.0
 
 ## 0.6.0

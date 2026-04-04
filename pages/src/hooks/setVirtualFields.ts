@@ -147,7 +147,14 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
       Object.assign(previousDoc, {
         breadcrumbs: docWithVirtualFields.breadcrumbs,
         path: docWithVirtualFields.path,
-        ...(docWithVirtualFields.meta ? { meta: docWithVirtualFields.meta } : {}),
+        ...(docWithVirtualFields.meta?.alternatePaths
+          ? {
+              meta: {
+                ...previousDoc.meta,
+                alternatePaths: docWithVirtualFields.meta.alternatePaths,
+              },
+            }
+          : {}),
       })
     } else if (previousDoc.isRootPage) {
       const result = setRootPageDocumentVirtualFields({
