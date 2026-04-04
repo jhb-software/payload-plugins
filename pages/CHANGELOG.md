@@ -2,6 +2,7 @@
 
 ## 0.7.1-beta
 
+- fix: pass draft arg to parent document lookups in breadcrumb generation
 - feat: pass full req to payload.findByID in getBreadcrumbs
 
 ## 0.7.0-beta
