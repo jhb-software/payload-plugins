@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: add configurable `access` option for the translate endpoint (defaults to requiring authentication)
+
 ## 0.1.2
 
 - fix: lowercase locale codes before passing them to the translation prompt for ISO 639 compliance

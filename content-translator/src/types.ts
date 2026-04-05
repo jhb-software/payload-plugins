@@ -1,8 +1,16 @@
-import type { CollectionSlug, GlobalSlug } from 'payload'
+import type { CollectionSlug, GlobalSlug, PayloadRequest } from 'payload'
 
 import type { TranslateResolver } from './resolvers/types.js'
 
 export type TranslatorConfig = {
+  /**
+   * Custom access control for the translate endpoint.
+   * Return `true` to allow access, `false` to deny.
+   *
+   * @default ({ req }) => !!req.user — requires authentication
+   */
+  access?: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+
   /**
    * Collections with the enabled translator in the admin UI
    */

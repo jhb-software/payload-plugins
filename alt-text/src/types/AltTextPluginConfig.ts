@@ -1,9 +1,17 @@
-import type { CollectionSlug, Field } from 'payload'
+import type { CollectionSlug, Field, PayloadRequest } from 'payload'
 
 import type { AltTextResolver } from '../resolvers/types.js'
 
 /** Configuration options for the alt text plugin. */
 export type IncomingAltTextPluginConfig = {
+  /**
+   * Custom access control for plugin endpoints.
+   * Return `true` to allow access, `false` to deny.
+   *
+   * @default ({ req }) => !!req.user — requires authentication
+   */
+  access?: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+
   /** Collection slugs to enable the plugin for. */
   collections: CollectionSlug[]
 
@@ -52,6 +60,9 @@ export type IncomingAltTextPluginConfig = {
 
 /** Configuration of the alt text plugin after defaults have been applied. */
 export type AltTextPluginConfig = {
+  /** Access control for plugin endpoints. */
+  access: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+
   /** Collection slugs to enable the plugin for. */
   collections: CollectionSlug[]
 
