@@ -81,6 +81,10 @@ curl -X POST https://your-cms.com/api/vercel-deployments \
   -H "Authorization: Bearer YOUR_PAYLOAD_API_KEY"
 ```
 
+### Why redeploy instead of a new deployment?
+
+The plugin redeploys the latest READY production deployment rather than creating a new deployment from scratch. This ensures that Vercel's [Ignored Build Step](https://vercel.com/docs/projects/overview#ignored-build-step) is bypassed — if your project uses an ignore build script that checks for code changes (e.g. `git diff`), a regular deployment would be skipped since only CMS content changed, not code. Redeploying an existing deployment avoids this check entirely.
+
 ## Getting Vercel API Token
 
 1. Go to your [Vercel Account Settings](https://vercel.com/account/tokens)
