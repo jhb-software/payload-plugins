@@ -5,7 +5,7 @@ import type { VercelDeploymentsPluginConfig } from '../types.js'
 import { VercelApiClient } from '../utilities/vercelApiClient.js'
 
 /**
- * POST /vercel-deployments/trigger-deployment
+ * POST /vercel-deployments
  * Triggers a new production deployment by redeploying the latest READY deployment.
  * Requires authentication.
  */

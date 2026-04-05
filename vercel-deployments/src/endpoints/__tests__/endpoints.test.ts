@@ -28,7 +28,7 @@ function createMockReq(overrides: {
         },
       },
     },
-    url: overrides.url ?? 'http://localhost:3000/api/vercel-deployments/deployment-info',
+    url: overrides.url ?? 'http://localhost:3000/api/vercel-deployments/status',
     user: overrides.user ?? null,
     json: vi.fn(),
   } as any
@@ -46,7 +46,7 @@ describe('getDeploymentInfoEndpoint', () => {
   it('returns 400 when id query parameter is missing', async () => {
     const req = createMockReq({
       user: { id: 'user-1' },
-      url: 'http://localhost:3000/api/vercel-deployments/deployment-info',
+      url: 'http://localhost:3000/api/vercel-deployments/status',
     })
     const response = await getDeploymentInfoEndpoint(req)
     expect(response.status).toBe(400)

@@ -70,14 +70,14 @@ All endpoints require authentication (Payload admin user session or API key).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/vercel-deployments/deployments-info` | Returns the active (latest READY) and latest production deployment |
-| `GET` | `/api/vercel-deployments/deployment-info?id=<id>` | Returns the status of a specific deployment |
-| `POST` | `/api/vercel-deployments/trigger-deployment` | Triggers a new production deployment by redeploying the latest READY build |
+| `GET` | `/api/vercel-deployments` | Returns the active (latest READY) and latest production deployment |
+| `GET` | `/api/vercel-deployments/status?id=<id>` | Returns the status of a specific deployment |
+| `POST` | `/api/vercel-deployments` | Triggers a new production deployment by redeploying the latest READY build |
 
 ### Example: Trigger a deployment via API
 
 ```bash
-curl -X POST https://your-cms.com/api/vercel-deployments/trigger-deployment \
+curl -X POST https://your-cms.com/api/vercel-deployments \
   -H "Authorization: Bearer YOUR_PAYLOAD_API_KEY"
 ```
 

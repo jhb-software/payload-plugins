@@ -5,7 +5,7 @@ import type { VercelDeploymentsPluginConfig } from '../types.js'
 import { VercelApiClient } from '../utilities/vercelApiClient.js'
 
 /**
- * GET /vercel-deployments/deployment-info?id=<deploymentId>
+ * GET /vercel-deployments/status?id=<deploymentId>
  * Returns the status of a specific deployment. Requires authentication.
  */
 export const getDeploymentInfoEndpoint: PayloadHandler = async (req: PayloadRequest) => {

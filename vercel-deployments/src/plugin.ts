@@ -46,17 +46,17 @@ export const vercelDeploymentsPlugin =
         {
           handler: getDeploymentsInfoEndpoint,
           method: 'get',
-          path: '/vercel-deployments/deployments-info',
+          path: '/vercel-deployments',
         },
         {
           handler: getDeploymentInfoEndpoint,
           method: 'get',
-          path: '/vercel-deployments/deployment-info',
+          path: '/vercel-deployments/status',
         },
         {
           handler: triggerDeploymentEndpoint,
           method: 'post',
-          path: '/vercel-deployments/trigger-deployment',
+          path: '/vercel-deployments',
         },
       ],
       i18n: {

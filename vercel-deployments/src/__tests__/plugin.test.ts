@@ -42,9 +42,9 @@ describe('vercelDeploymentsPlugin', () => {
     expect(result.endpoints).toHaveLength(3)
 
     const paths = result.endpoints!.map((e: any) => e.path)
-    expect(paths).toContain('/vercel-deployments/deployments-info')
-    expect(paths).toContain('/vercel-deployments/deployment-info')
-    expect(paths).toContain('/vercel-deployments/trigger-deployment')
+    expect(paths).toContain('/vercel-deployments')
+    expect(paths).toContain('/vercel-deployments/status')
+    expect(paths).toContain('/vercel-deployments')
   })
 
   it('registers correct HTTP methods for endpoints', () => {
@@ -54,9 +54,14 @@ describe('vercelDeploymentsPlugin', () => {
     const endpointMap = Object.fromEntries(
       result.endpoints!.map((e: any) => [e.path, e.method]),
     )
-    expect(endpointMap['/vercel-deployments/deployments-info']).toBe('get')
-    expect(endpointMap['/vercel-deployments/deployment-info']).toBe('get')
-    expect(endpointMap['/vercel-deployments/trigger-deployment']).toBe('post')
+    const endpoints = result.endpoints!
+    const listEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments' && e.method === 'get')
+    const statusEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments/status')
+    const triggerEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments' && e.method === 'post')
+
+    expect(listEndpoint).toBeDefined()
+    expect(statusEndpoint?.method).toBe('get')
+    expect(triggerEndpoint).toBeDefined()
   })
 
   it('stores plugin config in custom for endpoint handlers', () => {

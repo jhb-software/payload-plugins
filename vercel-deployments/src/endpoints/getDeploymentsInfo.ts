@@ -25,7 +25,7 @@ export type DeploymentsInfo = {
 }
 
 /**
- * GET /vercel-deployments/deployments-info
+ * GET /vercel-deployments
  * Returns information about the latest production deployments. Requires authentication.
  */
 export const getDeploymentsInfoEndpoint: PayloadHandler = async (req: PayloadRequest) => {
