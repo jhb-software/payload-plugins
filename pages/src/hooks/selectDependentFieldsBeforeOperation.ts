@@ -27,7 +27,13 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   const isReadOperation =
     operation === 'read' || (operation === undefined && 'id' in args && 'collection' in args)
 
-  if (isReadOperation && args.select) {
+  // For create/update operations, Payload applies `select` via `afterRead` hooks *before*
+  // calling `afterChange` hooks. This means the doc received by `setVirtualFieldsAfterChange`
+  // will have its fields stripped by `select`. We need to ensure dependent fields survive
+  // the filtering so that virtual fields can still be computed.
+  const isMutationOperation = operation === 'create' || operation === 'update'
+
+  if ((isReadOperation || isMutationOperation) && args.select) {
     const pageConfig = asPageCollectionConfigOrThrow(args.collection.config)
     const selectMode = getSelectMode(args.select)
     const dependendSelectedFields = dependentFields(pageConfig)
