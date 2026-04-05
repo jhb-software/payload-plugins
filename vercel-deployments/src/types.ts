@@ -1,4 +1,4 @@
-export type VercelDashboardPluginConfig = {
+export type VercelDeploymentsPluginConfig = {
   /**
    * Whether the plugin is enabled. Defaults to true.
    */

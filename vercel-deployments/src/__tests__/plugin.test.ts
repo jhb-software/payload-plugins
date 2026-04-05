@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import type { VercelDashboardPluginConfig } from '../types.js'
+import type { VercelDeploymentsPluginConfig } from '../types.js'
 
-import { vercelDashboardPlugin } from '../plugin.js'
+import { vercelDeploymentsPlugin } from '../plugin.js'
 
-const basePluginConfig: VercelDashboardPluginConfig = {
+const basePluginConfig: VercelDeploymentsPluginConfig = {
   vercel: {
     apiToken: 'test-token',
     projectId: 'test-project',
@@ -17,57 +17,57 @@ const basePayloadConfig = {
   collections: [],
 } as any
 
-describe('vercelDashboardPlugin', () => {
+describe('vercelDeploymentsPlugin', () => {
   it('returns config unchanged when plugin is disabled', () => {
-    const plugin = vercelDashboardPlugin({ ...basePluginConfig, enabled: false })
+    const plugin = vercelDeploymentsPlugin({ ...basePluginConfig, enabled: false })
     const result = plugin(basePayloadConfig)
     expect(result).toEqual(basePayloadConfig)
   })
 
   it('registers the dashboard widget', () => {
-    const plugin = vercelDashboardPlugin(basePluginConfig)
+    const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(basePayloadConfig)
 
     expect(result.admin?.dashboard?.widgets).toHaveLength(1)
     expect(result.admin?.dashboard?.widgets?.[0]).toMatchObject({
       slug: 'vercel-deployments',
-      Component: '@jhb.software/payload-vercel-dashboard-widget/client#VercelDeploymentWidget',
+      Component: '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget',
     })
   })
 
   it('registers three API endpoints', () => {
-    const plugin = vercelDashboardPlugin(basePluginConfig)
+    const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(basePayloadConfig)
 
     expect(result.endpoints).toHaveLength(3)
 
     const paths = result.endpoints!.map((e: any) => e.path)
-    expect(paths).toContain('/vercel-dashboard/deployments-info')
-    expect(paths).toContain('/vercel-dashboard/deployment-info')
-    expect(paths).toContain('/vercel-dashboard/trigger-deployment')
+    expect(paths).toContain('/vercel-deployments/deployments-info')
+    expect(paths).toContain('/vercel-deployments/deployment-info')
+    expect(paths).toContain('/vercel-deployments/trigger-deployment')
   })
 
   it('registers correct HTTP methods for endpoints', () => {
-    const plugin = vercelDashboardPlugin(basePluginConfig)
+    const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(basePayloadConfig)
 
     const endpointMap = Object.fromEntries(
       result.endpoints!.map((e: any) => [e.path, e.method]),
     )
-    expect(endpointMap['/vercel-dashboard/deployments-info']).toBe('get')
-    expect(endpointMap['/vercel-dashboard/deployment-info']).toBe('get')
-    expect(endpointMap['/vercel-dashboard/trigger-deployment']).toBe('post')
+    expect(endpointMap['/vercel-deployments/deployments-info']).toBe('get')
+    expect(endpointMap['/vercel-deployments/deployment-info']).toBe('get')
+    expect(endpointMap['/vercel-deployments/trigger-deployment']).toBe('post')
   })
 
   it('stores plugin config in custom for endpoint handlers', () => {
-    const plugin = vercelDashboardPlugin(basePluginConfig)
+    const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(basePayloadConfig)
 
-    expect(result.custom?.vercelDashboardPluginConfig).toEqual(basePluginConfig)
+    expect(result.custom?.vercelDeploymentsPluginConfig).toEqual(basePluginConfig)
   })
 
   it('registers translations', () => {
-    const plugin = vercelDashboardPlugin(basePluginConfig)
+    const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(basePayloadConfig)
 
     expect(result.i18n?.translations).toBeDefined()
@@ -82,7 +82,7 @@ describe('vercelDashboardPlugin', () => {
       admin: { dashboard: { widgets: [existingWidget] } },
     }
 
-    const plugin = vercelDashboardPlugin(basePluginConfig)
+    const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(configWithWidgets)
 
     expect(result.admin?.dashboard?.widgets).toHaveLength(2)
@@ -96,7 +96,7 @@ describe('vercelDashboardPlugin', () => {
       endpoints: [existingEndpoint],
     }
 
-    const plugin = vercelDashboardPlugin(basePluginConfig)
+    const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(configWithEndpoints)
 
     expect(result.endpoints).toHaveLength(4)
@@ -104,7 +104,7 @@ describe('vercelDashboardPlugin', () => {
   })
 
   it('applies custom widget dimensions', () => {
-    const plugin = vercelDashboardPlugin({
+    const plugin = vercelDeploymentsPlugin({
       ...basePluginConfig,
       widget: { maxWidth: 'large', minWidth: 'small' },
     })

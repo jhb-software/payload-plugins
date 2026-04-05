@@ -1,6 +1,6 @@
 {
-  "name": "vercel-dashboard-widget-test-app",
-  "description": "Test app for Vercel Dashboard Widget plugin",
+  "name": "vercel-deployments-test-app",
+  "description": "Test app for Vercel Deployments plugin",
   "version": "0.0.1",
   "license": "MIT",
   "type": "module",
@@ -17,7 +17,7 @@
     "generate:importmap": "payload generate:importmap"
   },
   "dependencies": {
-    "@jhb.software/payload-vercel-dashboard-widget": "workspace:*",
+    "@jhb.software/payload-vercel-deployments": "workspace:*",
     "@payloadcms/db-mongodb": "^3.80.0",
     "@payloadcms/next": "^3.80.0",
     "@payloadcms/translations": "^3.80.0",

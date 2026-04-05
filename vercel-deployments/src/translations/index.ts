@@ -30,6 +30,6 @@ export const translations = {
   en,
 }
 
-export type VercelDashboardTranslations = GenericTranslationsObject
+export type VercelDeploymentsTranslations = GenericTranslationsObject
 
-export type VercelDashboardTranslationKeys = NestedKeysStripped<VercelDashboardTranslations>
+export type VercelDeploymentsTranslationKeys = NestedKeysStripped<VercelDeploymentsTranslations>

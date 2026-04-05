@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { VercelDashboardPluginConfig } from '../../types.js'
+import type { VercelDeploymentsPluginConfig } from '../../types.js'
 
 import { getDeploymentInfoEndpoint } from '../getDeploymentInfo.js'
 import { getDeploymentsInfoEndpoint } from '../getDeploymentsInfo.js'
 import { triggerDeploymentEndpoint } from '../triggerDeployment.js'
 
-const mockPluginConfig: VercelDashboardPluginConfig = {
+const mockPluginConfig: VercelDeploymentsPluginConfig = {
   vercel: {
     apiToken: 'test-token',
     projectId: 'test-project',
@@ -23,12 +23,12 @@ function createMockReq(overrides: {
     payload: {
       config: {
         custom: {
-          vercelDashboardPluginConfig: mockPluginConfig,
+          vercelDeploymentsPluginConfig: mockPluginConfig,
           ...overrides.customConfig,
         },
       },
     },
-    url: overrides.url ?? 'http://localhost:3000/api/vercel-dashboard/deployment-info',
+    url: overrides.url ?? 'http://localhost:3000/api/vercel-deployments/deployment-info',
     user: overrides.user ?? null,
     json: vi.fn(),
   } as any
@@ -46,7 +46,7 @@ describe('getDeploymentInfoEndpoint', () => {
   it('returns 400 when id query parameter is missing', async () => {
     const req = createMockReq({
       user: { id: 'user-1' },
-      url: 'http://localhost:3000/api/vercel-dashboard/deployment-info',
+      url: 'http://localhost:3000/api/vercel-deployments/deployment-info',
     })
     const response = await getDeploymentInfoEndpoint(req)
     expect(response.status).toBe(400)

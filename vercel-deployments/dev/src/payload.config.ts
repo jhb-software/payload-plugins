@@ -1,4 +1,4 @@
-import { vercelDashboardPlugin } from '@jhb.software/payload-vercel-dashboard-widget'
+import { vercelDeploymentsPlugin } from '@jhb.software/payload-vercel-deployments'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
@@ -52,7 +52,7 @@ export default buildConfig({
     }
   },
   plugins: [
-    vercelDashboardPlugin({
+    vercelDeploymentsPlugin({
       vercel: {
         apiToken: process.env.VERCEL_API_TOKEN!,
         projectId: process.env.VERCEL_PROJECT_ID!,

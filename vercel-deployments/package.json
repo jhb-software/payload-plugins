@@ -1,15 +1,16 @@
 {
-  "name": "@jhb.software/payload-vercel-dashboard-widget",
+  "name": "@jhb.software/payload-vercel-deployments",
   "version": "0.1.0",
-  "description": "A Payload CMS plugin that adds a Vercel deployment info widget to the admin dashboard.",
+  "description": "A Payload CMS plugin for managing Vercel deployments of static websites — includes a dashboard widget and authenticated API endpoints.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
   "keywords": [
     "payload",
     "plugin",
     "vercel",
-    "dashboard",
-    "widget",
+    "deployments",
+    "static",
+    "rebuild",
     "deployment"
   ],
   "author": "JHB Software",

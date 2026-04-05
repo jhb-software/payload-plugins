@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build:all": "pnpm build:admin-search && pnpm build:alt-text && pnpm build:astro-payload-richtext-lexical && pnpm build:cloudinary && pnpm build:pages && pnpm build:geocoding && pnpm build:content-translator && pnpm build:vercel-dashboard-widget",
+    "build:all": "pnpm build:admin-search && pnpm build:alt-text && pnpm build:astro-payload-richtext-lexical && pnpm build:cloudinary && pnpm build:pages && pnpm build:geocoding && pnpm build:content-translator && pnpm build:vercel-deployments",
     "build:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm build",
     "build:admin-search": "cd ./admin-search && pnpm build",
     "build:alt-text": "cd ./alt-text && pnpm build",
@@ -11,9 +11,9 @@
     "build:content-translator": "cd ./content-translator && pnpm build",
     "build:geocoding": "cd ./geocoding && pnpm build",
     "build:pages": "cd ./pages && pnpm build",
-    "build:vercel-dashboard-widget": "cd ./vercel-dashboard-widget && pnpm build",
+    "build:vercel-deployments": "cd ./vercel-deployments && pnpm build",
 
-    "publish:all": "pnpm publish:admin-search && pnpm publish:alt-text && pnpm publish:astro-payload-richtext-lexical && pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:geocoding && pnpm publish:content-translator && pnpm publish:vercel-dashboard-widget",
+    "publish:all": "pnpm publish:admin-search && pnpm publish:alt-text && pnpm publish:astro-payload-richtext-lexical && pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:geocoding && pnpm publish:content-translator && pnpm publish:vercel-deployments",
     "publish:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm publish",
     "publish:admin-search": "cd ./admin-search && pnpm publish",
     "publish:alt-text": "cd ./alt-text && pnpm publish",
@@ -21,9 +21,9 @@
     "publish:content-translator": "cd ./content-translator && pnpm publish",
     "publish:geocoding": "cd ./geocoding && pnpm publish",
     "publish:pages": "cd ./pages && pnpm publish",
-    "publish:vercel-dashboard-widget": "cd ./vercel-dashboard-widget && pnpm publish",
+    "publish:vercel-deployments": "cd ./vercel-deployments && pnpm publish",
 
-    "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:astro-payload-richtext-lexical && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator && pnpm lint:vercel-dashboard-widget",
+    "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:astro-payload-richtext-lexical && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator && pnpm lint:vercel-deployments",
     "lint:admin-search": "cd ./admin-search && pnpm lint",
     "lint:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm lint",
     "lint:alt-text": "cd ./alt-text && pnpm lint",
@@ -31,9 +31,9 @@
     "lint:content-translator": "cd ./content-translator && pnpm lint",
     "lint:geocoding": "cd ./geocoding && pnpm lint",
     "lint:pages": "cd ./pages && pnpm lint",
-    "lint:vercel-dashboard-widget": "cd ./vercel-dashboard-widget && pnpm lint",
+    "lint:vercel-deployments": "cd ./vercel-deployments && pnpm lint",
 
-    "format:all": "pnpm format:admin-search && pnpm format:alt-text && pnpm format:astro-payload-richtext-lexical && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:content-translator && pnpm format:vercel-dashboard-widget",
+    "format:all": "pnpm format:admin-search && pnpm format:alt-text && pnpm format:astro-payload-richtext-lexical && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:content-translator && pnpm format:vercel-deployments",
     "format:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm format",
     "format:admin-search": "cd ./admin-search && pnpm format",
     "format:alt-text": "cd ./alt-text && pnpm format",
@@ -41,9 +41,9 @@
     "format:content-translator": "cd ./content-translator && pnpm format",
     "format:geocoding": "cd ./geocoding && pnpm format",
     "format:pages": "cd ./pages && pnpm format",
-    "format:vercel-dashboard-widget": "cd ./vercel-dashboard-widget && pnpm format",
+    "format:vercel-deployments": "cd ./vercel-deployments && pnpm format",
 
-    "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:astro-payload-richtext-lexical && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:content-translator && pnpm install:vercel-dashboard-widget",
+    "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:astro-payload-richtext-lexical && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:content-translator && pnpm install:vercel-deployments",
     "install:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm install",
     "install:admin-search": "cd ./admin-search && pnpm install --frozen-lockfile",
     "install:alt-text": "cd ./alt-text && pnpm install --frozen-lockfile",
@@ -51,7 +51,7 @@
     "install:content-translator": "cd ./content-translator && pnpm install --frozen-lockfile",
     "install:geocoding": "cd ./geocoding && pnpm install --frozen-lockfile",
     "install:pages": "cd ./pages && pnpm install --frozen-lockfile",
-    "install:vercel-dashboard-widget": "cd ./vercel-dashboard-widget && pnpm install --frozen-lockfile",
+    "install:vercel-deployments": "cd ./vercel-deployments && pnpm install --frozen-lockfile",
 
     "test:all": "pnpm test:pages",
     "test:pages": "cd ./pages && pnpm test"

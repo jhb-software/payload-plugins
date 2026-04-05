@@ -1,6 +1,6 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
-import type { VercelDashboardPluginConfig } from '../types.js'
+import type { VercelDeploymentsPluginConfig } from '../types.js'
 
 import { VercelApiClient } from '../utilities/vercelApiClient.js'
 
@@ -25,7 +25,7 @@ export type DeploymentsInfo = {
 }
 
 /**
- * GET /vercel-dashboard/deployments-info
+ * GET /vercel-deployments/deployments-info
  * Returns information about the latest production deployments. Requires authentication.
  */
 export const getDeploymentsInfoEndpoint: PayloadHandler = async (req: PayloadRequest) => {
@@ -33,8 +33,8 @@ export const getDeploymentsInfoEndpoint: PayloadHandler = async (req: PayloadReq
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const pluginConfig = req.payload.config.custom?.vercelDashboardPluginConfig as
-    | VercelDashboardPluginConfig
+  const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
+    | VercelDeploymentsPluginConfig
     | undefined
 
   if (!pluginConfig) {

@@ -35,7 +35,7 @@ export const TriggerFrontendDeploymentButton: React.FC = () => {
       let lastStatus: VercelDeployment['status']
 
       intervalRef.current = setInterval(() => {
-        void fetch(`/api/vercel-dashboard/deployment-info?id=${encodeURIComponent(deploymentId)}`, {
+        void fetch(`/api/vercel-deployments/deployment-info?id=${encodeURIComponent(deploymentId)}`, {
           credentials: 'include',
         })
           .then((res) => {
@@ -69,7 +69,7 @@ export const TriggerFrontendDeploymentButton: React.FC = () => {
   const handleClick = () => {
     startTransition(async () => {
       try {
-        const res = await fetch('/api/vercel-dashboard/trigger-deployment', {
+        const res = await fetch('/api/vercel-deployments/trigger-deployment', {
           credentials: 'include',
           method: 'POST',
         })

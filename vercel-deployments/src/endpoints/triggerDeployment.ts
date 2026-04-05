@@ -1,11 +1,11 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
-import type { VercelDashboardPluginConfig } from '../types.js'
+import type { VercelDeploymentsPluginConfig } from '../types.js'
 
 import { VercelApiClient } from '../utilities/vercelApiClient.js'
 
 /**
- * POST /vercel-dashboard/trigger-deployment
+ * POST /vercel-deployments/trigger-deployment
  * Triggers a new production deployment by redeploying the latest READY deployment.
  * Requires authentication.
  */
@@ -14,8 +14,8 @@ export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequ
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const pluginConfig = req.payload.config.custom?.vercelDashboardPluginConfig as
-    | VercelDashboardPluginConfig
+  const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
+    | VercelDeploymentsPluginConfig
     | undefined
 
   if (!pluginConfig) {

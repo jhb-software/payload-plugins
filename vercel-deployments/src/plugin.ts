@@ -1,6 +1,6 @@
 import type { Config } from 'payload'
 
-import type { VercelDashboardPluginConfig } from './types.js'
+import type { VercelDeploymentsPluginConfig } from './types.js'
 
 import { getDeploymentInfoEndpoint } from './endpoints/getDeploymentInfo.js'
 import { getDeploymentsInfoEndpoint } from './endpoints/getDeploymentsInfo.js'
@@ -8,8 +8,8 @@ import { triggerDeploymentEndpoint } from './endpoints/triggerDeployment.js'
 import { translations } from './translations/index.js'
 import { deepMergeSimple } from './utilities/deepMergeSimple.js'
 
-export const vercelDashboardPlugin =
-  (pluginConfig: VercelDashboardPluginConfig) =>
+export const vercelDeploymentsPlugin =
+  (pluginConfig: VercelDeploymentsPluginConfig) =>
   (incomingConfig: Config): Config => {
     const config = { ...incomingConfig }
 
@@ -29,7 +29,7 @@ export const vercelDashboardPlugin =
             {
               slug: 'vercel-deployments',
               Component:
-                '@jhb.software/payload-vercel-dashboard-widget/client#VercelDeploymentWidget',
+                '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget',
               maxWidth: pluginConfig.widget?.maxWidth ?? 'full',
               minWidth: pluginConfig.widget?.minWidth ?? 'medium',
             },
@@ -39,24 +39,24 @@ export const vercelDashboardPlugin =
       custom: {
         ...config.custom,
         // Make plugin config available for endpoint handlers
-        vercelDashboardPluginConfig: pluginConfig,
+        vercelDeploymentsPluginConfig: pluginConfig,
       },
       endpoints: [
         ...(config.endpoints ?? []),
         {
           handler: getDeploymentsInfoEndpoint,
           method: 'get',
-          path: '/vercel-dashboard/deployments-info',
+          path: '/vercel-deployments/deployments-info',
         },
         {
           handler: getDeploymentInfoEndpoint,
           method: 'get',
-          path: '/vercel-dashboard/deployment-info',
+          path: '/vercel-deployments/deployment-info',
         },
         {
           handler: triggerDeploymentEndpoint,
           method: 'post',
-          path: '/vercel-dashboard/trigger-deployment',
+          path: '/vercel-deployments/trigger-deployment',
         },
       ],
       i18n: {

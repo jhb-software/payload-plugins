@@ -1,25 +1,26 @@
-# Vercel Dashboard Widget for Payload CMS
+# Vercel Deployments for Payload CMS
 
-A [Payload CMS](https://payloadcms.com/) plugin that adds a Vercel deployment info widget to the admin dashboard. The widget displays the current deployment status, allows redeploying the latest production deployment, and provides real-time status updates.
+A [Payload CMS](https://payloadcms.com/) plugin for managing Vercel deployments of static websites. When your website is statically built on Vercel for performance, content changes in the CMS require a rebuild and redeploy. This plugin provides both a dashboard widget and authenticated API endpoints to monitor and trigger those deployments.
 
 ## Features
 
-- Dashboard widget showing current production deployment status
-- One-click production redeploy of the latest READY deployment
-- Real-time deployment status polling
-- Multi-language support (English and German included)
-- Configurable widget size
+- **Dashboard widget** showing active and latest production deployment status
+- **One-click redeploy** of the latest READY production deployment
+- **Real-time status polling** with live updates during builds
+- **Authenticated REST API endpoints** for triggering and monitoring deployments programmatically (e.g. from CI/CD pipelines, agents, or scripts)
+- **Multi-language support** (English and German included)
+- **Configurable widget size**
 
 ## Requirements
 
 - Payload CMS 3.80.0 or higher
-- Next.js 15.4.11
+- Next.js 15.4.x
 - A Vercel project with API access
 
 ## Installation
 
 ```bash
-pnpm add @jhb.software/payload-vercel-dashboard-widget
+pnpm add @jhb.software/payload-vercel-deployments
 ```
 
 ## Setup
@@ -27,11 +28,11 @@ pnpm add @jhb.software/payload-vercel-dashboard-widget
 Add the plugin to your Payload config:
 
 ```ts
-import { vercelDashboardPlugin } from '@jhb.software/payload-vercel-dashboard-widget'
+import { vercelDeploymentsPlugin } from '@jhb.software/payload-vercel-deployments'
 
 export default buildConfig({
   plugins: [
-    vercelDashboardPlugin({
+    vercelDeploymentsPlugin({
       vercel: {
         apiToken: process.env.VERCEL_API_TOKEN!,
         projectId: process.env.VERCEL_PROJECT_ID!,
@@ -63,11 +64,28 @@ export default buildConfig({
 
 `'x-small'` | `'small'` | `'medium'` | `'large'` | `'x-large'` | `'full'`
 
+## API Endpoints
+
+All endpoints require authentication (Payload admin user session or API key).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/vercel-deployments/deployments-info` | Returns the active (latest READY) and latest production deployment |
+| `GET` | `/api/vercel-deployments/deployment-info?id=<id>` | Returns the status of a specific deployment |
+| `POST` | `/api/vercel-deployments/trigger-deployment` | Triggers a new production deployment by redeploying the latest READY build |
+
+### Example: Trigger a deployment via API
+
+```bash
+curl -X POST https://your-cms.com/api/vercel-deployments/trigger-deployment \
+  -H "Authorization: Bearer YOUR_PAYLOAD_API_KEY"
+```
+
 ## Getting Vercel API Token
 
 1. Go to your [Vercel Account Settings](https://vercel.com/account/tokens)
 2. Click "Create Token"
-3. Give it a descriptive name (e.g., "Payload CMS Dashboard")
+3. Give it a descriptive name (e.g., "Payload CMS Deployments")
 4. Set appropriate scope (Full Account or specific project)
 5. Copy the token to your environment variables
 

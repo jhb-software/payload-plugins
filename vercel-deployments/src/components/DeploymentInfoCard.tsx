@@ -5,8 +5,8 @@ import { Pill } from '@payloadcms/ui/elements/Pill'
 import { Suspense } from 'react'
 
 import type { DeploymentsInfo } from '../endpoints/getDeploymentsInfo.js'
-import type { VercelDashboardTranslationKeys } from '../translations/index.js'
-import type { VercelDashboardPluginConfig } from '../types.js'
+import type { VercelDeploymentsTranslationKeys } from '../translations/index.js'
+import type { VercelDeploymentsPluginConfig } from '../types.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
 import { Card } from './Card.js'
@@ -22,9 +22,9 @@ export function DeploymentInfoCard({
   pluginConfig,
 }: {
   i18n: I18nClient
-  pluginConfig: VercelDashboardPluginConfig
+  pluginConfig: VercelDeploymentsPluginConfig
 }) {
-  const t = i18n.t as TFunction<VercelDashboardTranslationKeys>
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
   return (
     <Card
@@ -50,9 +50,9 @@ export default async function DeploymentInfo({
   pluginConfig,
 }: {
   i18n: I18nClient
-  pluginConfig: VercelDashboardPluginConfig
+  pluginConfig: VercelDeploymentsPluginConfig
 }) {
-  const t = i18n.t as TFunction<VercelDashboardTranslationKeys>
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
   let lastReadyDeployment: DeploymentsInfo['lastReadyDeployment'] = undefined
   let latestDeployment: DeploymentsInfo['latestDeployment'] = undefined
@@ -162,7 +162,7 @@ function DeploymentInfoRow({
   icon: React.ReactNode
   label: string
 }) {
-  const t = i18n.t as TFunction<VercelDashboardTranslationKeys>
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
   const deploymentStatusToPillStyle = (
     status: VercelDeployment['status'],
