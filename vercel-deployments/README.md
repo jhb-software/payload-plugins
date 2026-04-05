@@ -83,7 +83,9 @@ curl -X POST https://your-cms.com/api/vercel-deployments \
 
 ### Why redeploy instead of a new deployment?
 
-The plugin redeploys the latest READY production deployment rather than creating a new deployment from scratch. This ensures that Vercel's [Ignored Build Step](https://vercel.com/docs/projects/overview#ignored-build-step) is bypassed — if your project uses an ignore build script that checks for code changes (e.g. `git diff`), a regular deployment would be skipped since only CMS content changed, not code. Redeploying an existing deployment avoids this check entirely.
+The plugin redeploys the latest READY production deployment rather than creating a fresh deployment. This rebuilds the site using the same git commit, picking up any new CMS content without requiring a code change or git push.
+
+> **Note:** If your project uses Vercel's [Ignored Build Step](https://vercel.com/docs/projects/overview#ignored-build-step) (e.g. a script that checks for code changes via `git diff`), it will still run on redeploys. Make sure your ignore build script accounts for CMS-triggered rebuilds, or the deployment may be skipped.
 
 ## Getting Vercel API Token
 
