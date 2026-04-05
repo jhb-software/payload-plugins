@@ -16,14 +16,16 @@ const mockPluginConfig: VercelDeploymentsPluginConfig = {
 function createMockReq(overrides: {
   url?: string
   user?: { id: string } | null
-  customConfig?: Record<string, unknown>
+  pluginConfig?: VercelDeploymentsPluginConfig | null
 }) {
   return {
     payload: {
       config: {
         custom: {
-          vercelDeploymentsPluginConfig: mockPluginConfig,
-          ...overrides.customConfig,
+          vercelDeploymentsPluginConfig:
+            overrides.pluginConfig === null
+              ? undefined
+              : (overrides.pluginConfig ?? mockPluginConfig),
         },
       },
     },
@@ -34,7 +36,7 @@ function createMockReq(overrides: {
 }
 
 describe('getDeploymentsEndpoint', () => {
-  it('returns 401 when user is not authenticated', async () => {
+  it('returns 401 when user is not authenticated (default access)', async () => {
     const req = createMockReq({ user: null })
     const response = await getDeploymentsEndpoint(req)
     expect(response.status).toBe(401)
@@ -42,9 +44,17 @@ describe('getDeploymentsEndpoint', () => {
     expect(body.error).toBe('Unauthorized')
   })
 
+  it('returns 401 when custom access function denies access', async () => {
+    const req = createMockReq({
+      user: { id: 'user-1' },
+      pluginConfig: { ...mockPluginConfig, access: () => false },
+    })
+    const response = await getDeploymentsEndpoint(req)
+    expect(response.status).toBe(401)
+  })
+
   it('returns 500 when plugin config is not found', async () => {
-    const req = createMockReq({ user: { id: 'user-1' } })
-    req.payload.config.custom = {}
+    const req = createMockReq({ user: { id: 'user-1' }, pluginConfig: null })
     const response = await getDeploymentsEndpoint(req)
     expect(response.status).toBe(500)
     const body = await response.json()
@@ -53,7 +63,7 @@ describe('getDeploymentsEndpoint', () => {
 })
 
 describe('triggerDeploymentEndpoint', () => {
-  it('returns 401 when user is not authenticated', async () => {
+  it('returns 401 when user is not authenticated (default access)', async () => {
     const req = createMockReq({ user: null })
     const response = await triggerDeploymentEndpoint(req)
     expect(response.status).toBe(401)
@@ -61,9 +71,17 @@ describe('triggerDeploymentEndpoint', () => {
     expect(body.error).toBe('Unauthorized')
   })
 
+  it('returns 401 when custom access function denies access', async () => {
+    const req = createMockReq({
+      user: { id: 'user-1' },
+      pluginConfig: { ...mockPluginConfig, access: () => false },
+    })
+    const response = await triggerDeploymentEndpoint(req)
+    expect(response.status).toBe(401)
+  })
+
   it('returns 500 when plugin config is not found', async () => {
-    const req = createMockReq({ user: { id: 'user-1' } })
-    req.payload.config.custom = {}
+    const req = createMockReq({ user: { id: 'user-1' }, pluginConfig: null })
     const response = await triggerDeploymentEndpoint(req)
     expect(response.status).toBe(500)
     const body = await response.json()

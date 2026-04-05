@@ -1,4 +1,13 @@
+import type { PayloadRequest } from 'payload'
+
 export type VercelDeploymentsPluginConfig = {
+  /**
+   * Custom access control function for the plugin's API endpoints.
+   * Receives the Payload request and should return true to allow access.
+   * Defaults to checking `req.user` (i.e. any authenticated admin user).
+   */
+  access?: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+
   /**
    * Whether the plugin is enabled. Defaults to true.
    */

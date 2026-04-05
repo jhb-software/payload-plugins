@@ -9,17 +9,20 @@ import { VercelApiClient } from '../utilities/vercelApiClient.js'
  * Triggers a new production deployment by redeploying the latest READY deployment.
  * Requires authentication.
  */
-export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequest) => {
-  if (!req.user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+const defaultAccess: NonNullable<VercelDeploymentsPluginConfig['access']> = ({ req }) => !!req.user
 
+export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequest) => {
   const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
     | VercelDeploymentsPluginConfig
     | undefined
 
   if (!pluginConfig) {
     return Response.json({ error: 'Plugin config not found' }, { status: 500 })
+  }
+
+  const access = pluginConfig.access ?? defaultAccess
+  if (!(await access({ req }))) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
