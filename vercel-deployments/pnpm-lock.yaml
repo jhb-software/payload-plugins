@@ -63,7 +63,7 @@ importers:
 
   dev:
     dependencies:
-      '@jhb.software/payload-vercel-dashboard-widget':
+      '@jhb.software/payload-vercel-deployments':
         specifier: workspace:*
         version: link:..
       '@payloadcms/db-mongodb':
