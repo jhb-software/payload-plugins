@@ -4,7 +4,7 @@ import type { PillProps } from '@payloadcms/ui/elements/Pill'
 import { Pill } from '@payloadcms/ui/elements/Pill'
 import { Suspense } from 'react'
 
-import type { DeploymentsInfo } from '../endpoints/getDeploymentsInfo.js'
+import type { DeploymentsInfo } from '../endpoints/getDeployments.js'
 import type { VercelDeploymentsTranslationKeys } from '../translations/index.js'
 import type { VercelDeploymentsPluginConfig } from '../types.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'

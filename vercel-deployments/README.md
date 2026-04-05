@@ -71,7 +71,7 @@ All endpoints require authentication (Payload admin user session or API key).
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/vercel-deployments` | Returns the active (latest READY) and latest production deployment |
-| `GET` | `/api/vercel-deployments/status?id=<id>` | Returns the status of a specific deployment |
+| `GET` | `/api/vercel-deployments?id=<id>` | Returns the status of a specific deployment |
 | `POST` | `/api/vercel-deployments` | Triggers a new production deployment by redeploying the latest READY build |
 
 ### Example: Trigger a deployment via API

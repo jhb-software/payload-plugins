@@ -35,7 +35,7 @@ export const TriggerFrontendDeploymentButton: React.FC = () => {
       let lastStatus: VercelDeployment['status']
 
       intervalRef.current = setInterval(() => {
-        void fetch(`/api/vercel-deployments/status?id=${encodeURIComponent(deploymentId)}`, {
+        void fetch(`/api/vercel-deployments?id=${encodeURIComponent(deploymentId)}`, {
           credentials: 'include',
         })
           .then((res) => {

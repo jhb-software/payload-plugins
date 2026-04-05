@@ -2,8 +2,7 @@ import type { Config } from 'payload'
 
 import type { VercelDeploymentsPluginConfig } from './types.js'
 
-import { getDeploymentInfoEndpoint } from './endpoints/getDeploymentInfo.js'
-import { getDeploymentsInfoEndpoint } from './endpoints/getDeploymentsInfo.js'
+import { getDeploymentsEndpoint } from './endpoints/getDeployments.js'
 import { triggerDeploymentEndpoint } from './endpoints/triggerDeployment.js'
 import { translations } from './translations/index.js'
 import { deepMergeSimple } from './utilities/deepMergeSimple.js'
@@ -44,14 +43,9 @@ export const vercelDeploymentsPlugin =
       endpoints: [
         ...(config.endpoints ?? []),
         {
-          handler: getDeploymentsInfoEndpoint,
+          handler: getDeploymentsEndpoint,
           method: 'get',
           path: '/vercel-deployments',
-        },
-        {
-          handler: getDeploymentInfoEndpoint,
-          method: 'get',
-          path: '/vercel-deployments/status',
         },
         {
           handler: triggerDeploymentEndpoint,

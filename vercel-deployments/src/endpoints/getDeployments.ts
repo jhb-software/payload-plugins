@@ -26,9 +26,13 @@ export type DeploymentsInfo = {
 
 /**
  * GET /vercel-deployments
- * Returns information about the latest production deployments. Requires authentication.
+ *
+ * Without query params: returns the active (latest READY) and latest production deployment.
+ * With ?id=<deploymentId>: returns the status of a specific deployment.
+ *
+ * Requires authentication.
  */
-export const getDeploymentsInfoEndpoint: PayloadHandler = async (req: PayloadRequest) => {
+export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest) => {
   if (!req.user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -41,9 +45,26 @@ export const getDeploymentsInfoEndpoint: PayloadHandler = async (req: PayloadReq
     return Response.json({ error: 'Plugin config not found' }, { status: 500 })
   }
 
+  const url = new URL(req.url)
+  const id = url.searchParams.get('id')
+
   try {
     const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
 
+    // Single deployment lookup
+    if (id) {
+      const deployment = await vercelClient.getDeployment({
+        idOrUrl: id,
+        teamId: pluginConfig.vercel.teamId,
+      })
+
+      return Response.json({
+        id: deployment.id,
+        status: deployment.status,
+      })
+    }
+
+    // List latest production deployments
     const deploymentsResponse = await vercelClient.getDeployments({
       limit: 10,
       projectId: pluginConfig.vercel.projectId,
@@ -82,9 +103,9 @@ export const getDeploymentsInfoEndpoint: PayloadHandler = async (req: PayloadReq
 
     return Response.json(result)
   } catch (error) {
-    console.error('Error fetching deployments info:', error)
+    console.error('Error fetching deployment info:', error)
     return Response.json(
-      { error: `Error fetching deployments info: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { error: `Error fetching deployment info: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 },
     )
   }

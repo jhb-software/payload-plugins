@@ -35,33 +35,23 @@ describe('vercelDeploymentsPlugin', () => {
     })
   })
 
-  it('registers three API endpoints', () => {
+  it('registers two API endpoints', () => {
     const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(basePayloadConfig)
 
-    expect(result.endpoints).toHaveLength(3)
-
-    const paths = result.endpoints!.map((e: any) => e.path)
-    expect(paths).toContain('/vercel-deployments')
-    expect(paths).toContain('/vercel-deployments/status')
-    expect(paths).toContain('/vercel-deployments')
+    expect(result.endpoints).toHaveLength(2)
   })
 
   it('registers correct HTTP methods for endpoints', () => {
     const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(basePayloadConfig)
 
-    const endpointMap = Object.fromEntries(
-      result.endpoints!.map((e: any) => [e.path, e.method]),
-    )
     const endpoints = result.endpoints!
-    const listEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments' && e.method === 'get')
-    const statusEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments/status')
-    const triggerEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments' && e.method === 'post')
+    const getEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments' && e.method === 'get')
+    const postEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments' && e.method === 'post')
 
-    expect(listEndpoint).toBeDefined()
-    expect(statusEndpoint?.method).toBe('get')
-    expect(triggerEndpoint).toBeDefined()
+    expect(getEndpoint).toBeDefined()
+    expect(postEndpoint).toBeDefined()
   })
 
   it('stores plugin config in custom for endpoint handlers', () => {
@@ -104,7 +94,7 @@ describe('vercelDeploymentsPlugin', () => {
     const plugin = vercelDeploymentsPlugin(basePluginConfig)
     const result = plugin(configWithEndpoints)
 
-    expect(result.endpoints).toHaveLength(4)
+    expect(result.endpoints).toHaveLength(3)
     expect(result.endpoints![0]).toEqual(existingEndpoint)
   })
 
