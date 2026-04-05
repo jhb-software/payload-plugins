@@ -27,8 +27,7 @@ export const vercelDeploymentsPlugin =
             ...(config.admin?.dashboard?.widgets ?? []),
             {
               slug: 'vercel-deployments',
-              Component:
-                '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget',
+              Component: '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget',
               maxWidth: pluginConfig.widget?.maxWidth ?? 'full',
               minWidth: pluginConfig.widget?.minWidth ?? 'medium',
             },

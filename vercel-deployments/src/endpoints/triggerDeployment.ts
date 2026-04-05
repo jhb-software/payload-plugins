@@ -55,7 +55,9 @@ export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequ
   } catch (error) {
     console.error('Error triggering deployment:', error)
     return Response.json(
-      { error: `Error triggering deployment: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      {
+        error: `Error triggering deployment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      },
       { status: 500 },
     )
   }

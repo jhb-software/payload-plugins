@@ -192,7 +192,11 @@ function DeploymentInfoRow({
       <span style={{ alignItems: 'center', display: 'flex', gap: '0.5rem' }}>
         {deploymentInfo ? (
           <FormattedDate
-            date={new Date('readyAt' in deploymentInfo ? deploymentInfo.readyAt : deploymentInfo.createdAt)}
+            date={
+              new Date(
+                'readyAt' in deploymentInfo ? deploymentInfo.readyAt : deploymentInfo.createdAt,
+              )
+            }
             dateFNSKey={i18n.dateFNSKey}
           />
         ) : null}

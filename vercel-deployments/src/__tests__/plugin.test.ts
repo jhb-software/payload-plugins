@@ -47,8 +47,12 @@ describe('vercelDeploymentsPlugin', () => {
     const result = plugin(basePayloadConfig)
 
     const endpoints = result.endpoints!
-    const getEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments' && e.method === 'get')
-    const postEndpoint = endpoints.find((e: any) => e.path === '/vercel-deployments' && e.method === 'post')
+    const getEndpoint = endpoints.find(
+      (e: any) => e.path === '/vercel-deployments' && e.method === 'get',
+    )
+    const postEndpoint = endpoints.find(
+      (e: any) => e.path === '/vercel-deployments' && e.method === 'post',
+    )
 
     expect(getEndpoint).toBeDefined()
     expect(postEndpoint).toBeDefined()
