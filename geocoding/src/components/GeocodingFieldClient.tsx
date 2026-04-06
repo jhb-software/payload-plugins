@@ -140,6 +140,7 @@ export const GeocodingFieldClient = ({
         <div style={{ color: 'red' }}>{error}</div>
       ) : (
         <ReactSelect
+          filterOption={() => true}
           isClearable
           isLoading={isLoading}
           isSearchable
