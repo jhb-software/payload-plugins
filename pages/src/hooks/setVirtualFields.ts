@@ -147,11 +147,12 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
       Object.assign(previousDoc, {
         breadcrumbs: docWithVirtualFields.breadcrumbs,
         path: docWithVirtualFields.path,
-        ...(docWithVirtualFields.meta?.alternatePaths
+        ...((docWithVirtualFields.meta as Record<string, unknown> | undefined)?.alternatePaths
           ? {
               meta: {
                 ...previousDoc.meta,
-                alternatePaths: docWithVirtualFields.meta.alternatePaths,
+                alternatePaths: (docWithVirtualFields.meta as Record<string, unknown>)
+                  .alternatePaths,
               },
             }
           : {}),

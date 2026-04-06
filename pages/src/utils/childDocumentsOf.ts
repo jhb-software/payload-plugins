@@ -76,8 +76,7 @@ function isPageCollectionWithParent(
   collection: CollectionConfig,
   expectedParentCollectionSlug: CollectionSlug,
 ): collection is PageCollectionConfig {
-  const pageConfig = isPageCollectionConfig(collection)
-  if (!pageConfig) {
+  if (!isPageCollectionConfig(collection)) {
     return false
   }
 

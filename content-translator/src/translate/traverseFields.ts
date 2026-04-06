@@ -107,7 +107,7 @@ export const traverseFields = ({
         }
 
         blocksDataTranslated.forEach((item, index) => {
-          let blockConfig = undefined
+          let blockConfig
           if (field.blockReferences) {
             blockConfig = payloadConfig.blocks?.find((b) => b.slug === item.blockType)
 

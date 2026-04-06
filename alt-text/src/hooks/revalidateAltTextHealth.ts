@@ -9,7 +9,7 @@ import {
 
 function safeRevalidateTag(req: PayloadRequest, tag: string): void {
   try {
-    revalidateTag(tag)
+    revalidateTag(tag, 'default')
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
 

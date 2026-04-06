@@ -37,7 +37,7 @@
   },
   "peerDependencies": {
     "@payloadcms/ui": "^3.81.0",
-    "next": "15.4.11",
+    "next": "16.2.2",
     "payload": "^3.81.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -49,10 +49,10 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "copyfiles": "2.4.1",
-    "eslint": "^9.0.0",
+    "eslint": "^10.0.0",
     "prettier": "^3.8.1",
     "rimraf": "6.1.3",
-    "typescript": "5.9.3"
+    "typescript": "6.0.2"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -82,6 +82,15 @@
       "import": "./src/exports/server.ts",
       "default": "./src/exports/server.ts",
       "types": "./src/exports/server.ts"
+    }
+  },
+  "pnpm": {
+    "overrides": {
+      "typescript-eslint": "8.58.1-alpha.0",
+      "@typescript-eslint/utils": "8.58.1-alpha.0",
+      "@typescript-eslint/parser": "8.58.1-alpha.0",
+      "@typescript-eslint/eslint-plugin": "8.58.1-alpha.0",
+      "@eslint/js": "^10.0.0"
     }
   }
 }

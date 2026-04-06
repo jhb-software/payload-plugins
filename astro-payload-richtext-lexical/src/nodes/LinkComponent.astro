@@ -24,7 +24,7 @@ function defaultResolveInternalLink(doc: Record<string, unknown>): string {
 }
 
 function createLinkElement(node: LinkNode, resolve: ResolveInternalLink) {
-  let href = ''
+  let href: string
 
   if (node.fields.linkType === 'internal') {
     const doc = node.fields.doc
