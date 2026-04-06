@@ -35,13 +35,13 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
             type: 'object',
             additionalProperties: false,
             properties: {
-              formattedAddress: { description: 'Full formatted address', type: 'string' },
-              googlePlaceId: { description: 'Google Places ID', type: 'string' },
-              name: { description: 'Place or business name', type: 'string' },
+              name: { type: 'string', description: 'Place or business name' },
+              formattedAddress: { type: 'string', description: 'Full formatted address' },
+              googlePlaceId: { type: 'string', description: 'Google Places ID' },
               types: {
+                type: 'array',
                 description: 'Place types (e.g. locality, political)',
                 items: { type: 'string' },
-                type: 'array',
               },
             },
             required: ['formattedAddress', 'googlePlaceId', 'name', 'types'],

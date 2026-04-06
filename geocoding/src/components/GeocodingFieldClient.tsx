@@ -120,9 +120,9 @@ export const GeocodingFieldClient = ({
         if (place.location) {
           setPoint([place.location.lng(), place.location.lat()])
           setLocationMeta({
+            name: place.displayName,
             formattedAddress: place.formattedAddress,
             googlePlaceId: placeId,
-            name: place.displayName,
             types: place.types ?? [],
           })
         }

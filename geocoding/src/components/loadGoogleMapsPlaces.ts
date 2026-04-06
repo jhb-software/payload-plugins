@@ -19,7 +19,9 @@ export function loadGoogleMapsPlaces(apiKey: string): Promise<void> {
   mapsLoadPromise = new Promise<void>((resolve, reject) => {
     const w = window as unknown as { google: { maps: Record<string, unknown> } }
     const g = w.google || (w.google = {} as { maps: Record<string, unknown> })
-    g.maps || (g.maps = {})
+    if (!g.maps) {
+      g.maps = {}
+    }
 
     const script = document.createElement('script')
     const params = new URLSearchParams({
