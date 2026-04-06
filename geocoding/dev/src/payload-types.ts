@@ -149,86 +149,140 @@ export interface User {
 export interface Page {
   id: string;
   title?: string | null;
-  location_googlePlacesData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  location_meta?: {
+    /**
+     * Full formatted address
+     */
+    formattedAddress: string;
+    /**
+     * Google Places ID
+     */
+    googlePlaceId: string;
+    /**
+     * Place or business name
+     */
+    name: string;
+    /**
+     * Place types (e.g. locality, political)
+     */
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location?: [number, number] | null;
-  location0_googlePlacesData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  location0_meta?: {
+    /**
+     * Full formatted address
+     */
+    formattedAddress: string;
+    /**
+     * Google Places ID
+     */
+    googlePlaceId: string;
+    /**
+     * Place or business name
+     */
+    name: string;
+    /**
+     * Place types (e.g. locality, political)
+     */
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location0?: [number, number] | null;
-  location1_googlePlacesData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  location1_meta?: {
+    /**
+     * Full formatted address
+     */
+    formattedAddress: string;
+    /**
+     * Google Places ID
+     */
+    googlePlaceId: string;
+    /**
+     * Place or business name
+     */
+    name: string;
+    /**
+     * Place types (e.g. locality, political)
+     */
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location1: [number, number];
-  location2_googlePlacesData:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  location2_meta: {
+    /**
+     * Full formatted address
+     */
+    formattedAddress: string;
+    /**
+     * Google Places ID
+     */
+    googlePlaceId: string;
+    /**
+     * Place or business name
+     */
+    name: string;
+    /**
+     * Place types (e.g. locality, political)
+     */
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location2: [number, number];
-  location3_googlePlacesData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  location3_meta?: {
+    /**
+     * Full formatted address
+     */
+    formattedAddress: string;
+    /**
+     * Google Places ID
+     */
+    googlePlaceId: string;
+    /**
+     * Place or business name
+     */
+    name: string;
+    /**
+     * Place types (e.g. locality, political)
+     */
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location3?: [number, number] | null;
   locationGroup?: {
-    location_googlePlacesData?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    location_meta?: {
+      /**
+       * Full formatted address
+       */
+      formattedAddress: string;
+      /**
+       * Google Places ID
+       */
+      googlePlaceId: string;
+      /**
+       * Place or business name
+       */
+      name: string;
+      /**
+       * Place types (e.g. locality, political)
+       */
+      types: string[];
+    };
     /**
      * @minItems 2
      * @maxItems 2
@@ -237,15 +291,24 @@ export interface Page {
   };
   locations?:
     | {
-        location_googlePlacesData?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
+        location_meta?: {
+          /**
+           * Full formatted address
+           */
+          formattedAddress: string;
+          /**
+           * Google Places ID
+           */
+          googlePlaceId: string;
+          /**
+           * Place or business name
+           */
+          name: string;
+          /**
+           * Place types (e.g. locality, political)
+           */
+          types: string[];
+        };
         /**
          * @minItems 2
          * @maxItems 2
@@ -359,26 +422,26 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
-  location_googlePlacesData?: T;
+  location_meta?: T;
   location?: T;
-  location0_googlePlacesData?: T;
+  location0_meta?: T;
   location0?: T;
-  location1_googlePlacesData?: T;
+  location1_meta?: T;
   location1?: T;
-  location2_googlePlacesData?: T;
+  location2_meta?: T;
   location2?: T;
-  location3_googlePlacesData?: T;
+  location3_meta?: T;
   location3?: T;
   locationGroup?:
     | T
     | {
-        location_googlePlacesData?: T;
+        location_meta?: T;
         location?: T;
       };
   locations?:
     | T
     | {
-        location_googlePlacesData?: T;
+        location_meta?: T;
         location?: T;
         id?: T;
       };
