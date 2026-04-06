@@ -11,7 +11,6 @@
     "build:content-translator": "cd ./content-translator && pnpm build",
     "build:geocoding": "cd ./geocoding && pnpm build",
     "build:pages": "cd ./pages && pnpm build",
-
     "publish:all": "pnpm publish:admin-search && pnpm publish:alt-text && pnpm publish:astro-payload-richtext-lexical && pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:geocoding && pnpm publish:content-translator",
     "publish:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm publish",
     "publish:admin-search": "cd ./admin-search && pnpm publish",
@@ -20,7 +19,6 @@
     "publish:content-translator": "cd ./content-translator && pnpm publish",
     "publish:geocoding": "cd ./geocoding && pnpm publish",
     "publish:pages": "cd ./pages && pnpm publish",
-
     "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:astro-payload-richtext-lexical && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator",
     "lint:admin-search": "cd ./admin-search && pnpm lint",
     "lint:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm lint",
@@ -29,7 +27,6 @@
     "lint:content-translator": "cd ./content-translator && pnpm lint",
     "lint:geocoding": "cd ./geocoding && pnpm lint",
     "lint:pages": "cd ./pages && pnpm lint",
-
     "format:all": "pnpm format:admin-search && pnpm format:alt-text && pnpm format:astro-payload-richtext-lexical && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:content-translator",
     "format:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm format",
     "format:admin-search": "cd ./admin-search && pnpm format",
@@ -38,7 +35,6 @@
     "format:content-translator": "cd ./content-translator && pnpm format",
     "format:geocoding": "cd ./geocoding && pnpm format",
     "format:pages": "cd ./pages && pnpm format",
-
     "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:astro-payload-richtext-lexical && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:content-translator",
     "install:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm install",
     "install:admin-search": "cd ./admin-search && pnpm install --frozen-lockfile",
@@ -47,8 +43,13 @@
     "install:content-translator": "cd ./content-translator && pnpm install --frozen-lockfile",
     "install:geocoding": "cd ./geocoding && pnpm install --frozen-lockfile",
     "install:pages": "cd ./pages && pnpm install --frozen-lockfile",
-
     "test:all": "pnpm test:pages",
-    "test:pages": "cd ./pages && pnpm test"
+    "test:pages": "cd ./pages && pnpm test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "husky": "^9.1.7"
   }
 }
