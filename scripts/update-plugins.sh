@@ -2,10 +2,11 @@
 # Note: We'll control error handling per-function rather than globally
 
 # Configuration
-PLUGINS=("pages" "geocoding" "cloudinary" "admin-search" "alt-text" "content-translator")
+PLUGINS=("pages" "geocoding" "cloudinary" "admin-search" "alt-text" "content-translator" "astro-payload-richtext-lexical")
 PAGES_DEV_FOLDERS=("dev" "dev_unlocalized" "dev_multi_tenant")
 ALT_TEXT_DEV_FOLDERS=("dev" "dev_unlocalized")
 CONTENT_TRANSLATOR_DEV_FOLDERS=("dev")
+ASTRO_RICHTEXT_DEV_FOLDERS=("dev")
 
 # Color codes for output
 RED='\033[0;31m'
@@ -123,6 +124,8 @@ validate_plugin_structure() {
         expected_folders=("${ALT_TEXT_DEV_FOLDERS[@]}")
     elif [ "$plugin" = "content-translator" ]; then
         expected_folders=("${CONTENT_TRANSLATOR_DEV_FOLDERS[@]}")
+    elif [ "$plugin" = "astro-payload-richtext-lexical" ]; then
+        expected_folders=("${ASTRO_RICHTEXT_DEV_FOLDERS[@]}")
     else
         expected_folders=("dev")
     fi
@@ -191,6 +194,8 @@ for plugin in "${PLUGINS[@]}"; do
         dev_folders=("${ALT_TEXT_DEV_FOLDERS[@]}")
     elif [ "$plugin" = "content-translator" ]; then
         dev_folders=("${CONTENT_TRANSLATOR_DEV_FOLDERS[@]}")
+    elif [ "$plugin" = "astro-payload-richtext-lexical" ]; then
+        dev_folders=("${ASTRO_RICHTEXT_DEV_FOLDERS[@]}")
     else
         dev_folders=("dev")
     fi
@@ -208,21 +213,24 @@ for plugin in "${PLUGINS[@]}"; do
                 continue
             fi
 
-            if ! generate_types "$dev_path"; then
-                PLUGIN_STATUS="FAILED"
-                log_error "Failed to generate types in $dev_path"
-                continue
-            fi
+            # Skip Payload-specific steps for non-Payload plugins
+            if [ "$plugin" != "astro-payload-richtext-lexical" ]; then
+                if ! generate_types "$dev_path"; then
+                    PLUGIN_STATUS="FAILED"
+                    log_error "Failed to generate types in $dev_path"
+                    continue
+                fi
 
-            if ! generate_importmap "$dev_path"; then
-                PLUGIN_STATUS="FAILED"
-                log_error "Failed to generate importmap in $dev_path"
-                continue
-            fi
+                if ! generate_importmap "$dev_path"; then
+                    PLUGIN_STATUS="FAILED"
+                    log_error "Failed to generate importmap in $dev_path"
+                    continue
+                fi
 
-            if ! verify_dev_server "$dev_path"; then
-                log_warning "Dev server verification failed in $dev_path"
-                # Don't mark as failed, just warn
+                if ! verify_dev_server "$dev_path"; then
+                    log_warning "Dev server verification failed in $dev_path"
+                    # Don't mark as failed, just warn
+                fi
             fi
         else
             log_warning "Dev folder not found: $dev_path"
