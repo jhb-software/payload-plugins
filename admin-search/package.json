@@ -41,7 +41,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "copyfiles": "^2.4.1",
-    "eslint": "^10.0.0",
+    "eslint": "^10.2.0",
     "prettier": "^3.8.1",
     "rimraf": "^6.1.3",
     "typescript": "^6.0.2"
@@ -81,11 +81,19 @@
   },
   "pnpm": {
     "overrides": {
+      "typescript": "^6.0.2",
       "typescript-eslint": "8.58.1-alpha.0",
       "@typescript-eslint/utils": "8.58.1-alpha.0",
       "@typescript-eslint/parser": "8.58.1-alpha.0",
       "@typescript-eslint/eslint-plugin": "8.58.1-alpha.0",
-      "@eslint/js": "^10.0.0"
+      "@typescript-eslint/type-utils": "8.58.1-alpha.0",
+      "@typescript-eslint/typescript-estree": "8.58.1-alpha.0",
+      "@typescript-eslint/scope-manager": "8.58.1-alpha.0",
+      "@typescript-eslint/visitor-keys": "8.58.1-alpha.0",
+      "@typescript-eslint/types": "8.58.1-alpha.0",
+      "@typescript-eslint/project-service": "8.58.1-alpha.0",
+      "@typescript-eslint/tsconfig-utils": "8.58.1-alpha.0",
+      "@eslint/js": "^10.0.1"
     }
   },
   "engines": {
