@@ -30,6 +30,6 @@
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.1",
-    "typescript": "6.0.2"
+    "typescript": "5.9.3"
   }
 }

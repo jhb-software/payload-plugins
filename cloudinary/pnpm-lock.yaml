@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@payloadcms/plugin-cloud-storage':
         specifier: ^3.81.0
-        version: 3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2)
+        version: 3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       cloudinary:
         specifier: ^2.9.0
         version: 2.9.0
@@ -19,11 +19,11 @@ importers:
         version: 15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4)
       payload:
         specifier: ^3.81.0
-        version: 3.81.0(graphql@16.12.0)(typescript@6.0.2)
+        version: 3.81.0(graphql@16.12.0)(typescript@5.9.3)
     devDependencies:
       '@payloadcms/eslint-config':
         specifier: ^3.28.0
-        version: 3.28.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2))(ts-api-utils@2.5.0(typescript@6.0.2))
+        version: 3.28.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3))(ts-api-utils@2.5.0(typescript@5.9.3))
       '@swc/cli':
         specifier: ^0.8.1
         version: 0.8.1(@swc/core@1.15.24)
@@ -49,8 +49,8 @@ importers:
         specifier: 6.1.3
         version: 6.1.3
       typescript:
-        specifier: 6.0.2
-        version: 6.0.2
+        specifier: 5.9.3
+        version: 5.9.3
 
   dev:
     dependencies:
@@ -59,16 +59,16 @@ importers:
         version: link:..
       '@payloadcms/db-mongodb':
         specifier: ^3.81.0
-        version: 3.81.0(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))
+        version: 3.81.0(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))
       '@payloadcms/next':
         specifier: ^3.81.0
-        version: 3.81.0(@types/react@19.2.14)(graphql@16.12.0)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2)
+        version: 3.81.0(@types/react@19.2.14)(graphql@16.12.0)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       next:
         specifier: 15.4.11
         version: 15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4)
       payload:
         specifier: ^3.81.0
-        version: 3.81.0(graphql@16.12.0)(typescript@6.0.2)
+        version: 3.81.0(graphql@16.12.0)(typescript@5.9.3)
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -86,8 +86,8 @@ importers:
         specifier: ^17.4.1
         version: 17.4.1
       typescript:
-        specifier: 6.0.2
-        version: 6.0.2
+        specifier: 5.9.3
+        version: 5.9.3
 
 packages:
 
@@ -3341,8 +3341,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typescript@6.0.2:
-    resolution: {integrity: sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ==}
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -3785,7 +3785,7 @@ snapshots:
 
   '@eslint-react/eff@1.31.0': {}
 
-  '@eslint-react/eslint-plugin@1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@6.0.2))(typescript@5.7.3)':
+  '@eslint-react/eslint-plugin@1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@5.9.3))(typescript@5.7.3)':
     dependencies:
       '@eslint-react/eff': 1.31.0
       '@eslint-react/shared': 1.31.0(eslint@9.22.0)(typescript@5.7.3)
@@ -3799,7 +3799,7 @@ snapshots:
       eslint-plugin-react-hooks-extra: 1.31.0(eslint@9.22.0)(typescript@5.7.3)
       eslint-plugin-react-naming-convention: 1.31.0(eslint@9.22.0)(typescript@5.7.3)
       eslint-plugin-react-web-api: 1.31.0(eslint@9.22.0)(typescript@5.7.3)
-      eslint-plugin-react-x: 1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@6.0.2))(typescript@5.7.3)
+      eslint-plugin-react-x: 1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@5.9.3))(typescript@5.7.3)
     optionalDependencies:
       typescript: 5.7.3
     transitivePeerDependencies:
@@ -4182,11 +4182,11 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@payloadcms/db-mongodb@3.81.0(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))':
+  '@payloadcms/db-mongodb@3.81.0(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))':
     dependencies:
       mongoose: 8.15.1
       mongoose-paginate-v2: 1.8.5
-      payload: 3.81.0(graphql@16.12.0)(typescript@6.0.2)
+      payload: 3.81.0(graphql@16.12.0)(typescript@5.9.3)
       prompts: 2.4.2
       uuid: 10.0.0
     transitivePeerDependencies:
@@ -4199,17 +4199,17 @@ snapshots:
       - socks
       - supports-color
 
-  '@payloadcms/eslint-config@3.28.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2))(ts-api-utils@2.5.0(typescript@6.0.2))':
+  '@payloadcms/eslint-config@3.28.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3))(ts-api-utils@2.5.0(typescript@5.9.3))':
     dependencies:
-      '@eslint-react/eslint-plugin': 1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@6.0.2))(typescript@5.7.3)
+      '@eslint-react/eslint-plugin': 1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@5.9.3))(typescript@5.7.3)
       '@eslint/js': 9.22.0
-      '@payloadcms/eslint-plugin': 3.28.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2))(ts-api-utils@2.5.0(typescript@6.0.2))
+      '@payloadcms/eslint-plugin': 3.28.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3))(ts-api-utils@2.5.0(typescript@5.9.3))
       '@types/eslint': 9.6.1
       '@typescript-eslint/parser': 8.26.1(eslint@9.22.0)(typescript@5.7.3)
       eslint: 9.22.0
       eslint-config-prettier: 10.1.1(eslint@9.22.0)
       eslint-plugin-import-x: 4.6.1(eslint@9.22.0)(typescript@5.7.3)
-      eslint-plugin-jest: 28.11.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@5.7.3)
+      eslint-plugin-jest: 28.11.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.7.3)
       eslint-plugin-jest-dom: 5.5.0(eslint@9.22.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.22.0)
       eslint-plugin-perfectionist: 3.9.1(eslint@9.22.0)(typescript@5.7.3)
@@ -4230,16 +4230,16 @@ snapshots:
       - ts-api-utils
       - vue-eslint-parser
 
-  '@payloadcms/eslint-plugin@3.28.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2))(ts-api-utils@2.5.0(typescript@6.0.2))':
+  '@payloadcms/eslint-plugin@3.28.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3))(ts-api-utils@2.5.0(typescript@5.9.3))':
     dependencies:
-      '@eslint-react/eslint-plugin': 1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@6.0.2))(typescript@5.7.3)
+      '@eslint-react/eslint-plugin': 1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@5.9.3))(typescript@5.7.3)
       '@eslint/js': 9.22.0
       '@types/eslint': 9.6.1
       '@typescript-eslint/parser': 8.26.1(eslint@9.22.0)(typescript@5.7.3)
       eslint: 9.22.0
       eslint-config-prettier: 10.1.1(eslint@9.22.0)
       eslint-plugin-import-x: 4.6.1(eslint@9.22.0)(typescript@5.7.3)
-      eslint-plugin-jest: 28.11.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@5.7.3)
+      eslint-plugin-jest: 28.11.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.7.3)
       eslint-plugin-jest-dom: 5.5.0(eslint@9.22.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.22.0)
       eslint-plugin-perfectionist: 3.9.1(eslint@9.22.0)(typescript@5.7.3)
@@ -4260,25 +4260,25 @@ snapshots:
       - ts-api-utils
       - vue-eslint-parser
 
-  '@payloadcms/graphql@3.81.0(graphql@16.12.0)(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(typescript@6.0.2)':
+  '@payloadcms/graphql@3.81.0(graphql@16.12.0)(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       graphql: 16.12.0
       graphql-scalars: 1.22.2(graphql@16.12.0)
-      payload: 3.81.0(graphql@16.12.0)(typescript@6.0.2)
+      payload: 3.81.0(graphql@16.12.0)(typescript@5.9.3)
       pluralize: 8.0.0
-      ts-essentials: 10.0.3(typescript@6.0.2)
+      ts-essentials: 10.0.3(typescript@5.9.3)
       tsx: 4.21.0
     transitivePeerDependencies:
       - typescript
 
-  '@payloadcms/next@3.81.0(@types/react@19.2.14)(graphql@16.12.0)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2)':
+  '@payloadcms/next@3.81.0(@types/react@19.2.14)(graphql@16.12.0)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
     dependencies:
       '@dnd-kit/core': 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@dnd-kit/modifiers': 9.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@dnd-kit/sortable': 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
-      '@payloadcms/graphql': 3.81.0(graphql@16.12.0)(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(typescript@6.0.2)
+      '@payloadcms/graphql': 3.81.0(graphql@16.12.0)(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(typescript@5.9.3)
       '@payloadcms/translations': 3.81.0
-      '@payloadcms/ui': 3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2)
+      '@payloadcms/ui': 3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       busboy: 1.6.0
       dequal: 2.0.3
       file-type: 21.3.4
@@ -4288,7 +4288,7 @@ snapshots:
       http-status: 2.1.0
       next: 15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4)
       path-to-regexp: 6.3.0
-      payload: 3.81.0(graphql@16.12.0)(typescript@6.0.2)
+      payload: 3.81.0(graphql@16.12.0)(typescript@5.9.3)
       qs-esm: 8.0.1
       sass: 1.77.4
       uuid: 10.0.0
@@ -4300,11 +4300,11 @@ snapshots:
       - supports-color
       - typescript
 
-  '@payloadcms/plugin-cloud-storage@3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2)':
+  '@payloadcms/plugin-cloud-storage@3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
     dependencies:
-      '@payloadcms/ui': 3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2)
+      '@payloadcms/ui': 3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       find-node-modules: 2.1.3
-      payload: 3.81.0(graphql@16.12.0)(typescript@6.0.2)
+      payload: 3.81.0(graphql@16.12.0)(typescript@5.9.3)
       range-parser: 1.2.1
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
@@ -4319,7 +4319,7 @@ snapshots:
     dependencies:
       date-fns: 4.1.0
 
-  '@payloadcms/ui@3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@6.0.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2)':
+  '@payloadcms/ui@3.81.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4))(payload@3.81.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
     dependencies:
       '@date-fns/tz': 1.2.0
       '@dnd-kit/core': 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -4336,7 +4336,7 @@ snapshots:
       md5: 2.3.0
       next: 15.4.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.77.4)
       object-to-formdata: 4.5.1
-      payload: 3.81.0(graphql@16.12.0)(typescript@6.0.2)
+      payload: 3.81.0(graphql@16.12.0)(typescript@5.9.3)
       qs-esm: 8.0.1
       react: 19.2.4
       react-datepicker: 7.6.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -4345,7 +4345,7 @@ snapshots:
       react-select: 5.9.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       scheduler: 0.25.0
       sonner: 1.7.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      ts-essentials: 10.0.3(typescript@6.0.2)
+      ts-essentials: 10.0.3(typescript@5.9.3)
       use-context-selector: 2.0.0(react@19.2.4)(scheduler@0.25.0)
       uuid: 10.0.0
     transitivePeerDependencies:
@@ -4498,7 +4498,7 @@ snapshots:
     dependencies:
       '@types/webidl-conversions': 7.0.3
 
-  '@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@5.7.3)':
+  '@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.7.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
       '@typescript-eslint/parser': 8.26.1(eslint@9.22.0)(typescript@5.7.3)
@@ -4515,20 +4515,20 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2)':
+  '@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
       '@typescript-eslint/parser': 8.26.1(eslint@9.22.0)(typescript@5.7.3)
       '@typescript-eslint/scope-manager': 8.26.1
-      '@typescript-eslint/type-utils': 8.26.1(eslint@9.22.0)(typescript@6.0.2)
-      '@typescript-eslint/utils': 8.26.1(eslint@9.22.0)(typescript@6.0.2)
+      '@typescript-eslint/type-utils': 8.26.1(eslint@9.22.0)(typescript@5.9.3)
+      '@typescript-eslint/utils': 8.26.1(eslint@9.22.0)(typescript@5.9.3)
       '@typescript-eslint/visitor-keys': 8.26.1
       eslint: 9.22.0
       graphemer: 1.4.0
       ignore: 5.3.2
       natural-compare: 1.4.0
-      ts-api-utils: 2.5.0(typescript@6.0.2)
-      typescript: 6.0.2
+      ts-api-utils: 2.5.0(typescript@5.9.3)
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -4579,14 +4579,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/type-utils@8.26.1(eslint@9.22.0)(typescript@6.0.2)':
+  '@typescript-eslint/type-utils@8.26.1(eslint@9.22.0)(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/typescript-estree': 8.26.1(typescript@6.0.2)
-      '@typescript-eslint/utils': 8.26.1(eslint@9.22.0)(typescript@6.0.2)
+      '@typescript-eslint/typescript-estree': 8.26.1(typescript@5.9.3)
+      '@typescript-eslint/utils': 8.26.1(eslint@9.22.0)(typescript@5.9.3)
       debug: 4.4.3
       eslint: 9.22.0
-      ts-api-utils: 2.5.0(typescript@6.0.2)
-      typescript: 6.0.2
+      ts-api-utils: 2.5.0(typescript@5.9.3)
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -4621,7 +4621,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@8.26.1(typescript@6.0.2)':
+  '@typescript-eslint/typescript-estree@8.26.1(typescript@5.9.3)':
     dependencies:
       '@typescript-eslint/types': 8.26.1
       '@typescript-eslint/visitor-keys': 8.26.1
@@ -4630,8 +4630,8 @@ snapshots:
       is-glob: 4.0.3
       minimatch: 9.0.9
       semver: 7.7.4
-      ts-api-utils: 2.5.0(typescript@6.0.2)
-      typescript: 6.0.2
+      ts-api-utils: 2.5.0(typescript@5.9.3)
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -4662,14 +4662,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.26.1(eslint@9.22.0)(typescript@6.0.2)':
+  '@typescript-eslint/utils@8.26.1(eslint@9.22.0)(typescript@5.9.3)':
     dependencies:
       '@eslint-community/eslint-utils': 4.9.1(eslint@9.22.0)
       '@typescript-eslint/scope-manager': 8.26.1
       '@typescript-eslint/types': 8.26.1
-      '@typescript-eslint/typescript-estree': 8.26.1(typescript@6.0.2)
+      '@typescript-eslint/typescript-estree': 8.26.1(typescript@5.9.3)
       eslint: 9.22.0
-      typescript: 6.0.2
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -5341,12 +5341,12 @@ snapshots:
       eslint: 9.22.0
       requireindex: 1.2.0
 
-  eslint-plugin-jest@28.11.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@5.7.3):
+  eslint-plugin-jest@28.11.0(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.7.3):
     dependencies:
       '@typescript-eslint/utils': 8.58.0(eslint@9.22.0)(typescript@5.7.3)
       eslint: 9.22.0
     optionalDependencies:
-      '@typescript-eslint/eslint-plugin': 8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@6.0.2)
+      '@typescript-eslint/eslint-plugin': 8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -5484,7 +5484,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-react-x@1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@6.0.2))(typescript@5.7.3):
+  eslint-plugin-react-x@1.31.0(eslint@9.22.0)(ts-api-utils@2.5.0(typescript@5.9.3))(typescript@5.7.3):
     dependencies:
       '@eslint-react/ast': 1.31.0(eslint@9.22.0)(typescript@5.7.3)
       '@eslint-react/core': 1.31.0(eslint@9.22.0)(typescript@5.7.3)
@@ -5501,7 +5501,7 @@ snapshots:
       string-ts: 2.3.1
       ts-pattern: 5.9.0
     optionalDependencies:
-      ts-api-utils: 2.5.0(typescript@6.0.2)
+      ts-api-utils: 2.5.0(typescript@5.9.3)
       typescript: 5.7.3
     transitivePeerDependencies:
       - supports-color
@@ -6454,7 +6454,7 @@ snapshots:
 
   path-type@4.0.0: {}
 
-  payload@3.81.0(graphql@16.12.0)(typescript@6.0.2):
+  payload@3.81.0(graphql@16.12.0)(typescript@5.9.3):
     dependencies:
       '@next/env': 15.5.14
       '@payloadcms/translations': 3.81.0
@@ -6483,7 +6483,7 @@ snapshots:
       qs-esm: 8.0.1
       range-parser: 1.2.1
       sanitize-filename: 1.6.3
-      ts-essentials: 10.0.3(typescript@6.0.2)
+      ts-essentials: 10.0.3(typescript@5.9.3)
       tsx: 4.21.0
       undici: 7.24.4
       uuid: 10.0.0
@@ -7088,14 +7088,14 @@ snapshots:
     dependencies:
       typescript: 5.7.3
 
-  ts-api-utils@2.5.0(typescript@6.0.2):
+  ts-api-utils@2.5.0(typescript@5.9.3):
     dependencies:
-      typescript: 6.0.2
+      typescript: 5.9.3
     optional: true
 
-  ts-essentials@10.0.3(typescript@6.0.2):
+  ts-essentials@10.0.3(typescript@5.9.3):
     optionalDependencies:
-      typescript: 6.0.2
+      typescript: 5.9.3
 
   ts-pattern@5.9.0: {}
 
@@ -7149,7 +7149,7 @@ snapshots:
 
   typescript-eslint@8.26.1(eslint@9.22.0)(typescript@5.7.3):
     dependencies:
-      '@typescript-eslint/eslint-plugin': 8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@6.0.2))(eslint@9.22.0)(typescript@5.7.3)
+      '@typescript-eslint/eslint-plugin': 8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.22.0)(typescript@5.9.3))(eslint@9.22.0)(typescript@5.7.3)
       '@typescript-eslint/parser': 8.26.1(eslint@9.22.0)(typescript@5.7.3)
       '@typescript-eslint/utils': 8.26.1(eslint@9.22.0)(typescript@5.7.3)
       eslint: 9.22.0
@@ -7159,7 +7159,7 @@ snapshots:
 
   typescript@5.7.3: {}
 
-  typescript@6.0.2: {}
+  typescript@5.9.3: {}
 
   uint8array-extras@1.5.0: {}
 
