@@ -104,7 +104,7 @@ export const GeocodingFieldClient = ({
 
   const handleChange = (option: null | SelectOption | SelectOption[]) => {
     if (!option || Array.isArray(option)) {
-      setPoint([])
+      setPoint(null)
       setLocationMeta(null)
       return
     }
