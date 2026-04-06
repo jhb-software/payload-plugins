@@ -29,13 +29,13 @@
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
-    "@payloadcms/plugin-cloud-storage": "^3.79.0",
+    "@payloadcms/plugin-cloud-storage": "^3.81.0",
     "cloudinary": "^2.9.0"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
-    "@swc/cli": "^0.8.0",
-    "@swc/core": "^1.15.18",
+    "@swc/cli": "^0.8.1",
+    "@swc/core": "^1.15.24",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "copyfiles": "2.4.1",
@@ -46,7 +46,7 @@
   },
   "peerDependencies": {
     "next": "15.x",
-    "payload": "^3.79.0"
+    "payload": "^3.81.0"
   },
   "files": [
     "dist"
