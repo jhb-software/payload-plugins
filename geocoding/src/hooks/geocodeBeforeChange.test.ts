@@ -3,14 +3,15 @@ import type { FieldHookArgs } from 'payload'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as geocodingService from '../services/googleGeocoding.js'
-import { createGeoDataBeforeChangeHook, createPointBeforeChangeHook } from './geocodeBeforeChange.js'
+import {
+  createGeoDataBeforeChangeHook,
+  createPointBeforeChangeHook,
+} from './geocodeBeforeChange.js'
 
 const MOCK_API_KEY = 'test-api-key'
 
 const MOCK_RESULT = {
-  addressComponents: [
-    { long_name: 'Berlin', short_name: 'Berlin', types: ['locality'] },
-  ],
+  addressComponents: [{ long_name: 'Berlin', short_name: 'Berlin', types: ['locality'] }],
   formattedAddress: 'Alexanderplatz, 10178 Berlin, Germany',
   location: { lat: 52.5219, lng: 13.4132 },
   placeId: 'ChIJp1l4uWBRqEcR2SPNRBMhtAI',
@@ -31,9 +32,7 @@ function createMockReq() {
   }
 }
 
-function createMockHookArgs(
-  overrides: Partial<FieldHookArgs>,
-): FieldHookArgs {
+function createMockHookArgs(overrides: Partial<FieldHookArgs>): FieldHookArgs {
   return {
     blockData: undefined,
     collection: null,
@@ -84,9 +83,7 @@ describe('createGeoDataBeforeChangeHook', () => {
 
   it('returns undefined when address is empty string', async () => {
     const hook = createGeoDataBeforeChangeHook({ pointFieldName: 'location' })
-    const result = await hook(
-      createMockHookArgs({ siblingData: { location_address: '  ' } }),
-    )
+    const result = await hook(createMockHookArgs({ siblingData: { location_address: '  ' } }))
     expect(result).toBeUndefined()
   })
 
@@ -132,9 +129,7 @@ describe('createPointBeforeChangeHook', () => {
 
   it('returns existing value when no address is provided', async () => {
     const hook = createPointBeforeChangeHook({ pointFieldName: 'location' })
-    const result = await hook(
-      createMockHookArgs({ siblingData: {}, value: [1, 2] }),
-    )
+    const result = await hook(createMockHookArgs({ siblingData: {}, value: [1, 2] }))
     expect(result).toEqual([1, 2])
   })
 

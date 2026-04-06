@@ -26,7 +26,10 @@ describe('createGeocodingSearchEndpoint', () => {
 
   it('returns 401 when user is not authenticated (default access)', async () => {
     const endpoint = createGeocodingSearchEndpoint({ apiKey: MOCK_API_KEY })
-    const req = createMockRequest({ url: 'http://localhost/api/geocoding/search?q=Berlin', user: null as any })
+    const req = createMockRequest({
+      url: 'http://localhost/api/geocoding/search?q=Berlin',
+      user: null as any,
+    })
 
     const response = await endpoint.handler(req)
     expect(response.status).toBe(401)

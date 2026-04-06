@@ -81,6 +81,40 @@ jobs:
       - name: Run ESLint (astro-payload-richtext-lexical)
         run: cd astro-payload-richtext-lexical && pnpm lint
 
+  test-geocoding:
+    runs-on: ubuntu-latest
+    needs: format
+    name: test-geocoding
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup environment variables
+        run: |
+          echo "PAYLOAD_SECRET=test-secret-not-for-production" > geocoding/dev/.env
+          echo "SQLITE_URL=file:./payload-test.db" >> geocoding/dev/.env
+          echo "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=test-api-key" >> geocoding/dev/.env
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: ^9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install:all
+
+      - name: Run tests
+        run: cd geocoding && pnpm test:sqlite
+        env:
+          PAYLOAD_DATABASE: sqlite
+
   test-pages-localized:
     runs-on: ubuntu-latest
     needs: format

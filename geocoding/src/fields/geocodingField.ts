@@ -35,9 +35,7 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
       },
     },
     hooks: {
-      beforeChange: [
-        createGeoDataBeforeChangeHook({ pointFieldName }),
-      ],
+      beforeChange: [createGeoDataBeforeChangeHook({ pointFieldName })],
     },
     label: config.geoDataFieldOverride?.label ?? 'Location',
     required: config.geoDataFieldOverride?.required,

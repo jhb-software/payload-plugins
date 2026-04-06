@@ -16,9 +16,7 @@ export const createGeocodingSearchEndpoint = (options: {
 }): Endpoint => ({
   handler: async (req: PayloadRequest) => {
     // Authentication: require a logged-in user by default
-    const hasAccess = options.access
-      ? await options.access({ req })
-      : Boolean(req.user)
+    const hasAccess = options.access ? await options.access({ req }) : Boolean(req.user)
 
     if (!hasAccess) {
       return Response.json({ errors: [{ message: 'Unauthorized' }] }, { status: 401 })

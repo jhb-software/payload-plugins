@@ -38,10 +38,7 @@ type GoogleGeocodingApiResponse = {
  * Server-side geocoding using the Google Geocoding HTTP API.
  * This enables agents and API consumers to geocode addresses without the browser-based Places UI.
  */
-export async function geocodeAddress(
-  address: string,
-  apiKey: string,
-): Promise<GeocodingResult[]> {
+export async function geocodeAddress(address: string, apiKey: string): Promise<GeocodingResult[]> {
   const url = new URL('https://maps.googleapis.com/maps/api/geocode/json')
   url.searchParams.set('address', address)
   url.searchParams.set('key', apiKey)
@@ -49,7 +46,9 @@ export async function geocodeAddress(
   const response = await fetch(url.toString())
 
   if (!response.ok) {
-    throw new Error(`Google Geocoding API request failed: ${response.status} ${response.statusText}`)
+    throw new Error(
+      `Google Geocoding API request failed: ${response.status} ${response.statusText}`,
+    )
   }
 
   const data: GoogleGeocodingApiResponse = await response.json()
@@ -59,7 +58,9 @@ export async function geocodeAddress(
   }
 
   if (data.status !== 'OK') {
-    throw new Error(`Google Geocoding API error: ${data.status} - ${data.error_message ?? 'Unknown error'}`)
+    throw new Error(
+      `Google Geocoding API error: ${data.status} - ${data.error_message ?? 'Unknown error'}`,
+    )
   }
 
   return data.results.map((result) => ({

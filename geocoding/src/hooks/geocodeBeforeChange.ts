@@ -1,6 +1,7 @@
 import type { FieldHook } from 'payload'
 
 import type { GeocodingResult } from '../services/googleGeocoding.js'
+
 import { geocodeAddress } from '../services/googleGeocoding.js'
 
 /**
@@ -55,9 +56,7 @@ function getAddress(
  * When `{pointFieldName}_address` contains a string, geocodes it server-side
  * and returns the geocoding result as the field value.
  */
-export const createGeoDataBeforeChangeHook = (options: {
-  pointFieldName: string
-}): FieldHook => {
+export const createGeoDataBeforeChangeHook = (options: { pointFieldName: string }): FieldHook => {
   return async ({ context, data, req, siblingData }) => {
     const addressFieldName = options.pointFieldName + '_address'
     const address = getAddress(addressFieldName, siblingData, data)
@@ -91,9 +90,7 @@ export const createGeoDataBeforeChangeHook = (options: {
  * When `{pointFieldName}_address` contains a string, geocodes it server-side
  * and returns `[lng, lat]` as the field value.
  */
-export const createPointBeforeChangeHook = (options: {
-  pointFieldName: string
-}): FieldHook => {
+export const createPointBeforeChangeHook = (options: { pointFieldName: string }): FieldHook => {
   return async ({ context, data, req, siblingData, value }) => {
     const addressFieldName = options.pointFieldName + '_address'
     const address = getAddress(addressFieldName, siblingData, data)

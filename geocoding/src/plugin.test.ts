@@ -58,7 +58,11 @@ describe('payloadGeocodingPlugin', () => {
   })
 
   it('preserves existing endpoints from incoming config', () => {
-    const existingEndpoint = { handler: () => Response.json({ ok: true }), method: 'get' as const, path: '/health' }
+    const existingEndpoint = {
+      handler: () => Response.json({ ok: true }),
+      method: 'get' as const,
+      path: '/health',
+    }
     const plugin = payloadGeocodingPlugin({
       googleMapsApiKey: 'test-key',
     })

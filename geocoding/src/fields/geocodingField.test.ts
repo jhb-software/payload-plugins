@@ -38,9 +38,7 @@ describe('geocodingField', () => {
     ) as JSONField
     expect(geoDataField.hooks?.beforeChange).toHaveLength(1)
 
-    const pointField = field.fields.find(
-      (f) => 'name' in f && f.name === 'location',
-    ) as PointField
+    const pointField = field.fields.find((f) => 'name' in f && f.name === 'location') as PointField
     expect(pointField.hooks?.beforeChange).toHaveLength(1)
   })
 
@@ -54,9 +52,7 @@ describe('geocodingField', () => {
       },
     }) as RowField
 
-    const pointField = field.fields.find(
-      (f) => 'name' in f && f.name === 'location',
-    ) as PointField
+    const pointField = field.fields.find((f) => 'name' in f && f.name === 'location') as PointField
     expect(pointField.hooks?.beforeChange).toHaveLength(2)
     expect(pointField.hooks!.beforeChange![0]).toBe(existingHook)
   })
