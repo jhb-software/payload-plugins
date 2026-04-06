@@ -1,13 +1,13 @@
 import type { PayloadRequest } from 'payload'
 
 /** Access function for the geocoding endpoint. */
-export type GeocodingEndpointAccess = (req: PayloadRequest) => boolean | Promise<boolean>
+export type GeocodingEndpointAccess = (args: { req: PayloadRequest }) => boolean | Promise<boolean>
 
 /** Configuration options for the geocoding plugin. */
 export type GeocodingPluginConfig = {
   /** Whether the geocoding plugin is enabled. */
   enabled?: boolean
-  /** Configuration for the server-side geocoding search endpoint (GET /api/geocoding/search). */
+  /** Configuration for the server-side geocoding search endpoint (GET /api/geocoding-plugin/search). */
   geocodingEndpoint?: {
     /**
      * Custom access function to control who can use the geocoding endpoint.

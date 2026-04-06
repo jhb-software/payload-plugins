@@ -2,13 +2,13 @@ import type { Endpoint, PayloadRequest } from 'payload'
 
 import { geocodeAddress } from '../services/googleGeocoding.js'
 
-export type GeocodingEndpointAccess = (req: PayloadRequest) => boolean | Promise<boolean>
+export type GeocodingEndpointAccess = (args: { req: PayloadRequest }) => boolean | Promise<boolean>
 
 /**
  * Creates a Payload endpoint for server-side geocoding.
  * Enables agents and API consumers to geocode addresses without the browser UI.
  *
- * Usage: GET /api/geocoding/search?q=Berlin
+ * Usage: GET /api/geocoding-plugin/search?q=Berlin
  */
 export const createGeocodingSearchEndpoint = (options: {
   access?: GeocodingEndpointAccess
@@ -17,7 +17,7 @@ export const createGeocodingSearchEndpoint = (options: {
   handler: async (req: PayloadRequest) => {
     // Authentication: require a logged-in user by default
     const hasAccess = options.access
-      ? await options.access(req)
+      ? await options.access({ req })
       : Boolean(req.user)
 
     if (!hasAccess) {
@@ -43,5 +43,5 @@ export const createGeocodingSearchEndpoint = (options: {
     }
   },
   method: 'get',
-  path: '/geocoding/search',
+  path: '/geocoding-plugin/search',
 })

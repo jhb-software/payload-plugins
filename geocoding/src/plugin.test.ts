@@ -21,7 +21,7 @@ describe('payloadGeocodingPlugin', () => {
     expect(config.endpoints).toHaveLength(1)
     expect(config.endpoints![0]).toMatchObject({
       method: 'get',
-      path: '/geocoding/search',
+      path: '/geocoding-plugin/search',
     })
   })
 

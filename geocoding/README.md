@@ -75,7 +75,7 @@ The default UI-based autocomplete requires a browser, which makes it unusable fo
 
 ### Geocoding Search Endpoint
 
-The plugin registers a `GET /api/geocoding/search` endpoint that geocodes addresses server-side. It is authenticated by default (requires a logged-in user), and supports a custom access function:
+The plugin registers a `GET /api/geocoding-plugin/search` endpoint that geocodes addresses server-side. It is authenticated by default (requires a logged-in user), and supports a custom access function:
 
 ```ts
 plugins: [
@@ -83,7 +83,7 @@ plugins: [
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     // Optional: customize who can access the endpoint
     geocodingEndpoint: {
-      access: (req) => Boolean(req.user),
+      access: ({ req }) => Boolean(req.user),
     },
   }),
 ]
@@ -93,7 +93,7 @@ An agent can then search for locations and use the results to populate fields:
 
 ```bash
 # 1. Search for an address
-GET /api/geocoding/search?q=Alexanderplatz,+Berlin
+GET /api/geocoding-plugin/search?q=Alexanderplatz,+Berlin
 
 # Response:
 {
@@ -119,7 +119,7 @@ POST /api/pages
 
 ### Server-Side Address Geocoding (beforeChange Hook)
 
-Every `geocodingField` automatically includes a hidden `{fieldName}_address` text field. When an address string is submitted via the API, a `beforeChange` hook geocodes it server-side and populates the point and geodata fields. No extra configuration is needed — the hook reads the API key from the plugin config.
+Every `geocodingField` automatically includes a hidden `{fieldName}_address` text field. When an address string is submitted via the API, a `beforeChange` hook geocodes it server-side and populates the point and geodata fields.
 
 An agent can simply submit an address string — the coordinates and geodata are resolved automatically:
 

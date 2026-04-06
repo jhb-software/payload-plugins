@@ -81,7 +81,7 @@ describe('createGeocodingSearchEndpoint', () => {
 
     const response = await endpoint.handler(req)
     expect(response.status).toBe(200)
-    expect(customAccess).toHaveBeenCalledWith(req)
+    expect(customAccess).toHaveBeenCalledWith({ req })
   })
 
   it('denies access when custom access function returns false', async () => {
