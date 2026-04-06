@@ -9,10 +9,25 @@ import { loadGoogleMapsPlaces } from './loadGoogleMapsPlaces.js'
 
 type SelectOption = { label: string; value: unknown }
 
+interface LocationMeta {
+  formattedAddress: string
+  googlePlaceId: string
+  name: string
+  types: string[]
+}
+
 interface GeocodingFieldComponentProps {
   field: Pick<FieldBaseClient, 'label' | 'required'>
   googleMapsApiKey: string
   path: string
+}
+
+function toSelectOption(meta: LocationMeta): SelectOption {
+  const label =
+    meta.name && meta.formattedAddress && !meta.formattedAddress.startsWith(meta.name)
+      ? `${meta.name}, ${meta.formattedAddress}`
+      : meta.formattedAddress || meta.name
+  return { label, value: meta.googlePlaceId }
 }
 
 export const GeocodingFieldClient = ({
@@ -20,9 +35,11 @@ export const GeocodingFieldClient = ({
   googleMapsApiKey,
   path,
 }: GeocodingFieldComponentProps) => {
-  const pointFieldPath = path.replace('_googlePlacesData', '')
+  const pointFieldPath = path.replace('_meta', '')
 
-  const { setValue: setGeoData, value: geoData } = useField<string>({ path })
+  const { setValue: setLocationMeta, value: locationMeta } = useField<LocationMeta | null>({
+    path,
+  })
   const { setValue: setPoint } = useField<Array<number>>({ path: pointFieldPath })
 
   const [options, setOptions] = useState<SelectOption[]>([])
@@ -88,27 +105,25 @@ export const GeocodingFieldClient = ({
   const handleChange = (option: null | SelectOption | SelectOption[]) => {
     if (!option || Array.isArray(option)) {
       setPoint([])
-      setGeoData(null)
+      setLocationMeta(null)
       return
     }
 
     const placeId = option.value as string
     new google.maps.places.Place({ id: placeId })
       .fetchFields({
-        fields: ['displayName', 'formattedAddress', 'location'],
+        fields: ['displayName', 'formattedAddress', 'location', 'types'],
         sessionToken: sessionTokenRef.current,
       } as { sessionToken: unknown } & google.maps.places.FetchFieldsRequest)
       .then(({ place }) => {
         sessionTokenRef.current = null
         if (place.location) {
           setPoint([place.location.lng(), place.location.lat()])
-          setGeoData({
-            label: place.formattedAddress ?? place.displayName,
-            value: {
-              description: place.formattedAddress,
-              place_id: placeId,
-              structured_formatting: { main_text: place.displayName },
-            },
+          setLocationMeta({
+            formattedAddress: place.formattedAddress,
+            googlePlaceId: placeId,
+            name: place.displayName,
+            types: place.types ?? [],
           })
         }
       })
@@ -132,7 +147,7 @@ export const GeocodingFieldClient = ({
           onInputChange={handleInputChange}
           options={options}
           placeholder="Search for a place..."
-          value={geoData as unknown as SelectOption}
+          value={locationMeta ? toSelectOption(locationMeta) : undefined}
         />
       )}
     </div>

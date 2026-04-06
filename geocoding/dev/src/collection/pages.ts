@@ -50,18 +50,18 @@ export const Pages: CollectionConfig = {
         type: 'point',
         required: true,
       },
-      geoDataFieldOverride: {
+      locationMetaOverride: {
         required: true,
       },
     }),
 
-    // With geoDataFieldOverride
+    // With locationMetaOverride
     geocodingField({
       pointField: {
         name: 'location3',
         type: 'point',
       },
-      geoDataFieldOverride: {
+      locationMetaOverride: {
         label: 'Geodata (Custom label)',
         access: {
           read: () => true,

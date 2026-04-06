@@ -25,11 +25,11 @@ plugins: [
 To use this plugin, you'll need a Google Maps API key. To get one, follow these steps:
 
 1. Set up a Google Cloud account and create a project
-2. Enable the Maps JavaScript API in your Google Cloud project
-3. Create an API key with `Maps JavaScript API`,  `Places API` and `Geocoding API` access
+2. Enable the **Maps JavaScript API** and the **Places API (New)** in your Google Cloud project
+3. Create an API key with access to these APIs
 4. Pass the API key to the plugin configuration (as shown above).
 
-Note: Since this API key is exposed to the frontend (Payload Admin panel), it is strongly recommended to restrict its usage by setting up domain restrictions and only enabling the `Maps JavaScript API`, `Places API`, and `Geocoding API` in the Google Cloud Console under API Keys & Credentials
+Note: Since this API key is exposed to the frontend (Payload Admin panel), it is strongly recommended to restrict its usage by setting up domain restrictions in the Google Cloud Console under API Keys & Credentials.
 
 ## Usage
 
@@ -44,9 +44,9 @@ geocodingField({
 })
 ```
 
-This will add a `location_googlePlacesData` JSON field to the collection. This field will store the raw geocoding data from the Google Places API.
+This will add a `location_meta` JSON field to the collection that stores metadata about the selected location (display name, formatted address, and Google Place ID (`googlePlaceId`)).
 
-If needed you can adjust the `location_googlePlacesData` field name by passing a `name` property to the `geocodingField` function.
+You can customize the metadata field by passing a `locationMetaOverride` option:
 
 ```ts
 geocodingField({
@@ -54,8 +54,8 @@ geocodingField({
     name: 'location',
     type: 'point',
   },
-  geoDataFieldOverride: {
-    label: 'JSON Geodata Field',
+  locationMetaOverride: {
+    label: 'Location Metadata',
     access: {
       read: () => true,
       update: () => true,
@@ -63,7 +63,6 @@ geocodingField({
     },
     admin: {
       readOnly: false,
-      description: 'This field stores the geocoding data from the Google Places API.',
     },
   },
 }),
@@ -71,14 +70,13 @@ geocodingField({
 
 ## About this plugin
 
-This plugin uses the [react-google-places-autocomplete](https://www.npmjs.com/package/react-google-places-autocomplete) library to provide a Select/Search input for finding an address. The result of the Google Places API request is stored in a JSON field and the coordinates are stored in a Point Field.
+This plugin uses the Google Maps Places API (New) `AutocompleteSuggestion` API to provide a search input for finding an address. The selected location's metadata is stored in a JSON field and the coordinates are stored in a Point Field.
 
 ## Roadmap
 
 > ⚠️ **Warning**: This plugin is actively evolving and may undergo significant changes. While it is functional, please thoroughly test before using in production environments.
 
-- Use the native Payload `SelectField` instead of the field provided by `react-google-places-autocomplete`
-- Extend the field config to accept `GooglePlacesAutocomplete` options like debounce time, API options, etc.
+- Extend the field config to accept options like debounce time, API options, etc.
 - Add support for other geocoding services (Mapbox, HERE, etc.)
 
 Have a suggestion for the plugin? Any feedback is welcome!
