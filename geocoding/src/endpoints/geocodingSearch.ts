@@ -1,8 +1,8 @@
 import type { Endpoint, PayloadRequest } from 'payload'
 
-import { geocodeAddress } from '../services/googleGeocoding.js'
+import type { GeocodingEndpointAccess } from '../types/GeoCodingPluginConfig.js'
 
-export type GeocodingEndpointAccess = (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+import { geocodeAddress } from '../services/googleGeocoding.js'
 
 /**
  * Creates a Payload endpoint for server-side geocoding.

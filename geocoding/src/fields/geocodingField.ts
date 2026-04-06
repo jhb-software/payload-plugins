@@ -59,10 +59,11 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
       hidden: true,
     },
     hooks: {
-      // Clear the address field so it is not persisted
+      // Clear the address in contexts where virtual doesn't apply (e.g. Lexical blocks store fields as JSON)
       beforeChange: [() => null],
     },
     label: 'Address (for server-side geocoding)',
+    virtual: true,
   }
 
   return {
