@@ -150,21 +150,9 @@ export interface Page {
   id: string;
   title?: string | null;
   location_meta?: {
-    /**
-     * Full formatted address
-     */
-    formattedAddress: string;
-    /**
-     * Google Places ID
-     */
-    googlePlaceId: string;
-    /**
-     * Place or business name
-     */
     name: string;
-    /**
-     * Place types (e.g. locality, political)
-     */
+    formattedAddress: string;
+    googlePlaceId: string;
     types: string[];
   };
   /**
@@ -173,21 +161,9 @@ export interface Page {
    */
   location?: [number, number] | null;
   location0_meta?: {
-    /**
-     * Full formatted address
-     */
-    formattedAddress: string;
-    /**
-     * Google Places ID
-     */
-    googlePlaceId: string;
-    /**
-     * Place or business name
-     */
     name: string;
-    /**
-     * Place types (e.g. locality, political)
-     */
+    formattedAddress: string;
+    googlePlaceId: string;
     types: string[];
   };
   /**
@@ -196,21 +172,9 @@ export interface Page {
    */
   location0?: [number, number] | null;
   location1_meta?: {
-    /**
-     * Full formatted address
-     */
-    formattedAddress: string;
-    /**
-     * Google Places ID
-     */
-    googlePlaceId: string;
-    /**
-     * Place or business name
-     */
     name: string;
-    /**
-     * Place types (e.g. locality, political)
-     */
+    formattedAddress: string;
+    googlePlaceId: string;
     types: string[];
   };
   /**
@@ -219,21 +183,9 @@ export interface Page {
    */
   location1: [number, number];
   location2_meta: {
-    /**
-     * Full formatted address
-     */
-    formattedAddress: string;
-    /**
-     * Google Places ID
-     */
-    googlePlaceId: string;
-    /**
-     * Place or business name
-     */
     name: string;
-    /**
-     * Place types (e.g. locality, political)
-     */
+    formattedAddress: string;
+    googlePlaceId: string;
     types: string[];
   };
   /**
@@ -242,21 +194,9 @@ export interface Page {
    */
   location2: [number, number];
   location3_meta?: {
-    /**
-     * Full formatted address
-     */
-    formattedAddress: string;
-    /**
-     * Google Places ID
-     */
-    googlePlaceId: string;
-    /**
-     * Place or business name
-     */
     name: string;
-    /**
-     * Place types (e.g. locality, political)
-     */
+    formattedAddress: string;
+    googlePlaceId: string;
     types: string[];
   };
   /**
@@ -266,21 +206,9 @@ export interface Page {
   location3?: [number, number] | null;
   locationGroup?: {
     location_meta?: {
-      /**
-       * Full formatted address
-       */
-      formattedAddress: string;
-      /**
-       * Google Places ID
-       */
-      googlePlaceId: string;
-      /**
-       * Place or business name
-       */
       name: string;
-      /**
-       * Place types (e.g. locality, political)
-       */
+      formattedAddress: string;
+      googlePlaceId: string;
       types: string[];
     };
     /**
@@ -292,21 +220,9 @@ export interface Page {
   locations?:
     | {
         location_meta?: {
-          /**
-           * Full formatted address
-           */
-          formattedAddress: string;
-          /**
-           * Google Places ID
-           */
-          googlePlaceId: string;
-          /**
-           * Place or business name
-           */
           name: string;
-          /**
-           * Place types (e.g. locality, political)
-           */
+          formattedAddress: string;
+          googlePlaceId: string;
           types: string[];
         };
         /**
