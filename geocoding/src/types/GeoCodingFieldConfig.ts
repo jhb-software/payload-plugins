@@ -9,4 +9,14 @@ export type GeoCodingFieldConfig = {
     required?: boolean
   }
   pointField: PointField
+  /**
+   * Enable server-side geocoding for API/agent usage.
+   * When configured, adds a `{pointFieldName}_address` text field.
+   * Submitting an address string via the API will auto-geocode it
+   * and populate the point and geodata fields server-side.
+   */
+  serverGeocoding?: {
+    /** Google Maps API key. Required for server-side geocoding. */
+    apiKey: string
+  }
 }
