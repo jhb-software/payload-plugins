@@ -1,8 +1,10 @@
 'use client'
 import type { FieldBaseClient } from 'payload'
 
-import { FieldError, FieldLabel, useField } from '@payloadcms/ui'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { FieldError, FieldLabel, ReactSelect, useField } from '@payloadcms/ui'
+import { useEffect, useRef, useState } from 'react'
+
+type SelectOption = { label: string; value: unknown }
 
 interface GeocodingFieldComponentProps {
   field: Pick<FieldBaseClient, 'label' | 'required'>
@@ -11,41 +13,57 @@ interface GeocodingFieldComponentProps {
 }
 
 /**
- * Loads the Google Maps JS API script if not already present.
- * Returns a promise that resolves when the API is ready.
+ * Loads the Google Maps Places library using the bootstrap loader.
  */
-function loadGoogleMapsApi(apiKey: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof google !== 'undefined' && typeof google.maps?.importLibrary === 'function') {
-      resolve()
-      return
-    }
+async function loadGoogleMapsPlaces(apiKey: string): Promise<void> {
+  if (typeof google !== 'undefined' && typeof google.maps?.importLibrary === 'function') {
+    await google.maps.importLibrary('places')
+    return
+  }
 
-    const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]')
-    if (existingScript) {
-      existingScript.addEventListener('load', () => resolve())
-      existingScript.addEventListener('error', () =>
-        reject(new Error('Failed to load Google Maps API')),
-      )
-      return
-    }
+  // Set up the bootstrap loader stub before loading the script
+  const w = window as unknown as { google: { maps: Record<string, unknown> } }
+  const g = w.google || (w.google = {} as { maps: Record<string, unknown> })
+  const m = g.maps || (g.maps = {})
 
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&loading=async`
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load Google Maps API'))
-    document.head.appendChild(script)
-  })
+  const libraries = new Set<string>()
+  let loadPromise: Promise<void> | null = null
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(m as any).importLibrary = (name: string) => {
+    libraries.add(name)
+    if (!loadPromise) {
+      loadPromise = new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script')
+        const params = new URLSearchParams({
+          callback: '__gmcb',
+          key: apiKey,
+          libraries: [...libraries].join(','),
+        })
+        script.src = `https://maps.googleapis.com/maps/api/js?${params}`
+        script.async = true
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(window as any).__gmcb = () => {
+          resolve()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          delete (window as any).__gmcb
+        }
+        script.onerror = () => reject(new Error('Failed to load Google Maps API'))
+        document.head.appendChild(script)
+      })
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return loadPromise.then(() => (google.maps as any).importLibrary(name))
+  }
+
+  await google.maps.importLibrary('places')
 }
 
 /**
- * A custom client component that shows the Google Places Autocomplete component and
+ * A custom client component that shows a Google Places Autocomplete dropdown and
  * fills the point and geodata fields with the received data from the Google Places API.
  *
- * Uses the new PlaceAutocompleteElement (google.maps.places) instead of the deprecated
- * AutocompleteService.
+ * Uses the new AutocompleteSuggestion API and Payload's ReactSelect component.
  */
 export const GeocodingFieldClient = ({
   field,
@@ -59,22 +77,88 @@ export const GeocodingFieldClient = ({
   })
   const { setValue: setPoint } = useField<Array<number>>({ path: pointFieldPath })
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const autocompleteRef = useRef<google.maps.places.PlaceAutocompleteElement | null>(null)
-  const [error, setError] = useState<null | string>(null)
+  const [options, setOptions] = useState<SelectOption[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [apiReady, setApiReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handlePlaceSelect = useCallback(
-    async (event: Event) => {
-      const placeEvent = event as google.maps.places.PlaceAutocompletePlaceSelectEvent
-      const place = placeEvent.place
+  useEffect(() => {
+    loadGoogleMapsPlaces(googleMapsApiKey)
+      .then(() => setApiReady(true))
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load Google Maps'))
+  }, [googleMapsApiKey])
 
-      if (!place) {
-        return
+  const handleInputChange = (inputValue: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+
+    if (!inputValue || inputValue.length < 2 || !apiReady) {
+      setOptions([])
+      return
+    }
+
+    setIsLoading(true)
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        if (!sessionTokenRef.current) {
+          sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken()
+        }
+
+        const { suggestions } =
+          await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+            input: inputValue,
+            sessionToken: sessionTokenRef.current,
+          })
+
+        setOptions(
+          suggestions
+            .filter((s) => s.placePrediction)
+            .map((s) => ({
+              label: s.placePrediction!.text.text,
+              value: {
+                description: s.placePrediction!.text.text,
+                mainText: s.placePrediction!.mainText?.text,
+                placeId: s.placePrediction!.placeId,
+                secondaryText: s.placePrediction!.secondaryText?.text,
+                toPlace: () => s.placePrediction!.toPlace(),
+              },
+            })),
+        )
+      } catch {
+        setOptions([])
+      } finally {
+        setIsLoading(false)
       }
+    }, 300)
+  }
 
+  const handleChange = async (option: SelectOption | SelectOption[] | null | undefined) => {
+    if (!option || Array.isArray(option)) {
+      setPoint([])
+      setGeoData(null)
+      return
+    }
+
+    const placeData = option.value as {
+      description: string
+      mainText: string
+      placeId: string
+      toPlace: () => google.maps.places.Place
+    }
+
+    try {
+      const place = placeData.toPlace()
       await place.fetchFields({
         fields: ['displayName', 'formattedAddress', 'location'],
+        sessionToken: sessionTokenRef.current!,
       })
+
+      // Reset session token after fetchFields (per Google billing best practice)
+      sessionTokenRef.current = null
 
       if (place.location) {
         setPoint([place.location.lng(), place.location.lat()])
@@ -82,62 +166,17 @@ export const GeocodingFieldClient = ({
           label: place.formattedAddress ?? place.displayName,
           value: {
             description: place.formattedAddress,
-            place_id: place.id,
+            place_id: placeData.placeId,
             structured_formatting: {
               main_text: place.displayName,
             },
           },
         })
       }
-    },
-    [setGeoData, setPoint],
-  )
-
-  useEffect(() => {
-    let cancelled = false
-
-    const init = async () => {
-      try {
-        await loadGoogleMapsApi(googleMapsApiKey)
-        if (cancelled || !containerRef.current) {
-          return
-        }
-
-        await google.maps.importLibrary('places')
-        if (cancelled || !containerRef.current) {
-          return
-        }
-
-        // Don't re-create if already initialized
-        if (autocompleteRef.current) {
-          return
-        }
-
-        const autocomplete = new google.maps.places.PlaceAutocompleteElement({})
-        autocompleteRef.current = autocomplete
-
-        // Style the input to fill the container
-        autocomplete.style.width = '100%'
-
-        autocomplete.addEventListener('gmp-placeselect', handlePlaceSelect)
-
-        containerRef.current.appendChild(autocomplete)
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load Google Maps')
-        }
-      }
+    } catch {
+      setError('Failed to fetch place details')
     }
-
-    void init()
-
-    return () => {
-      cancelled = true
-      if (autocompleteRef.current) {
-        autocompleteRef.current.removeEventListener('gmp-placeselect', handlePlaceSelect)
-      }
-    }
-  }, [googleMapsApiKey, handlePlaceSelect])
+  }
 
   return (
     <div style={{ width: '100%' }}>
@@ -145,35 +184,19 @@ export const GeocodingFieldClient = ({
         <FieldLabel label={field.label} path={path} required={field.required} />
         <FieldError path={path} />
       </div>
-      {error ? <div style={{ color: 'red' }}>{error}</div> : <div ref={containerRef} />}
-      {geoData && (
-        <button
-          onClick={() => {
-            setPoint([])
-            setGeoData(null)
-
-            // Clear the autocomplete input
-            if (autocompleteRef.current) {
-              const input = autocompleteRef.current.querySelector('input')
-              if (input) {
-                input.value = ''
-              }
-            }
-          }}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--theme-elevation-500)',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-            marginTop: '0.25rem',
-            padding: 0,
-            textDecoration: 'underline',
-          }}
-          type="button"
-        >
-          Clear selection
-        </button>
+      {error ? (
+        <div style={{ color: 'red' }}>{error}</div>
+      ) : (
+        <ReactSelect
+          isClearable
+          isLoading={isLoading}
+          isSearchable
+          onChange={(val) => handleChange(val as SelectOption | null)}
+          onInputChange={handleInputChange}
+          options={options}
+          placeholder="Search for a place..."
+          value={geoData as unknown as SelectOption}
+        />
       )}
     </div>
   )

@@ -3,6 +3,7 @@
 ## 0.3.0
 
 - **BREAKING**: Replaced `react-google-places-autocomplete` with Google's native `PlaceAutocompleteElement` web component. This resolves the deprecation warning for `google.maps.places.AutocompleteService` (deprecated as of March 2025). The `react-google-places-autocomplete` dependency has been removed; the plugin now loads the Google Maps JS API directly and uses the recommended `PlaceAutocompleteElement` and `fetchFields` API.
+- **BREAKING**: The **Places API (New)** must be enabled in your Google Cloud project. The new `PlaceAutocompleteElement` uses the Places API (New), which is a separate API from the legacy Places API. Enable it at: https://console.developers.google.com/apis/api/places.googleapis.com/overview
 
 ## 0.2.0
 
