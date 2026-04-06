@@ -1,8 +1,11 @@
-import type { Field } from 'payload'
+import type { Field, PointField } from 'payload'
 
 import type { GeoCodingFieldConfig } from '../types/GeoCodingFieldConfig.js'
 
-import { createGeocodeBeforeChangeHook } from '../hooks/geocodeBeforeChange.js'
+import {
+  createGeoDataBeforeChangeHook,
+  createPointBeforeChangeHook,
+} from '../hooks/geocodeBeforeChange.js'
 
 /**
  * Creates a row field containing:
@@ -11,7 +14,7 @@ import { createGeocodeBeforeChangeHook } from '../hooks/geocodeBeforeChange.js'
  * 3. A hidden text field `{pointFieldName}_address` for server-side geocoding via the API
  *
  * Agents and API consumers can submit an address string via the `_address` field,
- * and the beforeChange hook will auto-geocode it and populate the point and geodata fields.
+ * and the beforeChange hooks will auto-geocode it and populate the point and geodata fields.
  */
 export const geocodingField = (config: GeoCodingFieldConfig): Field => {
   const pointFieldName = config.pointField.name
@@ -33,11 +36,22 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
     },
     hooks: {
       beforeChange: [
-        createGeocodeBeforeChangeHook({ pointFieldName }),
+        createGeoDataBeforeChangeHook({ pointFieldName }),
       ],
     },
     label: config.geoDataFieldOverride?.label ?? 'Location',
     required: config.geoDataFieldOverride?.required,
+  }
+
+  const pointField: PointField = {
+    ...config.pointField,
+    hooks: {
+      ...config.pointField.hooks,
+      beforeChange: [
+        ...(config.pointField.hooks?.beforeChange ?? []),
+        createPointBeforeChangeHook({ pointFieldName }),
+      ],
+    },
   }
 
   const addressField: Field = {
@@ -47,8 +61,8 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
       hidden: true,
     },
     hooks: {
-      // Clear the address field after processing so it is not persisted
-      beforeChange: [() => undefined],
+      // Clear the address field so it is not persisted
+      beforeChange: [() => null],
     },
     label: 'Address (for server-side geocoding)',
   }
@@ -58,6 +72,6 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
     admin: {
       position: config.pointField.admin?.position ?? undefined,
     },
-    fields: [geoDataField, config.pointField, addressField],
+    fields: [geoDataField, pointField, addressField],
   }
 }

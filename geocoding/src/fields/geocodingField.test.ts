@@ -1,4 +1,4 @@
-import type { JSONField, RowField, TextField } from 'payload'
+import type { JSONField, PointField, RowField, TextField } from 'payload'
 
 import { describe, expect, it } from 'vitest'
 
@@ -28,7 +28,7 @@ describe('geocodingField', () => {
     expect(addressField.admin?.hidden).toBe(true)
   })
 
-  it('always adds a beforeChange hook to the geodata field', () => {
+  it('adds beforeChange hooks to both geodata and point fields', () => {
     const field = geocodingField({
       pointField: { name: 'location', type: 'point' },
     }) as RowField
@@ -36,7 +36,28 @@ describe('geocodingField', () => {
     const geoDataField = field.fields.find(
       (f) => 'name' in f && f.name === 'location_googlePlacesData',
     ) as JSONField
-    expect(geoDataField.hooks?.beforeChange).toBeDefined()
-    expect(geoDataField.hooks!.beforeChange).toHaveLength(1)
+    expect(geoDataField.hooks?.beforeChange).toHaveLength(1)
+
+    const pointField = field.fields.find(
+      (f) => 'name' in f && f.name === 'location',
+    ) as PointField
+    expect(pointField.hooks?.beforeChange).toHaveLength(1)
+  })
+
+  it('preserves existing point field hooks', () => {
+    const existingHook = () => undefined
+    const field = geocodingField({
+      pointField: {
+        name: 'location',
+        type: 'point',
+        hooks: { beforeChange: [existingHook] },
+      },
+    }) as RowField
+
+    const pointField = field.fields.find(
+      (f) => 'name' in f && f.name === 'location',
+    ) as PointField
+    expect(pointField.hooks?.beforeChange).toHaveLength(2)
+    expect(pointField.hooks!.beforeChange![0]).toBe(existingHook)
   })
 })

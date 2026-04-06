@@ -3,7 +3,7 @@ import type { FieldHookArgs } from 'payload'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as geocodingService from '../services/googleGeocoding.js'
-import { createGeocodeBeforeChangeHook } from './geocodeBeforeChange.js'
+import { createGeoDataBeforeChangeHook, createPointBeforeChangeHook } from './geocodeBeforeChange.js'
 
 const MOCK_API_KEY = 'test-api-key'
 
@@ -51,7 +51,7 @@ function createMockHookArgs(
   } as FieldHookArgs
 }
 
-describe('createGeocodeBeforeChangeHook', () => {
+describe('createGeoDataBeforeChangeHook', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
@@ -59,19 +59,14 @@ describe('createGeocodeBeforeChangeHook', () => {
   it('geocodes an address string and returns geodata', async () => {
     vi.spyOn(geocodingService, 'geocodeAddress').mockResolvedValue([MOCK_RESULT])
 
-    const hook = createGeocodeBeforeChangeHook({
-      pointFieldName: 'location',
-    })
-
-    const siblingData: Record<string, unknown> = {
-      location_address: 'Alexanderplatz, Berlin',
-    }
+    const hook = createGeoDataBeforeChangeHook({ pointFieldName: 'location' })
 
     const result = await hook(
-      createMockHookArgs({ siblingData }),
+      createMockHookArgs({
+        siblingData: { location_address: 'Alexanderplatz, Berlin' },
+      }),
     )
 
-    // Should return the geocoded data for the JSON field
     expect(result).toEqual({
       addressComponents: MOCK_RESULT.addressComponents,
       formattedAddress: 'Alexanderplatz, 10178 Berlin, Germany',
@@ -79,34 +74,16 @@ describe('createGeocodeBeforeChangeHook', () => {
       placeId: 'ChIJp1l4uWBRqEcR2SPNRBMhtAI',
       types: ['point_of_interest'],
     })
-
-    // Should set the point field coordinates [lng, lat]
-    expect(siblingData.location).toEqual([13.4132, 52.5219])
-
-    // Should clear the address field
-    expect(siblingData.location_address).toBeUndefined()
-
-    // Should have called geocodeAddress with the correct args
-    expect(geocodingService.geocodeAddress).toHaveBeenCalledWith(
-      'Alexanderplatz, Berlin',
-      MOCK_API_KEY,
-    )
   })
 
   it('returns undefined when no address is provided', async () => {
-    const hook = createGeocodeBeforeChangeHook({
-      pointFieldName: 'location',
-    })
-
+    const hook = createGeoDataBeforeChangeHook({ pointFieldName: 'location' })
     const result = await hook(createMockHookArgs({ siblingData: {} }))
     expect(result).toBeUndefined()
   })
 
   it('returns undefined when address is empty string', async () => {
-    const hook = createGeocodeBeforeChangeHook({
-      pointFieldName: 'location',
-    })
-
+    const hook = createGeoDataBeforeChangeHook({ pointFieldName: 'location' })
     const result = await hook(
       createMockHookArgs({ siblingData: { location_address: '  ' } }),
     )
@@ -115,11 +92,7 @@ describe('createGeocodeBeforeChangeHook', () => {
 
   it('returns undefined when geocoding returns no results', async () => {
     vi.spyOn(geocodingService, 'geocodeAddress').mockResolvedValue([])
-
-    const hook = createGeocodeBeforeChangeHook({
-      pointFieldName: 'location',
-    })
-
+    const hook = createGeoDataBeforeChangeHook({ pointFieldName: 'location' })
     const result = await hook(
       createMockHookArgs({ siblingData: { location_address: 'xyznonexistent' } }),
     )
@@ -127,40 +100,63 @@ describe('createGeocodeBeforeChangeHook', () => {
   })
 
   it('throws when API key is not configured', async () => {
-    const hook = createGeocodeBeforeChangeHook({
-      pointFieldName: 'location',
-    })
-
-    const reqWithoutKey = {
-      payload: { config: { custom: {} } },
-    }
-
+    const hook = createGeoDataBeforeChangeHook({ pointFieldName: 'location' })
     await expect(
       hook(
         createMockHookArgs({
-          req: reqWithoutKey as any,
+          req: { payload: { config: { custom: {} } } } as any,
           siblingData: { location_address: 'Berlin' },
         }),
       ),
     ).rejects.toThrow('Geocoding plugin API key not configured')
   })
+})
 
-  it('reads address from data when siblingData does not have it', async () => {
+describe('createPointBeforeChangeHook', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('returns [lng, lat] from geocoded address', async () => {
     vi.spyOn(geocodingService, 'geocodeAddress').mockResolvedValue([MOCK_RESULT])
 
-    const hook = createGeocodeBeforeChangeHook({
-      pointFieldName: 'location',
-    })
-
-    const siblingData: Record<string, unknown> = {}
+    const hook = createPointBeforeChangeHook({ pointFieldName: 'location' })
     const result = await hook(
       createMockHookArgs({
-        data: { location_address: 'Berlin' },
-        siblingData,
+        siblingData: { location_address: 'Berlin' },
       }),
     )
 
-    expect(result).toBeDefined()
-    expect(result).toHaveProperty('formattedAddress')
+    expect(result).toEqual([13.4132, 52.5219])
+  })
+
+  it('returns existing value when no address is provided', async () => {
+    const hook = createPointBeforeChangeHook({ pointFieldName: 'location' })
+    const result = await hook(
+      createMockHookArgs({ siblingData: {}, value: [1, 2] }),
+    )
+    expect(result).toEqual([1, 2])
+  })
+
+  it('shares cached geocoding result via context', async () => {
+    const geocodeSpy = vi.spyOn(geocodingService, 'geocodeAddress').mockResolvedValue([MOCK_RESULT])
+
+    const context: Record<string, unknown> = {}
+    const hookArgs = { context, siblingData: { location_address: 'Berlin' } }
+
+    const geoDataHook = createGeoDataBeforeChangeHook({ pointFieldName: 'location' })
+    const pointHook = createPointBeforeChangeHook({ pointFieldName: 'location' })
+
+    // Run both hooks concurrently (simulating Payload's parallel field processing)
+    const [geoDataResult, pointResult] = await Promise.all([
+      geoDataHook(createMockHookArgs(hookArgs)),
+      pointHook(createMockHookArgs(hookArgs)),
+    ])
+
+    expect(geoDataResult).toHaveProperty('formattedAddress')
+    expect(pointResult).toEqual([13.4132, 52.5219])
+
+    // geocodeAddress should only be called once due to caching
+    expect(geocodeSpy).toHaveBeenCalledTimes(1)
   })
 })

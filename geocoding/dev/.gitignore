@@ -371,3 +371,4 @@ $RECYCLE.BIN/
 *.db
 tsconfig.tsbuildinfo
 /dist
+src/test/databaseAdapter.ts
