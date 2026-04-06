@@ -69,6 +69,82 @@ geocodingField({
 }),
 ```
 
+## Usage with AI Agents / API
+
+The default UI-based autocomplete requires a browser, which makes it unusable for AI agents and other API consumers. The plugin provides two server-side mechanisms to solve this.
+
+### Geocoding Search Endpoint
+
+The plugin registers a `GET /api/geocoding/search` endpoint that geocodes addresses server-side. It is authenticated by default (requires a logged-in user), and supports a custom access function:
+
+```ts
+plugins: [
+  payloadGeocodingPlugin({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    // Optional: customize who can access the endpoint
+    geocodingEndpoint: {
+      access: (req) => Boolean(req.user),
+    },
+  }),
+]
+```
+
+An agent can then search for locations and use the results to populate fields:
+
+```bash
+# 1. Search for an address
+GET /api/geocoding/search?q=Alexanderplatz,+Berlin
+
+# Response:
+{
+  "results": [
+    {
+      "formattedAddress": "Alexanderplatz, 10178 Berlin, Germany",
+      "placeId": "ChIJp1l4uWBRqEcR2SPNRBMhtAI",
+      "location": { "lat": 52.5219, "lng": 13.4132 },
+      "addressComponents": [...],
+      "types": [...]
+    }
+  ]
+}
+
+# 2. Use the result to create/update a document
+POST /api/pages
+{
+  "title": "My Page",
+  "location": [13.4132, 52.5219],
+  "location_googlePlacesData": { ... }
+}
+```
+
+### Server-Side Address Geocoding (beforeChange Hook)
+
+For an even simpler agent workflow, enable `serverGeocoding` on a field. This adds a virtual `{fieldName}_address` text field that auto-geocodes on save:
+
+```ts
+geocodingField({
+  pointField: {
+    name: 'location',
+    type: 'point',
+  },
+  serverGeocoding: {
+    apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+  },
+})
+```
+
+An agent can then simply submit an address string — the coordinates and geodata are resolved automatically:
+
+```bash
+POST /api/pages
+{
+  "title": "My Page",
+  "location_address": "Alexanderplatz, Berlin"
+}
+```
+
+The hook geocodes the address, sets the `location` point field to `[lng, lat]`, populates `location_googlePlacesData` with the full geocoding result, and clears `location_address` (it is not persisted).
+
 ## About this plugin
 
 This plugin uses the [react-google-places-autocomplete](https://www.npmjs.com/package/react-google-places-autocomplete) library to provide a Select/Search input for finding an address. The result of the Google Places API request is stored in a JSON field and the coordinates are stored in a Point Field.
