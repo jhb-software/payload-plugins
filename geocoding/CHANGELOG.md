@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- **BREAKING**: Replaced `react-google-places-autocomplete` with Google's native `PlaceAutocompleteElement` web component. This resolves the deprecation warning for `google.maps.places.AutocompleteService` (deprecated as of March 2025). The `react-google-places-autocomplete` dependency has been removed; the plugin now loads the Google Maps JS API directly and uses the recommended `PlaceAutocompleteElement` and `fetchFields` API.
+
 ## 0.2.0
 
 - **BREAKING**: The Google Maps API key is now a required plugin configuration option:
@@ -12,7 +16,7 @@ plugins: [payloadGeocodingPlugin({})]
 plugins: [
   payloadGeocodingPlugin({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-  })
+  }),
 ]
 ```
 
