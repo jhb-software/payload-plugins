@@ -119,21 +119,9 @@ POST /api/pages
 
 ### Server-Side Address Geocoding (beforeChange Hook)
 
-For an even simpler agent workflow, enable `serverGeocoding` on a field. This adds a virtual `{fieldName}_address` text field that auto-geocodes on save:
+Every `geocodingField` automatically includes a hidden `{fieldName}_address` text field. When an address string is submitted via the API, a `beforeChange` hook geocodes it server-side and populates the point and geodata fields. No extra configuration is needed — the hook reads the API key from the plugin config.
 
-```ts
-geocodingField({
-  pointField: {
-    name: 'location',
-    type: 'point',
-  },
-  serverGeocoding: {
-    apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-  },
-})
-```
-
-An agent can then simply submit an address string — the coordinates and geodata are resolved automatically:
+An agent can simply submit an address string — the coordinates and geodata are resolved automatically:
 
 ```bash
 POST /api/pages

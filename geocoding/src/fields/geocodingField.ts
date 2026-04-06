@@ -8,7 +8,10 @@ import { createGeocodeBeforeChangeHook } from '../hooks/geocodeBeforeChange.js'
  * Creates a row field containing:
  * 1. The provided point field for storing the coordinates from the Google Places API
  * 2. A JSON field that stores the raw Google Places API geocoding data
- * 3. (Optional) A text field for server-side geocoding via address string (for API/agent usage)
+ * 3. A hidden text field `{pointFieldName}_address` for server-side geocoding via the API
+ *
+ * Agents and API consumers can submit an address string via the `_address` field,
+ * and the beforeChange hook will auto-geocode it and populate the point and geodata fields.
  */
 export const geocodingField = (config: GeoCodingFieldConfig): Field => {
   const pointFieldName = config.pointField.name
@@ -28,39 +31,26 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
         Field: '@jhb.software/payload-geocoding-plugin/server#GeocodingField',
       },
     },
+    hooks: {
+      beforeChange: [
+        createGeocodeBeforeChangeHook({ pointFieldName }),
+      ],
+    },
     label: config.geoDataFieldOverride?.label ?? 'Location',
     required: config.geoDataFieldOverride?.required,
   }
 
-  const fields: Field[] = [geoDataField, config.pointField]
-
-  // When serverGeocoding is configured, add the address field and beforeChange hook
-  if (config.serverGeocoding) {
-    const addressField: Field = {
-      name: pointFieldName + '_address',
-      type: 'text',
-      admin: {
-        description:
-          'Submit an address string to auto-geocode server-side. This field is not persisted.',
-      },
-      hooks: {
-        // Clear the address field after processing so it is not persisted
-        beforeChange: [() => undefined],
-      },
-      label: 'Address (for server-side geocoding)',
-    }
-
-    geoDataField.hooks = {
-      ...geoDataField.hooks,
-      beforeChange: [
-        createGeocodeBeforeChangeHook({
-          apiKey: config.serverGeocoding.apiKey,
-          pointFieldName,
-        }),
-      ],
-    }
-
-    fields.push(addressField)
+  const addressField: Field = {
+    name: pointFieldName + '_address',
+    type: 'text',
+    admin: {
+      hidden: true,
+    },
+    hooks: {
+      // Clear the address field after processing so it is not persisted
+      beforeChange: [() => undefined],
+    },
+    label: 'Address (for server-side geocoding)',
   }
 
   return {
@@ -68,6 +58,6 @@ export const geocodingField = (config: GeoCodingFieldConfig): Field => {
     admin: {
       position: config.pointField.admin?.position ?? undefined,
     },
-    fields,
+    fields: [geoDataField, config.pointField, addressField],
   }
 }

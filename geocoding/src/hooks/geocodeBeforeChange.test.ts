@@ -17,6 +17,20 @@ const MOCK_RESULT = {
   types: ['point_of_interest'],
 }
 
+function createMockReq() {
+  return {
+    payload: {
+      config: {
+        custom: {
+          payloadGeocodingPlugin: {
+            googleMapsApiKey: MOCK_API_KEY,
+          },
+        },
+      },
+    },
+  }
+}
+
 function createMockHookArgs(
   overrides: Partial<FieldHookArgs>,
 ): FieldHookArgs {
@@ -29,7 +43,7 @@ function createMockHookArgs(
     operation: 'create',
     originalDoc: undefined,
     path: [] as any,
-    req: {} as any,
+    req: createMockReq() as any,
     schemaPath: [] as any,
     siblingData: {},
     value: undefined,
@@ -46,7 +60,6 @@ describe('createGeocodeBeforeChangeHook', () => {
     vi.spyOn(geocodingService, 'geocodeAddress').mockResolvedValue([MOCK_RESULT])
 
     const hook = createGeocodeBeforeChangeHook({
-      apiKey: MOCK_API_KEY,
       pointFieldName: 'location',
     })
 
@@ -82,7 +95,6 @@ describe('createGeocodeBeforeChangeHook', () => {
 
   it('returns undefined when no address is provided', async () => {
     const hook = createGeocodeBeforeChangeHook({
-      apiKey: MOCK_API_KEY,
       pointFieldName: 'location',
     })
 
@@ -92,7 +104,6 @@ describe('createGeocodeBeforeChangeHook', () => {
 
   it('returns undefined when address is empty string', async () => {
     const hook = createGeocodeBeforeChangeHook({
-      apiKey: MOCK_API_KEY,
       pointFieldName: 'location',
     })
 
@@ -106,7 +117,6 @@ describe('createGeocodeBeforeChangeHook', () => {
     vi.spyOn(geocodingService, 'geocodeAddress').mockResolvedValue([])
 
     const hook = createGeocodeBeforeChangeHook({
-      apiKey: MOCK_API_KEY,
       pointFieldName: 'location',
     })
 
@@ -116,11 +126,29 @@ describe('createGeocodeBeforeChangeHook', () => {
     expect(result).toBeUndefined()
   })
 
+  it('throws when API key is not configured', async () => {
+    const hook = createGeocodeBeforeChangeHook({
+      pointFieldName: 'location',
+    })
+
+    const reqWithoutKey = {
+      payload: { config: { custom: {} } },
+    }
+
+    await expect(
+      hook(
+        createMockHookArgs({
+          req: reqWithoutKey as any,
+          siblingData: { location_address: 'Berlin' },
+        }),
+      ),
+    ).rejects.toThrow('Geocoding plugin API key not configured')
+  })
+
   it('reads address from data when siblingData does not have it', async () => {
     vi.spyOn(geocodingService, 'geocodeAddress').mockResolvedValue([MOCK_RESULT])
 
     const hook = createGeocodeBeforeChangeHook({
-      apiKey: MOCK_API_KEY,
       pointFieldName: 'location',
     })
 
