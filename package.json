@@ -62,6 +62,7 @@
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": "prettier --write",
     "*.json": "prettier --write --parser json",
-    "*.{css,md,yaml,yml}": "prettier --write"
+    "*.md": "prettier --write --parser markdown",
+    "*.{css,yaml,yml}": "prettier --write"
   }
 }

@@ -6,16 +6,8 @@
   "license": "MIT",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
-  "keywords": [
-    "payload",
-    "plugin",
-    "geocoding"
-  ],
-  "files": [
-    "dist",
-    "LICENSE.md",
-    "README.md"
-  ],
+  "keywords": ["payload", "plugin", "geocoding"],
+  "files": ["dist", "LICENSE.md", "README.md"],
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "type": "module",
@@ -30,10 +22,9 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "prepack": "pnpm prepublishOnly",
-    "prepublishOnly": "pnpm build && pnpm copyfiles"
-  },
-  "dependencies": {
-    "react-google-places-autocomplete": "^4.1.0"
+    "prepublishOnly": "pnpm build && pnpm copyfiles",
+    "test": "cd dev && pnpm test",
+    "test:sqlite": "cd dev && pnpm test:sqlite"
   },
   "peerDependencies": {
     "@payloadcms/ui": "^3.81.0",
@@ -44,6 +35,7 @@
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
+    "@types/google.maps": "^3.58.1",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.24",
     "@types/react": "19.2.14",
@@ -52,7 +44,8 @@
     "eslint": "^9.0.0",
     "prettier": "^3.8.1",
     "rimraf": "6.1.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.2"
   },
   "publishConfig": {
     "main": "./dist/index.js",

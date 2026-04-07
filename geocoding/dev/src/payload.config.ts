@@ -1,10 +1,11 @@
 import { payloadGeocodingPlugin } from '@jhb.software/payload-geocoding-plugin'
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
+import { Articles } from './collection/articles'
 import { Pages } from './collection/pages'
 import { testEmailAdapter } from './emailAdapter'
+import { databaseAdapter } from './test/databaseAdapter'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -24,18 +25,17 @@ export default buildConfig({
       fields: [],
     },
     Pages,
+    Articles,
   ],
-  db: mongooseAdapter({
-    url: process.env.DATABASE_URI!,
-  }),
+  db: databaseAdapter,
   email: testEmailAdapter,
-  secret: process.env.PAYLOAD_SECRET!,
+  secret: process.env.PAYLOAD_SECRET || 'test-secret-for-ci',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   plugins: [
     payloadGeocodingPlugin({
-      googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+      googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'test-api-key',
     }),
   ],
   async onInit(payload) {

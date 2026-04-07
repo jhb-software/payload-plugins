@@ -1,6 +1,6 @@
 {
-  "name": "payload-plugin-test-app",
-  "description": "A test app for the plugin",
+  "name": "payload-geocoding-plugin-test-app",
+  "description": "A test app for the geocoding plugin",
   "version": "0.0.1",
   "license": "MIT",
   "type": "module",
@@ -12,14 +12,19 @@
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "format": "prettier --write src",
     "payload": "payload",
-    "generate:types": "payload generate:types",
+    "generate:types": "cross-env PAYLOAD_DATABASE=sqlite payload generate:types",
     "generate:schema": "payload-graphql generate:schema",
-    "generate:importmap": "payload generate:importmap"
+    "generate:importmap": "payload generate:importmap",
+    "test": "pnpm test:sqlite",
+    "test:sqlite": "cross-env PAYLOAD_DATABASE=sqlite vitest run",
+    "test:watch": "vitest watch"
   },
   "dependencies": {
     "@jhb.software/payload-geocoding-plugin": "workspace:*",
     "@payloadcms/db-mongodb": "^3.81.0",
+    "@payloadcms/db-sqlite": "^3.81.0",
     "@payloadcms/next": "^3.81.0",
+    "@payloadcms/richtext-lexical": "3.81.0",
     "@payloadcms/ui": "^3.81.0",
     "next": "15.4.11",
     "payload": "^3.81.0",
@@ -30,6 +35,7 @@
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.1",
-    "typescript": "5.9.3"
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0"
   }
 }

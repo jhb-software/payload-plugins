@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- **BREAKING**: Replaced `react-google-places-autocomplete` with the Google Maps Places API (New) `AutocompleteSuggestion` API. This resolves the deprecation warning for `google.maps.places.AutocompleteService` (deprecated as of March 2025). The `react-google-places-autocomplete` dependency has been removed.
+- **BREAKING**: The **Places API (New)** must be enabled in your Google Cloud project. Enable it at: https://console.developers.google.com/apis/api/places.googleapis.com/overview
+- **BREAKING**: The `_googlePlacesData` JSON field has been renamed to `_meta` and now stores a flat `{ name, formattedAddress, googlePlaceId, types }` object instead of the previous `react-google-places-autocomplete` format. Existing documents will need to be migrated — see [`migrations/migrate-to-0.3.0.ts`](./migrations/migrate-to-0.3.0.ts).
+- **BREAKING**: The `geoDataFieldOverride` config option has been renamed to `locationMetaOverride`.
+
 ## 0.2.0
 
 - **BREAKING**: The Google Maps API key is now a required plugin configuration option:
@@ -12,7 +19,7 @@ plugins: [payloadGeocodingPlugin({})]
 plugins: [
   payloadGeocodingPlugin({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-  })
+  }),
 ]
 ```
 

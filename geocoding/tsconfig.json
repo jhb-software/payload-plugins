@@ -2,6 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "typeRoots": ["./node_modules/@types", "./node_modules/.pnpm/node_modules/@types"],
     "rootDir": "./",
     "allowJs": true,
     "skipLibCheck": true,
