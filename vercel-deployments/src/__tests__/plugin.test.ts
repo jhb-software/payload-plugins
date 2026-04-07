@@ -29,10 +29,15 @@ describe('vercelDeploymentsPlugin', () => {
     const result = plugin(basePayloadConfig)
 
     expect(result.admin?.dashboard?.widgets).toHaveLength(1)
-    expect(result.admin?.dashboard?.widgets?.[0]).toMatchObject({
+    const widget = result.admin?.dashboard?.widgets?.[0] as Record<string, unknown>
+    expect(widget).toMatchObject({
       slug: 'vercel-deployments',
       Component: '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget',
     })
+    // ComponentPath is set for backward compatibility with Payload < 3.79.0
+    expect(widget.ComponentPath).toBe(
+      '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget',
+    )
   })
 
   it('registers two API endpoints', () => {

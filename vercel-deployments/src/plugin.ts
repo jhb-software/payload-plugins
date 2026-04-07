@@ -1,4 +1,4 @@
-import type { Config } from 'payload'
+import type { Config, Widget } from 'payload'
 
 import type { VercelDeploymentsPluginConfig } from './types.js'
 
@@ -17,6 +17,9 @@ export const vercelDeploymentsPlugin =
       return config
     }
 
+    const componentPath =
+      '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget'
+
     return {
       ...config,
       admin: {
@@ -27,10 +30,12 @@ export const vercelDeploymentsPlugin =
             ...(config.admin?.dashboard?.widgets ?? []),
             {
               slug: 'vercel-deployments',
-              Component: '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget',
+              // `Component` was renamed from `ComponentPath` in Payload 3.79.0. Set both for backward compatibility.
+              Component: componentPath,
+              ComponentPath: componentPath,
               maxWidth: pluginConfig.widget?.maxWidth ?? 'full',
               minWidth: pluginConfig.widget?.minWidth ?? 'medium',
-            },
+            } as { ComponentPath: string } & Widget,
           ],
         },
       },
