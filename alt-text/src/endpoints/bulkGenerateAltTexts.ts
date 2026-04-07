@@ -111,7 +111,7 @@ async function generateAndUpdateAltText({
   req,
 }: {
   collection: CollectionSlug
-  id: string | number
+  id: number | string
   locales: string[]
   payload: BasePayload
   pluginConfig: AltTextPluginConfig
