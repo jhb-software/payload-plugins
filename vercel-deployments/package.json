@@ -34,17 +34,17 @@
   },
   "dependencies": {},
   "peerDependencies": {
-    "@payloadcms/translations": "^3.80.0",
-    "@payloadcms/ui": "^3.80.0",
+    "@payloadcms/translations": "^3.81.0",
+    "@payloadcms/ui": "^3.81.0",
     "next": "15.4.11",
-    "payload": "^3.80.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "payload": "^3.81.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
-    "@payloadcms/translations": "^3.80.0",
-    "@payloadcms/ui": "^3.80.0",
+    "@payloadcms/translations": "^3.81.0",
+    "@payloadcms/ui": "^3.81.0",
     "@swc/cli": "^0.7.9",
     "@swc/core": "^1.15.3",
     "@types/react": "19.2.7",
@@ -53,9 +53,10 @@
     "eslint": "^9.39.1",
     "vitest": "^4.1.0",
     "next": "15.4.11",
-    "payload": "^3.80.0",
+    "payload": "^3.81.0",
     "prettier": "^3.7.4",
-    "react": "^19.0.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "rimraf": "6.1.2",
     "typescript": "5.9.3"
   },
