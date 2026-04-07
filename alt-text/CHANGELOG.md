@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - feat: add REST endpoints (`/generate`, `/generate/bulk`, `/health`) with configurable `access` option
 - feat: add alt text health check with dashboard widget
