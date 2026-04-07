@@ -92,8 +92,9 @@ export const traverseFields = ({
         }
 
         let blocksDataTranslated =
-          (siblingDataTranslated[field.name] as { blockType: string; id: number | string }[] | undefined) ??
-          []
+          (siblingDataTranslated[field.name] as
+            | { blockType: string; id: number | string }[]
+            | undefined) ?? []
 
         if (field.localized || localizedParent) {
           if (blocksDataTranslated.length > 0 && emptyOnly) {
