@@ -68,6 +68,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
 
   return {
     key: 'openai',
+    supportedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
     resolve: async ({
       filename,
       imageThumbnailUrl,

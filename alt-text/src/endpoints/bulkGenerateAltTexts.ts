@@ -5,7 +5,6 @@ import { z, ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
-import { isUnsupportedMimeType } from '../utilities/isUnsupportedMimeType.js'
 import { localesFromConfig } from '../utilities/localesFromConfig.js'
 
 /**
@@ -145,9 +144,13 @@ async function generateAndUpdateAltText({
       ? imageDoc.mimeType
       : undefined
 
-  if (isUnsupportedMimeType(mimeType)) {
+  if (
+    mimeType &&
+    pluginConfig.resolver.supportedMimeTypes &&
+    !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
+  ) {
     throw new Error(
-      `Alt text generation is not supported for files of type "${mimeType}". Only raster image formats (JPEG, PNG, GIF, WebP) are supported.`,
+      `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${pluginConfig.resolver.supportedMimeTypes.join(', ')}.`,
     )
   }
 
