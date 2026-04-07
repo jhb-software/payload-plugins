@@ -42,7 +42,7 @@ export const traverseFields = ({
     switch (field.type) {
       case 'array': {
         const arrayDataFrom = siblingDataFrom[field.name] as {
-          id: string
+          id: number | string
         }[]
 
         if (isEmpty(arrayDataFrom)) {
@@ -50,7 +50,7 @@ export const traverseFields = ({
         }
 
         let arrayDataTranslated =
-          (siblingDataTranslated[field.name] as { id: string }[] | undefined) ?? []
+          (siblingDataTranslated[field.name] as { id: number | string }[] | undefined) ?? []
 
         if (field.localized || localizedParent) {
           if (arrayDataTranslated.length > 0 && emptyOnly) {
@@ -84,7 +84,7 @@ export const traverseFields = ({
       case 'blocks': {
         const blocksDataFrom = siblingDataFrom[field.name] as {
           blockType: string
-          id: string
+          id: number | string
         }[]
 
         if (isEmpty(blocksDataFrom)) {
@@ -92,7 +92,7 @@ export const traverseFields = ({
         }
 
         let blocksDataTranslated =
-          (siblingDataTranslated[field.name] as { blockType: string; id: string }[] | undefined) ??
+          (siblingDataTranslated[field.name] as { blockType: string; id: number | string }[] | undefined) ??
           []
 
         if (field.localized || localizedParent) {
