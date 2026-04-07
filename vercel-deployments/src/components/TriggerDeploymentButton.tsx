@@ -1,76 +1,16 @@
 'use client'
 import { Button, toast } from '@payloadcms/ui'
-import { useRouter } from 'next/navigation.js'
-import React, { useCallback, useEffect, useRef, useTransition } from 'react'
-
-import type { VercelDeployment } from '../utilities/vercelApiClient.js'
+import React, { useTransition } from 'react'
 
 import { useDashboardTranslation } from '../react-hooks/useDashboardTranslation.js'
+import { useDeploymentPoller } from './DeploymentStatusPoller.js'
 import { RefreshIcon } from './icons/refresh.js'
 import { SpinnerIcon } from './icons/spinner.js'
 
 export const TriggerFrontendDeploymentButton: React.FC = () => {
   const [isPending, startTransition] = useTransition()
-  const router = useRouter()
   const { t } = useDashboardTranslation()
-  const intervalRef = useRef<null | ReturnType<typeof setInterval>>(null)
-
-  // Clean up polling on unmount
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [])
-
-  const startPolling = useCallback(
-    (deploymentId: string) => {
-      // Clear any existing polling
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-
-      const pollInterval = 5000 // 5 seconds
-      let lastStatus: VercelDeployment['status']
-
-      intervalRef.current = setInterval(() => {
-        void fetch(`/api/vercel-deployments?id=${encodeURIComponent(deploymentId)}`, {
-          credentials: 'include',
-        })
-          .then((res) => {
-            if (!res.ok) {
-              throw new Error(`HTTP ${res.status}`)
-            }
-            return res.json()
-          })
-          .then((deployment: { id: string; status: VercelDeployment['status'] }) => {
-            if (deployment.status !== lastStatus) {
-              lastStatus = deployment.status
-              router.refresh()
-            }
-
-            if (deployment.status === 'READY') {
-              if (intervalRef.current) {
-                clearInterval(intervalRef.current)
-              }
-              intervalRef.current = null
-              toast.success(t('vercel-dashboard:deploymentInfoDeploymentCompletedSuccessfully'))
-            } else if (deployment.status === 'ERROR' || deployment.status === 'CANCELED') {
-              if (intervalRef.current) {
-                clearInterval(intervalRef.current)
-              }
-              intervalRef.current = null
-              toast.error(t('vercel-dashboard:deploymentInfoDeploymentTriggeredFailed'))
-            }
-          })
-          .catch((error) => {
-            console.error('Error polling deployment status:', error)
-          })
-      }, pollInterval)
-    },
-    [router, t],
-  )
+  const { notifyBuildTriggered } = useDeploymentPoller()
 
   const handleClick = () => {
     startTransition(async () => {
@@ -87,8 +27,7 @@ export const TriggerFrontendDeploymentButton: React.FC = () => {
 
         const { id: deploymentId } = await res.json()
         toast.success(t('vercel-dashboard:deploymentInfoDeploymentTriggeredSuccessfully'))
-        router.refresh()
-        startPolling(deploymentId)
+        notifyBuildTriggered(deploymentId)
       } catch (error) {
         toast.error(t('vercel-dashboard:deploymentInfoDeploymentTriggeredFailed'))
         console.error('Failed to redeploy website', error)

@@ -10,6 +10,7 @@ import type { VercelDeploymentsPluginConfig } from '../types.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
 import { Card } from './Card.js'
+import { DeploymentStatusPoller } from './DeploymentStatusPoller.js'
 import { FormattedDate } from './FormattedDate.js'
 import { ClockIcon } from './icons/clock.js'
 import { ClockDashedIcon } from './icons/clock-dashed.js'
@@ -27,21 +28,23 @@ export function DeploymentInfoCard({
   const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
   return (
-    <Card
-      actions={<TriggerFrontendDeploymentButton />}
-      icon={<InfoIcon />}
-      title={t('vercel-dashboard:deploymentInfoTitle')}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <Suspense fallback={<DeploymentInfoSkeleton />}>
-          <DeploymentInfo i18n={i18n} pluginConfig={pluginConfig} />
-        </Suspense>
+    <DeploymentStatusPoller>
+      <Card
+        actions={<TriggerFrontendDeploymentButton />}
+        icon={<InfoIcon />}
+        title={t('vercel-dashboard:deploymentInfoTitle')}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <Suspense fallback={<DeploymentInfoSkeleton />}>
+            <DeploymentInfo i18n={i18n} pluginConfig={pluginConfig} />
+          </Suspense>
 
-        <p style={{ color: 'var(--theme-elevation-500)', fontSize: '0.875rem', margin: 0 }}>
-          {t('vercel-dashboard:deploymentInfoDescription')}
-        </p>
-      </div>
-    </Card>
+          <p style={{ color: 'var(--theme-elevation-500)', fontSize: '0.875rem', margin: 0 }}>
+            {t('vercel-dashboard:deploymentInfoDescription')}
+          </p>
+        </div>
+      </Card>
+    </DeploymentStatusPoller>
   )
 }
 
