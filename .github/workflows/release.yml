@@ -69,7 +69,7 @@ jobs:
           fi
 
       - name: Publish to npm
-        run: cd ${{ inputs.plugin }} && npm publish --provenance --access public
+        run: cd ${{ inputs.plugin }} && pnpm publish --no-git-checks --provenance --access public
 
       - name: Commit version bump and create tag
         run: |

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- fix: fix broken package exports (use pnpm publish to apply publishConfig.exports)
+
 ## 0.4.0
 
 - feat: add REST endpoints (`/generate`, `/generate/bulk`, `/health`) with configurable `access` option
