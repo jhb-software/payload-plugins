@@ -40,4 +40,5 @@ jobs:
             content-translator
             geocoding
             pages
+            vercel-deployments
           requireScope: false

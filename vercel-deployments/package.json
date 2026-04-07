@@ -1,0 +1,97 @@
+{
+  "name": "@jhb.software/payload-vercel-deployments",
+  "version": "0.1.0",
+  "description": "A Payload CMS plugin for managing Vercel deployments of static websites — includes a dashboard widget and authenticated API endpoints.",
+  "bugs": "https://github.com/jhb-software/payload-plugins/issues",
+  "repository": "https://github.com/jhb-software/payload-plugins",
+  "keywords": [
+    "payload",
+    "plugin",
+    "vercel",
+    "deployments",
+    "static",
+    "rebuild",
+    "deployment"
+  ],
+  "author": "JHB Software",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "pnpm copyfiles && pnpm build:types && pnpm build:swc",
+    "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths --ignore '**/*.test.ts'",
+    "build:types": "tsc --project tsconfig.build.json --outDir dist --rootDir ./src",
+    "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
+    "clean": "rimraf --glob {dist,*.tsbuildinfo}",
+    "dev": "tsc -w",
+    "format": "prettier --write src",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "prepublishOnly": "pnpm clean && pnpm build"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@payloadcms/translations": "^3.81.0",
+    "@payloadcms/ui": "^3.81.0",
+    "next": "15.4.11",
+    "payload": "^3.81.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@payloadcms/eslint-config": "^3.28.0",
+    "@payloadcms/translations": "^3.81.0",
+    "@payloadcms/ui": "^3.81.0",
+    "@swc/cli": "^0.7.9",
+    "@swc/core": "^1.15.3",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "copyfiles": "2.4.1",
+    "eslint": "^9.39.1",
+    "vitest": "^4.1.0",
+    "next": "15.4.11",
+    "payload": "^3.81.0",
+    "prettier": "^3.7.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "rimraf": "6.1.2",
+    "typescript": "5.9.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./client": {
+        "import": "./dist/exports/client.js",
+        "types": "./dist/exports/client.d.ts",
+        "default": "./dist/exports/client.js"
+      }
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./client": {
+      "import": "./src/exports/client.ts",
+      "types": "./src/exports/client.ts",
+      "default": "./src/exports/client.ts"
+    }
+  },
+  "engines": {
+    "node": "^18.20.2 || >=20.9.0"
+  }
+}
