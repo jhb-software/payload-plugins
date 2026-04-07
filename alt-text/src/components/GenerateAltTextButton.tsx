@@ -92,7 +92,7 @@ export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTyp
             isUnsupportedMimeType
               ? t('@jhb.software/payload-alt-text-plugin:unsupportedMimeType').replace(
                   '{mimeType}',
-                  mimeType!,
+                  mimeType,
                 )
               : !id
                 ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst')
