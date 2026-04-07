@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- feat: add `supportedMimeTypes` to resolver interface to declare supported image formats
+- feat: disable generate button with tooltip for unsupported file types (e.g. SVG)
+- fix: reject unsupported file types in endpoints with clear error including the MIME type
+
 ## 0.4.2
 
 - fix: dashboard health widget not rendering on Payload <3.79.0 (`ComponentPath` was renamed to `Component` in 3.79.0)
