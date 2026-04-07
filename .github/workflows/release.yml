@@ -62,8 +62,9 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           CHANGELOG="${{ inputs.plugin }}/CHANGELOG.md"
-          if ! grep -q "^## ${VERSION}$" "$CHANGELOG"; then
-            echo "::error::CHANGELOG.md is missing a '## ${VERSION}' heading. Please update the changelog before releasing."
+          FIRST_H2=$(grep -m 1 "^## " "$CHANGELOG" | sed 's/^## //')
+          if [ "$FIRST_H2" != "$VERSION" ]; then
+            echo "::error::CHANGELOG.md first heading is '## ${FIRST_H2}' but expected '## ${VERSION}'. Please update the changelog before releasing."
             exit 1
           fi
 
