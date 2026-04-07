@@ -64,6 +64,14 @@ A plugin that enables content translation directly within the Payload CMS admin 
 
 [→ Content Translator plugin ](./content-translator)
 
+### Vercel Deployments Plugin
+
+[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-vercel-deployments)](https://www.npmjs.com/package/@jhb.software/payload-vercel-deployments)
+
+A plugin for managing Vercel deployments of static websites. When your site is statically built on Vercel, content changes in the CMS require a rebuild. This plugin provides a dashboard widget with deployment status and one-click redeploy, plus authenticated REST API endpoints for triggering deployments programmatically.
+
+[→ Vercel Deployments plugin ](./vercel-deployments)
+
 ### Astro Payload RichText Lexical
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fastro-payload-richtext-lexical)](https://www.npmjs.com/package/@jhb.software/astro-payload-richtext-lexical)
