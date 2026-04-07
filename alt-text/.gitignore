@@ -369,5 +369,6 @@ $RECYCLE.BIN/
 # Custom
 /media
 *.db
+*.d.ts
 tsconfig.tsbuildinfo
 /dist

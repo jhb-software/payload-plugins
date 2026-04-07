@@ -28,7 +28,7 @@ export function GenerateAltTextButton() {
 
     startTransition(async () => {
       try {
-        const response = await fetch('/api/alt-text-plugin/generate-alt-text', {
+        const response = await fetch('/api/alt-text-plugin/generate', {
           body: JSON.stringify({
             id: id as string,
             collection: collectionSlug,

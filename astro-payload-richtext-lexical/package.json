@@ -54,9 +54,7 @@
   "peerDependencies": {
     "astro": ">=3.x"
   },
-  "publishConfig": {
-    "access": "public"
-  },
+  "publishConfig": {},
   "engines": {
     "node": "^18.20.2 || >=20.9.0"
   }

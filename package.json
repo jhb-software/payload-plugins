@@ -13,16 +13,6 @@
     "build:pages": "cd ./pages && pnpm build",
     "build:vercel-deployments": "cd ./vercel-deployments && pnpm build",
 
-    "publish:all": "pnpm publish:admin-search && pnpm publish:alt-text && pnpm publish:astro-payload-richtext-lexical && pnpm publish:cloudinary && pnpm publish:pages && pnpm publish:geocoding && pnpm publish:content-translator && pnpm publish:vercel-deployments",
-    "publish:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm publish",
-    "publish:admin-search": "cd ./admin-search && pnpm publish",
-    "publish:alt-text": "cd ./alt-text && pnpm publish",
-    "publish:cloudinary": "cd ./cloudinary && pnpm publish",
-    "publish:content-translator": "cd ./content-translator && pnpm publish",
-    "publish:geocoding": "cd ./geocoding && pnpm publish",
-    "publish:pages": "cd ./pages && pnpm publish",
-    "publish:vercel-deployments": "cd ./vercel-deployments && pnpm publish",
-
     "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:astro-payload-richtext-lexical && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator && pnpm lint:vercel-deployments",
     "lint:admin-search": "cd ./admin-search && pnpm lint",
     "lint:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm lint",

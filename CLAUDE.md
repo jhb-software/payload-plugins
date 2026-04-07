@@ -20,6 +20,10 @@ Examples:
 
 This is enforced by a `commit-msg` git hook via commitlint. PR titles follow the same format (enforced by CI).
 
+## Document ID Types
+
+Document IDs must always support both `string` and `number` (MongoDB uses strings, PostgreSQL uses numbers). Use `DefaultDocumentIDType` from `'payload'`, or `number | string` when `payload` is not a dependency.
+
 ## Test-Driven Fixes and Features
 
 For every new fix or feature, a failing test must be added **first** that succeeds once the fix/feature is in place. Do not add code changes without a corresponding test that proves the change is necessary.

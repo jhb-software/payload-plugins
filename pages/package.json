@@ -65,8 +65,6 @@
   "publishConfig": {
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
-    "registry": "https://registry.npmjs.org/",
-    "access": "public",
     "exports": {
       ".": {
         "import": "./dist/index.js",
