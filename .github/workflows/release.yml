@@ -59,6 +59,15 @@ jobs:
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Verify changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHANGELOG="${{ inputs.plugin }}/CHANGELOG.md"
+          if ! grep -q "^## ${VERSION}$" "$CHANGELOG"; then
+            echo "::error::CHANGELOG.md is missing a '## ${VERSION}' heading. Please update the changelog before releasing."
+            exit 1
+          fi
+
       - name: Publish to npm
         run: cd ${{ inputs.plugin }} && npm publish --provenance --access public
 
