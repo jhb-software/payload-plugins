@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: reject unsupported file types (e.g. SVG) with clear error showing the MIME type
+
 ## 0.4.2
 
 - fix: dashboard health widget not rendering on Payload <3.79.0 (`ComponentPath` was renamed to `Component` in 3.79.0)

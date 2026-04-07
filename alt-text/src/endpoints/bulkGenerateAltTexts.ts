@@ -139,6 +139,19 @@ async function generateAndUpdateAltText({
     throw new Error('Image not found')
   }
 
+  const mimeType =
+    'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string' ? imageDoc.mimeType : undefined
+
+  if (
+    mimeType &&
+    pluginConfig.resolver.supportedMimeTypes &&
+    !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
+  ) {
+    throw new Error(
+      `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${pluginConfig.resolver.supportedMimeTypes.join(', ')}.`,
+    )
+  }
+
   const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc)
 
   const result = await pluginConfig.resolver.resolveBulk({

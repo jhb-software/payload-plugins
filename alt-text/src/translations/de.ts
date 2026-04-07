@@ -39,6 +39,7 @@ export const de: GenericTranslationsObject = {
 
     // Tooltips
     pleaseSaveDocumentFirst: 'Bitte speichern Sie zuerst das Dokument',
+    unsupportedMimeType: 'Alternativtext-Generierung wird für {mimeType}-Dateien nicht unterstützt',
 
     // Validation messages
     theAlternateTextIsRequired: 'Der Alternativtext ist erforderlich.',

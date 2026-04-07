@@ -61,6 +61,24 @@ export const generateAltTextEndpoint =
         return Response.json({ error: 'No alt text resolver configured' }, { status: 500 })
       }
 
+      const mimeType =
+        'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string'
+          ? imageDoc.mimeType
+          : undefined
+
+      if (
+        mimeType &&
+        pluginConfig.resolver.supportedMimeTypes &&
+        !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
+      ) {
+        return Response.json(
+          {
+            error: `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${pluginConfig.resolver.supportedMimeTypes.join(', ')}.`,
+          },
+          { status: 400 },
+        )
+      }
+
       // determine target locale
       const targetLocale = locale ?? pluginConfig.locale
       if (!targetLocale) {

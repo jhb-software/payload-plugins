@@ -112,6 +112,7 @@ export const payloadAltTextPlugin =
     const defaultFields = [
       altTextField({
         localized: Boolean(config.localization),
+        supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
       }),
       keywordsField({
         localized: Boolean(config.localization),
