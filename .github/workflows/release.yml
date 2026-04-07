@@ -17,13 +17,14 @@ on:
           - pages
           - vercel-deployments
       bump:
-        description: 'Version bump type'
+        description: 'Version bump type (use "none" to publish the current version as-is)'
         required: true
         type: choice
         options:
           - patch
           - minor
           - major
+          - none
 
 jobs:
   release:
@@ -53,7 +54,9 @@ jobs:
         id: version
         run: |
           cd ${{ inputs.plugin }}
-          npm version ${{ inputs.bump }} --no-git-tag-version
+          if [ "${{ inputs.bump }}" != "none" ]; then
+            npm version ${{ inputs.bump }} --no-git-tag-version
+          fi
           NEW_VERSION=$(node -p "require('./package.json').version")
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
@@ -76,8 +79,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ${{ inputs.plugin }}/package.json
-          git commit -m "release(${{ inputs.plugin }}): v${{ steps.version.outputs.version }}"
+          if [ "${{ inputs.bump }}" != "none" ]; then
+            git add ${{ inputs.plugin }}/package.json
+            git commit -m "release(${{ inputs.plugin }}): v${{ steps.version.outputs.version }}"
+          fi
           git tag "${{ inputs.plugin }}@${{ steps.version.outputs.version }}"
           git push origin main --tags
 
