@@ -25,12 +25,14 @@
     "format": "prettier --write src",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
     "prepublishOnly": "pnpm clean && pnpm build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "bson-objectid": "^2.0.4",
-    "he": "^1.2.0"
+    "he": "^1.2.0",
+    "zod": "^4.3.6"
   },
   "peerDependencies": {
     "@payloadcms/translations": "^3.81.0",

@@ -3,7 +3,7 @@ import type { TranslateEndpointArgs, TranslateResult } from '../../translate/typ
 export const createClient = ({ api, serverURL }: { api: string; serverURL: string }) => {
   const translate = async (args: TranslateEndpointArgs): Promise<TranslateResult> => {
     try {
-      const response = await fetch(`${serverURL}${api}/translator/translate`, {
+      const response = await fetch(`${serverURL}${api}/content-translator/translate`, {
         body: JSON.stringify(args),
         credentials: 'include',
         headers: {

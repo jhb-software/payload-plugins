@@ -26,11 +26,13 @@
     "format": "prettier --write src",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
     "@payloadcms/plugin-cloud-storage": "^3.81.0",
-    "cloudinary": "^2.9.0"
+    "cloudinary": "^2.9.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",

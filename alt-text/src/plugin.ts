@@ -207,19 +207,19 @@ export const payloadAltTextPlugin =
         {
           handler: generateAltTextEndpoint(pluginConfig.access),
           method: 'post',
-          path: '/alt-text-plugin/generate',
+          path: '/alt-text/generate',
         },
         {
           handler: bulkGenerateAltTextsEndpoint(pluginConfig.access),
           method: 'post',
-          path: '/alt-text-plugin/generate/bulk',
+          path: '/alt-text/generate/bulk',
         },
         ...(enableHealthCheck
           ? [
               {
                 handler: altTextHealthEndpoint(pluginConfig.access),
                 method: 'get' as const,
-                path: '/alt-text-plugin/health',
+                path: '/alt-text/health',
               },
             ]
           : []),

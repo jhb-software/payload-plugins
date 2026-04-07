@@ -30,7 +30,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
       }
 
       try {
-        const response = await fetch('/api/alt-text-plugin/generate/bulk', {
+        const response = await fetch('/api/alt-text/generate/bulk', {
           body: JSON.stringify({
             collection: collectionSlug,
             ids: selectedIds,

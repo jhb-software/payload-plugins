@@ -19,7 +19,7 @@ export const altTextHealthEndpoint =
       req.payload.logger.error({
         err: error,
         msg: 'Failed to build alt text health response.',
-        path: '/alt-text-plugin/health',
+        path: '/alt-text/health',
         plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
       })
 

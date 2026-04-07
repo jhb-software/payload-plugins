@@ -76,7 +76,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
           typeof options.clientUploads === 'object' ? options.clientUploads.access : undefined,
         apiSecret: options.credentials.apiSecret,
       }),
-      serverHandlerPath: '/cloudinary-generate-signature',
+      serverHandlerPath: '/cloudinary/generate-signature',
     })
 
     if (isPluginDisabled) {

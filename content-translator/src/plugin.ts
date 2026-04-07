@@ -68,7 +68,7 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
             pluginConfig.access ?? (({ req }: { req: PayloadRequest }) => !!req.user),
           ),
           method: 'post',
-          path: '/translator/translate',
+          path: '/content-translator/translate',
         },
       ],
       globals:
