@@ -68,6 +68,75 @@ geocodingField({
 }),
 ```
 
+## Usage with AI Agents / API
+
+The default UI-based autocomplete requires a browser, which makes it unusable for AI agents and other API consumers. The plugin provides two server-side mechanisms to solve this.
+
+### Geocoding Search Endpoint
+
+The plugin registers a `GET /api/geocoding-plugin/search` endpoint that geocodes addresses server-side. It is authenticated by default (requires a logged-in user), and supports a custom access function:
+
+```ts
+plugins: [
+  payloadGeocodingPlugin({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    // Optional: customize who can access the endpoint
+    geocodingEndpoint: {
+      access: ({ req }) => Boolean(req.user),
+    },
+  }),
+]
+```
+
+An agent can then search for locations and use the results to populate fields:
+
+```bash
+# 1. Search for an address
+GET /api/geocoding-plugin/search?q=Alexanderplatz,+Berlin
+
+# Response:
+{
+  "results": [
+    {
+      "name": "Alexanderplatz",
+      "formattedAddress": "Alexanderplatz, 10178 Berlin, Germany",
+      "googlePlaceId": "ChIJp1l4uWBRqEcR2SPNRBMhtAI",
+      "location": { "lat": 52.5219, "lng": 13.4132 },
+      "types": [...]
+    }
+  ]
+}
+
+# 2. Use the result to create/update a document
+POST /api/pages
+{
+  "title": "My Page",
+  "location": [13.4132, 52.5219],
+  "location_meta": {
+    "name": "Alexanderplatz",
+    "formattedAddress": "Alexanderplatz, 10178 Berlin, Germany",
+    "googlePlaceId": "ChIJp1l4uWBRqEcR2SPNRBMhtAI",
+    "types": ["point_of_interest", "establishment"]
+  }
+}
+```
+
+### Server-Side Address Geocoding (beforeChange Hook)
+
+Every `geocodingField` automatically includes a hidden `{fieldName}_address` text field. When an address string is submitted via the API, a `beforeChange` hook geocodes it server-side and populates the point and meta fields.
+
+An agent can simply submit an address string — the coordinates and metadata are resolved automatically:
+
+```bash
+POST /api/pages
+{
+  "title": "My Page",
+  "location_address": "Alexanderplatz, Berlin"
+}
+```
+
+The hook geocodes the address, sets the `location` point field to `[lng, lat]`, and populates `location_meta` with the location metadata.
+
 ## About this plugin
 
 This plugin uses the Google Maps Places API (New) `AutocompleteSuggestion` API to provide a search input for finding an address. The selected location's metadata is stored in a JSON field and the coordinates are stored in a Point Field.

@@ -2,6 +2,8 @@ import type { Config } from 'payload'
 
 import type { GeocodingPluginConfig } from './types/GeoCodingPluginConfig.js'
 
+import { createGeocodingSearchEndpoint } from './endpoints/geocodingSearch.js'
+
 /**
  * Payload plugin which extends the point field with geocoding functionality.
  */
@@ -13,6 +15,11 @@ export const payloadGeocodingPlugin =
       return incomingConfig
     }
 
+    const geocodingEndpoint = createGeocodingSearchEndpoint({
+      access: pluginOptions.geocodingEndpoint?.access,
+      apiKey: pluginOptions.googleMapsApiKey,
+    })
+
     // Store API key in config.custom for server component access
     const config: Config = {
       ...incomingConfig,
@@ -22,6 +29,7 @@ export const payloadGeocodingPlugin =
           googleMapsApiKey: pluginOptions.googleMapsApiKey,
         },
       },
+      endpoints: [...(incomingConfig.endpoints ?? []), geocodingEndpoint],
     }
 
     return config
