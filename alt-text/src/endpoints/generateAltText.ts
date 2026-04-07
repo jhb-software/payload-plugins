@@ -19,7 +19,7 @@ export const generateAltTextEndpoint =
       const data = 'json' in req && typeof req.json === 'function' ? await req.json() : null
 
       const requestSchema = z.object({
-        id: z.string(),
+        id: z.union([z.string(), z.number()]),
         collection: z.string(),
         locale: z.string().nullable(),
       })

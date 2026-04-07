@@ -22,7 +22,7 @@ export const bulkGenerateAltTextsEndpoint =
 
       const schema = z.object({
         collection: z.string(),
-        ids: z.array(z.string()),
+        ids: z.array(z.union([z.string(), z.number()])),
       })
 
       const { collection, ids } = schema.parse(data)
@@ -111,7 +111,7 @@ async function generateAndUpdateAltText({
   req,
 }: {
   collection: CollectionSlug
-  id: string
+  id: number | string
   locales: string[]
   payload: BasePayload
   pluginConfig: AltTextPluginConfig
