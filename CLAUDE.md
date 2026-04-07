@@ -22,11 +22,7 @@ This is enforced by a `commit-msg` git hook via commitlint. PR titles follow the
 
 ## Document ID Types
 
-All document IDs **must** support both `string` and `number` to ensure compatibility with MongoDB (string ObjectIds) and PostgreSQL (numeric IDs). Never type a document ID as only `string` or only `number`.
-
-- **Prefer** using the `DefaultDocumentIDType` type exported from `'payload'` (e.g., `import type { DefaultDocumentIDType } from 'payload'`)
-- **Fallback** to `number | string` when `payload` is not a dependency (e.g., in the `astro-payload-richtext-lexical` package)
-- This applies to all ID fields: document IDs, relationship values, array/block item IDs, and any other references to Payload document IDs
+Document IDs must always support both `string` and `number` (MongoDB uses strings, PostgreSQL uses numbers). Use `DefaultDocumentIDType` from `'payload'`, or `number | string` when `payload` is not a dependency.
 
 ## Test-Driven Fixes and Features
 
