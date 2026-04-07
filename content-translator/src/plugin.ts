@@ -1,4 +1,4 @@
-import type { Config, Plugin } from 'payload'
+import type { Config, PayloadRequest, Plugin } from 'payload'
 
 import { deepMerge } from 'payload/shared'
 
@@ -64,7 +64,9 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
       endpoints: [
         ...(config.endpoints ?? []),
         {
-          handler: translateEndpoint,
+          handler: translateEndpoint(
+            pluginConfig.access ?? (({ req }: { req: PayloadRequest }) => !!req.user),
+          ),
           method: 'post',
           path: '/translator/translate',
         },

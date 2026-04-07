@@ -87,6 +87,7 @@ export const payloadAltTextPlugin =
     const enableHealthCheck = incomingPluginConfig.healthCheck !== false
 
     const pluginConfig: AltTextPluginConfig = {
+      access: incomingPluginConfig.access ?? (({ req }) => !!req.user),
       collections: incomingPluginConfig.collections,
       enabled: incomingPluginConfig.enabled ?? true,
       fieldsOverride: incomingPluginConfig.fieldsOverride,
@@ -204,19 +205,19 @@ export const payloadAltTextPlugin =
       endpoints: [
         ...(config.endpoints ?? []),
         {
-          handler: generateAltTextEndpoint,
+          handler: generateAltTextEndpoint(pluginConfig.access),
           method: 'post',
           path: '/alt-text-plugin/generate-alt-text',
         },
         {
-          handler: bulkGenerateAltTextsEndpoint,
+          handler: bulkGenerateAltTextsEndpoint(pluginConfig.access),
           method: 'post',
           path: '/alt-text-plugin/bulk-generate-alt-texts',
         },
         ...(enableHealthCheck
           ? [
               {
-                handler: altTextHealthEndpoint,
+                handler: altTextHealthEndpoint(pluginConfig.access),
                 method: 'get' as const,
                 path: '/alt-text-plugin/health',
               },

@@ -1757,6 +1757,147 @@ describe('Select during read operation', () => {
   })
 })
 
+describe('Select during create and update operations', () => {
+  beforeEach(async () => {
+    await deleteCollection('pages')
+  })
+
+  test('create with select: { path: true } returns the virtual field', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root Page',
+        slug: 'root-page',
+        content: 'Root content',
+        ...virtualFields,
+      },
+      select: {
+        path: true,
+      },
+    })
+
+    expect(rootPage.path).toBe('/de/root-page')
+  })
+
+  test('create with select: { breadcrumbs: true } returns the virtual field', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root Page',
+        slug: 'root-page',
+        content: 'Root content',
+        ...virtualFields,
+      },
+      select: {
+        breadcrumbs: true,
+      },
+    })
+
+    expect(rootPage.breadcrumbs).toBeDefined()
+    expect(rootPage.breadcrumbs!.length).toBeGreaterThan(0)
+  })
+
+  test('update with select: { path: true } returns the virtual field', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page',
+        slug: 'my-page',
+        content: 'Content',
+        ...virtualFields,
+      },
+    })
+
+    const updated = await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale: 'de',
+      data: {
+        title: 'Page Updated',
+      },
+      select: {
+        path: true,
+      },
+    })
+
+    expect(updated.path).toBe('/de/my-page')
+  })
+
+  test('update with select: { path: true } still provides virtual fields to afterChange hooks', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page',
+        slug: 'my-page',
+        content: 'Content',
+        ...virtualFields,
+      },
+    })
+
+    clearCapturedAfterChanges()
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale: 'de',
+      data: {
+        title: 'Page Updated',
+      },
+      select: {
+        path: true,
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/my-page')
+    expect(previousDoc.path).toBe('/de/my-page')
+  })
+
+  test('update with select: { breadcrumbs: true } returns the virtual field for nested page', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root',
+        slug: 'root',
+        content: 'Root',
+        ...virtualFields,
+      },
+    })
+
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Child',
+        slug: 'child',
+        content: 'Child',
+        parent: rootPage.id,
+        ...virtualFields,
+      },
+    })
+
+    const updated = await payload.update({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      data: {
+        title: 'Child Updated',
+      },
+      select: {
+        breadcrumbs: true,
+      },
+    })
+
+    expect(updated.breadcrumbs).toBeDefined()
+    expect(updated.breadcrumbs!.length).toBe(2)
+  })
+})
+
 describe('The afterChange hook doc and previousDoc contain the path of the page.', () => {
   beforeEach(async () => {
     // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.

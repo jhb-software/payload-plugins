@@ -1,16 +1,16 @@
 # Changelog
 
-## 0.7.1-beta
-
-- fix: pass draft arg to parent document lookups in breadcrumb generation
-- feat: pass full req to payload.findByID in getBreadcrumbs
-- fix: only set alternatePaths on previousDoc meta instead of copying entire meta
-
-## 0.7.0-beta
+## 0.7.0
 
 - feat: add request-scoped ancestor caching to avoid redundant DB queries when computing virtual fields for sibling pages
+- feat: pass full req to payload.findByID in getBreadcrumbs
 - fix: populate virtual fields (`path`, `breadcrumbs`) on `previousDoc` in the `afterChange` hook, and run the plugin's hook before user-defined hooks so that `doc` also contains the virtual fields
 - fix: gracefully handle errors when computing virtual fields (e.g. when a parent document no longer exists) instead of crashing the operation
+- fix: use overrideAccess for parent document fetches in breadcrumb generation
+- fix: prevent circular parent references
+- fix: only set alternatePaths on previousDoc meta instead of copying entire meta
+- fix: pass draft arg to parent document lookups in breadcrumb generation
+- chore: upgrade to Payload 3.79.0
 
 ## 0.6.0
 
