@@ -4,6 +4,8 @@ import { z, ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
+import { isUnsupportedMimeType } from '../utilities/isUnsupportedMimeType.js'
+
 /**
  * Generates alt text for a single image using the configured resolver.
  *
@@ -40,6 +42,20 @@ export const generateAltTextEndpoint =
 
       if (!imageDoc) {
         return Response.json({ error: 'Image not found' }, { status: 404 })
+      }
+
+      const mimeType =
+        'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string'
+          ? imageDoc.mimeType
+          : undefined
+
+      if (isUnsupportedMimeType(mimeType)) {
+        return Response.json(
+          {
+            error: `Alt text generation is not supported for files of type "${mimeType}". Only raster image formats (JPEG, PNG, GIF, WebP) are supported.`,
+          },
+          { status: 400 },
+        )
       }
 
       const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
