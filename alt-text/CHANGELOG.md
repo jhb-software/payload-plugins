@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- feat: add `supportedMimeTypes` to resolver interface to declare supported image formats
-- feat: disable generate button with tooltip for unsupported file types (e.g. SVG)
-- fix: reject unsupported file types in endpoints with clear error including the MIME type
+- fix: reject unsupported file types (e.g. SVG) with clear error showing the MIME type
 
 ## 0.4.2
 
