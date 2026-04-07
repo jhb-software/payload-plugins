@@ -22,5 +22,6 @@
       }
     ]
   },
-  "include": ["./src/**/*.ts", "./src/**/*.tsx", "./dev/next-env.d.ts"]
+  "include": ["./src/**/*.ts", "./src/**/*.tsx", "./dev/next-env.d.ts"],
+  "exclude": ["./src/**/*.test.ts", "./src/**/*.test.tsx"]
 }

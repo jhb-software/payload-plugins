@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import type { VercelDeploymentsPluginConfig } from '../types.js'
+import type { VercelDeploymentsPluginConfig } from './types.js'
 
-import { vercelDeploymentsPlugin } from '../plugin.js'
+import { vercelDeploymentsPlugin } from './plugin.js'
 
 const basePluginConfig: VercelDeploymentsPluginConfig = {
   vercel: {

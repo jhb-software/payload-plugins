@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { VercelDeploymentsPluginConfig } from '../../types.js'
+import type { VercelDeploymentsPluginConfig } from '../types.js'
 
-import { getDeploymentsEndpoint } from '../getDeployments.js'
-import { triggerDeploymentEndpoint } from '../triggerDeployment.js'
+import { getDeploymentsEndpoint } from './getDeployments.js'
+import { triggerDeploymentEndpoint } from './triggerDeployment.js'
 
 const mockPluginConfig: VercelDeploymentsPluginConfig = {
   vercel: {

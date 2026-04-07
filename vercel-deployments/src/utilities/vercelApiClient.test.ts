@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { VercelApiClient } from '../vercelApiClient.js'
+import { VercelApiClient } from './vercelApiClient.js'
 
 describe('VercelApiClient', () => {
   let client: VercelApiClient
