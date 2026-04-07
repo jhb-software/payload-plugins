@@ -80,9 +80,21 @@ jobs:
           git tag "${{ inputs.plugin }}@${{ steps.version.outputs.version }}"
           git push origin main --tags
 
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHANGELOG="${{ inputs.plugin }}/CHANGELOG.md"
+          # Extract the section between the first ## heading and the next ## heading (or EOF)
+          BODY=$(awk '/^## /{if(found) exit; found=1; next} found{print}' "$CHANGELOG")
+          # Use a delimiter to handle multiline output
+          echo "body<<CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.plugin }}@${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.package_name }}@${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          body: ${{ steps.changelog.outputs.body }}
