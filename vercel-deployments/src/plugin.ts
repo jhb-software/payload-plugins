@@ -17,8 +17,7 @@ export const vercelDeploymentsPlugin =
       return config
     }
 
-    const componentPath =
-      '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget'
+    const componentPath = '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget'
 
     return {
       ...config,
