@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+
+- fix: dashboard health widget not rendering on Payload <3.79.0 (`ComponentPath` was renamed to `Component` in 3.79.0)
+
 ## 0.4.1
 
 - fix: fix broken package exports (use pnpm publish to apply publishConfig.exports)

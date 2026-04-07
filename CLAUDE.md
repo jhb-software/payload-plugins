@@ -20,6 +20,10 @@ Examples:
 
 This is enforced by a `commit-msg` git hook via commitlint. PR titles follow the same format (enforced by CI).
 
+## Publishing
+
+Publishing is done via the `Release` GitHub Actions workflow (manual dispatch). Select the plugin and bump type (patch/minor/major). The workflow bumps the version in `package.json`, verifies the changelog has a matching `## <version>` heading, publishes to npm, commits the version bump, creates a git tag, and creates a GitHub release. Do not bump versions or publish manually — the changelog entry must be committed beforehand with the target version as the heading.
+
 ## Document ID Types
 
 Document IDs must always support both `string` and `number` (MongoDB uses strings, PostgreSQL uses numbers). Use `DefaultDocumentIDType` from `'payload'`, or `number | string` when `payload` is not a dependency.
