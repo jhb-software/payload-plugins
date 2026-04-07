@@ -1,7 +1,7 @@
 import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
 
 import pMap from 'p-map'
-import { z } from 'zod'
+import { z, ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
@@ -28,7 +28,7 @@ export const bulkGenerateAltTextsEndpoint =
       const { collection, ids } = schema.parse(data)
 
       let updatedDocs = 0
-      const erroredDocs: string[] = []
+      const erroredDocs: (number | string)[] = []
 
       // Get plugin config from payload config
       const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
@@ -92,6 +92,18 @@ export const bulkGenerateAltTextsEndpoint =
         updatedDocs,
       })
     } catch (error) {
+      if (error instanceof ZodError) {
+        return Response.json(
+          {
+            details: error.issues.map((e) => ({
+              message: e.message,
+              path: e.path.join('.'),
+            })),
+            error: 'Validation failed',
+          },
+          { status: 400 },
+        )
+      }
       console.error('Error in bulk generation:', error)
       return Response.json(
         {

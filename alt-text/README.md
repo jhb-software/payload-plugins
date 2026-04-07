@@ -128,6 +128,80 @@ export const customResolver = (): AltTextResolver => ({
 })
 ```
 
+## REST API Endpoints
+
+The plugin registers the following REST API endpoints under `/api/alt-text-plugin/`. All endpoints require authentication by default (configurable via the `access` option).
+
+### `POST /api/alt-text-plugin/generate`
+
+Generates alt text for a single image. By default, returns the result without saving it (preview mode). Pass `update: true` to also persist the generated alt text and keywords to the document.
+
+**Request body:**
+
+| Field        | Type               | Required | Description                                                              |
+| ------------ | ------------------ | -------- | ------------------------------------------------------------------------ |
+| `id`         | `string \| number` | Yes      | The document ID                                                          |
+| `collection` | `string`           | Yes      | The collection slug                                                      |
+| `locale`     | `string \| null`   | Yes      | Target locale (use `null` for non-localized setups)                      |
+| `update`     | `boolean`          | No       | When `true`, persists the result to the document (default: `false`)      |
+
+**Response:**
+
+```json
+{
+  "id": "abc123",
+  "collection": "media",
+  "altText": "A canal scene in a European city with historic buildings.",
+  "keywords": ["canal", "buildings", "European city"]
+}
+```
+
+### `POST /api/alt-text-plugin/generate/bulk`
+
+Generates and persists alt text for multiple images across all configured locales.
+
+**Request body:**
+
+| Field        | Type                 | Required | Description                                                         |
+| ------------ | -------------------- | -------- | ------------------------------------------------------------------- |
+| `collection` | `string`             | Yes      | The collection slug                                                 |
+| `ids`        | `(string \| number)[]` | Yes    | Array of document IDs to process                                    |
+
+**Response:**
+
+```json
+{
+  "updatedDocs": 5,
+  "totalDocs": 6,
+  "erroredDocs": ["abc789"]
+}
+```
+
+### `GET /api/alt-text-plugin/health`
+
+Returns alt text coverage statistics across all configured collections. Only available when `healthCheck` is enabled.
+
+**Response:**
+
+```json
+{
+  "checkedAt": "2025-01-01T00:00:00.000Z",
+  "collections": [
+    {
+      "collection": "media",
+      "totalDocs": 12,
+      "completeDocs": 10,
+      "partialDocs": 1,
+      "missingDocs": 1,
+      "invalidDocIds": ["abc123"]
+    }
+  ],
+  "isLocalized": true,
+  "localeCodes": ["en", "de"],
+  "errors": []
+}
+```
+
 ## Roadmap
 
 > **Warning**: This plugin is actively evolving and may undergo significant changes. While it is functional, please thoroughly test before using in production environments.

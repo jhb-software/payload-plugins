@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- feat: add configurable `access` option for plugin endpoints (defaults to requiring authentication)
-- feat: add alt text health check with dashboard widget and REST endpoint (opt-out via `healthCheck: false`)
+- feat: add REST endpoints (`/generate`, `/generate/bulk`, `/health`) with configurable `access` option
+- feat: add alt text health check with dashboard widget
 
 ## 0.3.1
 
