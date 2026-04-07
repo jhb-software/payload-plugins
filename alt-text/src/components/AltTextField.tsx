@@ -9,6 +9,8 @@ import { GenerateAltTextButton } from './GenerateAltTextButton.js'
 export const AltTextField = (clientProps: TextareaFieldClientProps) => {
   const { field, path } = clientProps
 
+  const supportedMimeTypes = field.admin?.custom?.supportedMimeTypes as string[] | undefined
+
   const { setValue, value } = useField<string>({ path })
   const { id } = useDocumentInfo()
 
@@ -27,7 +29,7 @@ export const AltTextField = (clientProps: TextareaFieldClientProps) => {
 
       <div className="field-type__wrap">
         <TextareaInput
-          AfterInput={<GenerateAltTextButton />}
+          AfterInput={<GenerateAltTextButton supportedMimeTypes={supportedMimeTypes} />}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
           path={path}
           required={required}

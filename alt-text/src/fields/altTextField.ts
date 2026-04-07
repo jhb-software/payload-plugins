@@ -4,8 +4,10 @@ import { translatedLabel } from '../utils/translatedLabel.js'
 
 export function altTextField({
   localized,
+  supportedMimeTypes,
 }: {
   localized?: TextareaField['localized']
+  supportedMimeTypes?: string[]
 }): TextareaField {
   return {
     name: 'alt',
@@ -13,6 +15,9 @@ export function altTextField({
     admin: {
       components: {
         Field: '@jhb.software/payload-alt-text-plugin/client#AltTextField',
+      },
+      custom: {
+        supportedMimeTypes,
       },
     },
     label: translatedLabel('alternateText'),
