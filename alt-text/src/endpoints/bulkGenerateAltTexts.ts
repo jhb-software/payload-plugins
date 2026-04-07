@@ -140,9 +140,7 @@ async function generateAndUpdateAltText({
   }
 
   const mimeType =
-    'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string'
-      ? imageDoc.mimeType
-      : undefined
+    'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string' ? imageDoc.mimeType : undefined
 
   if (
     mimeType &&

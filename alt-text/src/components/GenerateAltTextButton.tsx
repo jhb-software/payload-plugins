@@ -11,11 +11,7 @@ import type {
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 
-export function GenerateAltTextButton({
-  supportedMimeTypes,
-}: {
-  supportedMimeTypes?: string[]
-}) {
+export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTypes?: string[] }) {
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
   const { id, collectionSlug } = useDocumentInfo()
   const locale = useLocale()
