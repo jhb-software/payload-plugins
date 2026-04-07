@@ -36,8 +36,8 @@ const defaultAccess: NonNullable<VercelDeploymentsPluginConfig['access']> = ({ r
 
 export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest) => {
   const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
-    | VercelDeploymentsPluginConfig
     | undefined
+    | VercelDeploymentsPluginConfig
 
   if (!pluginConfig) {
     return Response.json({ error: 'Plugin config not found' }, { status: 500 })

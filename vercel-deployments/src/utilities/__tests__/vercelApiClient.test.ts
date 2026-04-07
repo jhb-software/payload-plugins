@@ -19,8 +19,8 @@ describe('VercelApiClient', () => {
   describe('getDeployments', () => {
     it('calls the correct URL with projectId and auth header', async () => {
       mockFetch.mockResolvedValueOnce({
-        ok: true,
         json: () => Promise.resolve({ deployments: [], pagination: { count: 0 } }),
+        ok: true,
       })
 
       await client.getDeployments({ projectId: 'prj-123' })
@@ -41,16 +41,16 @@ describe('VercelApiClient', () => {
 
     it('includes teamId, target, state, and limit when provided', async () => {
       mockFetch.mockResolvedValueOnce({
-        ok: true,
         json: () => Promise.resolve({ deployments: [], pagination: { count: 0 } }),
+        ok: true,
       })
 
       await client.getDeployments({
-        projectId: 'prj-123',
-        teamId: 'team-456',
-        target: 'production',
-        state: 'READY',
         limit: 5,
+        projectId: 'prj-123',
+        state: 'READY',
+        target: 'production',
+        teamId: 'team-456',
       })
 
       const calledUrl = mockFetch.mock.calls[0][0] as string
@@ -76,16 +76,16 @@ describe('VercelApiClient', () => {
   describe('getDeployment', () => {
     it('calls the correct URL with deployment id', async () => {
       mockFetch.mockResolvedValueOnce({
-        ok: true,
         json: () =>
           Promise.resolve({
             id: 'dpl-abc',
-            uid: 'dpl-abc',
             name: 'test',
-            status: 'READY',
-            state: 'READY',
             created: Date.now(),
+            state: 'READY',
+            status: 'READY',
+            uid: 'dpl-abc',
           }),
+        ok: true,
       })
 
       const result = await client.getDeployment({ idOrUrl: 'dpl-abc' })
@@ -101,21 +101,21 @@ describe('VercelApiClient', () => {
   describe('createDeployment', () => {
     it('sends POST request with correct body', async () => {
       mockFetch.mockResolvedValueOnce({
-        ok: true,
         json: () =>
           Promise.resolve({
             id: 'dpl-new',
-            uid: 'dpl-new',
             name: 'test',
-            status: 'BUILDING',
             created: Date.now(),
+            status: 'BUILDING',
+            uid: 'dpl-new',
           }),
+        ok: true,
       })
 
       const result = await client.createDeployment({
         requestBody: {
-          deploymentId: 'dpl-old',
           name: 'my-project',
+          deploymentId: 'dpl-old',
           target: 'production',
         },
         teamId: 'team-456',
@@ -124,12 +124,12 @@ describe('VercelApiClient', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/v13/deployments'),
         expect.objectContaining({
-          method: 'POST',
           body: JSON.stringify({
-            deploymentId: 'dpl-old',
             name: 'my-project',
+            deploymentId: 'dpl-old',
             target: 'production',
           }),
+          method: 'POST',
         }),
       )
 

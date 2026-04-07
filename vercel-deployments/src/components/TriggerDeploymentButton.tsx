@@ -13,7 +13,7 @@ export const TriggerFrontendDeploymentButton: React.FC = () => {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { t } = useDashboardTranslation()
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const intervalRef = useRef<null | ReturnType<typeof setInterval>>(null)
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -39,7 +39,9 @@ export const TriggerFrontendDeploymentButton: React.FC = () => {
           credentials: 'include',
         })
           .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}`)
+            }
             return res.json()
           })
           .then((deployment: { id: string; status: VercelDeployment['status'] }) => {
@@ -49,11 +51,15 @@ export const TriggerFrontendDeploymentButton: React.FC = () => {
             }
 
             if (deployment.status === 'READY') {
-              if (intervalRef.current) clearInterval(intervalRef.current)
+              if (intervalRef.current) {
+                clearInterval(intervalRef.current)
+              }
               intervalRef.current = null
               toast.success(t('vercel-dashboard:deploymentInfoDeploymentCompletedSuccessfully'))
             } else if (deployment.status === 'ERROR' || deployment.status === 'CANCELED') {
-              if (intervalRef.current) clearInterval(intervalRef.current)
+              if (intervalRef.current) {
+                clearInterval(intervalRef.current)
+              }
               intervalRef.current = null
               toast.error(t('vercel-dashboard:deploymentInfoDeploymentTriggeredFailed'))
             }

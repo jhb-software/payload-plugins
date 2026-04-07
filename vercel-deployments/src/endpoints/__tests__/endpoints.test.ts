@@ -14,11 +14,12 @@ const mockPluginConfig: VercelDeploymentsPluginConfig = {
 }
 
 function createMockReq(overrides: {
+  pluginConfig?: null | VercelDeploymentsPluginConfig
   url?: string
   user?: { id: string } | null
-  pluginConfig?: VercelDeploymentsPluginConfig | null
 }) {
   return {
+    json: vi.fn(),
     payload: {
       config: {
         custom: {
@@ -31,7 +32,6 @@ function createMockReq(overrides: {
     },
     url: overrides.url ?? 'http://localhost:3000/api/vercel-deployments',
     user: overrides.user ?? null,
-    json: vi.fn(),
   } as any
 }
 
@@ -46,15 +46,15 @@ describe('getDeploymentsEndpoint', () => {
 
   it('returns 401 when custom access function denies access', async () => {
     const req = createMockReq({
-      user: { id: 'user-1' },
       pluginConfig: { ...mockPluginConfig, access: () => false },
+      user: { id: 'user-1' },
     })
     const response = await getDeploymentsEndpoint(req)
     expect(response.status).toBe(401)
   })
 
   it('returns 500 when plugin config is not found', async () => {
-    const req = createMockReq({ user: { id: 'user-1' }, pluginConfig: null })
+    const req = createMockReq({ pluginConfig: null, user: { id: 'user-1' } })
     const response = await getDeploymentsEndpoint(req)
     expect(response.status).toBe(500)
     const body = await response.json()
@@ -73,15 +73,15 @@ describe('triggerDeploymentEndpoint', () => {
 
   it('returns 401 when custom access function denies access', async () => {
     const req = createMockReq({
-      user: { id: 'user-1' },
       pluginConfig: { ...mockPluginConfig, access: () => false },
+      user: { id: 'user-1' },
     })
     const response = await triggerDeploymentEndpoint(req)
     expect(response.status).toBe(401)
   })
 
   it('returns 500 when plugin config is not found', async () => {
-    const req = createMockReq({ user: { id: 'user-1' }, pluginConfig: null })
+    const req = createMockReq({ pluginConfig: null, user: { id: 'user-1' } })
     const response = await triggerDeploymentEndpoint(req)
     expect(response.status).toBe(500)
     const body = await response.json()

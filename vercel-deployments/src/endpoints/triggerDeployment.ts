@@ -13,8 +13,8 @@ const defaultAccess: NonNullable<VercelDeploymentsPluginConfig['access']> = ({ r
 
 export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequest) => {
   const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
-    | VercelDeploymentsPluginConfig
     | undefined
+    | VercelDeploymentsPluginConfig
 
   if (!pluginConfig) {
     return Response.json({ error: 'Plugin config not found' }, { status: 500 })
@@ -47,8 +47,8 @@ export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequ
 
     const deployment = await vercelClient.createDeployment({
       requestBody: {
-        deploymentId: latestReadyDeployment.uid,
         name: pluginConfig.vercel.projectId,
+        deploymentId: latestReadyDeployment.uid,
         target: 'production',
       },
       teamId: pluginConfig.vercel.teamId,

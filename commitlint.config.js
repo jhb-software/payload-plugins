@@ -30,6 +30,7 @@ module.exports = {
         'content-translator',
         'geocoding',
         'pages',
+        'vercel-deployments',
       ],
     ],
   },
