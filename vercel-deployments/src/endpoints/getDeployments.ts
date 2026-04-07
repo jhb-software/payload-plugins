@@ -48,7 +48,7 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const url = new URL(req.url ?? '', 'http://localhost')
+  const url = new URL(req.url!)
   const id = url.searchParams.get('id')
 
   try {
