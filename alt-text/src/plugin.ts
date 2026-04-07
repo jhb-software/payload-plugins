@@ -17,16 +17,18 @@ import {
 import { translations } from './translations/index.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
-const altTextHealthWidgetDefinition: Widget = {
+const altTextHealthWidgetDefinition = {
   slug: 'alt-text-health',
+  // `Component` was renamed from `ComponentPath` in Payload 3.79.0. Set both for backward compatibility.
   Component: '@jhb.software/payload-alt-text-plugin/server#AltTextHealthWidget',
+  ComponentPath: '@jhb.software/payload-alt-text-plugin/server#AltTextHealthWidget',
   label: {
     de: 'Alternativtexte Zustand',
     en: 'Alt text health',
   },
   maxWidth: 'full',
   minWidth: 'medium',
-}
+} satisfies { ComponentPath: string } & Widget
 
 type DashboardDefaultLayout = Config['admin'] extends infer TAdmin
   ? TAdmin extends { dashboard?: infer TDashboard }
