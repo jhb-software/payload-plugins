@@ -22,7 +22,7 @@ export const bulkGenerateAltTextsEndpoint =
 
       const schema = z.object({
         collection: z.string(),
-        ids: z.array(z.string()),
+        ids: z.array(z.coerce.string()),
       })
 
       const { collection, ids } = schema.parse(data)
