@@ -67,7 +67,8 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
       }
 
       const responseText = await res.text()
-      const deployment: { id: string; status: VercelDeployment['status'] } = JSON.parse(responseText)
+      const deployment: { id: string; status: VercelDeployment['status'] } =
+        JSON.parse(responseText)
 
       if (
         deployment.status === 'READY' ||
