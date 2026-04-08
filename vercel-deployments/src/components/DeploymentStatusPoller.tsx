@@ -6,6 +6,8 @@ import React, { createContext, use, useCallback, useEffect, useRef, useState } f
 import type { DeploymentsInfo } from '../endpoints/getDeployments.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
+import { hasDeploymentDataChanged } from './hasDeploymentDataChanged.js'
+
 const IDLE_INTERVAL = 2 * 60 * 1000 // 2 minutes
 const ACTIVE_INTERVAL = 5 * 1000 // 5 seconds
 
@@ -30,6 +32,7 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
   const intervalRef = useRef<null | ReturnType<typeof setInterval>>(null)
   const activeDeploymentIdRef = useRef<null | string>(null)
   const [isBuilding, setIsBuilding] = useState(false)
+  const lastResponseRef = useRef<null | string>(null)
 
   const clearPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -65,7 +68,8 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
         return
       }
 
-      const deployment: { id: string; status: VercelDeployment['status'] } = await res.json()
+      const responseText = await res.text()
+      const deployment: { id: string; status: VercelDeployment['status'] } = JSON.parse(responseText)
 
       if (
         deployment.status === 'READY' ||
@@ -77,7 +81,10 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
         setIsBuilding(false)
       }
 
-      router.refresh()
+      if (hasDeploymentDataChanged(lastResponseRef.current, responseText)) {
+        lastResponseRef.current = responseText
+        router.refresh()
+      }
     } catch {
       // Silently ignore polling errors
     }
@@ -91,7 +98,8 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
         return
       }
 
-      const data: DeploymentsInfo = await res.json()
+      const responseText = await res.text()
+      const data: DeploymentsInfo = JSON.parse(responseText)
 
       // Detect if there's an active build we should track
       if (
@@ -103,11 +111,15 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
       ) {
         // External build detected — switch to active polling
         activeDeploymentIdRef.current = data.latestDeployment.uid
+        lastResponseRef.current = responseText
         setIsBuilding(true)
         return
       }
 
-      router.refresh()
+      if (hasDeploymentDataChanged(lastResponseRef.current, responseText)) {
+        lastResponseRef.current = responseText
+        router.refresh()
+      }
     } catch {
       // Silently ignore polling errors
     }

@@ -2,6 +2,7 @@
 
 ## 0.2.0
 
+- fix: prevent widget from refreshing when deployment data has not changed (fixes constant refresh in dashboard edit mode)
 - feat: display icon and title in same row with larger title using Payload CSS vars
 - feat: add optional `widget.websiteUrl` config to display a website link
 - feat: make widget description optional and configurable via `widget.description`
