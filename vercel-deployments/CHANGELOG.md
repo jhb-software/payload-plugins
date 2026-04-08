@@ -3,8 +3,9 @@
 ## Unreleased
 
 - feat: display icon and title in same row with larger title using Payload CSS vars
-- feat: add optional `widget.websiteUrl` config to display a website link with globe icon
-- feat: make widget description optional and configurable via `widget.description` (accepts `string` or `Record<lang, string>`)
+- feat: add optional `widget.websiteUrl` config to display a website link
+- feat: make widget description optional and configurable via `widget.description`
+- refactor: use i18next interpolation for translations
 
 ## 0.1.0
 

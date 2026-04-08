@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- refactor: use i18next interpolation for translations
+
 ## 0.2.1
 
 - fix: use collection label instead of slug in document search result

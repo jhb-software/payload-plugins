@@ -3,6 +3,8 @@
 ## Unreleased
 
 - fix: reject unsupported file types (e.g. SVG) with clear error showing the MIME type
+- style: use Payload Pill component and SVG icons in health widget
+- refactor: use i18next interpolation for translations
 
 ## 0.4.2
 
@@ -29,6 +31,7 @@
 2. The plugin now uses a resolver pattern for alt text generation. This allows integration with any AI provider.
 
 **Before (v0.2.x):**
+
 ```typescript
 import { payloadAltTextPlugin } from '@jhb.software/payload-alt-text-plugin'
 
@@ -41,6 +44,7 @@ payloadAltTextPlugin({
 ```
 
 **After (v0.3.0):**
+
 ```typescript
 import { payloadAltTextPlugin, openAIResolver } from '@jhb.software/payload-alt-text-plugin'
 
