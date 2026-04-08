@@ -6,8 +6,6 @@ import React, { createContext, use, useCallback, useEffect, useRef, useState } f
 import type { DeploymentsInfo } from '../endpoints/getDeployments.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
-import { hasDeploymentDataChanged } from './hasDeploymentDataChanged.js'
-
 const IDLE_INTERVAL = 2 * 60 * 1000 // 2 minutes
 const ACTIVE_INTERVAL = 5 * 1000 // 5 seconds
 
@@ -81,7 +79,7 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
         setIsBuilding(false)
       }
 
-      if (hasDeploymentDataChanged(lastResponseRef.current, responseText)) {
+      if (lastResponseRef.current !== responseText) {
         lastResponseRef.current = responseText
         router.refresh()
       }
@@ -116,7 +114,7 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
         return
       }
 
-      if (hasDeploymentDataChanged(lastResponseRef.current, responseText)) {
+      if (lastResponseRef.current !== responseText) {
         lastResponseRef.current = responseText
         router.refresh()
       }
