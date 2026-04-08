@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - feat: display icon and title in same row with larger title using Payload CSS vars
 - feat: add optional `widget.websiteUrl` config to display a website link
