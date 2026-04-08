@@ -51,25 +51,26 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
 
         if (data.erroredDocs.length > 0) {
           toast.error(
-            t('@jhb.software/payload-alt-text-plugin:failedToGenerateForXImages').replace(
-              '{X}',
-              data.erroredDocs.length.toString(),
-            ),
+            t('@jhb.software/payload-alt-text-plugin:failedToGenerateForXImages', {
+              count: data.erroredDocs.length,
+            }),
           )
         }
 
         // in case not all images were updated, show a warning instead of a success message:
         if (data.updatedDocs === data.totalDocs) {
           toast.success(
-            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated')
-              .replace('{X}', data.updatedDocs.toString())
-              .replace('{Y}', data.totalDocs.toString()),
+            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated', {
+              total: data.totalDocs,
+              updated: data.updatedDocs,
+            }),
           )
         } else {
           toast.warning(
-            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated')
-              .replace('{X}', data.updatedDocs.toString())
-              .replace('{Y}', data.totalDocs.toString()),
+            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated', {
+              total: data.totalDocs,
+              updated: data.updatedDocs,
+            }),
           )
         }
 

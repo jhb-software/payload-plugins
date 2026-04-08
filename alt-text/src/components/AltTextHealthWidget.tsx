@@ -1,6 +1,9 @@
+import type { TFunction } from '@payloadcms/translations'
 import type { WidgetServerProps } from 'payload'
 
 import { Pill } from '@payloadcms/ui/elements/Pill'
+
+import type { PluginAltTextTranslationKeys } from '../translations/index.js'
 
 import { getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
 import { getAltTextHealthWidgetDisplayState } from '../utilities/altTextHealthWidgetDisplay.js'
@@ -10,8 +13,7 @@ import { CheckIcon } from './icons/CheckIcon.js'
 import { ImageIcon } from './icons/ImageIcon.js'
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
-  // Plugin translation keys are not in Payload's built-in key union
-  const t = req.t as (key: string) => string
+  const t = req.t as TFunction<PluginAltTextTranslationKeys>
   const { collections, errors, isLocalized, localeCount, totalDocs } =
     await getAltTextHealthWidgetData(req)
 
@@ -92,17 +94,19 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                   </span>
                 ) : (
                   <span style={{ fontSize: '13px', opacity: 0.7 }}>
-                    {t('@jhb.software/payload-alt-text-plugin:totalImageCount').replace(
-                      '{count}',
-                      String(collection.totalDocs),
-                    )}
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      {t('@jhb.software/payload-alt-text-plugin:totalImageCount', {
+                        count: collection.totalDocs,
+                      })}
+                    </span>
                     {isLocalized && (
                       <>
                         {' · '}
-                        {t('@jhb.software/payload-alt-text-plugin:localeCount').replace(
-                          '{count}',
-                          String(localeCount),
-                        )}
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          {t('@jhb.software/payload-alt-text-plugin:localeCount', {
+                            count: localeCount,
+                          })}
+                        </span>
                       </>
                     )}
                   </span>
@@ -118,8 +122,9 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                   to={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
                 >
                   <div style={{ alignItems: 'center', display: 'flex', gap: '0.25rem' }}>
-                    {collection.missingDocs + collection.partialDocs}{' '}
-                    {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
+                    {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy', {
+                      count: collection.missingDocs + collection.partialDocs,
+                    })}
                     <ArrowRightIcon height="12" width="12" />
                   </div>
                 </Pill>
@@ -132,8 +137,9 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                 </Pill>
               ) : displayState === 'unhealthy' ? (
                 <Pill pillStyle="error" size="small">
-                  {collection.missingDocs + collection.partialDocs}{' '}
-                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
+                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy', {
+                    count: collection.missingDocs + collection.partialDocs,
+                  })}
                 </Pill>
               ) : (
                 <Pill pillStyle="warning" size="small">

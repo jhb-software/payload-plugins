@@ -23,7 +23,7 @@ export const de: GenericTranslationsObject = {
     rootPage: 'Startseite',
     showBreadcrumbs: 'Navigationspfade anzeigen',
     slugWasChangedFromXToY:
-      'Die URL-Endung wurde von <code>{X}</code> zu <code>{Y}</code> geändert. Eine Weiterleitung vom alten zum neuen Pfad ist erforderlich.',
-    syncSlugWithX: 'Mit {X} synchronisieren',
+      'Die URL-Endung wurde von <code>{{from}}</code> zu <code>{{to}}</code> geändert. Eine Weiterleitung vom alten zum neuen Pfad ist erforderlich.',
+    syncSlugWithX: 'Mit {{field}} synchronisieren',
   },
 }
