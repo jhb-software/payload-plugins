@@ -3,6 +3,8 @@ import type { WidgetServerProps } from 'payload'
 import { getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
 import { getAltTextHealthWidgetDisplayState } from '../utilities/altTextHealthWidgetDisplay.js'
 import { getCollectionLabel } from '../utilities/getCollectionLabel.js'
+import { ArrowRightIcon } from './icons/ArrowRightIcon.js'
+import { CheckIcon } from './icons/CheckIcon.js'
 import { ImageIcon } from './icons/ImageIcon.js'
 
 const badgeStyles = {
@@ -128,7 +130,8 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                   }}
                 >
                   {collection.missingDocs + collection.partialDocs}{' '}
-                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')} →
+                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}{' '}
+                  <ArrowRightIcon height="12" width="12" />
                 </a>
               ) : displayState === 'healthy' ? (
                 <span
@@ -143,7 +146,8 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')} ✓
+                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')}{' '}
+                  <CheckIcon height="12" width="12" />
                 </span>
               ) : displayState === 'unhealthy' ? (
                 <span

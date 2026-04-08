@@ -1,8 +1,7 @@
 import React from 'react'
 
-export const ImageIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+export const CheckIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg
-    data-testid="geist-icon"
     fill="none"
     height="16"
     shapeRendering="geometricPrecision"
@@ -15,8 +14,6 @@ export const ImageIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     width="16"
     {...props}
   >
-    <rect height="18" rx="2" ry="2" width="18" x="3" y="3" />
-    <circle cx="8.5" cy="8.5" r="1.5" />
-    <path d="M21 15l-5-5L5 21" />
+    <path d="M20 6L9 17l-5-5" />
   </svg>
 )
