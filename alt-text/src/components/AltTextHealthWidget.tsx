@@ -26,7 +26,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>
+        <h3 style={{ margin: 0 }}>
           {t('@jhb.software/payload-alt-text-plugin:altTextHealthWidget')}
         </h3>
         <p style={{ color: 'var(--theme-text)', fontSize: '14px', margin: 0, opacity: 0.75 }}>
