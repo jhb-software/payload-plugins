@@ -8,8 +8,6 @@ export const en: GenericTranslationsObject = {
     deploymentInfoDeploymentTriggeredFailed: 'Failed to redeploy the latest production deployment',
     deploymentInfoDeploymentTriggeredSuccessfully:
       'Latest production deployment redeployed successfully',
-    deploymentInfoDescription:
-      'Since the website is static for performance reasons, a new deployment must be created when content changes in the CMS, rebuilding the website with the latest published content from the CMS. The build process usually takes 1-2 minutes.',
     deploymentInfoError: 'Error fetching deployment info',
     deploymentInfoInspectDeployment: 'Inspect Deployment',
     deploymentInfoLatestDeployment: 'Latest Deployment',
