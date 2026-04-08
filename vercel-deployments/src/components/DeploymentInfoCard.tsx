@@ -14,6 +14,7 @@ import { DeploymentStatusPoller } from './DeploymentStatusPoller.js'
 import { FormattedDate } from './FormattedDate.js'
 import { ClockIcon } from './icons/clock.js'
 import { ClockDashedIcon } from './icons/clock-dashed.js'
+import { GlobeIcon } from './icons/globe.js'
 import { InfoIcon } from './icons/info.js'
 import { SpinnerIcon } from './icons/spinner.js'
 import { TriggerFrontendDeploymentButton } from './TriggerDeploymentButton.js'
@@ -27,6 +28,8 @@ export function DeploymentInfoCard({
 }) {
   const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
+  const description = resolveDescription(pluginConfig.widget?.description, i18n.language)
+
   return (
     <DeploymentStatusPoller>
       <Card
@@ -35,17 +38,51 @@ export function DeploymentInfoCard({
         title={t('vercel-dashboard:deploymentInfoTitle')}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {pluginConfig.widget?.websiteUrl ? (
+            <a
+              href={pluginConfig.widget.websiteUrl}
+              rel="noopener noreferrer"
+              style={{
+                alignItems: 'center',
+                color: 'var(--theme-text)',
+                display: 'inline-flex',
+                fontSize: '0.875rem',
+                gap: '0.375rem',
+                textDecoration: 'none',
+              }}
+              target="_blank"
+            >
+              <GlobeIcon />
+              {pluginConfig.widget.websiteUrl}
+            </a>
+          ) : null}
+
           <Suspense fallback={<DeploymentInfoSkeleton />}>
             <DeploymentInfo i18n={i18n} pluginConfig={pluginConfig} />
           </Suspense>
 
-          <p style={{ color: 'var(--theme-elevation-500)', fontSize: '0.875rem', margin: 0 }}>
-            {t('vercel-dashboard:deploymentInfoDescription')}
-          </p>
+          {description ? (
+            <p style={{ color: 'var(--theme-elevation-500)', fontSize: '0.875rem', margin: 0 }}>
+              {description}
+            </p>
+          ) : null}
         </div>
       </Card>
     </DeploymentStatusPoller>
   )
+}
+
+function resolveDescription(
+  description: Record<string, string> | string | undefined,
+  language: string,
+): string | undefined {
+  if (!description) {
+    return undefined
+  }
+  if (typeof description === 'string') {
+    return description
+  }
+  return description[language] ?? description['en'] ?? Object.values(description)[0]
 }
 
 export default async function DeploymentInfo({

@@ -90,10 +90,7 @@ export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTyp
           onClick={handleGenerateAltText}
           tooltip={
             isUnsupportedMimeType
-              ? t('@jhb.software/payload-alt-text-plugin:unsupportedMimeType').replace(
-                  '{mimeType}',
-                  mimeType,
-                )
+              ? t('@jhb.software/payload-alt-text-plugin:unsupportedMimeType', { mimeType })
               : !id
                 ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst')
                 : undefined

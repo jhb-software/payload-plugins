@@ -24,9 +24,10 @@ export const de: GenericTranslationsObject = {
       'Fehler beim Generieren des Alternativtextes. Bitte versuchen Sie es erneut.',
     failedToGenerate:
       'Generierung des Alternativtextes fehlgeschlagen. Bitte versuchen Sie es erneut.',
-    failedToGenerateForXImages: 'Generierung des Alternativtextes für {X} Bilder fehlgeschlagen.',
+    failedToGenerateForXImages:
+      'Generierung des Alternativtextes für {{count}} Bilder fehlgeschlagen.',
     noAltTextGenerated: 'Kein Alternativtext generiert. Bitte versuchen Sie es erneut.',
-    xOfYImagesUpdated: '{X} von {Y} Bildern aktualisiert.',
+    xOfYImagesUpdated: '{{updated}} von {{total}} Bildern aktualisiert.',
 
     // Help text
     altTextDescription:
@@ -39,20 +40,21 @@ export const de: GenericTranslationsObject = {
 
     // Tooltips
     pleaseSaveDocumentFirst: 'Bitte speichern Sie zuerst das Dokument',
-    unsupportedMimeType: 'Alternativtext-Generierung wird für {mimeType}-Dateien nicht unterstützt',
+    unsupportedMimeType:
+      'Alternativtext-Generierung wird für {{mimeType}}-Dateien nicht unterstützt',
 
     // Validation messages
     theAlternateTextIsRequired: 'Der Alternativtext ist erforderlich.',
 
     // Dashboard widget
-    altTextHealthDescription: 'Status der Bilder mit gesetztem Alternativtext.',
-    altTextHealthWidget: 'Alternativtexte Zustand',
-    collectionCheckFailed: 'Prüfung nicht verfügbar',
+    altTextHealthDescription: 'Alternativtext-Abdeckung über alle Upload-Sammlungen.',
+    altTextHealthWidget: 'Alternativtext',
+    collectionCheckFailed: 'Status nicht verfügbar',
     healthCheckPartialWarning: 'Einige Sammlungen konnten gerade nicht geprüft werden.',
-    localeCount: '{count} Sprachen',
+    localeCount: '{{count}} Sprachen',
     noImagesFound: 'In den konfigurierten Sammlungen wurden noch keine Bilder gefunden.',
-    statusHealthy: 'Alternativtexte vorhanden',
-    statusUnhealthy: 'fehlende Alternativtexte',
-    totalImageCount: '{count} Bilder',
+    statusHealthy: 'Alle vorhanden',
+    statusUnhealthy: '{{count}} fehlend',
+    totalImageCount: '{{count}} Bilder',
   },
 }

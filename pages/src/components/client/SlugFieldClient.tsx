@@ -161,10 +161,9 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
             >
               <>
                 <Tooltip show={showSyncButtonTooltip}>
-                  {t('@jhb.software/payload-pages-plugin:syncSlugWithX').replace(
-                    '{X}',
-                    fallbackField.charAt(0).toUpperCase() + fallbackField.slice(1),
-                  )}
+                  {t('@jhb.software/payload-pages-plugin:syncSlugWithX', {
+                    field: fallbackField.charAt(0).toUpperCase() + fallbackField.slice(1),
+                  })}
                 </Tooltip>
 
                 <button
@@ -205,9 +204,10 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
               >
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: t('@jhb.software/payload-pages-plugin:slugWasChangedFromXToY')
-                      .replace('{X}', initialSlug)
-                      .replace('{Y}', slug),
+                    __html: t('@jhb.software/payload-pages-plugin:slugWasChangedFromXToY', {
+                      from: initialSlug,
+                      to: slug,
+                    }),
                   }}
                   style={{ marginLeft: '0.5rem' }}
                 />

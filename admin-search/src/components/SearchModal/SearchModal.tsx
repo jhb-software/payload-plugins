@@ -171,10 +171,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
           {!isError && results.length === 0 && displayedQuery && (
             <div className="admin-search-plugin-modal__no-results-message">
               <p>
-                {t('@jhb.software/payload-admin-search:noResultsFound').replace(
-                  '{query}',
-                  displayedQuery,
-                )}
+                {t('@jhb.software/payload-admin-search:noResultsFound', { query: displayedQuery })}
               </p>
               <p className="admin-search-plugin-modal__no-results-hint">
                 {t('@jhb.software/payload-admin-search:noResultsHint')}

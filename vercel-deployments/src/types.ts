@@ -38,6 +38,13 @@ export type VercelDeploymentsPluginConfig = {
    */
   widget?: {
     /**
+     * Optional description/note displayed at the bottom of the widget.
+     * Pass a string for a single language, or a Record<language, string> for multiple languages
+     * (e.g. `{ en: 'English text', de: 'German text' }`).
+     */
+    description?: Record<string, string> | string
+
+    /**
      * Maximum widget width. Default: 'full'
      */
     maxWidth?: 'full' | 'large' | 'medium' | 'small' | 'x-large' | 'x-small'
@@ -46,5 +53,10 @@ export type VercelDeploymentsPluginConfig = {
      * Minimum widget width. Default: 'medium'
      */
     minWidth?: 'full' | 'large' | 'medium' | 'small' | 'x-large' | 'x-small'
+
+    /**
+     * URL of the frontend website. Displayed as a link in the widget.
+     */
+    websiteUrl?: string
   }
 }

@@ -6,9 +6,20 @@
   "trailingComma": "all",
   "overrides": [
     {
-      "files": ["**/importMap.js", "**/payload-types.ts", "**/**.yaml", "**/translation-schema.json"],
+      "files": [
+        "**/importMap.js",
+        "**/payload-types.ts",
+        "**/**.yaml",
+        "**/translation-schema.json"
+      ],
       "options": {
         "requirePragma": true
+      }
+    },
+    {
+      "files": "*.md",
+      "options": {
+        "parser": "markdown"
       }
     }
   ]

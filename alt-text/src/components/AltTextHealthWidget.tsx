@@ -1,17 +1,19 @@
+import type { TFunction } from '@payloadcms/translations'
 import type { WidgetServerProps } from 'payload'
+
+import { Pill } from '@payloadcms/ui/elements/Pill'
+
+import type { PluginAltTextTranslationKeys } from '../translations/index.js'
 
 import { getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
 import { getAltTextHealthWidgetDisplayState } from '../utilities/altTextHealthWidgetDisplay.js'
 import { getCollectionLabel } from '../utilities/getCollectionLabel.js'
-
-const badgeStyles = {
-  healthy: { background: '#dcfce7', color: '#15803d' },
-  unhealthy: { background: '#fee2e2', color: '#991b1b' },
-}
+import { ArrowRightIcon } from './icons/ArrowRightIcon.js'
+import { CheckIcon } from './icons/CheckIcon.js'
+import { ImageIcon } from './icons/ImageIcon.js'
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
-  // Plugin translation keys are not in Payload's built-in key union
-  const t = req.t as (key: string) => string
+  const t = req.t as TFunction<PluginAltTextTranslationKeys>
   const { collections, errors, isLocalized, localeCount, totalDocs } =
     await getAltTextHealthWidgetData(req)
 
@@ -26,9 +28,14 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>
-          {t('@jhb.software/payload-alt-text-plugin:altTextHealthWidget')}
-        </h3>
+        <div style={{ alignItems: 'center', display: 'flex', gap: '0.5rem' }}>
+          <div style={{ color: 'var(--theme-elevation-500)' }}>
+            <ImageIcon />
+          </div>
+          <h3 style={{ margin: 0 }}>
+            {t('@jhb.software/payload-alt-text-plugin:altTextHealthWidget')}
+          </h3>
+        </div>
         <p style={{ color: 'var(--theme-text)', fontSize: '14px', margin: 0, opacity: 0.75 }}>
           {t('@jhb.software/payload-alt-text-plugin:altTextHealthDescription')}
         </p>
@@ -57,7 +64,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                 alignItems: 'center',
                 background: 'var(--theme-elevation-50)',
                 border: '1px solid var(--theme-border-color)',
-                borderRadius: '10px',
+                borderRadius: 'var(--style-radius-m)',
                 display: 'flex',
                 gap: '12px',
                 justifyContent: 'space-between',
@@ -87,17 +94,19 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                   </span>
                 ) : (
                   <span style={{ fontSize: '13px', opacity: 0.7 }}>
-                    {t('@jhb.software/payload-alt-text-plugin:totalImageCount').replace(
-                      '{count}',
-                      String(collection.totalDocs),
-                    )}
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      {t('@jhb.software/payload-alt-text-plugin:totalImageCount', {
+                        count: collection.totalDocs,
+                      })}
+                    </span>
                     {isLocalized && (
                       <>
                         {' · '}
-                        {t('@jhb.software/payload-alt-text-plugin:localeCount').replace(
-                          '{count}',
-                          String(localeCount),
-                        )}
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          {t('@jhb.software/payload-alt-text-plugin:localeCount', {
+                            count: localeCount,
+                          })}
+                        </span>
                       </>
                     )}
                   </span>
@@ -107,66 +116,35 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
               {displayState === 'unhealthy' &&
               collection.invalidDocIds &&
               collection.invalidDocIds.length > 0 ? (
-                <a
-                  href={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
-                  style={{
-                    background: badgeStyles.unhealthy.background,
-                    borderRadius: '999px',
-                    color: badgeStyles.unhealthy.color,
-                    flexShrink: 0,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    textDecoration: 'none',
-                    whiteSpace: 'nowrap',
-                  }}
+                <Pill
+                  pillStyle="error"
+                  size="small"
+                  to={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
                 >
-                  {collection.missingDocs + collection.partialDocs}{' '}
-                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')} →
-                </a>
+                  <div style={{ alignItems: 'center', display: 'flex', gap: '0.25rem' }}>
+                    {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy', {
+                      count: collection.missingDocs + collection.partialDocs,
+                    })}
+                    <ArrowRightIcon height="12" width="12" />
+                  </div>
+                </Pill>
               ) : displayState === 'healthy' ? (
-                <span
-                  style={{
-                    background: badgeStyles.healthy.background,
-                    borderRadius: '999px',
-                    color: badgeStyles.healthy.color,
-                    flexShrink: 0,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')} ✓
-                </span>
+                <Pill pillStyle="success" size="small">
+                  <div style={{ alignItems: 'center', display: 'flex', gap: '0.25rem' }}>
+                    {t('@jhb.software/payload-alt-text-plugin:statusHealthy')}
+                    <CheckIcon height="12" width="12" />
+                  </div>
+                </Pill>
               ) : displayState === 'unhealthy' ? (
-                <span
-                  style={{
-                    background: badgeStyles.unhealthy.background,
-                    borderRadius: '999px',
-                    color: badgeStyles.unhealthy.color,
-                    flexShrink: 0,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {collection.missingDocs + collection.partialDocs}{' '}
-                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
-                </span>
+                <Pill pillStyle="error" size="small">
+                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy', {
+                    count: collection.missingDocs + collection.partialDocs,
+                  })}
+                </Pill>
               ) : (
-                <span
-                  style={{
-                    color: '#92400e',
-                    flexShrink: 0,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+                <Pill pillStyle="warning" size="small">
                   {t('@jhb.software/payload-alt-text-plugin:collectionCheckFailed')}
-                </span>
+                </Pill>
               )}
             </div>
           )

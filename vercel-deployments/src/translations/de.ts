@@ -10,8 +10,6 @@ export const de: GenericTranslationsObject = {
       'Die letzte Produktionsveröffentlichung konnte nicht erneut veröffentlicht werden',
     deploymentInfoDeploymentTriggeredSuccessfully:
       'Die letzte Produktionsveröffentlichung wurde erfolgreich erneut veröffentlicht',
-    deploymentInfoDescription:
-      'Da die Website aus Performancegründen statisch ist, muss bei Inhaltsänderungen im CMS eine neue Veröffentlichung erstellt werden, bei dem die Website mit den aktuell im CMS veröffentlichten Inhalten neu erstellt wird. Der Erstellungsprozess dauert in der Regel 1-2 Minuten.',
     deploymentInfoError: 'Fehler beim Abrufen der Veröffentlichungsinformationen',
     deploymentInfoInspectDeployment: 'Veröffentlichung inspizieren',
     deploymentInfoLatestDeployment: 'Neueste Veröffentlichung',
