@@ -3,6 +3,7 @@ import type { WidgetServerProps } from 'payload'
 import { getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
 import { getAltTextHealthWidgetDisplayState } from '../utilities/altTextHealthWidgetDisplay.js'
 import { getCollectionLabel } from '../utilities/getCollectionLabel.js'
+import { ImageIcon } from './icons/ImageIcon.js'
 
 const badgeStyles = {
   healthy: { background: '#dcfce7', color: '#15803d' },
@@ -26,9 +27,14 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <h3 style={{ margin: 0 }}>
-          {t('@jhb.software/payload-alt-text-plugin:altTextHealthWidget')}
-        </h3>
+        <div style={{ alignItems: 'center', display: 'flex', gap: '0.5rem' }}>
+          <div style={{ color: 'var(--theme-elevation-500)' }}>
+            <ImageIcon />
+          </div>
+          <h3 style={{ margin: 0 }}>
+            {t('@jhb.software/payload-alt-text-plugin:altTextHealthWidget')}
+          </h3>
+        </div>
         <p style={{ color: 'var(--theme-text)', fontSize: '14px', margin: 0, opacity: 0.75 }}>
           {t('@jhb.software/payload-alt-text-plugin:altTextHealthDescription')}
         </p>
