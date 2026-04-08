@@ -84,6 +84,39 @@ jobs:
       - name: Run ESLint (vercel-deployments)
         run: cd vercel-deployments && pnpm lint
 
+  test-unit:
+    runs-on: ubuntu-latest
+    needs: format
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: ^9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install:all
+
+      - name: Run tests (admin-search)
+        run: cd admin-search && node --experimental-strip-types --test test/*.test.ts
+
+      - name: Run tests (alt-text)
+        run: cd alt-text && node --experimental-strip-types --test test/*.test.ts
+
+      - name: Run tests (astro-payload-richtext-lexical)
+        run: cd astro-payload-richtext-lexical && node --experimental-strip-types --test test/*.test.ts
+
+      - name: Run tests (content-translator)
+        run: cd content-translator && node --experimental-strip-types --test test/*.test.ts
+
       - name: Run tests (vercel-deployments)
         run: cd vercel-deployments && pnpm test
 
