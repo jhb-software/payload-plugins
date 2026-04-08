@@ -61,6 +61,7 @@ export default buildConfig({
       widget: {
         maxWidth: 'full',
         minWidth: 'medium',
+        websiteUrl: 'https://www.example.com',
       },
     }),
   ],

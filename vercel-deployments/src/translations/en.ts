@@ -13,6 +13,7 @@ export const en: GenericTranslationsObject = {
     deploymentInfoLatestDeployment: 'Latest Deployment',
     deploymentInfoTitle: 'Vercel Deployments',
     deploymentInfoTriggerRedeploy: 'Redeploy Latest Production',
+    deploymentInfoWebsite: 'Website',
 
     // Vercel Deployment Status
     vercelDeploymentStatusBuilding: 'Building',

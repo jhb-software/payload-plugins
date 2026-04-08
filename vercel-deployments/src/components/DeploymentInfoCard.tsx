@@ -39,22 +39,32 @@ export function DeploymentInfoCard({
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {pluginConfig.widget?.websiteUrl ? (
-            <a
-              href={pluginConfig.widget.websiteUrl}
-              rel="noopener noreferrer"
+            <div
               style={{
                 alignItems: 'center',
-                color: 'var(--theme-text)',
-                display: 'inline-flex',
-                fontSize: '0.875rem',
-                gap: '0.375rem',
-                textDecoration: 'none',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '0.5rem 0.75rem',
               }}
-              target="_blank"
             >
-              <GlobeIcon />
-              {pluginConfig.widget.websiteUrl}
-            </a>
+              <span style={{ alignItems: 'center', display: 'flex', gap: '0.375rem' }}>
+                <GlobeIcon />
+                <span style={{ fontWeight: 500 }}>
+                  {t('vercel-dashboard:deploymentInfoWebsite')}:
+                </span>
+              </span>
+              <a
+                href={pluginConfig.widget.websiteUrl}
+                rel="noopener noreferrer"
+                style={{
+                  color: 'var(--theme-text)',
+                  textDecoration: 'none',
+                }}
+                target="_blank"
+              >
+                {pluginConfig.widget.websiteUrl.replace(/^https?:\/\//, '')}
+              </a>
+            </div>
           ) : null}
 
           <Suspense fallback={<DeploymentInfoSkeleton />}>
