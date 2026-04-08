@@ -13,6 +13,7 @@ All commit messages **must** follow the [Conventional Commits](https://www.conve
 - **Description**: lowercase, imperative mood, no period at the end
 
 Examples:
+
 - `feat(pages): add breadcrumb navigation`
 - `fix(cloudinary): handle missing API key gracefully`
 - `chore: update dependencies`
@@ -23,6 +24,10 @@ This is enforced by a `commit-msg` git hook via commitlint. PR titles follow the
 ## Publishing
 
 Publishing is done via the `Release` GitHub Actions workflow (manual dispatch). Select the plugin and bump type (patch/minor/major). The workflow bumps the version in `package.json`, verifies the changelog has a matching `## <version>` heading, publishes to npm, commits the version bump, creates a git tag, and creates a GitHub release. Do not bump versions or publish manually — the changelog entry must be committed beforehand with the target version as the heading.
+
+## UI Components and Styling
+
+Plugin custom components should use Payload's built-in UI components (e.g. `Pill`, `Button` from `@payloadcms/ui`) and CSS variables (e.g. `var(--style-radius-m)`, `var(--theme-elevation-500)`) instead of custom styles wherever possible. This ensures visual consistency with the Payload admin panel.
 
 ## Document ID Types
 
