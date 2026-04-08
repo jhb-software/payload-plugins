@@ -1,16 +1,13 @@
 import type { WidgetServerProps } from 'payload'
 
+import { Pill } from '@payloadcms/ui/elements/Pill'
+
 import { getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
 import { getAltTextHealthWidgetDisplayState } from '../utilities/altTextHealthWidgetDisplay.js'
 import { getCollectionLabel } from '../utilities/getCollectionLabel.js'
 import { ArrowRightIcon } from './icons/ArrowRightIcon.js'
 import { CheckIcon } from './icons/CheckIcon.js'
 import { ImageIcon } from './icons/ImageIcon.js'
-
-const badgeStyles = {
-  healthy: { background: '#dcfce7', color: '#15803d' },
-  unhealthy: { background: '#fee2e2', color: '#991b1b' },
-}
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
   // Plugin translation keys are not in Payload's built-in key union
@@ -65,7 +62,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                 alignItems: 'center',
                 background: 'var(--theme-elevation-50)',
                 border: '1px solid var(--theme-border-color)',
-                borderRadius: '10px',
+                borderRadius: 'var(--style-radius-m)',
                 display: 'flex',
                 gap: '12px',
                 justifyContent: 'space-between',
@@ -115,68 +112,33 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
               {displayState === 'unhealthy' &&
               collection.invalidDocIds &&
               collection.invalidDocIds.length > 0 ? (
-                <a
-                  href={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
-                  style={{
-                    background: badgeStyles.unhealthy.background,
-                    borderRadius: '999px',
-                    color: badgeStyles.unhealthy.color,
-                    flexShrink: 0,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    textDecoration: 'none',
-                    whiteSpace: 'nowrap',
-                  }}
+                <Pill
+                  pillStyle="error"
+                  size="small"
+                  to={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
                 >
-                  {collection.missingDocs + collection.partialDocs}{' '}
-                  {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}{' '}
-                  <ArrowRightIcon height="12" width="12" />
-                </a>
+                  <div style={{ alignItems: 'center', display: 'flex', gap: '0.25rem' }}>
+                    {collection.missingDocs + collection.partialDocs}{' '}
+                    {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
+                    <ArrowRightIcon height="12" width="12" />
+                  </div>
+                </Pill>
               ) : displayState === 'healthy' ? (
-                <span
-                  style={{
-                    background: badgeStyles.healthy.background,
-                    borderRadius: '999px',
-                    color: badgeStyles.healthy.color,
-                    flexShrink: 0,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {t('@jhb.software/payload-alt-text-plugin:statusHealthy')}{' '}
-                  <CheckIcon height="12" width="12" />
-                </span>
+                <Pill pillStyle="success" size="small">
+                  <div style={{ alignItems: 'center', display: 'flex', gap: '0.25rem' }}>
+                    {t('@jhb.software/payload-alt-text-plugin:statusHealthy')}
+                    <CheckIcon height="12" width="12" />
+                  </div>
+                </Pill>
               ) : displayState === 'unhealthy' ? (
-                <span
-                  style={{
-                    background: badgeStyles.unhealthy.background,
-                    borderRadius: '999px',
-                    color: badgeStyles.unhealthy.color,
-                    flexShrink: 0,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+                <Pill pillStyle="error" size="small">
                   {collection.missingDocs + collection.partialDocs}{' '}
                   {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy')}
-                </span>
+                </Pill>
               ) : (
-                <span
-                  style={{
-                    color: '#92400e',
-                    flexShrink: 0,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+                <Pill pillStyle="warning" size="small">
                   {t('@jhb.software/payload-alt-text-plugin:collectionCheckFailed')}
-                </span>
+                </Pill>
               )}
             </div>
           )
