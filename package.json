@@ -45,12 +45,11 @@
 
     "test:all": "pnpm test:pages",
     "test:pages": "cd ./pages && pnpm test",
-    "prepare": "husky"
+    "prepare": "git config core.hooksPath .husky"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
-    "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.1"
   },
