@@ -20,6 +20,7 @@ import { buildTools, discoverEndpoints } from './tools.js'
 
 export type { ChatAgentPluginOptions } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
+export { default as ChatViewServer } from './ui/ChatViewServer.js'
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
 
@@ -27,7 +28,7 @@ const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
  * The package-relative path to the ChatView component.
  * Used by Payload's importMap system.
  */
-const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent/client#ChatView'
+const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent#ChatViewServer'
 
 /**
  * Validate that a messages array is non-empty and has valid roles.
