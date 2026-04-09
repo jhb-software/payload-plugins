@@ -11,9 +11,8 @@ export const de: GenericTranslationsObject = {
 
     // Button labels
     generateAltText: 'Alternativtext generieren',
-    generateAltTextFor: 'Alternativtext generieren für',
-    image: 'Bild',
-    images: 'Bilder',
+    generateAltTextFor_one: 'Alternativtext generieren für {{count}} Bild',
+    generateAltTextFor_other: 'Alternativtext generieren für {{count}} Bilder',
 
     // Toast messages
     altTextGeneratedSuccess:

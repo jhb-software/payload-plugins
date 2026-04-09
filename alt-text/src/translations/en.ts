@@ -10,9 +10,8 @@ export const en: GenericTranslationsObject = {
 
     // Button labels
     generateAltText: 'Generate alt text',
-    generateAltTextFor: 'Generate alt text for',
-    image: 'image',
-    images: 'images',
+    generateAltTextFor_one: 'Generate alt text for {{count}} image',
+    generateAltTextFor_other: 'Generate alt text for {{count}} images',
 
     // Toast messages
     altTextGeneratedSuccess:
