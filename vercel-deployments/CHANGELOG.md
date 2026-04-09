@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- refactor: improve widget translations (remove "Vercel" from title, simplify German translations)
+
 ## 0.2.0
 
 - fix: prevent widget from refreshing when deployment data has not changed (fixes constant refresh in dashboard edit mode)

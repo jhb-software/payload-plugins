@@ -4,17 +4,14 @@ export const de: GenericTranslationsObject = {
   'vercel-dashboard': {
     // Deployment Info Feature
     deploymentInfoActiveDeployment: 'Aktive Veröffentlichung',
-    deploymentInfoDeploymentCompletedSuccessfully:
-      'Neue Veröffentlichung erfolgreich abgeschlossen',
-    deploymentInfoDeploymentTriggeredFailed:
-      'Die letzte Produktionsveröffentlichung konnte nicht erneut veröffentlicht werden',
-    deploymentInfoDeploymentTriggeredSuccessfully:
-      'Die letzte Produktionsveröffentlichung wurde erfolgreich erneut veröffentlicht',
-    deploymentInfoError: 'Fehler beim Abrufen der Veröffentlichungsinformationen',
-    deploymentInfoInspectDeployment: 'Veröffentlichung inspizieren',
+    deploymentInfoDeploymentCompletedSuccessfully: 'Veröffentlichung abgeschlossen',
+    deploymentInfoDeploymentTriggeredFailed: 'Veröffentlichung fehlgeschlagen',
+    deploymentInfoDeploymentTriggeredSuccessfully: 'Veröffentlichung erfolgreich',
+    deploymentInfoError: 'Fehler beim Laden der Veröffentlichungen',
+    deploymentInfoInspectDeployment: 'Details anzeigen',
     deploymentInfoLatestDeployment: 'Neueste Veröffentlichung',
-    deploymentInfoTitle: 'Vercel Veröffentlichungen',
-    deploymentInfoTriggerRedeploy: 'Letzte Produktion erneut veröffentlichen',
+    deploymentInfoTitle: 'Veröffentlichungen',
+    deploymentInfoTriggerRedeploy: 'Neue Veröffentlichung',
     deploymentInfoWebsite: 'Website',
 
     // Vercel Deployment Status
@@ -23,7 +20,7 @@ export const de: GenericTranslationsObject = {
     vercelDeploymentStatusDeleted: 'Gelöscht',
     vercelDeploymentStatusError: 'Fehler',
     vercelDeploymentStatusFailed: 'Fehlgeschlagen',
-    vercelDeploymentStatusInitializing: 'Wird initialisiert',
+    vercelDeploymentStatusInitializing: 'Startet',
     vercelDeploymentStatusQueued: 'In Warteschlange',
     vercelDeploymentStatusReady: 'Bereit',
     vercelDeploymentStatusUnknown: 'Unbekannter Status',
