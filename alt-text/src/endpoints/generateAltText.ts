@@ -1,12 +1,17 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
-import { z } from 'zod'
+import { z, ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 /**
  * Generates alt text for a single image using the configured resolver.
- * Returns result without updating the document.
+ *
+ * By default, returns the result without updating the document (preview mode).
+ * Pass `update: true` in the request body to also persist the generated alt text
+ * and keywords to the document — useful for programmatic/agent workflows.
+ *
+ * The response always includes the `id` and `collection` for easy correlation.
  */
 export const generateAltTextEndpoint =
   (access: AltTextPluginConfig['access']): PayloadHandler =>
@@ -19,12 +24,13 @@ export const generateAltTextEndpoint =
       const data = 'json' in req && typeof req.json === 'function' ? await req.json() : null
 
       const requestSchema = z.object({
-        id: z.string(),
+        id: z.union([z.string(), z.number()]),
         collection: z.string(),
         locale: z.string().nullable(),
+        update: z.boolean().optional().default(false),
       })
 
-      const { id, collection, locale } = requestSchema.parse(data)
+      const { id, collection, locale, update } = requestSchema.parse(data)
 
       const imageDoc = await req.payload.findByID({
         id,
@@ -53,6 +59,24 @@ export const generateAltTextEndpoint =
 
       if (!pluginConfig.resolver) {
         return Response.json({ error: 'No alt text resolver configured' }, { status: 500 })
+      }
+
+      const mimeType =
+        'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string'
+          ? imageDoc.mimeType
+          : undefined
+
+      if (
+        mimeType &&
+        pluginConfig.resolver.supportedMimeTypes &&
+        !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
+      ) {
+        return Response.json(
+          {
+            error: `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${pluginConfig.resolver.supportedMimeTypes.join(', ')}.`,
+          },
+          { status: 400 },
+        )
       }
 
       // determine target locale
@@ -86,8 +110,32 @@ export const generateAltTextEndpoint =
         )
       }
 
-      return Response.json(result.result)
+      if (update) {
+        await req.payload.update({
+          id,
+          collection,
+          data: {
+            alt: result.result.altText,
+            keywords: result.result.keywords,
+          },
+          locale: targetLocale,
+        })
+      }
+
+      return Response.json({ id, collection, ...result.result })
     } catch (error) {
+      if (error instanceof ZodError) {
+        return Response.json(
+          {
+            details: error.issues.map((e) => ({
+              message: e.message,
+              path: e.path.join('.'),
+            })),
+            error: 'Validation failed',
+          },
+          { status: 400 },
+        )
+      }
       console.error('Error generating alt text:', error)
       return Response.json(
         {

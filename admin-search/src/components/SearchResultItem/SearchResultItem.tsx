@@ -50,19 +50,17 @@ const getAriaLabel = (
   result: SearchResult,
   displayTitle: string,
   collectionLabel: string,
-  t: (key: PluginAdminSearchTranslationKeys) => string,
+  t: (key: PluginAdminSearchTranslationKeys, options?: Record<string, unknown>) => string,
 ): string => {
   if (result.type === 'document') {
-    return t('@jhb.software/payload-admin-search:openDocumentIn')
-      .replace('{title}', displayTitle)
-      .replace('{collection}', collectionLabel)
+    return t('@jhb.software/payload-admin-search:openDocumentIn', {
+      collection: collectionLabel,
+      title: displayTitle,
+    })
   } else if (result.type === 'collection') {
-    return t('@jhb.software/payload-admin-search:openCollectionLabel').replace(
-      '{label}',
-      result.label,
-    )
+    return t('@jhb.software/payload-admin-search:openCollectionLabel', { label: result.label })
   } else {
-    return t('@jhb.software/payload-admin-search:openGlobalLabel').replace('{label}', result.label)
+    return t('@jhb.software/payload-admin-search:openGlobalLabel', { label: result.label })
   }
 }
 

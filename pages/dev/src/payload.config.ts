@@ -22,6 +22,7 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    meta: { titleSuffix: '- Pages Dev' },
     user: 'users',
   },
   collections: [

@@ -8,5 +8,5 @@
     "jsx": "preserve"
   },
   "include": ["./**/*.astro", "./**/*.ts"],
-  "exclude": ["node_modules", "dist", "vite.config.ts"]
+  "exclude": ["node_modules", "dist", "test", "vite.config.ts"]
 }

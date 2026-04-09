@@ -63,4 +63,6 @@ export type AltTextResolver = {
   resolve: (args: AltTextResolverArgs) => Promise<AltTextResolverResponse>
   /** Generate alt text for a single image in multiple locales (bulk operation) */
   resolveBulk: (args: AltTextBulkResolverArgs) => Promise<AltTextBulkResolverResponse>
+  /** MIME types this resolver can process. When set, the endpoint rejects files whose mimeType is not in this list. */
+  supportedMimeTypes?: string[]
 }

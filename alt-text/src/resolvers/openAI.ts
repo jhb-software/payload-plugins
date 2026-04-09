@@ -217,5 +217,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
         }
       }
     },
+    // https://platform.openai.com/docs/guides/images-vision
+    supportedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   }
 }

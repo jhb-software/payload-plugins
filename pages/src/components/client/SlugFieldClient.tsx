@@ -161,10 +161,9 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
             >
               <>
                 <Tooltip show={showSyncButtonTooltip}>
-                  {t('@jhb.software/payload-pages-plugin:syncSlugWithX').replace(
-                    '{X}',
-                    fallbackField.charAt(0).toUpperCase() + fallbackField.slice(1),
-                  )}
+                  {t('@jhb.software/payload-pages-plugin:syncSlugWithX', {
+                    field: fallbackField.charAt(0).toUpperCase() + fallbackField.slice(1),
+                  })}
                 </Tooltip>
 
                 <button
@@ -205,9 +204,10 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
               >
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: t('@jhb.software/payload-pages-plugin:slugWasChangedFromXToY')
-                      .replace('{X}', initialSlug)
-                      .replace('{Y}', slug),
+                    __html: t('@jhb.software/payload-pages-plugin:slugWasChangedFromXToY', {
+                      from: initialSlug,
+                      to: slug,
+                    }),
                   }}
                   style={{ marginLeft: '0.5rem' }}
                 />
@@ -249,24 +249,21 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
   )
 }
 
-// InfoIcon - keeping as custom for now since Payload's Info icon may not be publicly accessible
 const InfoIcon = () => (
-  <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+  <svg
+    data-testid="geist-icon"
+    height="16"
+    strokeLinejoin="round"
+    style={{ color: 'currentcolor' }}
+    viewBox="0 0 16 16"
+    width="16"
+  >
     <path
-      d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
+      clipRule="evenodd"
+      d="M8 14.5a6.5 6.5 0 100-13 6.5 6.5 0 000 13zM8 16A8 8 0 108 0a8 8 0 000 16zM6.25 7h1.5a1 1 0 011 1v4.25h-1.5V8.5h-1V7zM8 6a1 1 0 100-2 1 1 0 000 2z"
+      fill="currentColor"
+      fillRule="evenodd"
     />
-    <path
-      d="M12 16V12"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-    />
-    <circle cx="12" cy="8" fill="currentColor" r="1" />
   </svg>
 )
 

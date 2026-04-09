@@ -23,6 +23,7 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    meta: { titleSuffix: '- Pages Multi-Tenant Dev' },
     user: 'users',
   },
   collections: [

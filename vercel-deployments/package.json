@@ -1,0 +1,115 @@
+{
+  "name": "@jhb.software/payload-vercel-deployments",
+  "version": "0.2.0",
+  "description": "A Payload CMS plugin for managing Vercel deployments of static websites — includes a dashboard widget and authenticated API endpoints.",
+  "bugs": "https://github.com/jhb-software/payload-plugins/issues",
+  "repository": "https://github.com/jhb-software/payload-plugins",
+  "keywords": [
+    "payload",
+    "plugin",
+    "vercel",
+    "deployments",
+    "static",
+    "rebuild",
+    "deployment"
+  ],
+  "author": "JHB Software",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "pnpm copyfiles && pnpm build:types && pnpm build:swc",
+    "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths --ignore '**/*.test.ts'",
+    "build:types": "tsc --project tsconfig.build.json --outDir dist --rootDir ./src",
+    "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
+    "clean": "rimraf --glob {dist,*.tsbuildinfo}",
+    "dev": "tsc -w",
+    "format": "prettier --write src",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "prepublishOnly": "pnpm clean && pnpm build"
+  },
+  "peerDependencies": {
+    "@payloadcms/translations": "^3.81.0",
+    "@payloadcms/ui": "^3.81.0",
+    "next": "16.2.2",
+    "payload": "^3.81.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@payloadcms/eslint-config": "^3.28.0",
+    "@payloadcms/translations": "^3.81.0",
+    "@payloadcms/ui": "^3.81.0",
+    "@swc/cli": "^0.7.9",
+    "@swc/core": "^1.15.3",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "copyfiles": "2.4.1",
+    "eslint": "^10.2.0",
+    "jsdom": "^29.0.2",
+    "next": "15.4.11",
+    "payload": "^3.81.0",
+    "prettier": "^3.7.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "rimraf": "6.1.2",
+    "typescript": "6.0.2",
+    "vitest": "^4.1.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./client": {
+        "import": "./dist/exports/client.js",
+        "types": "./dist/exports/client.d.ts",
+        "default": "./dist/exports/client.js"
+      }
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./client": {
+      "import": "./src/exports/client.ts",
+      "types": "./src/exports/client.ts",
+      "default": "./src/exports/client.ts"
+    }
+  },
+  "pnpm": {
+    "overrides": {
+      "typescript": "^6.0.2",
+      "typescript-eslint": "8.58.1-alpha.0",
+      "@typescript-eslint/utils": "8.58.1-alpha.0",
+      "@typescript-eslint/parser": "8.58.1-alpha.0",
+      "@typescript-eslint/eslint-plugin": "8.58.1-alpha.0",
+      "@typescript-eslint/type-utils": "8.58.1-alpha.0",
+      "@typescript-eslint/typescript-estree": "8.58.1-alpha.0",
+      "@typescript-eslint/scope-manager": "8.58.1-alpha.0",
+      "@typescript-eslint/visitor-keys": "8.58.1-alpha.0",
+      "@typescript-eslint/types": "8.58.1-alpha.0",
+      "@typescript-eslint/project-service": "8.58.1-alpha.0",
+      "@typescript-eslint/tsconfig-utils": "8.58.1-alpha.0",
+      "@eslint/js": "^10.0.1"
+    }
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

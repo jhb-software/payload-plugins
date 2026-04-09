@@ -1,16 +1,21 @@
 # Changelog
 
-## 0.7.1-beta
+## Unreleased
 
-- fix: pass draft arg to parent document lookups in breadcrumb generation
-- feat: pass full req to payload.findByID in getBreadcrumbs
-- fix: only set alternatePaths on previousDoc meta instead of copying entire meta
+- style: standardize icons to use Geist icon set (16x16 filled)
+- refactor: use i18next interpolation for translations
 
-## 0.7.0-beta
+## 0.7.0
 
 - feat: add request-scoped ancestor caching to avoid redundant DB queries when computing virtual fields for sibling pages
+- feat: pass full req to payload.findByID in getBreadcrumbs
 - fix: populate virtual fields (`path`, `breadcrumbs`) on `previousDoc` in the `afterChange` hook, and run the plugin's hook before user-defined hooks so that `doc` also contains the virtual fields
 - fix: gracefully handle errors when computing virtual fields (e.g. when a parent document no longer exists) instead of crashing the operation
+- fix: use overrideAccess for parent document fetches in breadcrumb generation
+- fix: prevent circular parent references
+- fix: only set alternatePaths on previousDoc meta instead of copying entire meta
+- fix: pass draft arg to parent document lookups in breadcrumb generation
+- chore: upgrade to Payload 3.79.0
 
 ## 0.6.0
 
@@ -27,21 +32,27 @@
 ### Migration Guide
 
 **Creating a page/redirects collection [Before]:**
+
 ```ts
 import { createPageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
 const Pages: CollectionConfig = createPageCollectionConfig({
   slug: 'pages',
-  page: { /* config */ },
-  fields: [/* fields */],
+  page: {
+    /* config */
+  },
+  fields: [
+    /* fields */
+  ],
 })
 
-const Redirects = createRedirectsCollectionConfig(
-  { /* config */ }
-)
+const Redirects = createRedirectsCollectionConfig({
+  /* config */
+})
 ```
 
 **Creating a page/redirects collection [After]:**
+
 ```ts
 import { PageCollectionConfig, RedirectsCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
@@ -99,7 +110,7 @@ Ensure to run `payload generate:importmap` after the migration to generate the n
 - feat!: remove auto fixing of invalid/missing slug (f0a8531)
 - fix: append "-copy" to path when duplicating redirects (33be9aa)
 - fix: resolve issue with not selected fields in sub-queries (c333598)
-- fix: do not show slug redirect warning when draft document is published (7765706) 
+- fix: do not show slug redirect warning when draft document is published (7765706)
 - fix: ensure title field hooks are not overridden (f8c48a0)
 - fix: correct field hooks to use the correct field value (f6a41df)
 - fix: update slug and isRootPage field when duplicating the root page (f6db809)
@@ -112,8 +123,8 @@ Ensure to run `payload generate:importmap` after the migration to generate the n
 
 - add validation to the slug field
 - BREAKING: when using the `slugField` function in non-page collections
-    - the previously optional `fallbackField` option is now required
-    - the `redirectWarning` option is now removed
+  - the previously optional `fallbackField` option is now required
+  - the `redirectWarning` option is now removed
 
 ## 0.3.1
 

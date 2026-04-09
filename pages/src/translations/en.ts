@@ -23,7 +23,7 @@ export const en: GenericTranslationsObject = {
     rootPage: 'Root Page',
     showBreadcrumbs: 'Show Breadcrumbs',
     slugWasChangedFromXToY:
-      'The slug was changed from <code>{X}</code> to <code>{Y}</code>. A redirect from the old to the new path is required.',
-    syncSlugWithX: 'Sync with {X}',
+      'The slug was changed from <code>{{from}}</code> to <code>{{to}}</code>. A redirect from the old to the new path is required.',
+    syncSlugWithX: 'Sync with {{field}}',
   },
 }

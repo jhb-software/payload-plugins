@@ -11,7 +11,7 @@ import type {
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 
-export function GenerateAltTextButton() {
+export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTypes?: string[] }) {
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
   const { id, collectionSlug } = useDocumentInfo()
   const locale = useLocale()
@@ -19,6 +19,10 @@ export function GenerateAltTextButton() {
 
   const { setValue: setKeywords } = useField<string>({ path: 'keywords' })
   const { setValue: setAltText } = useField<string>({ path: 'alt' })
+  const { value: mimeType } = useField<string>({ path: 'mimeType' })
+
+  const isUnsupportedMimeType =
+    !!mimeType && !!supportedMimeTypes && !supportedMimeTypes.includes(mimeType)
 
   const handleGenerateAltText = () => {
     if (!collectionSlug || !id) {
@@ -28,7 +32,7 @@ export function GenerateAltTextButton() {
 
     startTransition(async () => {
       try {
-        const response = await fetch('/api/alt-text-plugin/generate-alt-text', {
+        const response = await fetch('/api/alt-text-plugin/generate', {
           body: JSON.stringify({
             id: id as string,
             collection: collectionSlug,
@@ -81,11 +85,15 @@ export function GenerateAltTextButton() {
       </div>
       <div style={{ alignItems: 'center', display: 'flex' }}>
         <Button
-          disabled={isPending || !id}
+          disabled={isPending || !id || isUnsupportedMimeType}
           icon={isPending ? <Spinner /> : <Lightning />}
           onClick={handleGenerateAltText}
           tooltip={
-            !id ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst') : undefined
+            isUnsupportedMimeType
+              ? t('@jhb.software/payload-alt-text-plugin:unsupportedMimeType', { mimeType })
+              : !id
+                ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst')
+                : undefined
           }
         >
           {t('@jhb.software/payload-alt-text-plugin:generateAltText')}

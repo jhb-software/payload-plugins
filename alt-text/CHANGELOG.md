@@ -2,8 +2,27 @@
 
 ## Unreleased
 
-- feat: add configurable `access` option for plugin endpoints (defaults to requiring authentication)
-- feat: add alt text health check with dashboard widget and REST endpoint (opt-out via `healthCheck: false`)
+- style: standardize icons to use Geist icon set (16x16 filled)
+- refactor: improve widget translations (pluralize title, simplify German translations, use i18next plural keys for bulk generate button)
+
+## 0.4.3
+
+- fix: reject unsupported file types (e.g. SVG) with clear error showing the MIME type
+- style: use Payload Pill component and SVG icons in health widget
+- refactor: use i18next interpolation for translations
+
+## 0.4.2
+
+- fix: dashboard health widget not rendering on Payload <3.79.0 (`ComponentPath` was renamed to `Component` in 3.79.0)
+
+## 0.4.1
+
+- fix: fix broken package exports (use pnpm publish to apply publishConfig.exports)
+
+## 0.4.0
+
+- feat: add REST endpoints (`/generate`, `/generate/bulk`, `/health`) with configurable `access` option
+- feat: add alt text health check with dashboard widget
 
 ## 0.3.1
 
@@ -17,6 +36,7 @@
 2. The plugin now uses a resolver pattern for alt text generation. This allows integration with any AI provider.
 
 **Before (v0.2.x):**
+
 ```typescript
 import { payloadAltTextPlugin } from '@jhb.software/payload-alt-text-plugin'
 
@@ -29,6 +49,7 @@ payloadAltTextPlugin({
 ```
 
 **After (v0.3.0):**
+
 ```typescript
 import { payloadAltTextPlugin, openAIResolver } from '@jhb.software/payload-alt-text-plugin'
 

@@ -98,7 +98,7 @@ export interface ListItemNode extends LexicalNode {
 export interface BlockNode extends LexicalNode {
   type: 'block'
   fields: {
-    id: string
+    id: IdType
     blockName: string
     blockType: string
     [key: string]: unknown

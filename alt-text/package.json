@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-alt-text-plugin",
-  "version": "0.3.1",
+  "version": "0.4.3",
   "description": "A Payload CMS plugin that adds AI-powered alt text generation for images.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
@@ -35,6 +35,7 @@
     "zod": "^4.3.6"
   },
   "peerDependencies": {
+    "@payloadcms/translations": "^3.81.0",
     "@payloadcms/ui": "^3.81.0",
     "next": "16.2.2",
     "payload": "^3.81.0",
@@ -43,6 +44,7 @@
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
+    "@payloadcms/translations": "^3.81.0",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.24",
     "@types/react": "19.2.14",
@@ -59,8 +61,6 @@
   "publishConfig": {
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
-    "registry": "https://registry.npmjs.org/",
-    "access": "public",
     "exports": {
       ".": {
         "import": "./dist/index.js",
