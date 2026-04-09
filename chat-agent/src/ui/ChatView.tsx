@@ -5,10 +5,11 @@ import type { UIMessage } from 'ai'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { MessageMetadata } from '../types.js'
+import type { MessageMetadata, ModelsConfig } from '../types.js'
 
 import { ChatInput } from './ChatInput.js'
 import { MessageList } from './MessageList.js'
+import { ModelSelector } from './ModelSelector.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
 import { TokenBadge } from './TokenBadge.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
@@ -52,6 +53,21 @@ export default function ChatView({
   const [initialMessages, setInitialMessages] = useState<UIMessage<MessageMetadata>[] | undefined>(
     serverMessages as UIMessage<MessageMetadata>[] | undefined,
   )
+  const [modelsConfig, setModelsConfig] = useState<ModelsConfig | null>(null)
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined)
+
+  // Fetch available models configuration on mount
+  useEffect(() => {
+    fetch(`${endpointUrl}/models`, { credentials: 'include' })
+      .then((res) => res.json())
+      .then((config: ModelsConfig) => {
+        setModelsConfig(config)
+        setSelectedModel((prev) => prev ?? config.default)
+      })
+      .catch(() => {
+        // Models config not available — proceed without selector
+      })
+  }, [endpointUrl])
 
   const setActiveChatId = useCallback((id: string | undefined) => {
     setChatId(id)
@@ -64,6 +80,7 @@ export default function ChatView({
     chatId,
     endpointUrl,
     initialMessages,
+    model: selectedModel,
     onSave: (id) => {
       if (!chatId) {
         setActiveChatId(id)
@@ -93,6 +110,9 @@ export default function ChatView({
         setActiveChatId(id)
         setInitialMessages(msgs)
         setMessages(msgs)
+        if (doc.model) {
+          setSelectedModel(doc.model)
+        }
       } catch {
         // silently ignore
       }
@@ -112,7 +132,8 @@ export default function ChatView({
     setActiveChatId(undefined)
     setInitialMessages(undefined)
     setMessages([])
-  }, [setActiveChatId, setMessages])
+    setSelectedModel(modelsConfig?.default)
+  }, [setActiveChatId, setMessages, modelsConfig])
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -168,6 +189,13 @@ export default function ChatView({
         >
           <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>Content Assistant</h2>
           <div style={{ flex: 1 }} />
+          {modelsConfig && modelsConfig.available.length > 1 && (
+            <ModelSelector
+              available={modelsConfig.available}
+              onChange={setSelectedModel}
+              value={selectedModel ?? modelsConfig.default}
+            />
+          )}
           <TokenBadge messages={messages as UIMessage<MessageMetadata>[]} />
         </div>
         <MessageList
