@@ -26,6 +26,11 @@ on:
           - major
           - none
 
+# Prevent concurrent releases to avoid race conditions when pushing to main
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -72,19 +77,28 @@ jobs:
             exit 1
           fi
 
-      - name: Publish to npm
-        run: cd ${{ inputs.plugin }} && pnpm publish --no-git-checks --provenance --access public
-
-      - name: Commit version bump and create tag
+      # Commit and push BEFORE npm publish so that if push fails,
+      # we haven't published an irreversible npm release yet.
+      - name: Commit version bump and push
+        if: inputs.bump != 'none'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [ "${{ inputs.bump }}" != "none" ]; then
-            git add ${{ inputs.plugin }}/package.json
-            git commit -m "release(${{ inputs.plugin }}): v${{ steps.version.outputs.version }}"
-          fi
+          git add ${{ inputs.plugin }}/package.json
+          git commit -m "release(${{ inputs.plugin }}): v${{ steps.version.outputs.version }}"
+          # Pull with rebase in case main advanced (e.g. from a merge) since checkout
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Publish to npm
+        run: cd ${{ inputs.plugin }} && pnpm publish --no-git-checks --provenance --access public
+
+      # Tag and GitHub release happen after npm publish so the tag
+      # only exists when the package is actually on the registry.
+      - name: Create tag
+        run: |
           git tag "${{ inputs.plugin }}@${{ steps.version.outputs.version }}"
-          git push origin main --tags
+          git push origin "${{ inputs.plugin }}@${{ steps.version.outputs.version }}"
 
       - name: Extract changelog for version
         id: changelog
