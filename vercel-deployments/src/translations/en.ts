@@ -12,7 +12,7 @@ export const en: GenericTranslationsObject = {
     deploymentInfoInspectDeployment: 'Inspect Deployment',
     deploymentInfoLatestDeployment: 'Latest Deployment',
     deploymentInfoTitle: 'Deployments',
-    deploymentInfoTriggerRedeploy: 'Redeploy Latest Production',
+    deploymentInfoTriggerRedeploy: 'Redeploy',
     deploymentInfoWebsite: 'Website',
 
     // Vercel Deployment Status

@@ -6,15 +6,13 @@ export const de: GenericTranslationsObject = {
     deploymentInfoActiveDeployment: 'Aktive Veröffentlichung',
     deploymentInfoDeploymentCompletedSuccessfully:
       'Neue Veröffentlichung erfolgreich abgeschlossen',
-    deploymentInfoDeploymentTriggeredFailed:
-      'Die letzte Produktionsveröffentlichung konnte nicht erneut veröffentlicht werden',
-    deploymentInfoDeploymentTriggeredSuccessfully:
-      'Die letzte Produktionsveröffentlichung wurde erfolgreich erneut veröffentlicht',
+    deploymentInfoDeploymentTriggeredFailed: 'Veröffentlichung fehlgeschlagen',
+    deploymentInfoDeploymentTriggeredSuccessfully: 'Veröffentlichung erfolgreich',
     deploymentInfoError: 'Fehler beim Abrufen der Veröffentlichungsinformationen',
-    deploymentInfoInspectDeployment: 'Veröffentlichung inspizieren',
+    deploymentInfoInspectDeployment: 'Details anzeigen',
     deploymentInfoLatestDeployment: 'Neueste Veröffentlichung',
     deploymentInfoTitle: 'Veröffentlichungen',
-    deploymentInfoTriggerRedeploy: 'Letzte Produktion erneut veröffentlichen',
+    deploymentInfoTriggerRedeploy: 'Aktualisieren',
     deploymentInfoWebsite: 'Website',
 
     // Vercel Deployment Status
