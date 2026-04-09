@@ -79,6 +79,9 @@ Note: When localization is disabled in your Payload config (default), you need t
 
 The plugin registers an `Alt text health` dashboard widget that shows alt text coverage across all configured upload collections, with cached queries that revalidate on document changes. Collections with missing alt text show a clickable badge linking to the affected images.
 
+<img width="696" height="246" alt="image" src="https://github.com/user-attachments/assets/75df7349-0307-4047-b1ac-6b2ee0814464" />
+
+
 Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 
 ### Resolvers
