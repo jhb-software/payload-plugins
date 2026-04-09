@@ -21,7 +21,7 @@ export const de: GenericTranslationsObject = {
     vercelDeploymentStatusDeleted: 'Gelöscht',
     vercelDeploymentStatusError: 'Fehler',
     vercelDeploymentStatusFailed: 'Fehlgeschlagen',
-    vercelDeploymentStatusInitializing: 'Wird initialisiert',
+    vercelDeploymentStatusInitializing: 'Startet',
     vercelDeploymentStatusQueued: 'In Warteschlange',
     vercelDeploymentStatusReady: 'Bereit',
     vercelDeploymentStatusUnknown: 'Unbekannter Status',
