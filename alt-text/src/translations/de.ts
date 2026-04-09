@@ -48,7 +48,7 @@ export const de: GenericTranslationsObject = {
 
     // Dashboard widget
     altTextHealthDescription: 'Alternativtext-Abdeckung über alle Upload-Sammlungen.',
-    altTextHealthWidget: 'Alternativtext',
+    altTextHealthWidget: 'Alternativtexte',
     collectionCheckFailed: 'Status nicht verfügbar',
     healthCheckPartialWarning: 'Einige Sammlungen konnten gerade nicht geprüft werden.',
     localeCount: '{{count}} Sprachen',

@@ -42,7 +42,7 @@ export const en: GenericTranslationsObject = {
 
     // Dashboard widget
     altTextHealthDescription: 'Alt text coverage across upload collections.',
-    altTextHealthWidget: 'Alt Text',
+    altTextHealthWidget: 'Alt Texts',
     collectionCheckFailed: 'Status unavailable',
     healthCheckPartialWarning: 'Some collections could not be checked right now.',
     localeCount: '{{count}} locales',
