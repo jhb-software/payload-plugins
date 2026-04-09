@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- refactor: improve widget translations (pluralize title, simplify German translations, use i18next plural keys for bulk generate button)
+
 ## 0.4.3
 
 - fix: reject unsupported file types (e.g. SVG) with clear error showing the MIME type
