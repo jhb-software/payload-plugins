@@ -47,7 +47,7 @@ export const de: GenericTranslationsObject = {
     theAlternateTextIsRequired: 'Der Alternativtext ist erforderlich.',
 
     // Dashboard widget
-    altTextHealthDescription: 'Alternativtext-Abdeckung über alle Upload-Sammlungen.',
+    altTextHealthDescription: 'Alternativtext Abdeckung in allen Upload-Sammlungen.',
     altTextHealthWidget: 'Alternativtexte',
     collectionCheckFailed: 'Status nicht verfügbar',
     healthCheckPartialWarning: 'Einige Sammlungen konnten gerade nicht geprüft werden.',
