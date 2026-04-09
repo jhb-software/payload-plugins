@@ -4,11 +4,10 @@ export const de: GenericTranslationsObject = {
   'vercel-dashboard': {
     // Deployment Info Feature
     deploymentInfoActiveDeployment: 'Aktive Veröffentlichung',
-    deploymentInfoDeploymentCompletedSuccessfully:
-      'Neue Veröffentlichung erfolgreich abgeschlossen',
+    deploymentInfoDeploymentCompletedSuccessfully: 'Veröffentlichung abgeschlossen',
     deploymentInfoDeploymentTriggeredFailed: 'Veröffentlichung fehlgeschlagen',
     deploymentInfoDeploymentTriggeredSuccessfully: 'Veröffentlichung erfolgreich',
-    deploymentInfoError: 'Fehler beim Abrufen der Veröffentlichungsinformationen',
+    deploymentInfoError: 'Fehler beim Laden der Veröffentlichungen',
     deploymentInfoInspectDeployment: 'Details anzeigen',
     deploymentInfoLatestDeployment: 'Neueste Veröffentlichung',
     deploymentInfoTitle: 'Veröffentlichungen',
