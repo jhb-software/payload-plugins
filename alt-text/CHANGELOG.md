@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- style: standardize icons to use Geist icon set (16x16 filled)
+
 ## 0.4.3
 
 - fix: reject unsupported file types (e.g. SVG) with clear error showing the MIME type

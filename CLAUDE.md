@@ -31,7 +31,7 @@ Plugin custom components should use Payload's built-in UI components (e.g. `Pill
 
 ## Icons
 
-All icons used in custom Payload components must come from the [Geist UI icon set](https://geist-ui.dev/en-us/components/icons). Copy the SVG markup from Geist and wrap it in a React component. Do not use custom or third-party icon SVGs.
+All icons used in custom Payload components must come from the [Geist icon set](https://github.com/jarvis394/geist-icons/tree/main/source). Copy the SVG markup from the source files, replace `fill="white"` with `fill="currentColor"`, and wrap it in a React component. Do not use custom or third-party icon SVGs.
 
 ## Document ID Types
 

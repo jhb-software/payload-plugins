@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- style: standardize icons to use Geist icon set (16x16 filled)
+- style: use cloud icon for deployment widget title instead of info icon
+
 ## 0.2.0
 
 - fix: prevent widget from refreshing when deployment data has not changed (fixes constant refresh in dashboard edit mode)

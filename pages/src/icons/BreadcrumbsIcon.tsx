@@ -9,18 +9,19 @@ export const BreadcrumbsIcon: React.FC<{
     <svg
       aria-label={ariaLabel}
       className={className}
-      fill="none"
+      data-testid="geist-icon"
       height={size}
-      stroke="currentColor"
-      strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
+      style={{ color: 'currentcolor' }}
+      viewBox="0 0 16 16"
       width={size}
-      xmlns="http://www.w3.org/2000/svg"
     >
-      <polyline points="13 17 18 12 13 7" />
-      <polyline points="6 17 11 12 6 7" />
+      <path
+        clipRule="evenodd"
+        d="M12.854 8.707a1 1 0 000-1.414L9.03 3.47l-.53-.53L7.44 4l.53.53L11.44 8l-3.47 3.47-.53.53 1.06 1.06.53-.53 3.824-3.823zm-5 0a1 1 0 000-1.414L4.03 3.47l-.53-.53L2.44 4l.53.53L6.44 8l-3.47 3.47-.53.53 1.06 1.06.53-.53 3.824-3.823z"
+        fill="currentColor"
+        fillRule="evenodd"
+      />
     </svg>
   )
 }
