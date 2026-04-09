@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { chatAgentPlugin, validateMessages } from '../index.js'
+import { chatAgentPlugin, validateMessages } from './index.js'
 
 // ---------------------------------------------------------------------------
 // validateMessages

@@ -4,8 +4,8 @@ import {
   conversationEndpoints,
   CONVERSATIONS_SLUG,
   conversationsCollection,
-} from '../conversations.js'
-import { chatAgentPlugin } from '../index.js'
+} from './conversations.js'
+import { chatAgentPlugin } from './index.js'
 
 // ---------------------------------------------------------------------------
 // Collection definition

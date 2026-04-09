@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildSystemPrompt } from '../schema.js'
+import { buildSystemPrompt } from './schema.js'
 
 describe('buildSystemPrompt', () => {
   it('includes default rules', () => {

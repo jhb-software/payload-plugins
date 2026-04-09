@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { buildTools, discoverEndpoints } from '../tools.js'
+import { buildTools, discoverEndpoints } from './tools.js'
 
 describe('buildTools', () => {
   const mockUser = { id: 'user-1', email: 'admin@test.com' }
