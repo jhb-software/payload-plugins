@@ -11,14 +11,16 @@ export const BreadcrumbsIcon: React.FC<{
       className={className}
       fill="none"
       height={size}
-      viewBox="0 0 16 16"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
       width={size}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g transform="translate(1, -2)">
-        <path className="stroke" d="M2 14L6 10L2 6" strokeLinecap="square" />
-        <path className="stroke" d="M8 14L12 10L8 6" strokeLinecap="square" />
-      </g>
+      <polyline points="13 17 18 12 13 7" />
+      <polyline points="6 17 11 12 6 7" />
     </svg>
   )
 }

@@ -12,10 +12,10 @@ import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 import { Card } from './Card.js'
 import { DeploymentStatusPoller } from './DeploymentStatusPoller.js'
 import { FormattedDate } from './FormattedDate.js'
+import { CloudIcon } from './icons/cloud.js'
 import { ClockIcon } from './icons/clock.js'
 import { ClockDashedIcon } from './icons/clock-dashed.js'
 import { GlobeIcon } from './icons/globe.js'
-import { InfoIcon } from './icons/info.js'
 import { SpinnerIcon } from './icons/spinner.js'
 import { TriggerFrontendDeploymentButton } from './TriggerDeploymentButton.js'
 
@@ -34,7 +34,7 @@ export function DeploymentInfoCard({
     <DeploymentStatusPoller>
       <Card
         actions={<TriggerFrontendDeploymentButton />}
-        icon={<InfoIcon />}
+        icon={<CloudIcon />}
         title={t('vercel-dashboard:deploymentInfoTitle')}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

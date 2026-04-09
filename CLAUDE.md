@@ -29,6 +29,10 @@ Publishing is done via the `Release` GitHub Actions workflow (manual dispatch). 
 
 Plugin custom components should use Payload's built-in UI components (e.g. `Pill`, `Button` from `@payloadcms/ui`) and CSS variables (e.g. `var(--style-radius-m)`, `var(--theme-elevation-500)`) instead of custom styles wherever possible. This ensures visual consistency with the Payload admin panel.
 
+## Icons
+
+All icons used in custom Payload components must come from the [Geist UI icon set](https://geist-ui.dev/en-us/components/icons). Copy the SVG markup from Geist and wrap it in a React component. Do not use custom or third-party icon SVGs.
+
 ## Document ID Types
 
 Document IDs must always support both `string` and `number` (MongoDB uses strings, PostgreSQL uses numbers). Use `DefaultDocumentIDType` from `'payload'`, or `number | string` when `payload` is not a dependency.
