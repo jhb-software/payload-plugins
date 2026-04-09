@@ -17,46 +17,51 @@ export const CONVERSATIONS_SLUG = 'chat-conversations'
 
 export const conversationsCollection = {
   slug: CONVERSATIONS_SLUG,
+  access: {
+    create: ({ req }: any) => !!req.user,
+    delete: ({ req }: any) => {
+      if (!req.user) {
+        return false
+      }
+      return { user: { equals: req.user.id } }
+    },
+    read: ({ req }: any) => {
+      if (!req.user) {
+        return false
+      }
+      return { user: { equals: req.user.id } }
+    },
+    update: ({ req }: any) => {
+      if (!req.user) {
+        return false
+      }
+      return { user: { equals: req.user.id } }
+    },
+  },
   admin: {
-    useAsTitle: 'title',
     group: 'Chat',
     hidden: true,
-  },
-  timestamps: true,
-  access: {
-    read: ({ req }: any) => {
-      if (!req.user) return false
-      return { user: { equals: req.user.id } }
-    },
-    create: ({ req }: any) => !!req.user,
-    update: ({ req }: any) => {
-      if (!req.user) return false
-      return { user: { equals: req.user.id } }
-    },
-    delete: ({ req }: any) => {
-      if (!req.user) return false
-      return { user: { equals: req.user.id } }
-    },
+    useAsTitle: 'title',
   },
   fields: [
     {
       name: 'title',
       type: 'text',
-      required: true,
       defaultValue: 'New conversation',
+      required: true,
     },
     {
       name: 'messages',
       type: 'json',
-      required: true,
       defaultValue: [],
+      required: true,
     },
     {
       name: 'user',
       type: 'relationship',
+      admin: { readOnly: true },
       relationTo: 'users',
       required: true,
-      admin: { readOnly: true },
     },
     {
       name: 'model',
@@ -68,6 +73,7 @@ export const conversationsCollection = {
       defaultValue: 0,
     },
   ],
+  timestamps: true,
 }
 
 // ---------------------------------------------------------------------------
@@ -82,10 +88,10 @@ async function listConversations(req: any): Promise<Response> {
 
   const result = await req.payload.find({
     collection: CONVERSATIONS_SLUG,
-    where: { user: { equals: req.user.id } },
-    sort: '-updatedAt',
-    limit: 50,
     depth: 0,
+    limit: 50,
+    sort: '-updatedAt',
+    where: { user: { equals: req.user.id } },
   })
 
   return Response.json(result)
@@ -104,8 +110,8 @@ async function getConversation(req: any): Promise<Response> {
 
   try {
     const doc = await req.payload.findByID({
-      collection: CONVERSATIONS_SLUG,
       id,
+      collection: CONVERSATIONS_SLUG,
       overrideAccess: false,
       user: req.user,
     })
@@ -131,11 +137,11 @@ async function createConversation(req: any): Promise<Response> {
   const doc = await req.payload.create({
     collection: CONVERSATIONS_SLUG,
     data: {
-      title: body.title ?? 'New conversation',
       messages: body.messages ?? [],
-      user: req.user.id,
       model: body.model,
+      title: body.title ?? 'New conversation',
       totalTokens: body.totalTokens ?? 0,
+      user: req.user.id,
     },
   })
 
@@ -162,15 +168,23 @@ async function updateConversation(req: any): Promise<Response> {
 
   // Only allow updating specific fields
   const data: Record<string, unknown> = {}
-  if (body.title !== undefined) data.title = body.title
-  if (body.messages !== undefined) data.messages = body.messages
-  if (body.model !== undefined) data.model = body.model
-  if (body.totalTokens !== undefined) data.totalTokens = body.totalTokens
+  if (body.title !== undefined) {
+    data.title = body.title
+  }
+  if (body.messages !== undefined) {
+    data.messages = body.messages
+  }
+  if (body.model !== undefined) {
+    data.model = body.model
+  }
+  if (body.totalTokens !== undefined) {
+    data.totalTokens = body.totalTokens
+  }
 
   try {
     const doc = await req.payload.update({
-      collection: CONVERSATIONS_SLUG,
       id,
+      collection: CONVERSATIONS_SLUG,
       data,
       overrideAccess: false,
       user: req.user,
@@ -194,8 +208,8 @@ async function deleteConversation(req: any): Promise<Response> {
 
   try {
     await req.payload.delete({
-      collection: CONVERSATIONS_SLUG,
       id,
+      collection: CONVERSATIONS_SLUG,
       overrideAccess: false,
       user: req.user,
     })
@@ -211,28 +225,28 @@ async function deleteConversation(req: any): Promise<Response> {
 
 export const conversationEndpoints = [
   {
-    path: '/chat-agent/chat/conversations',
-    method: 'get' as const,
     handler: listConversations,
-  },
-  {
-    path: '/chat-agent/chat/conversations/:id',
     method: 'get' as const,
-    handler: getConversation,
-  },
-  {
     path: '/chat-agent/chat/conversations',
-    method: 'post' as const,
+  },
+  {
+    handler: getConversation,
+    method: 'get' as const,
+    path: '/chat-agent/chat/conversations/:id',
+  },
+  {
     handler: createConversation,
+    method: 'post' as const,
+    path: '/chat-agent/chat/conversations',
   },
   {
-    path: '/chat-agent/chat/conversations/:id',
-    method: 'patch' as const,
     handler: updateConversation,
+    method: 'patch' as const,
+    path: '/chat-agent/chat/conversations/:id',
   },
   {
-    path: '/chat-agent/chat/conversations/:id',
-    method: 'delete' as const,
     handler: deleteConversation,
+    method: 'delete' as const,
+    path: '/chat-agent/chat/conversations/:id',
   },
 ]

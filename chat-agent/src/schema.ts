@@ -12,16 +12,16 @@ import type { DiscoverableEndpoint } from './tools.js'
 // ---------------------------------------------------------------------------
 
 interface FieldSchema {
-  name: string
-  type: string
-  required?: boolean
-  localized?: boolean
-  virtual?: boolean
-  hasMany?: boolean
-  relationTo?: string | string[]
+  blocks?: { fields: FieldSchema[]; slug: string }[]
   fields?: FieldSchema[]
-  blocks?: { slug: string; fields: FieldSchema[] }[]
+  hasMany?: boolean
+  localized?: boolean
+  name: string
   options?: { label: string; value: string }[]
+  relationTo?: string | string[]
+  required?: boolean
+  type: string
+  virtual?: boolean
 }
 
 export function extractFields(
@@ -59,18 +59,30 @@ export function extractFields(
       continue
     }
 
-    if (!field.name) continue
+    if (!field.name) {
+      continue
+    }
 
     const schema: FieldSchema = {
       name: field.name,
       type: field.type,
     }
 
-    if (field.required) schema.required = true
-    if (field.localized) schema.localized = true
-    if (field.virtual) schema.virtual = true
-    if (field.hasMany) schema.hasMany = true
-    if (field.relationTo) schema.relationTo = field.relationTo
+    if (field.required) {
+      schema.required = true
+    }
+    if (field.localized) {
+      schema.localized = true
+    }
+    if (field.virtual) {
+      schema.virtual = true
+    }
+    if (field.hasMany) {
+      schema.hasMany = true
+    }
+    if (field.relationTo) {
+      schema.relationTo = field.relationTo
+    }
 
     if (field.fields && Array.isArray(field.fields)) {
       schema.fields = extractFields(field.fields, blocksBySlug)

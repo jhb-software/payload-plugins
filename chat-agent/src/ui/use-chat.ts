@@ -7,25 +7,27 @@
  * plus conversation persistence via the chat-conversations collection.
  */
 
+import type { UIMessage } from 'ai'
+
 import { useChat as useAIChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { messageMetadataSchema, type MessageMetadata } from '../types.js'
-import type { UIMessage } from 'ai'
 import { useCallback, useMemo, useRef } from 'react'
+
+import { type MessageMetadata, messageMetadataSchema } from '../types.js'
 
 export type ChatMessageUI = UIMessage<MessageMetadata>
 
 export interface UseChatOptions {
-  endpointUrl?: string
-  model?: string
-  /** Use superuser access (overrideAccess: true) instead of user's permissions. */
-  overrideAccess?: boolean
   /** Existing conversation ID to resume. */
   chatId?: string
+  endpointUrl?: string
   /** Pre-loaded messages (when resuming a conversation). */
   initialMessages?: UIMessage<MessageMetadata>[]
+  model?: string
   /** Called after messages are auto-saved. */
   onSave?: (conversationId: string) => void
+  /** Use superuser access (overrideAccess: true) instead of user's permissions. */
+  overrideAccess?: boolean
 }
 
 /** Save or update a conversation via the REST API. */
@@ -33,26 +35,26 @@ async function saveConversation(
   baseUrl: string,
   conversationId: string | undefined,
   data: {
-    title?: string
     messages: UIMessage<MessageMetadata>[]
     model?: string
+    title?: string
     totalTokens?: number
   },
 ): Promise<string> {
   if (conversationId) {
     await fetch(`${baseUrl}/${conversationId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(data),
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH',
     })
     return conversationId
   }
   const res = await fetch(baseUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(data),
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
   })
   const doc = await res.json()
   return doc.id
@@ -61,9 +63,11 @@ async function saveConversation(
 /** Derive a title from the first user message. */
 function titleFromMessages(messages: UIMessage[]): string {
   const firstUser = messages.find((m) => m.role === 'user')
-  if (!firstUser) return 'New conversation'
+  if (!firstUser) {
+    return 'New conversation'
+  }
   const text = firstUser.parts
-    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .filter((p): p is { text: string; type: 'text' } => p.type === 'text')
     .map((p) => p.text)
     .join('')
   return text.slice(0, 80) || 'New conversation'
@@ -89,16 +93,20 @@ export function useChat(options?: string | UseChatOptions) {
       message: UIMessage<MessageMetadata>
       messages: UIMessage<MessageMetadata>[]
     }) => {
-      if (message.role !== 'assistant') return
+      if (message.role !== 'assistant') {
+        return
+      }
       let totalTokens = 0
       for (const msg of allMessages) {
-        if (msg.metadata?.totalTokens) totalTokens += msg.metadata.totalTokens
+        if (msg.metadata?.totalTokens) {
+          totalTokens += msg.metadata.totalTokens
+        }
       }
       try {
         const id = await saveConversation(conversationsUrl, conversationIdRef.current, {
-          title: titleFromMessages(allMessages),
           messages: allMessages,
           model,
+          title: titleFromMessages(allMessages),
           totalTokens,
         })
         conversationIdRef.current = id
@@ -112,8 +120,12 @@ export function useChat(options?: string | UseChatOptions) {
 
   const transport = useMemo(() => {
     const body: Record<string, unknown> = {}
-    if (model) body.model = model
-    if (overrideAccess) body.overrideAccess = true
+    if (model) {
+      body.model = model
+    }
+    if (overrideAccess) {
+      body.overrideAccess = true
+    }
     return new DefaultChatTransport({
       api: endpointUrl,
       body: Object.keys(body).length > 0 ? body : undefined,
@@ -122,12 +134,16 @@ export function useChat(options?: string | UseChatOptions) {
   }, [endpointUrl, model, overrideAccess])
 
   const chatOptions: Record<string, unknown> = {
-    transport,
     messageMetadataSchema,
     onFinish: handleFinish,
+    transport,
   }
-  if (chatId) chatOptions.id = chatId
-  if (initialMessages) chatOptions.messages = initialMessages
+  if (chatId) {
+    chatOptions.id = chatId
+  }
+  if (initialMessages) {
+    chatOptions.messages = initialMessages
+  }
 
   const chat = useAIChat(chatOptions as any)
 

@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
+
 import { chatAgentPlugin, validateMessages } from '../index.js'
 
 // ---------------------------------------------------------------------------
@@ -8,12 +9,12 @@ import { chatAgentPlugin, validateMessages } from '../index.js'
 describe('validateMessages', () => {
   it('returns null for valid UIMessage format', () => {
     expect(
-      validateMessages([{ id: '1', role: 'user', parts: [{ type: 'text', text: 'Hi' }] }]),
+      validateMessages([{ id: '1', parts: [{ type: 'text', text: 'Hi' }], role: 'user' }]),
     ).toBeNull()
   })
 
   it('returns null for simple role+content messages', () => {
-    expect(validateMessages([{ role: 'user', content: 'Hello' }])).toBeNull()
+    expect(validateMessages([{ content: 'Hello', role: 'user' }])).toBeNull()
   })
 
   it('rejects non-array', () => {
@@ -57,7 +58,7 @@ describe('chatAgentPlugin', () => {
 
   it('preserves existing endpoints', () => {
     const plugin = chatAgentPlugin()
-    const existing = { path: '/custom', method: 'get', handler: () => {} }
+    const existing = { handler: () => {}, method: 'get', path: '/custom' }
     const result = plugin({ endpoints: [existing] })
     expect(result.endpoints[0]).toBe(existing)
     expect(result.endpoints.some((ep: any) => ep.path === '/chat-agent/chat')).toBe(true)
@@ -68,7 +69,7 @@ describe('chatAgentPlugin', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
-    const response = await handler({ user: null, payload: {} })
+    const response = await handler({ payload: {}, user: null })
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({ error: 'Unauthorized' })
   })
@@ -83,25 +84,27 @@ describe('chatAgentPlugin', () => {
       const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
       const response = await handler({
-        user: { id: 1 },
-        payload: { config: { collections: [], globals: [] } },
         json: () =>
           Promise.resolve({
             messages: [
               {
                 id: '1',
-                role: 'user',
                 parts: [{ type: 'text', text: 'test' }],
+                role: 'user',
               },
             ],
           }),
+        payload: { config: { collections: [], globals: [] } },
+        user: { id: 1 },
       })
 
       expect(response.status).toBe(500)
       const body = await response.json()
       expect(body.error).toContain('API key')
     } finally {
-      if (original !== undefined) process.env.ANTHROPIC_API_KEY = original
+      if (original !== undefined) {
+        process.env.ANTHROPIC_API_KEY = original
+      }
     }
   })
 
@@ -111,9 +114,9 @@ describe('chatAgentPlugin', () => {
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({
-      user: { id: 1 },
-      payload: { config: { collections: [], globals: [] } },
       json: () => Promise.reject(new Error('Invalid JSON')),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
     })
 
     expect(response.status).toBe(400)
@@ -126,9 +129,9 @@ describe('chatAgentPlugin', () => {
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({
-      user: { id: 1 },
-      payload: { config: { collections: [], globals: [] } },
       json: () => Promise.resolve({ messages: [] }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
     })
 
     expect(response.status).toBe(400)
@@ -155,7 +158,6 @@ describe('chatAgentPlugin admin view', () => {
   it('preserves existing admin views', () => {
     const plugin = chatAgentPlugin()
     const result = plugin({
-      endpoints: [],
       admin: {
         components: {
           views: {
@@ -163,6 +165,7 @@ describe('chatAgentPlugin admin view', () => {
           },
         },
       },
+      endpoints: [],
     })
 
     expect(result.admin.components.views.dashboard).toBeDefined()

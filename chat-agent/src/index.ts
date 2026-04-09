@@ -9,15 +9,17 @@
  *   export default buildConfig({ plugins: [chatAgentPlugin({ apiKey: '...' })] })
  */
 
-import { streamText, convertToModelMessages, stepCountIs } from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { buildTools, discoverEndpoints } from './tools.js'
-import { buildSystemPrompt } from './schema.js'
-import { conversationsCollection, conversationEndpoints } from './conversations.js'
+import { convertToModelMessages, stepCountIs, streamText } from 'ai'
+
 import type { ChatAgentPluginOptions } from './types.js'
 
+import { conversationEndpoints, conversationsCollection } from './conversations.js'
+import { buildSystemPrompt } from './schema.js'
+import { buildTools, discoverEndpoints } from './tools.js'
+
 export type { ChatAgentPluginOptions } from './types.js'
-export { messageMetadataSchema, type MessageMetadata } from './types.js'
+export { type MessageMetadata, messageMetadataSchema } from './types.js'
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
 
@@ -31,7 +33,7 @@ const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent/client#ChatView'
  * Validate that a messages array is non-empty and has valid roles.
  * Returns an error string if invalid, or null if valid.
  */
-export function validateMessages(messages: unknown): string | null {
+export function validateMessages(messages: unknown): null | string {
   if (!Array.isArray(messages)) {
     return '"messages" must be an array'
   }
@@ -66,7 +68,6 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
 
     return {
       ...config,
-      collections: [...(config.collections ?? []), conversationsCollection],
       admin: {
         ...config.admin,
         components: {
@@ -74,12 +75,11 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
           views: adminViews,
         },
       },
+      collections: [...(config.collections ?? []), conversationsCollection],
       endpoints: [
         ...(config.endpoints ?? []),
         ...conversationEndpoints,
         {
-          path: '/chat-agent/chat',
-          method: 'post',
           handler: async (req: any) => {
             // --- Auth check -----------------------------------------------
             const allowed = options?.access ? await options.access(req) : !!req.user
@@ -137,20 +137,20 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
 
             // --- Stream response via AI SDK --------------------------------
             const result = streamText({
-              model: createAnthropic({ apiKey })(modelId),
-              system: systemPrompt,
               messages: await (convertToModelMessages as any)(body.messages),
-              tools,
+              model: createAnthropic({ apiKey })(modelId),
               stopWhen: stepCountIs(maxSteps),
+              system: systemPrompt,
               toolChoice: 'auto',
+              tools,
             })
 
             return result.toUIMessageStreamResponse({
               messageMetadata: ({ part }: { part: any }) => {
                 if (part.type === 'finish') {
                   return {
-                    model: modelId,
                     inputTokens: part.totalUsage?.inputTokens,
+                    model: modelId,
                     outputTokens: part.totalUsage?.outputTokens,
                     totalTokens: part.totalUsage?.totalTokens,
                   }
@@ -159,6 +159,8 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
               },
             })
           },
+          method: 'post',
+          path: '/chat-agent/chat',
         },
       ],
     }

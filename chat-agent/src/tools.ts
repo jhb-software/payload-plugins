@@ -14,6 +14,7 @@
  */
 
 import type { Tool } from 'ai'
+
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
@@ -49,13 +50,26 @@ const draft = z.boolean().optional().describe('If true, include draft documents.
 
 function commonParams(input: Record<string, unknown>) {
   const params: Record<string, unknown> = {}
-  if (input.depth !== undefined) params.depth = input.depth
-  else params.depth = 0
-  if (input.locale !== undefined) params.locale = input.locale
-  if (input.fallbackLocale !== undefined) params.fallbackLocale = input.fallbackLocale
-  if (input.select !== undefined) params.select = input.select
-  if (input.populate !== undefined) params.populate = input.populate
-  if (input.draft) params.draft = true
+  if (input.depth !== undefined) {
+    params.depth = input.depth
+  } else {
+    params.depth = 0
+  }
+  if (input.locale !== undefined) {
+    params.locale = input.locale
+  }
+  if (input.fallbackLocale !== undefined) {
+    params.fallbackLocale = input.fallbackLocale
+  }
+  if (input.select !== undefined) {
+    params.select = input.select
+  }
+  if (input.populate !== undefined) {
+    params.populate = input.populate
+  }
+  if (input.draft) {
+    params.draft = true
+  }
   return params
 }
 
@@ -66,25 +80,25 @@ function commonParams(input: Record<string, unknown>) {
 // Payload types are not available as a dependency — use structural types for
 // the subset of the Local API we call.
 interface PayloadLocalAPI {
+  count(args: Record<string, unknown>): Promise<unknown>
+  create(args: Record<string, unknown>): Promise<unknown>
+  delete(args: Record<string, unknown>): Promise<unknown>
   find(args: Record<string, unknown>): Promise<unknown>
   findByID(args: Record<string, unknown>): Promise<unknown>
-  create(args: Record<string, unknown>): Promise<unknown>
-  update(args: Record<string, unknown>): Promise<unknown>
-  delete(args: Record<string, unknown>): Promise<unknown>
-  count(args: Record<string, unknown>): Promise<unknown>
   findGlobal(args: Record<string, unknown>): Promise<unknown>
+  update(args: Record<string, unknown>): Promise<unknown>
   updateGlobal(args: Record<string, unknown>): Promise<unknown>
 }
 
-type ExecutableTool = Tool<Record<string, unknown>, unknown> &
-  Required<Pick<Tool<Record<string, unknown>, unknown>, 'execute'>>
+type ExecutableTool = Required<Pick<Tool<Record<string, unknown>, unknown>, 'execute'>> &
+  Tool<Record<string, unknown>, unknown>
 
 /** Minimal representation of a custom endpoint for the agent. */
 export interface DiscoverableEndpoint {
-  path: string
-  method: string
-  handler: (req: any) => Promise<Response> | Response
   description?: string
+  handler: (req: any) => Promise<Response> | Response
+  method: string
+  path: string
 }
 
 /**
@@ -96,40 +110,46 @@ export function discoverEndpoints(config: any): DiscoverableEndpoint[] {
 
   for (const ep of config.endpoints ?? []) {
     // Skip our own chat plugin endpoints
-    if (typeof ep.path === 'string' && ep.path.startsWith('/chat-agent/')) continue
+    if (typeof ep.path === 'string' && ep.path.startsWith('/chat-agent/')) {
+      continue
+    }
     if (ep.custom?.description) {
       endpoints.push({
-        path: `/api${ep.path}`,
-        method: ep.method,
-        handler: ep.handler,
         description: ep.custom.description,
+        handler: ep.handler,
+        method: ep.method,
+        path: `/api${ep.path}`,
       })
     }
   }
 
   for (const col of config.collections ?? []) {
-    if (!Array.isArray(col.endpoints)) continue
+    if (!Array.isArray(col.endpoints)) {
+      continue
+    }
     for (const ep of col.endpoints) {
       if (ep.custom?.description) {
         endpoints.push({
-          path: `/api/${col.slug}${ep.path}`,
-          method: ep.method,
-          handler: ep.handler,
           description: ep.custom.description,
+          handler: ep.handler,
+          method: ep.method,
+          path: `/api/${col.slug}${ep.path}`,
         })
       }
     }
   }
 
   for (const global of config.globals ?? []) {
-    if (!Array.isArray(global.endpoints)) continue
+    if (!Array.isArray(global.endpoints)) {
+      continue
+    }
     for (const ep of global.endpoints) {
       if (ep.custom?.description) {
         endpoints.push({
-          path: `/api/globals/${global.slug}${ep.path}`,
-          method: ep.method,
-          handler: ep.handler,
           description: ep.custom.description,
+          handler: ep.handler,
+          method: ep.method,
+          path: `/api/globals/${global.slug}${ep.path}`,
         })
       }
     }
@@ -142,10 +162,12 @@ export function discoverEndpoints(config: any): DiscoverableEndpoint[] {
  * Match a request path against an Express-style route pattern.
  * Returns parsed route params or null if no match.
  */
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
+function matchRoute(pattern: string, path: string): null | Record<string, string> {
   const patternParts = pattern.split('/')
   const pathParts = path.split('/')
-  if (patternParts.length !== pathParts.length) return null
+  if (patternParts.length !== pathParts.length) {
+    return null
+  }
 
   const params: Record<string, string> = {}
   for (let i = 0; i < patternParts.length; i++) {
@@ -173,68 +195,59 @@ export function buildTools(
     find: {
       description:
         'Query documents from a collection. Returns paginated results with docs, totalDocs, page, hasNextPage.',
+      execute: async (input: Record<string, unknown>) => {
+        return payload.find({
+          collection: input.collection,
+          limit: input.limit ?? 10,
+          page: input.page ?? 1,
+          sort: input.sort,
+          where: input.where ?? {},
+          ...commonParams(input),
+          ...access,
+        })
+      },
       inputSchema: z.object({
         collection: z.string().describe("Collection slug (e.g. 'posts')"),
+        depth,
+        draft,
+        fallbackLocale,
+        limit: z.number().optional().describe('Max documents to return (default: 10)'),
+        locale,
+        page: z.number().optional().describe('Page number for pagination (default: 1)'),
+        populate,
+        select,
+        sort: z.string().optional().describe("Sort field. Prefix with '-' for descending"),
         where: z
           .record(z.string(), z.unknown())
           .optional()
           .describe("Payload where query. Example: { status: { equals: 'published' } }"),
-        select,
-        limit: z.number().optional().describe('Max documents to return (default: 10)'),
-        page: z.number().optional().describe('Page number for pagination (default: 1)'),
-        sort: z.string().optional().describe("Sort field. Prefix with '-' for descending"),
-        depth,
-        locale,
-        fallbackLocale,
-        populate,
-        draft,
       }),
-      execute: async (input: Record<string, unknown>) => {
-        return payload.find({
-          collection: input.collection,
-          where: input.where ?? {},
-          limit: input.limit ?? 10,
-          page: input.page ?? 1,
-          sort: input.sort,
-          ...commonParams(input),
-          ...access,
-        })
-      },
     },
 
     findByID: {
       description: 'Get a single document by its ID.',
-      inputSchema: z.object({
-        collection: z.string().describe('Collection slug'),
-        id: z.string().describe('Document ID'),
-        select,
-        depth,
-        locale,
-        fallbackLocale,
-        populate,
-        draft,
-      }),
       execute: async (input: Record<string, unknown>) => {
         return payload.findByID({
-          collection: input.collection,
           id: input.id,
+          collection: input.collection,
           ...commonParams(input),
           ...access,
         })
       },
+      inputSchema: z.object({
+        id: z.string().describe('Document ID'),
+        collection: z.string().describe('Collection slug'),
+        depth,
+        draft,
+        fallbackLocale,
+        locale,
+        populate,
+        select,
+      }),
     },
 
     create: {
       description: 'Create a new document. Returns the created document.',
-      inputSchema: z.object({
-        collection: z.string().describe('Collection slug'),
-        data: z.record(z.string(), z.unknown()).describe('Document data'),
-        select,
-        depth,
-        locale,
-        fallbackLocale,
-        draft,
-      }),
       execute: async (input: Record<string, unknown>) => {
         return payload.create({
           collection: input.collection,
@@ -243,59 +256,64 @@ export function buildTools(
           ...access,
         })
       },
+      inputSchema: z.object({
+        collection: z.string().describe('Collection slug'),
+        data: z.record(z.string(), z.unknown()).describe('Document data'),
+        depth,
+        draft,
+        fallbackLocale,
+        locale,
+        select,
+      }),
     },
 
     update: {
       description: 'Update a document by ID. Returns the updated document.',
-      inputSchema: z.object({
-        collection: z.string().describe('Collection slug'),
-        id: z.string().describe('Document ID to update'),
-        data: z
-          .record(z.string(), z.unknown())
-          .describe('Fields to update (partial, omitted fields unchanged)'),
-        select,
-        depth,
-        locale,
-        fallbackLocale,
-        populate,
-        draft,
-      }),
       execute: async (input: Record<string, unknown>) => {
         return payload.update({
-          collection: input.collection,
           id: input.id,
+          collection: input.collection,
           data: input.data,
           ...commonParams(input),
           ...access,
         })
       },
+      inputSchema: z.object({
+        id: z.string().describe('Document ID to update'),
+        collection: z.string().describe('Collection slug'),
+        data: z
+          .record(z.string(), z.unknown())
+          .describe('Fields to update (partial, omitted fields unchanged)'),
+        depth,
+        draft,
+        fallbackLocale,
+        locale,
+        populate,
+        select,
+      }),
     },
 
     delete: {
       description: 'Delete a document by ID. Returns the deleted document.',
-      inputSchema: z.object({
-        collection: z.string().describe('Collection slug'),
-        id: z.string().describe('Document ID to delete'),
-        depth,
-        select,
-      }),
       execute: async (input: Record<string, unknown>) => {
         return payload.delete({
-          collection: input.collection,
           id: input.id,
+          collection: input.collection,
           depth: (input.depth as number) ?? 0,
           select: input.select,
           ...access,
         })
       },
+      inputSchema: z.object({
+        id: z.string().describe('Document ID to delete'),
+        collection: z.string().describe('Collection slug'),
+        depth,
+        select,
+      }),
     },
 
     count: {
       description: 'Count documents matching a query. Returns { totalDocs: number }.',
-      inputSchema: z.object({
-        collection: z.string().describe('Collection slug'),
-        where: z.record(z.string(), z.unknown()).optional().describe('Payload where query'),
-      }),
       execute: async (input: Record<string, unknown>) => {
         return payload.count({
           collection: input.collection,
@@ -303,19 +321,14 @@ export function buildTools(
           ...access,
         })
       },
+      inputSchema: z.object({
+        collection: z.string().describe('Collection slug'),
+        where: z.record(z.string(), z.unknown()).optional().describe('Payload where query'),
+      }),
     },
 
     findGlobal: {
       description: 'Get a global document (singleton). One document per global slug.',
-      inputSchema: z.object({
-        slug: z.string().describe("Global slug (e.g. 'settings')"),
-        select,
-        depth,
-        locale,
-        fallbackLocale,
-        populate,
-        draft,
-      }),
       execute: async (input: Record<string, unknown>) => {
         return payload.findGlobal({
           slug: input.slug,
@@ -323,20 +336,19 @@ export function buildTools(
           ...access,
         })
       },
+      inputSchema: z.object({
+        slug: z.string().describe("Global slug (e.g. 'settings')"),
+        depth,
+        draft,
+        fallbackLocale,
+        locale,
+        populate,
+        select,
+      }),
     },
 
     updateGlobal: {
       description: 'Update a global document. Returns the updated global.',
-      inputSchema: z.object({
-        slug: z.string().describe('Global slug'),
-        data: z.record(z.string(), z.unknown()).describe('Fields to update'),
-        select,
-        depth,
-        locale,
-        fallbackLocale,
-        populate,
-        draft,
-      }),
       execute: async (input: Record<string, unknown>) => {
         return payload.updateGlobal({
           slug: input.slug,
@@ -345,6 +357,16 @@ export function buildTools(
           ...access,
         })
       },
+      inputSchema: z.object({
+        slug: z.string().describe('Global slug'),
+        data: z.record(z.string(), z.unknown()).describe('Fields to update'),
+        depth,
+        draft,
+        fallbackLocale,
+        locale,
+        populate,
+        select,
+      }),
     },
 
     // --- Custom endpoint invocation -----------------------------------------
@@ -353,22 +375,6 @@ export function buildTools(
           callEndpoint: {
             description:
               "Invoke a custom API endpoint. Use this to call plugin-provided endpoints listed in the system prompt under 'Custom Endpoints'.",
-            inputSchema: z.object({
-              path: z
-                .string()
-                .describe(
-                  "Full API path (e.g. '/api/posts/publish/123'). Must match one of the available custom endpoints.",
-                ),
-              method: z.enum(['get', 'post', 'put', 'patch', 'delete']).describe('HTTP method'),
-              body: z
-                .record(z.string(), z.unknown())
-                .optional()
-                .describe('Request body (for POST/PUT/PATCH)'),
-              query: z
-                .record(z.string(), z.string())
-                .optional()
-                .describe('Query string parameters'),
-            }),
             execute: async (input: Record<string, unknown>) => {
               const path = input.path as string
               const method = (input.method as string).toLowerCase()
@@ -377,7 +383,9 @@ export function buildTools(
 
               // Find matching endpoint
               const match = customEndpoints.find((ep) => {
-                if (ep.method !== method) return false
+                if (ep.method !== method) {
+                  return false
+                }
                 return matchRoute(ep.path, path) !== null
               })
 
@@ -393,8 +401,8 @@ export function buildTools(
               // Use defineProperty for read-only properties like `method`.
               const endpointReq = Object.create(req)
               Object.defineProperty(endpointReq, 'method', {
-                value: method.toUpperCase(),
                 enumerable: true,
+                value: method.toUpperCase(),
               })
               endpointReq.routeParams = routeParams
               endpointReq.json = () => Promise.resolve(body ?? {})
@@ -409,13 +417,29 @@ export function buildTools(
                 if (contentType.includes('json')) {
                   return await response.json()
                 }
-                return { status: response.status, body: await response.text() }
+                return { body: await response.text(), status: response.status }
               } catch (err: any) {
                 return {
                   error: err?.message ?? 'Endpoint handler threw an error',
                 }
               }
             },
+            inputSchema: z.object({
+              body: z
+                .record(z.string(), z.unknown())
+                .optional()
+                .describe('Request body (for POST/PUT/PATCH)'),
+              method: z.enum(['get', 'post', 'put', 'patch', 'delete']).describe('HTTP method'),
+              path: z
+                .string()
+                .describe(
+                  "Full API path (e.g. '/api/posts/publish/123'). Must match one of the available custom endpoints.",
+                ),
+              query: z
+                .record(z.string(), z.string())
+                .optional()
+                .describe('Query string parameters'),
+            }),
           } satisfies ExecutableTool,
         }
       : {}),

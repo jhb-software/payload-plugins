@@ -129,7 +129,7 @@ export default buildConfig({
       model: 'claude-haiku-4-5-20251001',
       superuserAccess: true,
       adminView: {
-        Component: './components/ChatView',
+        Component: './src/components/ChatView',
       },
     }),
   ],

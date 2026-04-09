@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
 import { buildTools, discoverEndpoints } from '../tools.js'
 
 describe('buildTools', () => {
@@ -6,13 +7,13 @@ describe('buildTools', () => {
 
   function createMockPayload() {
     return {
+      count: vi.fn().mockResolvedValue({ totalDocs: 42 }),
+      create: vi.fn().mockResolvedValue({ id: 'new-1', title: 'Created' }),
+      delete: vi.fn().mockResolvedValue({ id: '1' }),
       find: vi.fn().mockResolvedValue({ docs: [], totalDocs: 0 }),
       findByID: vi.fn().mockResolvedValue({ id: '1', title: 'Test' }),
-      create: vi.fn().mockResolvedValue({ id: 'new-1', title: 'Created' }),
-      update: vi.fn().mockResolvedValue({ id: '1', title: 'Updated' }),
-      delete: vi.fn().mockResolvedValue({ id: '1' }),
-      count: vi.fn().mockResolvedValue({ totalDocs: 42 }),
       findGlobal: vi.fn().mockResolvedValue({ siteName: 'Test Site' }),
+      update: vi.fn().mockResolvedValue({ id: '1', title: 'Updated' }),
       updateGlobal: vi.fn().mockResolvedValue({ siteName: 'Updated Site' }),
     }
   }
@@ -47,26 +48,26 @@ describe('buildTools', () => {
     await tools.find.execute(
       {
         collection: 'posts',
-        where: { status: { equals: 'published' } },
-        limit: 5,
-        sort: '-createdAt',
-        select: { title: true, slug: true },
         depth: 2,
+        limit: 5,
+        select: { slug: true, title: true },
+        sort: '-createdAt',
+        where: { status: { equals: 'published' } },
       },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: 'posts',
-        where: { status: { equals: 'published' } },
-        limit: 5,
-        page: 1,
-        sort: '-createdAt',
         depth: 2,
-        select: { title: true, slug: true },
+        limit: 5,
         overrideAccess: false,
+        page: 1,
+        select: { slug: true, title: true },
+        sort: '-createdAt',
         user: mockUser,
+        where: { status: { equals: 'published' } },
       }),
     )
   })
@@ -77,7 +78,7 @@ describe('buildTools', () => {
 
     await tools.find.execute(
       { collection: 'posts' },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({ depth: 0 }))
@@ -88,14 +89,14 @@ describe('buildTools', () => {
     const tools = buildTools(payload, mockUser)
 
     await tools.findByID.execute(
-      { collection: 'posts', id: 'abc-123', depth: 2 },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { id: 'abc-123', collection: 'posts', depth: 2 },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.findByID).toHaveBeenCalledWith(
       expect.objectContaining({
-        collection: 'posts',
         id: 'abc-123',
+        collection: 'posts',
         depth: 2,
         overrideAccess: false,
         user: mockUser,
@@ -106,19 +107,19 @@ describe('buildTools', () => {
   it('create calls payload.create correctly', async () => {
     const payload = createMockPayload()
     const tools = buildTools(payload, mockUser)
-    const data = { title: 'New Post', status: 'draft' }
+    const data = { status: 'draft', title: 'New Post' }
 
     await tools.create.execute(
       { collection: 'posts', data, locale: 'en' },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.create).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: 'posts',
         data,
-        locale: 'en',
         depth: 0,
+        locale: 'en',
         overrideAccess: false,
         user: mockUser,
       }),
@@ -130,14 +131,14 @@ describe('buildTools', () => {
     const tools = buildTools(payload, mockUser)
 
     await tools.update.execute(
-      { collection: 'posts', id: 'abc-123', data: { title: 'Updated' } },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { id: 'abc-123', collection: 'posts', data: { title: 'Updated' } },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        collection: 'posts',
         id: 'abc-123',
+        collection: 'posts',
         data: { title: 'Updated' },
         depth: 0,
         overrideAccess: false,
@@ -151,14 +152,14 @@ describe('buildTools', () => {
     const tools = buildTools(payload, mockUser)
 
     await tools.delete.execute(
-      { collection: 'posts', id: 'abc-123' },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { id: 'abc-123', collection: 'posts' },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.delete).toHaveBeenCalledWith(
       expect.objectContaining({
-        collection: 'posts',
         id: 'abc-123',
+        collection: 'posts',
         depth: 0,
         overrideAccess: false,
         user: mockUser,
@@ -172,15 +173,15 @@ describe('buildTools', () => {
 
     await tools.count.execute(
       { collection: 'posts', where: { status: { equals: 'published' } } },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.count).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: 'posts',
-        where: { status: { equals: 'published' } },
         overrideAccess: false,
         user: mockUser,
+        where: { status: { equals: 'published' } },
       }),
     )
   })
@@ -191,7 +192,7 @@ describe('buildTools', () => {
 
     await tools.findGlobal.execute(
       { slug: 'settings' },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.findGlobal).toHaveBeenCalledWith(
@@ -210,7 +211,7 @@ describe('buildTools', () => {
 
     await tools.updateGlobal.execute(
       { slug: 'settings', data: { siteName: 'New Name' } },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.updateGlobal).toHaveBeenCalledWith(
@@ -231,16 +232,16 @@ describe('buildTools', () => {
     await tools.find.execute(
       {
         collection: 'posts',
-        select: { title: true, slug: true },
         populate: { author: true },
+        select: { slug: true, title: true },
       },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        select: { title: true, slug: true },
         populate: { author: true },
+        select: { slug: true, title: true },
       }),
     )
   })
@@ -253,17 +254,17 @@ describe('buildTools', () => {
       {
         collection: 'posts',
         draft: true,
-        locale: 'de',
         fallbackLocale: 'en',
+        locale: 'de',
       },
-      { toolCallId: '1', messages: [], abortSignal: undefined as any },
+      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
       expect.objectContaining({
         draft: true,
-        locale: 'de',
         fallbackLocale: 'en',
+        locale: 'de',
       }),
     )
   })
@@ -272,16 +273,16 @@ describe('buildTools', () => {
     const payload = createMockPayload()
     const tools = buildTools(payload, mockUser)
     const ctx = {
-      toolCallId: '1',
-      messages: [],
       abortSignal: undefined as any,
+      messages: [],
+      toolCallId: '1',
     }
 
     await tools.find.execute({ collection: 'posts' }, ctx)
-    await tools.findByID.execute({ collection: 'posts', id: '1' }, ctx)
+    await tools.findByID.execute({ id: '1', collection: 'posts' }, ctx)
     await tools.create.execute({ collection: 'posts', data: {} }, ctx)
-    await tools.update.execute({ collection: 'posts', id: '1', data: {} }, ctx)
-    await tools.delete.execute({ collection: 'posts', id: '1' }, ctx)
+    await tools.update.execute({ id: '1', collection: 'posts', data: {} }, ctx)
+    await tools.delete.execute({ id: '1', collection: 'posts' }, ctx)
     await tools.count.execute({ collection: 'posts' }, ctx)
     await tools.findGlobal.execute({ slug: 'settings' }, ctx)
     await tools.updateGlobal.execute({ slug: 'settings', data: {} }, ctx)
@@ -311,16 +312,16 @@ describe('buildTools', () => {
 describe('discoverEndpoints', () => {
   it('discovers root-level endpoints with custom.description', () => {
     const config = {
+      collections: [],
       endpoints: [
         {
-          path: '/publish',
-          method: 'post',
-          handler: () => {},
           custom: { description: 'Publish content' },
+          handler: () => {},
+          method: 'post',
+          path: '/publish',
         },
-        { path: '/no-desc', method: 'get', handler: () => {} },
+        { handler: () => {}, method: 'get', path: '/no-desc' },
       ],
-      collections: [],
       globals: [],
     }
     const eps = discoverEndpoints(config)
@@ -331,20 +332,20 @@ describe('discoverEndpoints', () => {
 
   it('discovers collection-level endpoints', () => {
     const config = {
-      endpoints: [],
       collections: [
         {
           slug: 'posts',
           endpoints: [
             {
-              path: '/publish/:id',
-              method: 'post',
-              handler: () => {},
               custom: { description: 'Publish a post' },
+              handler: () => {},
+              method: 'post',
+              path: '/publish/:id',
             },
           ],
         },
       ],
+      endpoints: [],
       globals: [],
     }
     const eps = discoverEndpoints(config)
@@ -354,17 +355,17 @@ describe('discoverEndpoints', () => {
 
   it('discovers global-level endpoints', () => {
     const config = {
-      endpoints: [],
       collections: [],
+      endpoints: [],
       globals: [
         {
           slug: 'settings',
           endpoints: [
             {
-              path: '/reset',
-              method: 'post',
-              handler: () => {},
               custom: { description: 'Reset settings' },
+              handler: () => {},
+              method: 'post',
+              path: '/reset',
             },
           ],
         },
@@ -377,15 +378,15 @@ describe('discoverEndpoints', () => {
 
   it('skips chat-agent endpoints', () => {
     const config = {
+      collections: [],
       endpoints: [
         {
-          path: '/chat-agent/chat',
-          method: 'post',
-          handler: () => {},
           custom: { description: 'Chat endpoint' },
+          handler: () => {},
+          method: 'post',
+          path: '/chat-agent/chat',
         },
       ],
-      collections: [],
       globals: [],
     }
     const eps = discoverEndpoints(config)
@@ -399,20 +400,20 @@ describe('discoverEndpoints', () => {
 
 describe('callEndpoint tool', () => {
   const mockPayload = {
+    count: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
     find: vi.fn(),
     findByID: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn(),
     findGlobal: vi.fn(),
+    update: vi.fn(),
     updateGlobal: vi.fn(),
   }
   const mockUser = { id: 'u1' }
   const ctx = {
-    toolCallId: '1',
-    messages: [],
     abortSignal: undefined as any,
+    messages: [],
+    toolCallId: '1',
   }
 
   it('is not included when no custom endpoints', () => {
@@ -428,10 +429,10 @@ describe('callEndpoint tool', () => {
   it('is included when custom endpoints exist and req is provided', () => {
     const endpoints = [
       {
-        path: '/api/publish',
-        method: 'post',
-        handler: () => Response.json({ ok: true }),
         description: 'Publish',
+        handler: () => Response.json({ ok: true }),
+        method: 'post',
+        path: '/api/publish',
       },
     ]
     const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
@@ -440,7 +441,7 @@ describe('callEndpoint tool', () => {
   })
 
   it('calls the matching handler with route params', async () => {
-    const handler = vi.fn(async (req: any) => {
+    const handler = vi.fn((req: any) => {
       return Response.json({
         id: req.routeParams.id,
         published: true,
@@ -448,10 +449,10 @@ describe('callEndpoint tool', () => {
     })
     const endpoints = [
       {
-        path: '/api/posts/publish/:id',
-        method: 'post',
-        handler,
         description: 'Publish a post',
+        handler,
+        method: 'post',
+        path: '/api/posts/publish/:id',
       },
     ]
     const mockReq = { payload: mockPayload, user: mockUser }
@@ -459,9 +460,9 @@ describe('callEndpoint tool', () => {
 
     const result = await tools.callEndpoint.execute(
       {
-        path: '/api/posts/publish/abc123',
-        method: 'post',
         body: { draft: false },
+        method: 'post',
+        path: '/api/posts/publish/abc123',
       },
       ctx,
     )
@@ -475,15 +476,15 @@ describe('callEndpoint tool', () => {
   it('returns error for unmatched endpoint', async () => {
     const endpoints = [
       {
-        path: '/api/publish',
-        method: 'post',
-        handler: () => Response.json({}),
         description: 'Publish',
+        handler: () => Response.json({}),
+        method: 'post',
+        path: '/api/publish',
       },
     ]
     const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
 
-    const result = await tools.callEndpoint.execute({ path: '/api/unknown', method: 'get' }, ctx)
+    const result = await tools.callEndpoint.execute({ method: 'get', path: '/api/unknown' }, ctx)
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -495,17 +496,17 @@ describe('callEndpoint tool', () => {
   it('handles handler errors gracefully', async () => {
     const endpoints = [
       {
-        path: '/api/fail',
-        method: 'post',
+        description: 'Failing endpoint',
         handler: () => {
           throw new Error('handler crashed')
         },
-        description: 'Failing endpoint',
+        method: 'post',
+        path: '/api/fail',
       },
     ]
     const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
 
-    const result = await tools.callEndpoint.execute({ path: '/api/fail', method: 'post' }, ctx)
+    const result = await tools.callEndpoint.execute({ method: 'post', path: '/api/fail' }, ctx)
 
     expect(result).toEqual(expect.objectContaining({ error: 'handler crashed' }))
   })

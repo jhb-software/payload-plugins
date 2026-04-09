@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest'
-import { chatAgentPlugin } from '../index.js'
+import { describe, expect, it } from 'vitest'
+
 import {
-  conversationsCollection,
   conversationEndpoints,
   CONVERSATIONS_SLUG,
+  conversationsCollection,
 } from '../conversations.js'
+import { chatAgentPlugin } from '../index.js'
 
 // ---------------------------------------------------------------------------
 // Collection definition
@@ -66,7 +67,7 @@ describe('conversationsCollection', () => {
 describe('chatAgentPlugin conversations', () => {
   it('registers the chat-conversations collection', () => {
     const plugin = chatAgentPlugin({ apiKey: 'test' })
-    const result = plugin({ endpoints: [], collections: [] })
+    const result = plugin({ collections: [], endpoints: [] })
     const slugs = result.collections.map((c: any) => c.slug)
     expect(slugs).toContain(CONVERSATIONS_SLUG)
   })
@@ -74,7 +75,7 @@ describe('chatAgentPlugin conversations', () => {
   it('preserves existing collections', () => {
     const plugin = chatAgentPlugin({ apiKey: 'test' })
     const existing = { slug: 'posts', fields: [] }
-    const result = plugin({ endpoints: [], collections: [existing] })
+    const result = plugin({ collections: [existing], endpoints: [] })
     expect(result.collections).toContainEqual(existing)
   })
 
@@ -112,14 +113,14 @@ describe('conversation endpoint handlers', () => {
       const docs = [{ id: 'c1', title: 'Test' }]
       const handler = findHandler(conversationEndpoints, 'get', '/chat-agent/chat/conversations')
       const res = await handler({
-        user: { id: 'u1' },
         payload: {
-          find: async (args: any) => {
+          find: (args: any) => {
             expect(args.collection).toBe(CONVERSATIONS_SLUG)
             expect(args.where.user.equals).toBe('u1')
             return { docs }
           },
         },
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -136,7 +137,7 @@ describe('conversation endpoint handlers', () => {
         'get',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({ user: null, routeParams: { id: 'c1' } })
+      const res = await handler({ routeParams: { id: 'c1' }, user: null })
       expect(res.status).toBe(401)
     })
 
@@ -146,27 +147,27 @@ describe('conversation endpoint handlers', () => {
         'get',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({ user: { id: 'u1' }, routeParams: {} })
+      const res = await handler({ routeParams: {}, user: { id: 'u1' } })
       expect(res.status).toBe(400)
     })
 
     it('returns the conversation', async () => {
-      const doc = { id: 'c1', title: 'Hello', messages: [] }
+      const doc = { id: 'c1', messages: [], title: 'Hello' }
       const handler = findHandler(
         conversationEndpoints,
         'get',
         '/chat-agent/chat/conversations/:id',
       )
       const res = await handler({
-        user: { id: 'u1' },
-        routeParams: { id: 'c1' },
         payload: {
-          findByID: async (args: any) => {
+          findByID: (args: any) => {
             expect(args.collection).toBe(CONVERSATIONS_SLUG)
             expect(args.id).toBe('c1')
             return doc
           },
         },
+        routeParams: { id: 'c1' },
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual(doc)
@@ -179,13 +180,13 @@ describe('conversation endpoint handlers', () => {
         '/chat-agent/chat/conversations/:id',
       )
       const res = await handler({
-        user: { id: 'u1' },
-        routeParams: { id: 'nope' },
         payload: {
-          findByID: async () => {
+          findByID: () => {
             throw new Error('Not Found')
           },
         },
+        routeParams: { id: 'nope' },
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(404)
     })
@@ -202,18 +203,18 @@ describe('conversation endpoint handlers', () => {
 
     it('creates a conversation with defaults', async () => {
       const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
-      const created = { id: 'c1', title: 'New conversation', messages: [] }
+      const created = { id: 'c1', messages: [], title: 'New conversation' }
       const res = await handler({
-        user: { id: 'u1' },
         json: () => Promise.resolve({}),
         payload: {
-          create: async (args: any) => {
+          create: (args: any) => {
             expect(args.collection).toBe(CONVERSATIONS_SLUG)
             expect(args.data.user).toBe('u1')
             expect(args.data.title).toBe('New conversation')
             return created
           },
         },
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(201)
       expect(await res.json()).toEqual(created)
@@ -222,8 +223,8 @@ describe('conversation endpoint handlers', () => {
     it('returns 400 for invalid JSON', async () => {
       const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
       const res = await handler({
-        user: { id: 'u1' },
         json: () => Promise.reject(new Error('bad')),
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(400)
     })
@@ -238,7 +239,7 @@ describe('conversation endpoint handlers', () => {
         'patch',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({ user: null, routeParams: { id: 'c1' } })
+      const res = await handler({ routeParams: { id: 'c1' }, user: null })
       expect(res.status).toBe(401)
     })
 
@@ -250,17 +251,17 @@ describe('conversation endpoint handlers', () => {
       )
       const updated = { id: 'c1', title: 'Updated' }
       const res = await handler({
-        user: { id: 'u1' },
-        routeParams: { id: 'c1' },
-        json: () => Promise.resolve({ title: 'Updated', messages: [{ role: 'user' }] }),
+        json: () => Promise.resolve({ messages: [{ role: 'user' }], title: 'Updated' }),
         payload: {
-          update: async (args: any) => {
+          update: (args: any) => {
             expect(args.id).toBe('c1')
             expect(args.data.title).toBe('Updated')
             expect(args.data.messages).toEqual([{ role: 'user' }])
             return updated
           },
         },
+        routeParams: { id: 'c1' },
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(200)
     })
@@ -272,14 +273,14 @@ describe('conversation endpoint handlers', () => {
         '/chat-agent/chat/conversations/:id',
       )
       const res = await handler({
-        user: { id: 'u1' },
-        routeParams: { id: 'nope' },
         json: () => Promise.resolve({ title: 'x' }),
         payload: {
-          update: async () => {
+          update: () => {
             throw new Error('Not Found')
           },
         },
+        routeParams: { id: 'nope' },
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(404)
     })
@@ -294,7 +295,7 @@ describe('conversation endpoint handlers', () => {
         'delete',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({ user: null, routeParams: { id: 'c1' } })
+      const res = await handler({ routeParams: { id: 'c1' }, user: null })
       expect(res.status).toBe(401)
     })
 
@@ -305,14 +306,14 @@ describe('conversation endpoint handlers', () => {
         '/chat-agent/chat/conversations/:id',
       )
       const res = await handler({
-        user: { id: 'u1' },
-        routeParams: { id: 'c1' },
         payload: {
-          delete: async (args: any) => {
+          delete: (args: any) => {
             expect(args.id).toBe('c1')
             return { id: 'c1' }
           },
         },
+        routeParams: { id: 'c1' },
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ deleted: true })
@@ -325,13 +326,13 @@ describe('conversation endpoint handlers', () => {
         '/chat-agent/chat/conversations/:id',
       )
       const res = await handler({
-        user: { id: 'u1' },
-        routeParams: { id: 'nope' },
         payload: {
-          delete: async () => {
+          delete: () => {
             throw new Error('Not Found')
           },
         },
+        routeParams: { id: 'nope' },
+        user: { id: 'u1' },
       })
       expect(res.status).toBe(404)
     })

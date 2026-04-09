@@ -3,4 +3,4 @@
  */
 
 export { default as ChatView } from './ChatView.js'
-export { useChat, type ChatMessageUI, type UseChatOptions } from './use-chat.js'
+export { type ChatMessageUI, useChat, type UseChatOptions } from './use-chat.js'

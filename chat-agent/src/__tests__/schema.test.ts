@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
+
 import { buildSystemPrompt } from '../schema.js'
 
 describe('buildSystemPrompt', () => {
@@ -72,11 +73,11 @@ describe('buildSystemPrompt', () => {
       collections: [],
       globals: [],
       localization: {
+        defaultLocale: 'en',
         locales: [
           { code: 'en', label: 'English' },
           { code: 'de', label: 'German' },
         ],
-        defaultLocale: 'en',
       },
     }
 
@@ -91,8 +92,8 @@ describe('buildSystemPrompt', () => {
       collections: [],
       globals: [],
       localization: {
-        locales: ['en', 'fr', 'de'],
         defaultLocale: 'en',
+        locales: ['en', 'fr', 'de'],
       },
     }
 
@@ -125,8 +126,8 @@ describe('buildSystemPrompt', () => {
               type: 'tabs',
               tabs: [
                 {
-                  label: 'Content',
                   fields: [{ name: 'title', type: 'text' }],
+                  label: 'Content',
                 },
               ],
             },
@@ -165,8 +166,8 @@ describe('buildSystemPrompt', () => {
             {
               name: 'layout',
               type: 'blocks',
-              blocks: [],
               blockReferences: ['cta'],
+              blocks: [],
             },
           ],
         },

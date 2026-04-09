@@ -9,20 +9,25 @@
  * component via the adminView option.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { isToolUIPart, getToolName, type UIMessage } from 'ai'
-// @ts-expect-error — @payloadcms/ui is a runtime peer dependency (always present in admin panel)
 import { Button } from '@payloadcms/ui'
-import { useChat, type ChatMessageUI } from './use-chat.js'
+import { getToolName, isToolUIPart, type UIMessage } from 'ai'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+
 import type { MessageMetadata } from '../types.js'
+
+import { type ChatMessageUI, useChat } from './use-chat.js'
 
 // ---------------------------------------------------------------------------
 // Token formatting
 // ---------------------------------------------------------------------------
 
 function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toFixed(1)}M`
+  }
+  if (n >= 1_000) {
+    return `${(n / 1_000).toFixed(1)}k`
+  }
   return String(n)
 }
 
@@ -49,7 +54,9 @@ function useConversations(baseUrl: string) {
       const res = await fetch(`${baseUrl}/conversations`, {
         credentials: 'include',
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        return
+      }
       const data = await res.json()
       setConversations(
         (data.docs ?? []).map((d: Record<string, unknown>) => ({
@@ -66,14 +73,14 @@ function useConversations(baseUrl: string) {
   }, [baseUrl])
 
   useEffect(() => {
-    refresh()
+    void refresh()
   }, [refresh])
 
   const remove = useCallback(
     async (id: string) => {
       await fetch(`${baseUrl}/conversations/${id}`, {
-        method: 'DELETE',
         credentials: 'include',
+        method: 'DELETE',
       })
       setConversations((prev) => prev.filter((c) => c.id !== id))
     },
@@ -94,13 +101,15 @@ export default function ChatView() {
 
   const { conversations, refresh, remove } = useConversations(endpointUrl)
 
-  const { messages, status, error, sendMessage, setMessages } = useChat({
-    endpointUrl,
+  const { error, messages, sendMessage, setMessages, status } = useChat({
     chatId: activeChatId,
+    endpointUrl,
     initialMessages,
     onSave: (id) => {
-      if (!activeChatId) setActiveChatId(id)
-      refresh()
+      if (!activeChatId) {
+        setActiveChatId(id)
+      }
+      void refresh()
     },
   })
 
@@ -118,7 +127,9 @@ export default function ChatView() {
         const res = await fetch(`${endpointUrl}/conversations/${id}`, {
           credentials: 'include',
         })
-        if (!res.ok) return
+        if (!res.ok) {
+          return
+        }
         const doc = await res.json()
         const msgs = (doc.messages ?? []) as ChatMessageUI[]
         setActiveChatId(id)
@@ -142,10 +153,10 @@ export default function ChatView() {
     {
       style: {
         display: 'flex',
-        height: 'calc(100vh - 200px)',
-        maxWidth: '1100px',
-        margin: '0 auto',
         gap: '1px',
+        height: 'calc(100vh - 200px)',
+        margin: '0 auto',
+        maxWidth: '1100px',
       },
     },
     // Sidebar
@@ -153,30 +164,30 @@ export default function ChatView() {
       'div',
       {
         style: {
-          width: '240px',
-          flexShrink: 0,
+          borderRight: '1px solid var(--theme-elevation-150)',
           display: 'flex',
           flexDirection: 'column',
-          borderRight: '1px solid var(--theme-elevation-150)',
+          flexShrink: 0,
           overflow: 'hidden',
+          width: '240px',
         },
       },
       React.createElement(
         'div',
         {
           style: {
-            padding: '12px',
             borderBottom: '1px solid var(--theme-elevation-150)',
+            padding: '12px',
           },
         },
         React.createElement(
           Button,
           {
             buttonStyle: 'secondary',
-            size: 'small',
             icon: 'plus',
             iconPosition: 'left',
             onClick: newConversation,
+            size: 'small',
           },
           'New chat',
         ),
@@ -196,15 +207,15 @@ export default function ChatView() {
             {
               key: conv.id,
               style: {
-                display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '8px',
+                background: conv.id === activeChatId ? 'var(--theme-elevation-100)' : 'transparent',
                 borderRadius: '6px',
                 cursor: 'pointer',
+                display: 'flex',
                 fontSize: '13px',
-                background: conv.id === activeChatId ? 'var(--theme-elevation-100)' : 'transparent',
+                gap: '4px',
                 marginBottom: '2px',
+                padding: '8px',
               },
             },
             React.createElement(
@@ -223,14 +234,16 @@ export default function ChatView() {
             React.createElement(Button, {
               buttonStyle: 'icon-label',
               icon: 'x',
-              size: 'small',
-              round: true,
-              tooltip: 'Delete conversation',
               onClick: (e: React.MouseEvent) => {
                 e.stopPropagation()
-                remove(conv.id)
-                if (conv.id === activeChatId) newConversation()
+                void remove(conv.id)
+                if (conv.id === activeChatId) {
+                  newConversation()
+                }
               },
+              round: true,
+              size: 'small',
+              tooltip: 'Delete conversation',
             }),
           ),
         ),
@@ -241,11 +254,11 @@ export default function ChatView() {
       'div',
       {
         style: {
-          flex: 1,
           display: 'flex',
+          flex: 1,
           flexDirection: 'column',
-          padding: '24px',
           minWidth: 0,
+          padding: '24px',
         },
       },
       // Header
@@ -253,12 +266,12 @@ export default function ChatView() {
         'div',
         {
           style: {
+            alignItems: 'center',
+            borderBottom: '1px solid var(--theme-elevation-150)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
             marginBottom: '16px',
             paddingBottom: '12px',
-            borderBottom: '1px solid var(--theme-elevation-150)',
           },
         },
         React.createElement(
@@ -270,15 +283,19 @@ export default function ChatView() {
           let total = 0
           for (const msg of messages) {
             const meta = msg.metadata as MessageMetadata | undefined
-            if (meta?.totalTokens) total += meta.totalTokens
+            if (meta?.totalTokens) {
+              total += meta.totalTokens
+            }
           }
-          if (total === 0) return null
+          if (total === 0) {
+            return null
+          }
           return React.createElement(
             'span',
             {
               style: {
-                fontSize: '12px',
                 color: 'var(--theme-elevation-400)',
+                fontSize: '12px',
                 fontWeight: 400,
               },
             },
@@ -292,12 +309,12 @@ export default function ChatView() {
             'div',
             {
               style: {
-                flex: 1,
-                display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
                 color: 'var(--theme-elevation-400)',
+                display: 'flex',
+                flex: 1,
                 fontSize: '15px',
+                justifyContent: 'center',
               },
             },
             'Ask me anything about your content.',
@@ -306,11 +323,11 @@ export default function ChatView() {
             'div',
             {
               style: {
-                flex: 1,
-                overflowY: 'auto',
                 display: 'flex',
+                flex: 1,
                 flexDirection: 'column',
                 gap: '12px',
+                overflowY: 'auto',
               },
             },
             ...messages.map((msg) =>
@@ -330,11 +347,11 @@ export default function ChatView() {
                     'div',
                     {
                       style: {
-                        maxWidth: '75%',
-                        padding: '10px 14px',
                         borderRadius: '12px',
                         fontSize: '14px',
                         lineHeight: '1.5',
+                        maxWidth: '75%',
+                        padding: '10px 14px',
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         ...(msg.role === 'user'
@@ -350,7 +367,7 @@ export default function ChatView() {
                     },
                     msg.parts
                       .filter((p) => p.type === 'text')
-                      .map((p) => (p as { type: 'text'; text: string }).text)
+                      .map((p) => (p as { text: string; type: 'text' }).text)
                       .join('') || '\u2026',
                   ),
                   ...msg.parts
@@ -361,47 +378,49 @@ export default function ChatView() {
                         {
                           key: i,
                           style: {
-                            display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            padding: '4px 8px',
-                            marginTop: '6px',
-                            fontSize: '12px',
-                            fontFamily: 'monospace',
                             background: 'var(--theme-elevation-50)',
                             border: '1px solid var(--theme-elevation-150)',
                             borderRadius: '4px',
                             color: 'var(--theme-elevation-500)',
+                            display: 'flex',
+                            fontFamily: 'monospace',
+                            fontSize: '12px',
+                            gap: '6px',
+                            marginTop: '6px',
+                            padding: '4px 8px',
                           },
                         },
                         React.createElement('span', {
                           style: {
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
                             background:
                               p.state === 'output-available'
                                 ? 'var(--theme-success-500, #34c759)'
                                 : 'var(--theme-warning-500, #f5a623)',
+                            borderRadius: '50%',
                             flexShrink: 0,
+                            height: '6px',
+                            width: '6px',
                           },
                         }),
-                        `${getToolName(p as Parameters<typeof getToolName>[0])}(${p.state !== 'input-streaming' ? JSON.stringify(p.input) : '...'})`,
+                        `${getToolName(p)}(${p.state !== 'input-streaming' ? JSON.stringify(p.input) : '...'})`,
                       ),
                     ),
                   // Per-message token usage (assistant only)
                   ...(() => {
                     const meta = msg.metadata as MessageMetadata | undefined
-                    if (msg.role !== 'assistant' || !meta?.totalTokens) return []
+                    if (msg.role !== 'assistant' || !meta?.totalTokens) {
+                      return []
+                    }
                     return [
                       React.createElement(
                         'div',
                         {
                           key: 'tokens',
                           style: {
-                            marginTop: '4px',
-                            fontSize: '11px',
                             color: 'var(--theme-elevation-400)',
+                            fontSize: '11px',
+                            marginTop: '4px',
                           },
                         },
                         [meta.model, formatTokens(meta.totalTokens)].filter(Boolean).join(' · '),
@@ -419,13 +438,13 @@ export default function ChatView() {
             'div',
             {
               style: {
-                padding: '8px 12px',
-                marginTop: '8px',
-                fontSize: '13px',
-                color: 'var(--theme-error-500)',
                 background: 'var(--theme-error-50, #fff5f5)',
                 border: '1px solid var(--theme-error-200, #fcc)',
                 borderRadius: '6px',
+                color: 'var(--theme-error-500)',
+                fontSize: '13px',
+                marginTop: '8px',
+                padding: '8px 12px',
               },
             },
             error.message,
@@ -438,34 +457,34 @@ export default function ChatView() {
           onSubmit: (e: React.FormEvent) => {
             e.preventDefault()
             if (input.trim() && !isLoading) {
-              sendMessage({ text: input })
+              void sendMessage({ text: input })
               setInput('')
             }
           },
           style: {
+            borderTop: '1px solid var(--theme-elevation-150)',
             display: 'flex',
             gap: '8px',
             marginTop: '16px',
             paddingTop: '12px',
-            borderTop: '1px solid var(--theme-elevation-150)',
           },
         },
         React.createElement('input', {
           type: 'text',
-          value: input,
+          disabled: isLoading,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value),
           placeholder: 'Type a message\u2026',
-          disabled: isLoading,
           style: {
-            flex: 1,
-            padding: '10px 12px',
-            fontSize: '14px',
+            background: 'var(--theme-input-bg, var(--theme-bg))',
             border: '1px solid var(--theme-elevation-150)',
             borderRadius: '8px',
-            outline: 'none',
-            background: 'var(--theme-input-bg, var(--theme-bg))',
             color: 'var(--theme-text)',
+            flex: 1,
+            fontSize: '14px',
+            outline: 'none',
+            padding: '10px 12px',
           },
+          value: input,
         }),
         React.createElement(
           Button,
