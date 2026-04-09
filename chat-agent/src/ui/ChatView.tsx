@@ -7,12 +7,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { MessageMetadata } from '../types.js'
 
+import { BudgetWarning } from './BudgetWarning.js'
 import { ChatInput } from './ChatInput.js'
 import { MessageList } from './MessageList.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
 import { TokenBadge } from './TokenBadge.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
 import { useConversations } from './useConversations.js'
+import { useTokenBudget } from './useTokenBudget.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,6 +61,13 @@ export default function ChatView({
   }, [])
 
   const { conversations, refresh, remove } = useConversations(endpointUrl, initialConversations)
+  const {
+    budget,
+    exhausted,
+    percentage,
+    refresh: refreshBudget,
+    warning,
+  } = useTokenBudget(endpointUrl)
 
   const { error, messages, sendMessage, setMessages, status } = useChat({
     chatId,
@@ -69,11 +78,13 @@ export default function ChatView({
         setActiveChatId(id)
       }
       void refresh()
+      void refreshBudget()
     },
   })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isLoading = status === 'streaming' || status === 'submitted'
+  const chatDisabled = isLoading || exhausted
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -174,6 +185,12 @@ export default function ChatView({
           messages={messages as UIMessage<MessageMetadata>[]}
           scrollRef={messagesEndRef}
         />
+        <BudgetWarning
+          budget={budget}
+          exhausted={exhausted}
+          percentage={percentage}
+          warning={warning}
+        />
         {error ? (
           <div
             style={{
@@ -189,7 +206,7 @@ export default function ChatView({
             {error.message}
           </div>
         ) : null}
-        <ChatInput isLoading={isLoading} onSend={handleSend} />
+        <ChatInput disabled={chatDisabled} isLoading={isLoading} onSend={handleSend} />
       </div>
     </div>
   )

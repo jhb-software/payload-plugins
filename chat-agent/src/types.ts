@@ -5,6 +5,24 @@
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
+// Token budget configuration
+// ---------------------------------------------------------------------------
+
+export interface TokenBudgetConfig {
+  /**
+   * Optional per-user budget override.
+   * Return a custom limit for specific users, or `undefined` to use the default.
+   */
+  access?: (req: any) => number | Promise<number | undefined> | undefined
+  /** Default token cap per period. */
+  limit: number
+  /** Whether the limit applies per user or globally. Default: 'user' */
+  limitBy?: 'global' | 'user'
+  /** Budget reset interval. Default: 'monthly' */
+  period?: 'daily' | 'monthly'
+}
+
+// ---------------------------------------------------------------------------
 // Plugin options
 // ---------------------------------------------------------------------------
 
@@ -42,6 +60,11 @@ export interface ChatAgentPluginOptions {
   superuserAccess?: ((req: any) => boolean | Promise<boolean>) | boolean
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
+  /**
+   * Token budget configuration for rate limiting.
+   * Caps token usage per user (or globally) with configurable budgets.
+   */
+  tokenBudget?: TokenBudgetConfig
 }
 
 // ---------------------------------------------------------------------------

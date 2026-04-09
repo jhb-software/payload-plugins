@@ -4,14 +4,17 @@ import { Button } from '@payloadcms/ui'
 import { useEffect, useRef, useState } from 'react'
 
 export function ChatInput({
+  disabled,
   isLoading,
   onSend,
 }: {
+  disabled?: boolean
   isLoading: boolean
   onSend: (text: string) => void
 }) {
   const [input, setInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const isDisabled = disabled ?? isLoading
 
   useEffect(() => {
     if (!isLoading) {
@@ -23,7 +26,7 @@ export function ChatInput({
     <form
       onSubmit={(e) => {
         e.preventDefault()
-        if (input.trim() && !isLoading) {
+        if (input.trim() && !isDisabled) {
           onSend(input)
           setInput('')
         }
@@ -37,10 +40,10 @@ export function ChatInput({
       }}
     >
       <input
-        ref={inputRef}
-        disabled={isLoading}
+        disabled={isDisabled}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Type a message&#x2026;"
+        placeholder={isDisabled && !isLoading ? 'Token budget exceeded' : 'Type a message\u2026'}
+        ref={inputRef}
         style={{
           background: 'var(--theme-input-bg, var(--theme-bg))',
           border: '1px solid var(--theme-elevation-150)',
@@ -54,7 +57,7 @@ export function ChatInput({
         type="text"
         value={input}
       />
-      <Button disabled={!input.trim() || isLoading} size="medium" type="submit">
+      <Button disabled={!input.trim() || isDisabled} size="medium" type="submit">
         {isLoading ? 'Sending\u2026' : 'Send'}
       </Button>
     </form>

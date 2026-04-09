@@ -16,9 +16,15 @@ import type { ChatAgentPluginOptions } from './types.js'
 
 import { conversationEndpoints, conversationsCollection } from './conversations.js'
 import { buildSystemPrompt } from './schema.js'
+import {
+  checkBudget,
+  createUsageHandler,
+  recordUsage,
+  tokenUsageCollection,
+} from './token-usage.js'
 import { buildTools, discoverEndpoints } from './tools.js'
 
-export type { ChatAgentPluginOptions } from './types.js'
+export type { ChatAgentPluginOptions, TokenBudgetConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
 
@@ -67,6 +73,20 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             },
           }
 
+    // Build the list of additional endpoints
+    const budgetEndpoints = options?.tokenBudget
+      ? [
+          {
+            handler: createUsageHandler(options.tokenBudget),
+            method: 'get' as const,
+            path: '/chat-agent/usage',
+          },
+        ]
+      : []
+
+    // Include token-usage collection only when budget is configured
+    const budgetCollections = options?.tokenBudget ? [tokenUsageCollection] : []
+
     return {
       ...config,
       admin: {
@@ -76,10 +96,11 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
           views: adminViews,
         },
       },
-      collections: [...(config.collections ?? []), conversationsCollection],
+      collections: [...(config.collections ?? []), conversationsCollection, ...budgetCollections],
       endpoints: [
         ...(config.endpoints ?? []),
         ...conversationEndpoints,
+        ...budgetEndpoints,
         {
           handler: async (req: any) => {
             // --- Auth check -----------------------------------------------
@@ -111,6 +132,27 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             const validationError = validateMessages(body?.messages)
             if (validationError) {
               return Response.json({ error: validationError }, { status: 400 })
+            }
+
+            // --- Budget enforcement ----------------------------------------
+            if (options?.tokenBudget && req.user) {
+              const budgetResult = await checkBudget(
+                req.payload,
+                req.user.id,
+                options.tokenBudget,
+                req,
+              )
+              if (!budgetResult.allowed) {
+                return Response.json(
+                  {
+                    error: `Token budget exceeded. Resets on ${budgetResult.resetDate}.`,
+                    limit: budgetResult.limit,
+                    resetDate: budgetResult.resetDate,
+                    totalTokens: budgetResult.totalTokens,
+                  },
+                  { status: 429 },
+                )
+              }
             }
 
             // --- Resolve overrideAccess (superuser mode) -------------------
@@ -149,11 +191,25 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             return result.toUIMessageStreamResponse({
               messageMetadata: ({ part }: { part: any }) => {
                 if (part.type === 'finish') {
+                  const inputTokens = part.totalUsage?.inputTokens ?? 0
+                  const outputTokens = part.totalUsage?.outputTokens ?? 0
+                  const totalTokens = part.totalUsage?.totalTokens ?? 0
+
+                  // Record usage asynchronously (don't block the response)
+                  if (options?.tokenBudget && req.user) {
+                    void recordUsage(
+                      req.payload,
+                      req.user.id,
+                      options.tokenBudget.period ?? 'monthly',
+                      { inputTokens, outputTokens, totalTokens },
+                    )
+                  }
+
                   return {
-                    inputTokens: part.totalUsage?.inputTokens,
+                    inputTokens,
                     model: modelId,
-                    outputTokens: part.totalUsage?.outputTokens,
-                    totalTokens: part.totalUsage?.totalTokens,
+                    outputTokens,
+                    totalTokens,
                   }
                 }
                 return undefined
