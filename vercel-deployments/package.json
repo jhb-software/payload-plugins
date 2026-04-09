@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-vercel-deployments",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A Payload CMS plugin for managing Vercel deployments of static websites — includes a dashboard widget and authenticated API endpoints.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
