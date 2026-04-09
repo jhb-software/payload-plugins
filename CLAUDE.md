@@ -1,5 +1,9 @@
 # Development Guidelines
 
+## Dev Servers
+
+Each plugin has a Next.js test app in its `dev/` directory. Start with `pnpm dev` from there (or use `PORT=<port> pnpm --filter <test-app-name> dev` from the root). Use different ports to run multiple plugins simultaneously.
+
 ## Conventional Commits
 
 All commit messages **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
@@ -28,6 +32,10 @@ Publishing is done via the `Release` GitHub Actions workflow (manual dispatch). 
 ## UI Components and Styling
 
 Plugin custom components should use Payload's built-in UI components (e.g. `Pill`, `Button` from `@payloadcms/ui`) and CSS variables (e.g. `var(--style-radius-m)`, `var(--theme-elevation-500)`) instead of custom styles wherever possible. This ensures visual consistency with the Payload admin panel.
+
+## Icons
+
+All icons used in custom Payload components must come from the [Geist icon set](https://github.com/jarvis394/geist-icons/tree/main/source). Copy the SVG markup from the source files, replace `fill="white"` with `fill="currentColor"`, and wrap it in a React component. Do not use custom or third-party icon SVGs.
 
 ## Document ID Types
 

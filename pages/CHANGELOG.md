@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- style: standardize icons to use Geist icon set (16x16 filled)
 - refactor: use i18next interpolation for translations
 
 ## 0.7.0

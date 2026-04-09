@@ -2,16 +2,18 @@ import React from 'react'
 
 export const RefreshIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg
-    fill="currentColor"
+    data-testid="geist-icon"
     height="14"
-    viewBox="0 0 24 24"
+    strokeLinejoin="round"
+    style={{ color: 'currentcolor' }}
+    viewBox="0 0 16 16"
     width="14"
-    xmlns="http://www.w3.org/2000/svg"
     {...props}
   >
     <path
       clipRule="evenodd"
-      d="M4.755 10.059a7.5 7.5 0 0112.548-3.364l1.903 1.903h-3.183a.75.75 0 100 1.5h4.992a.75.75 0 00.75-.75V4.356a.75.75 0 00-1.5 0v3.18l-1.9-1.9A9 9 0 003.306 9.67a.75.75 0 101.45.388zm15.408 3.352a.75.75 0 00-.919.53 7.5 7.5 0 01-12.548 3.364l-1.902-1.903h3.183a.75.75 0 000-1.5H2.984a.75.75 0 00-.75.75v4.992a.75.75 0 001.5 0v-3.18l1.9 1.9a9 9 0 0015.059-4.035.75.75 0 00-.53-.918z"
+      d="M8 1.25a6.999 6.999 0 00-6.16 3.672l-.357.66 1.32.713.357-.66a5.503 5.503 0 0110.112 1.039h-2.198v1.5h4.175a.75.75 0 00.75-.75V3.25h-1.5v2.395A7.002 7.002 0 008 1.25zm-6.499 9.605v2.395h-1.5V9.075a.75.75 0 01.75-.75h4.175v1.5H2.729a5.503 5.503 0 0010.098 1.065l.36-.658 1.316.72-.361.659a7.002 7.002 0 01-12.64-.755z"
+      fill="currentColor"
       fillRule="evenodd"
     />
   </svg>
