@@ -103,8 +103,8 @@ describe('MessageBubble', () => {
     // Output is hidden initially
     expect(screen.queryByText(/Hello World/)).toBeNull()
 
-    // Click to expand
-    const toolButton = screen.getByRole('button')
+    // Click the tool call expand button (role="button" with aria-expanded)
+    const toolButton = screen.getByRole('button', { expanded: false })
     fireEvent.click(toolButton)
     expect(screen.getByText(/Hello World/)).toBeDefined()
 
@@ -137,7 +137,7 @@ describe('MessageBubble', () => {
     render(<MessageBubble message={message} />)
 
     // Expand the tool call
-    fireEvent.click(screen.getByRole('button', { name: undefined }))
+    fireEvent.click(screen.getByRole('button', { expanded: false }))
 
     // Click the copy button
     const copyButton = screen.getByRole('button', { name: /copy json/i })
@@ -146,7 +146,7 @@ describe('MessageBubble', () => {
     expect(writeText).toHaveBeenCalledWith(JSON.stringify(output, null, 2))
   })
 
-  it('does not show expand toggle for pending tool calls', () => {
+  it('does not show expand toggle for pending tool calls (only hover copy button exists)', () => {
     const message = {
       id: '1',
       parts: [
@@ -162,6 +162,7 @@ describe('MessageBubble', () => {
     } as unknown as UIMessage<MessageMetadata>
 
     render(<MessageBubble message={message} />)
-    expect(screen.queryByRole('button')).toBeNull()
+    // No expandable button (only the hover copy action may exist)
+    expect(screen.queryByRole('button', { expanded: false })).toBeNull()
   })
 })

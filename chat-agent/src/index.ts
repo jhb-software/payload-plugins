@@ -102,6 +102,9 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             return Response.json({
               default: getDefaultMode(modesConfig),
               modes: available,
+              ...(options.suggestedPrompts?.length
+                ? { suggestedPrompts: options.suggestedPrompts }
+                : {}),
             })
           },
           method: 'get',

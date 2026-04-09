@@ -46,5 +46,22 @@ export function useConversations(baseUrl: string, initial?: ConversationSummary[
     [baseUrl],
   )
 
-  return { conversations, loading, refresh, remove }
+  const rename = useCallback(
+    async (id: string, title: string) => {
+      try {
+        await fetch(`${baseUrl}/conversations/${id}`, {
+          body: JSON.stringify({ title }),
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        })
+        setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)))
+      } catch {
+        // silently ignore
+      }
+    },
+    [baseUrl],
+  )
+
+  return { conversations, loading, refresh, remove, rename }
 }

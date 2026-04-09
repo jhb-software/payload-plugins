@@ -3,7 +3,7 @@
 
 import type { UIMessage } from 'ai'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
 
@@ -57,6 +57,7 @@ export default function ChatView({
   const [chatId, setChatId] = useState(conversationId)
   const [mode, setMode] = useState<AgentMode>(defaultMode)
   const [modes, setModes] = useState<AgentMode[]>(availableModes)
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[] | undefined>(undefined)
   const [initialMessages, setInitialMessages] = useState<UIMessage<MessageMetadata>[] | undefined>(
     serverMessages as UIMessage<MessageMetadata>[] | undefined,
   )
@@ -93,6 +94,9 @@ export default function ChatView({
         if (data.default) {
           setMode(data.default)
         }
+        if (data.suggestedPrompts) {
+          setSuggestedPrompts(data.suggestedPrompts)
+        }
       })
       .catch(() => {})
     return () => {
@@ -105,9 +109,21 @@ export default function ChatView({
     setConversationParam(id)
   }, [])
 
-  const { conversations, refresh, remove } = useConversations(endpointUrl, initialConversations)
+  const { conversations, refresh, remove, rename } = useConversations(
+    endpointUrl,
+    initialConversations,
+  )
 
-  const { addToolApprovalResponse, error, messages, sendMessage, setMessages, status } = useChat({
+  const {
+    addToolApprovalResponse,
+    error,
+    messages,
+    reload,
+    sendMessage,
+    setMessages,
+    status,
+    stop,
+  } = useChat({
     chatId,
     endpointUrl,
     initialMessages,
@@ -121,12 +137,7 @@ export default function ChatView({
     },
   })
 
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const isLoading = status === 'streaming' || status === 'submitted'
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   const loadConversation = useCallback(
     async (id: string) => {
@@ -191,10 +202,39 @@ export default function ChatView({
     [sendMessage],
   )
 
+  const handleStop = useCallback(() => {
+    void stop()
+  }, [stop])
+
+  const handleRetry = useCallback(() => {
+    void reload()
+  }, [reload])
+
+  const handleEditMessage = useCallback(
+    (messageId: string, newText: string) => {
+      const msgIndex = messages.findIndex((m) => m.id === messageId)
+      if (msgIndex === -1) {
+        return
+      }
+      const truncated = messages.slice(0, msgIndex)
+      setMessages(truncated as UIMessage<MessageMetadata>[])
+      void sendMessage({ text: newText })
+    },
+    [messages, sendMessage, setMessages],
+  )
+
+  const handleRename = useCallback(
+    (id: string, title: string) => {
+      void rename(id, title)
+    },
+    [rename],
+  )
+
   // --- Ask mode: tool approval handlers ------------------------------------
 
   const handleToolApprove = useCallback(
     (approvalId: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       void (addToolApprovalResponse as any)({ id: approvalId, approved: true })
     },
     [addToolApprovalResponse],
@@ -202,6 +242,7 @@ export default function ChatView({
 
   const handleToolDeny = useCallback(
     (approvalId: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       void (addToolApprovalResponse as any)({
         id: approvalId,
         approved: false,
@@ -219,6 +260,7 @@ export default function ChatView({
         onDelete={handleDelete}
         onLoad={handleLoad}
         onNew={newConversation}
+        onRename={handleRename}
       />
       <div
         style={{
@@ -259,9 +301,12 @@ export default function ChatView({
         <MessageList
           isLoading={isLoading}
           messages={messages as UIMessage<MessageMetadata>[]}
+          onEditMessage={handleEditMessage}
+          onRetry={handleRetry}
+          onSendSuggestion={handleSend}
           onToolApprove={handleToolApprove}
           onToolDeny={handleToolDeny}
-          scrollRef={messagesEndRef}
+          suggestedPrompts={suggestedPrompts}
         />
         {error ? (
           <div
@@ -278,7 +323,7 @@ export default function ChatView({
             {error.message}
           </div>
         ) : null}
-        <ChatInput isLoading={isLoading} onSend={handleSend} />
+        <ChatInput isLoading={isLoading} onSend={handleSend} onStop={handleStop} />
       </div>
     </div>
   )

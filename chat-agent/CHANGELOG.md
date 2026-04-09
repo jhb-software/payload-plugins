@@ -14,3 +14,15 @@
 - Add markdown rendering for assistant messages using `react-markdown` and `remark-gfm`
 - Include admin panel URL patterns in the system prompt so the agent can produce clickable links to documents it creates, updates, or finds (respects `config.routes.admin`)
 - Open markdown links in a new tab so clicking through to the admin panel preserves the current chat conversation
+- feat: textarea input with auto-resize, Shift+Enter for newlines
+- feat: stop button to abort streaming responses
+- feat: code blocks with language labels and copy-to-clipboard
+- feat: collapsible thinking/reasoning sections for assistant messages
+- feat: copy message action on hover for assistant messages
+- feat: retry/regenerate action for the last assistant message
+- feat: edit & re-send for user messages with inline editing
+- feat: smart auto-scroll that pauses when the user scrolls up
+- feat: scroll-to-bottom floating button when not at the bottom
+- feat: suggested prompt chips in the empty state
+- feat: sidebar conversation search/filter
+- feat: sidebar conversation rename via double-click

@@ -1,7 +1,7 @@
 ---
 title: AI SDK UI components and chat UX improvements
 description: Improve the chat UI with better input, markdown rendering, scroll behavior, message actions, and polish
-status: planned
+status: implemented
 ---
 
 # Chat Agent — UI Improvement Plan

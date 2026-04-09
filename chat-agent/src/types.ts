@@ -69,6 +69,8 @@ export interface ChatAgentPluginOptions {
    * attempt and which users can use which access levels.
    */
   modes?: ModesConfig
+  /** Suggested prompts shown as clickable chips in the empty chat state. */
+  suggestedPrompts?: string[]
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
 }

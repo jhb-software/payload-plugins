@@ -92,4 +92,35 @@ describe('Sidebar', () => {
     fireEvent.click(deleteButtons[0])
     expect(onDelete).not.toHaveBeenCalled()
   })
+
+  it('filters conversations by search query', () => {
+    render(
+      <Sidebar
+        chatId={undefined}
+        conversations={conversations}
+        onDelete={vi.fn()}
+        onLoad={vi.fn()}
+        onNew={vi.fn()}
+      />,
+    )
+    const searchInput = screen.getByPlaceholderText(/search/i)
+    fireEvent.change(searchInput, { target: { value: 'First' } })
+    expect(screen.getByText('First chat')).toBeDefined()
+    expect(screen.queryByText('Second chat')).toBeNull()
+  })
+
+  it('shows "No conversations found" when search has no results', () => {
+    render(
+      <Sidebar
+        chatId={undefined}
+        conversations={conversations}
+        onDelete={vi.fn()}
+        onLoad={vi.fn()}
+        onNew={vi.fn()}
+      />,
+    )
+    const searchInput = screen.getByPlaceholderText(/search/i)
+    fireEvent.change(searchInput, { target: { value: 'zzzzzzz' } })
+    expect(screen.getByText(/no conversations found/i)).toBeDefined()
+  })
 })
