@@ -67,6 +67,27 @@ describe('MessageBubble', () => {
     expect(container.textContent).not.toContain('500')
   })
 
+  it('renders assistant markdown as HTML', () => {
+    const message = makeMessage({
+      role: 'assistant',
+      text: 'Hello **world**',
+    })
+    const { container } = render(<MessageBubble message={message} />)
+    const strong = container.querySelector('strong')
+    expect(strong).not.toBeNull()
+    expect(strong!.textContent).toBe('world')
+  })
+
+  it('renders user messages as plain text without markdown', () => {
+    const message = makeMessage({
+      role: 'user',
+      text: 'Hello **world**',
+    })
+    const { container } = render(<MessageBubble message={message} />)
+    expect(container.querySelector('strong')).toBeNull()
+    expect(screen.getByText('Hello **world**')).toBeDefined()
+  })
+
   it('renders ellipsis when message has no text parts', () => {
     const message = {
       id: '1',
