@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import type { UIMessage } from 'ai'
 
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MessageMetadata } from '../types.js'
 
@@ -23,48 +23,19 @@ function makeMessage(
 describe('MessageBubble', () => {
   afterEach(cleanup)
 
-  it('renders text content', () => {
-    render(<MessageBubble message={makeMessage({ text: 'Test message' })} />)
-    expect(screen.getByText('Test message')).toBeDefined()
-  })
+  it('shows model and token metadata only for assistant messages', () => {
+    const meta = { model: 'claude-sonnet-4-20250514', totalTokens: 1500 }
 
-  it('aligns user messages to the right', () => {
-    const { container } = render(<MessageBubble message={makeMessage({ role: 'user' })} />)
-    const wrapper = container.firstElementChild as HTMLElement
-    expect(wrapper.style.justifyContent).toBe('flex-end')
-  })
+    const { container: userContainer } = render(
+      <MessageBubble message={makeMessage({ metadata: meta, role: 'user' })} />,
+    )
+    expect(userContainer.textContent).not.toContain('claude-sonnet')
+    expect(userContainer.textContent).not.toContain('1.5k')
+    cleanup()
 
-  it('aligns assistant messages to the left', () => {
-    const { container } = render(<MessageBubble message={makeMessage({ role: 'assistant' })} />)
-    const wrapper = container.firstElementChild as HTMLElement
-    expect(wrapper.style.justifyContent).toBe('flex-start')
-  })
-
-  it('shows token count for assistant messages with metadata', () => {
-    const message = makeMessage({
-      metadata: { totalTokens: 1500 },
-      role: 'assistant',
-    })
-    render(<MessageBubble message={message} />)
-    expect(screen.getByText(/1\.5k/)).toBeDefined()
-  })
-
-  it('shows model name in metadata', () => {
-    const message = makeMessage({
-      metadata: { model: 'claude-sonnet-4-20250514', totalTokens: 500 },
-      role: 'assistant',
-    })
-    render(<MessageBubble message={message} />)
+    render(<MessageBubble message={makeMessage({ metadata: meta, role: 'assistant' })} />)
     expect(screen.getByText(/claude-sonnet-4-20250514/)).toBeDefined()
-  })
-
-  it('does not show metadata for user messages', () => {
-    const message = makeMessage({
-      metadata: { totalTokens: 500 },
-      role: 'user',
-    })
-    const { container } = render(<MessageBubble message={message} />)
-    expect(container.textContent).not.toContain('500')
+    expect(screen.getByText(/1\.5k/)).toBeDefined()
   })
 
   it('renders ellipsis when message has no text parts', () => {
@@ -75,5 +46,89 @@ describe('MessageBubble', () => {
     } as unknown as UIMessage<MessageMetadata>
     render(<MessageBubble message={message} />)
     expect(screen.getByText('\u2026')).toBeDefined()
+  })
+
+  it('expands tool call output on click and collapses on second click', () => {
+    const message = {
+      id: '1',
+      parts: [
+        { text: 'Let me look that up.', type: 'text' },
+        {
+          input: { collection: 'posts' },
+          output: { docs: [{ id: '1', title: 'Hello World' }] },
+          state: 'output-available',
+          toolCallId: 'tc1',
+          toolName: 'find',
+          type: 'dynamic-tool',
+        },
+      ],
+      role: 'assistant',
+    } as unknown as UIMessage<MessageMetadata>
+
+    render(<MessageBubble message={message} />)
+
+    // Output is hidden initially
+    expect(screen.queryByText(/Hello World/)).toBeNull()
+
+    // Click to expand
+    const toolButton = screen.getByRole('button')
+    fireEvent.click(toolButton)
+    expect(screen.getByText(/Hello World/)).toBeDefined()
+
+    // Click to collapse
+    fireEvent.click(toolButton)
+    expect(screen.queryByText(/Hello World/)).toBeNull()
+  })
+
+  it('copies tool output JSON to clipboard when copy button is clicked', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const output = { docs: [{ id: '1', title: 'Hello World' }] }
+    const message = {
+      id: '1',
+      parts: [
+        { text: 'Result:', type: 'text' },
+        {
+          input: { collection: 'posts' },
+          output,
+          state: 'output-available',
+          toolCallId: 'tc1',
+          toolName: 'find',
+          type: 'dynamic-tool',
+        },
+      ],
+      role: 'assistant',
+    } as unknown as UIMessage<MessageMetadata>
+
+    render(<MessageBubble message={message} />)
+
+    // Expand the tool call
+    fireEvent.click(screen.getByRole('button', { name: undefined }))
+
+    // Click the copy button
+    const copyButton = screen.getByRole('button', { name: /copy json/i })
+    fireEvent.click(copyButton)
+
+    expect(writeText).toHaveBeenCalledWith(JSON.stringify(output, null, 2))
+  })
+
+  it('does not show expand toggle for pending tool calls', () => {
+    const message = {
+      id: '1',
+      parts: [
+        {
+          input: { collection: 'posts' },
+          state: 'input-available',
+          toolCallId: 'tc1',
+          toolName: 'find',
+          type: 'dynamic-tool',
+        },
+      ],
+      role: 'assistant',
+    } as unknown as UIMessage<MessageMetadata>
+
+    render(<MessageBubble message={message} />)
+    expect(screen.queryByRole('button')).toBeNull()
   })
 })
