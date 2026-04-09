@@ -334,36 +334,6 @@ describe('chatAgentPlugin modes', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Backward compatibility
-// ---------------------------------------------------------------------------
-
-describe('chatAgentPlugin backward compatibility', () => {
-  it('superuserAccess still works without modes config', async () => {
-    const plugin = chatAgentPlugin({ superuserAccess: true })
-    const result = plugin({ endpoints: [] })
-    const modesHandler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
-
-    const response = await modesHandler({ user: { id: 'u1' } })
-    const body = await response.json()
-    expect(body.modes).toContain('superuser')
-  })
-
-  it('modes config takes precedence over superuserAccess', async () => {
-    const plugin = chatAgentPlugin({
-      modes: { access: {} },
-      superuserAccess: true,
-    })
-    const result = plugin({ endpoints: [] })
-    const modesHandler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
-
-    const response = await modesHandler({ user: { id: 'u1' } })
-    const body = await response.json()
-    // modes config has no superuser access, so it shouldn't be available
-    expect(body.modes).not.toContain('superuser')
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Admin view auto-registration
 // ---------------------------------------------------------------------------
 

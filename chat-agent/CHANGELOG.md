@@ -10,4 +10,4 @@
 - Add `superuser` mode that bypasses Payload access control
 - Add `GET /api/chat-agent/modes` endpoint for resolving available modes
 - Add `POST /api/chat-agent/execute-tool` endpoint for ask-mode tool execution
-- Deprecate `superuserAccess` option in favor of `modes.access.superuser`
+- Remove `superuserAccess` option in favor of `modes.access.superuser`

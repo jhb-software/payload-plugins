@@ -13,29 +13,14 @@ import {
 } from './types.js'
 
 // ---------------------------------------------------------------------------
-// Resolve modes config (with backward compatibility)
+// Resolve modes config
 // ---------------------------------------------------------------------------
 
 /**
- * Build a `ModesConfig` from plugin options, handling backward compatibility
- * with the deprecated `superuserAccess` option.
+ * Extract the `ModesConfig` from plugin options.
  */
 export function resolveModeConfig(options: ChatAgentPluginOptions | undefined): ModesConfig {
-  if (options?.modes) {
-    return options.modes
-  }
-
-  // Backward compatibility: map superuserAccess to modes.access.superuser
-  if (options?.superuserAccess) {
-    const sa = options.superuserAccess
-    return {
-      access: {
-        superuser: typeof sa === 'function' ? ({ req }) => sa(req) : () => sa === true,
-      },
-    }
-  }
-
-  return {}
+  return options?.modes ?? {}
 }
 
 // ---------------------------------------------------------------------------

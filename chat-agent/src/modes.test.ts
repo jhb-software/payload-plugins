@@ -16,35 +16,13 @@ describe('resolveModeConfig', () => {
     expect(resolveModeConfig(undefined)).toEqual({})
   })
 
-  it('returns empty config when no modes or superuserAccess', () => {
+  it('returns empty config when no modes configured', () => {
     expect(resolveModeConfig({ apiKey: 'test' })).toEqual({})
   })
 
   it('returns modes config directly when provided', () => {
     const modes = { access: {}, default: 'read-write' as const }
     expect(resolveModeConfig({ modes })).toBe(modes)
-  })
-
-  it('maps superuserAccess boolean to modes.access.superuser', async () => {
-    const config = resolveModeConfig({ superuserAccess: true })
-    expect(config.access?.superuser).toBeDefined()
-    const result = await config.access!.superuser!({ req: {} })
-    expect(result).toBe(true)
-  })
-
-  it('maps superuserAccess function to modes.access.superuser', async () => {
-    const fn = vi.fn((req: any) => req.user?.role === 'admin')
-    const config = resolveModeConfig({ superuserAccess: fn })
-    expect(config.access?.superuser).toBeDefined()
-
-    await config.access!.superuser!({ req: { user: { role: 'admin' } } })
-    expect(fn).toHaveBeenCalledWith({ user: { role: 'admin' } })
-  })
-
-  it('prefers modes over superuserAccess when both are set', () => {
-    const modes = { default: 'read' as const }
-    const config = resolveModeConfig({ modes, superuserAccess: true })
-    expect(config).toBe(modes)
   })
 })
 

@@ -54,20 +54,8 @@ export interface ChatAgentPluginOptions {
   /**
    * Agent modes configuration. Controls which operations the agent can
    * attempt and which users can use which access levels.
-   *
-   * When `modes` is set, the `superuserAccess` option is ignored.
    */
   modes?: ModesConfig
-  /**
-   * Controls who can use superuser mode (overrideAccess: true).
-   * - Omit or `false` to disable superuser mode entirely (default).
-   * - `true` to allow any authenticated user.
-   * - A function receiving the request, returning true to allow.
-   *
-   * @deprecated Use `modes.access.superuser` instead.
-   * Example: `(req) => req.user?.role === 'admin'`
-   */
-  superuserAccess?: ((req: any) => boolean | Promise<boolean>) | boolean
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
 }

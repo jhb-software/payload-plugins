@@ -28,8 +28,6 @@ export interface UseChatOptions {
   model?: string
   /** Called after messages are auto-saved. */
   onSave?: (conversationId: string) => void
-  /** Use superuser access (overrideAccess: true) instead of user's permissions. @deprecated Use `mode: 'superuser'` instead. */
-  overrideAccess?: boolean
 }
 
 /** Save or update a conversation via the REST API. */
@@ -80,7 +78,6 @@ export function useChat(options?: string | UseChatOptions) {
     typeof options === 'string' ? options : (options?.endpointUrl ?? '/api/chat-agent/chat')
   const model = typeof options === 'object' ? options?.model : undefined
   const mode = typeof options === 'object' ? options?.mode : undefined
-  const overrideAccess = typeof options === 'object' ? options?.overrideAccess : undefined
   const chatId = typeof options === 'object' ? options?.chatId : undefined
   const initialMessages = typeof options === 'object' ? options?.initialMessages : undefined
   const onSave = typeof options === 'object' ? options?.onSave : undefined
@@ -129,15 +126,12 @@ export function useChat(options?: string | UseChatOptions) {
     if (mode) {
       body.mode = mode
     }
-    if (overrideAccess) {
-      body.overrideAccess = true
-    }
     return new DefaultChatTransport({
       api: endpointUrl,
       body: Object.keys(body).length > 0 ? body : undefined,
       credentials: 'include',
     })
-  }, [endpointUrl, mode, model, overrideAccess])
+  }, [endpointUrl, mode, model])
 
   const chatOptions: Record<string, unknown> = {
     messageMetadataSchema,

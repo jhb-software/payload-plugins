@@ -208,26 +208,9 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             // --- Resolve overrideAccess ------------------------------------
             const overrideAccess = mode === 'superuser'
 
-            // Backward compatibility: also check body.overrideAccess
-            let effectiveOverrideAccess = overrideAccess
-            if (!overrideAccess && body.overrideAccess === true) {
-              const superuserAccess = options?.superuserAccess
-              if (superuserAccess === true) {
-                effectiveOverrideAccess = true
-              } else if (typeof superuserAccess === 'function') {
-                effectiveOverrideAccess = await superuserAccess(req)
-              }
-            }
-
             // --- Discover custom endpoints and build tools ------------------
             const customEndpoints = discoverEndpoints(req.payload.config)
-            const allTools = buildTools(
-              req.payload,
-              req.user,
-              effectiveOverrideAccess,
-              req,
-              customEndpoints,
-            )
+            const allTools = buildTools(req.payload, req.user, overrideAccess, req, customEndpoints)
             const tools = filterToolsByMode(allTools, mode)
             const systemPrompt = buildSystemPrompt(
               req.payload.config,
