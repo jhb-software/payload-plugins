@@ -13,7 +13,7 @@ export const de: GenericTranslationsObject = {
     deploymentInfoError: 'Fehler beim Abrufen der Veröffentlichungsinformationen',
     deploymentInfoInspectDeployment: 'Veröffentlichung inspizieren',
     deploymentInfoLatestDeployment: 'Neueste Veröffentlichung',
-    deploymentInfoTitle: 'Vercel Veröffentlichungen',
+    deploymentInfoTitle: 'Veröffentlichungen',
     deploymentInfoTriggerRedeploy: 'Letzte Produktion erneut veröffentlichen',
     deploymentInfoWebsite: 'Website',
 
