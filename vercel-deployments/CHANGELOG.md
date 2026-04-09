@@ -4,6 +4,7 @@
 
 - style: standardize icons to use Geist icon set (16x16 filled)
 - style: use cloud icon for deployment widget title instead of info icon
+- refactor: improve widget translations (remove "Vercel" from title, simplify German translations)
 
 ## 0.2.0
 

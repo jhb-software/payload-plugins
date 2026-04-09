@@ -96,10 +96,9 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
           icon={isPending ? <Spinner /> : <Lightning />}
           onClick={handleGenerateAltTexts}
         >
-          {t('@jhb.software/payload-alt-text-plugin:generateAltTextFor')} {selectedIds.length}{' '}
-          {selectedIds.length === 1
-            ? t('@jhb.software/payload-alt-text-plugin:image')
-            : t('@jhb.software/payload-alt-text-plugin:images')}
+          {t('@jhb.software/payload-alt-text-plugin:generateAltTextFor', {
+            count: selectedIds.length,
+          })}
         </Button>
       </div>
     )

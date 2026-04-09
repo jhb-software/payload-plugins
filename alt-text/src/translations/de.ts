@@ -11,9 +11,8 @@ export const de: GenericTranslationsObject = {
 
     // Button labels
     generateAltText: 'Alternativtext generieren',
-    generateAltTextFor: 'Alternativtext generieren für',
-    image: 'Bild',
-    images: 'Bilder',
+    generateAltTextFor_one: 'Alternativtext für {{count}} Bild generieren',
+    generateAltTextFor_other: 'Alternativtext für {{count}} Bilder generieren',
 
     // Toast messages
     altTextGeneratedSuccess:
@@ -47,8 +46,8 @@ export const de: GenericTranslationsObject = {
     theAlternateTextIsRequired: 'Der Alternativtext ist erforderlich.',
 
     // Dashboard widget
-    altTextHealthDescription: 'Alternativtext-Abdeckung über alle Upload-Sammlungen.',
-    altTextHealthWidget: 'Alternativtext',
+    altTextHealthDescription: 'Alternativtext Abdeckung in allen Upload-Sammlungen.',
+    altTextHealthWidget: 'Alternativtexte',
     collectionCheckFailed: 'Status nicht verfügbar',
     healthCheckPartialWarning: 'Einige Sammlungen konnten gerade nicht geprüft werden.',
     localeCount: '{{count}} Sprachen',
