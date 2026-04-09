@@ -12,7 +12,7 @@
       }
     },
     {
-      "files": ["**/importMap.js", "**/payload-types.ts", "**/**.yaml"],
+      "files": ["**/importMap.js", "**/payload-types.ts", "**/**.yaml", "**/**.yml"],
       "options": {
         "requirePragma": true
       }

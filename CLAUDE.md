@@ -37,6 +37,8 @@ Document IDs must always support both `string` and `number` (MongoDB uses string
 
 For every new fix or feature, a failing test must be added **first** that succeeds once the fix/feature is in place. Do not add code changes without a corresponding test that proves the change is necessary.
 
+Every test must justify its existence by verifying meaningful behavior — not restating implementation details. If a test feels trivial or redundant, that's a signal to either test at a higher level (integration over unit) or reconsider whether the underlying code is over-abstracted. Prefer fewer, well-targeted integration tests over many granular unit tests.
+
 ## Changelog
 
 For every `fix` or `feat` commit, add a new line to the `CHANGELOG.md` of the affected plugin. If there is no section for the upcoming version yet, add an `## Unreleased` heading at the top and list changes under it. When a version is released, the `## Unreleased` heading is replaced with the version number by the release workflow.
