@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.3
 
 - fix: reject unsupported file types (e.g. SVG) with clear error showing the MIME type
 - style: use Payload Pill component and SVG icons in health widget
