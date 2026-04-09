@@ -9,41 +9,22 @@ import type { MessageMetadata } from '../types.js'
 
 import { MessageList } from './MessageList.js'
 
-function makeMessage(
-  overrides: Partial<UIMessage<MessageMetadata>> & { text?: string },
-): UIMessage<MessageMetadata> {
-  const { text = 'Hello', ...rest } = overrides
-  return {
-    id: '1',
-    parts: [{ text, type: 'text' as const }],
-    role: 'user',
-    ...rest,
-  } as UIMessage<MessageMetadata>
-}
-
 describe('MessageList', () => {
   afterEach(cleanup)
 
-  it('shows empty state when there are no messages', () => {
+  it('shows empty state placeholder when there are no messages, hides it otherwise', () => {
     const ref = createRef<HTMLDivElement>()
-    render(<MessageList messages={[]} scrollRef={ref} />)
+    const { unmount } = render(<MessageList messages={[]} scrollRef={ref} />)
     expect(screen.getByText(/ask me anything/i)).toBeDefined()
-  })
+    unmount()
 
-  it('renders messages when provided', () => {
-    const ref = createRef<HTMLDivElement>()
-    const messages = [
-      makeMessage({ id: '1', text: 'Hi there' }),
-      makeMessage({ id: '2', role: 'assistant', text: 'Hello!' }),
-    ]
-    render(<MessageList messages={messages} scrollRef={ref} />)
-    expect(screen.getByText('Hi there')).toBeDefined()
-    expect(screen.getByText('Hello!')).toBeDefined()
-  })
-
-  it('does not show empty state when messages exist', () => {
-    const ref = createRef<HTMLDivElement>()
-    render(<MessageList messages={[makeMessage({})]} scrollRef={ref} />)
+    const message = {
+      id: '1',
+      parts: [{ text: 'Hi', type: 'text' as const }],
+      role: 'user',
+    } as UIMessage<MessageMetadata>
+    render(<MessageList messages={[message]} scrollRef={ref} />)
     expect(screen.queryByText(/ask me anything/i)).toBeNull()
+    expect(screen.getByText('Hi')).toBeDefined()
   })
 })

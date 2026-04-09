@@ -20,33 +20,6 @@ const conversations = [
 describe('Sidebar', () => {
   afterEach(cleanup)
 
-  it('renders a "New chat" button', () => {
-    render(
-      <Sidebar
-        chatId={undefined}
-        conversations={[]}
-        onDelete={vi.fn()}
-        onLoad={vi.fn()}
-        onNew={vi.fn()}
-      />,
-    )
-    expect(screen.getByText('New chat')).toBeDefined()
-  })
-
-  it('renders conversation titles', () => {
-    render(
-      <Sidebar
-        chatId={undefined}
-        conversations={conversations}
-        onDelete={vi.fn()}
-        onLoad={vi.fn()}
-        onNew={vi.fn()}
-      />,
-    )
-    expect(screen.getByText('First chat')).toBeDefined()
-    expect(screen.getByText('Second chat')).toBeDefined()
-  })
-
   it('calls onNew when "New chat" is clicked', () => {
     const onNew = vi.fn()
     render(
@@ -62,7 +35,7 @@ describe('Sidebar', () => {
     expect(onNew).toHaveBeenCalledTimes(1)
   })
 
-  it('calls onLoad when a conversation is clicked', () => {
+  it('calls onLoad when a conversation is clicked or activated via keyboard', () => {
     const onLoad = vi.fn()
     render(
       <Sidebar
@@ -75,26 +48,15 @@ describe('Sidebar', () => {
     )
     fireEvent.click(screen.getByText('First chat'))
     expect(onLoad).toHaveBeenCalledWith('c1')
-  })
 
-  it('calls onLoad when Enter is pressed on a conversation', () => {
-    const onLoad = vi.fn()
-    render(
-      <Sidebar
-        chatId={undefined}
-        conversations={conversations}
-        onDelete={vi.fn()}
-        onLoad={onLoad}
-        onNew={vi.fn()}
-      />,
-    )
-    const item = screen.getByText('First chat').closest('[role="button"]')!
+    const item = screen.getByText('Second chat').closest('[role="button"]')!
     fireEvent.keyDown(item, { key: 'Enter' })
-    expect(onLoad).toHaveBeenCalledWith('c1')
+    expect(onLoad).toHaveBeenCalledWith('c2')
   })
 
-  it('calls onDelete (with confirm) when delete button is clicked', () => {
+  it('confirms before deleting and does not bubble click to onLoad', () => {
     const onDelete = vi.fn()
+    const onLoad = vi.fn()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     render(
@@ -102,7 +64,7 @@ describe('Sidebar', () => {
         chatId={undefined}
         conversations={conversations}
         onDelete={onDelete}
-        onLoad={vi.fn()}
+        onLoad={onLoad}
         onNew={vi.fn()}
       />,
     )
@@ -110,9 +72,10 @@ describe('Sidebar', () => {
     fireEvent.click(deleteButtons[0])
     expect(window.confirm).toHaveBeenCalled()
     expect(onDelete).toHaveBeenCalledWith('c1')
+    expect(onLoad).not.toHaveBeenCalled()
   })
 
-  it('does not call onDelete when confirm is cancelled', () => {
+  it('does not delete when confirm is cancelled', () => {
     const onDelete = vi.fn()
     vi.spyOn(window, 'confirm').mockReturnValue(false)
 
@@ -128,23 +91,5 @@ describe('Sidebar', () => {
     const deleteButtons = screen.getAllByRole('button', { name: /delete conversation/i })
     fireEvent.click(deleteButtons[0])
     expect(onDelete).not.toHaveBeenCalled()
-  })
-
-  it('does not trigger onLoad when delete button is clicked', () => {
-    const onLoad = vi.fn()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    render(
-      <Sidebar
-        chatId={undefined}
-        conversations={conversations}
-        onDelete={vi.fn()}
-        onLoad={onLoad}
-        onNew={vi.fn()}
-      />,
-    )
-    const deleteButtons = screen.getAllByRole('button', { name: /delete conversation/i })
-    fireEvent.click(deleteButtons[0])
-    expect(onLoad).not.toHaveBeenCalled()
   })
 })
