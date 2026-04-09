@@ -141,6 +141,229 @@ describe('chatAgentPlugin', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Mode-related endpoint tests
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin modes', () => {
+  it('registers a GET /chat-agent/modes endpoint', () => {
+    const plugin = chatAgentPlugin()
+    const result = plugin({ endpoints: [] })
+    const modesEndpoint = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes')
+    expect(modesEndpoint).toBeDefined()
+    expect(modesEndpoint.method).toBe('get')
+  })
+
+  it('registers a POST /chat-agent/execute-tool endpoint', () => {
+    const plugin = chatAgentPlugin()
+    const result = plugin({ endpoints: [] })
+    const execEndpoint = result.endpoints.find((ep: any) => ep.path === '/chat-agent/execute-tool')
+    expect(execEndpoint).toBeDefined()
+    expect(execEndpoint.method).toBe('post')
+  })
+
+  it('modes endpoint returns 401 without auth', async () => {
+    const plugin = chatAgentPlugin()
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: null })
+    expect(response.status).toBe(401)
+  })
+
+  it('modes endpoint returns default modes for authenticated user', async () => {
+    const plugin = chatAgentPlugin()
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.modes).toEqual(['read', 'ask', 'read-write'])
+    expect(body.default).toBe('ask')
+  })
+
+  it('modes endpoint includes superuser when configured', async () => {
+    const plugin = chatAgentPlugin({
+      modes: {
+        access: { superuser: () => true },
+      },
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.modes).toContain('superuser')
+  })
+
+  it('modes endpoint respects access functions', async () => {
+    const plugin = chatAgentPlugin({
+      modes: {
+        access: {
+          'read-write': ({ req }) => req.user?.role === 'admin',
+        },
+      },
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    // Non-admin user
+    const res1 = await handler({ user: { id: 'u1', role: 'editor' } })
+    const body1 = await res1.json()
+    expect(body1.modes).not.toContain('read-write')
+
+    // Admin user
+    const res2 = await handler({ user: { id: 'u2', role: 'admin' } })
+    const body2 = await res2.json()
+    expect(body2.modes).toContain('read-write')
+  })
+
+  it('modes endpoint returns custom default mode', async () => {
+    const plugin = chatAgentPlugin({
+      modes: { default: 'read-write' },
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.default).toBe('read-write')
+  })
+
+  it('chat endpoint rejects invalid mode', async () => {
+    const plugin = chatAgentPlugin({ apiKey: 'test-key' })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+
+    const response = await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
+          mode: 'invalid',
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body.error).toContain('Invalid mode')
+  })
+
+  it('chat endpoint rejects mode user lacks access to', async () => {
+    const plugin = chatAgentPlugin({
+      apiKey: 'test-key',
+      modes: {
+        access: {
+          superuser: () => false,
+        },
+      },
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+
+    const response = await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
+          mode: 'superuser',
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body.error).toContain('Access denied')
+  })
+
+  it('execute-tool endpoint returns 401 without auth', async () => {
+    const plugin = chatAgentPlugin()
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/execute-tool',
+    ).handler
+
+    const response = await handler({ user: null })
+    expect(response.status).toBe(401)
+  })
+
+  it('execute-tool endpoint rejects non-write tools', async () => {
+    const plugin = chatAgentPlugin()
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/execute-tool',
+    ).handler
+
+    const response = await handler({
+      json: () => Promise.resolve({ input: { collection: 'posts' }, toolName: 'find' }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 'u1' },
+    })
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body.error).toContain('not a write tool')
+  })
+
+  it('execute-tool endpoint executes a write tool', async () => {
+    const plugin = chatAgentPlugin()
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/execute-tool',
+    ).handler
+
+    const mockCreate = { id: 'new-1', title: 'Test' }
+    const response = await handler({
+      json: () =>
+        Promise.resolve({
+          input: { collection: 'posts', data: { title: 'Test' } },
+          toolCallId: 'tc-1',
+          toolName: 'create',
+        }),
+      payload: {
+        config: { collections: [], globals: [] },
+        create: () => Promise.resolve(mockCreate),
+      },
+      user: { id: 'u1' },
+    })
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.result).toEqual(mockCreate)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Backward compatibility
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin backward compatibility', () => {
+  it('superuserAccess still works without modes config', async () => {
+    const plugin = chatAgentPlugin({ superuserAccess: true })
+    const result = plugin({ endpoints: [] })
+    const modesHandler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await modesHandler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.modes).toContain('superuser')
+  })
+
+  it('modes config takes precedence over superuserAccess', async () => {
+    const plugin = chatAgentPlugin({
+      modes: { access: {} },
+      superuserAccess: true,
+    })
+    const result = plugin({ endpoints: [] })
+    const modesHandler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await modesHandler({ user: { id: 'u1' } })
+    const body = await response.json()
+    // modes config has no superuser access, so it shouldn't be available
+    expect(body.modes).not.toContain('superuser')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Admin view auto-registration
 // ---------------------------------------------------------------------------
 

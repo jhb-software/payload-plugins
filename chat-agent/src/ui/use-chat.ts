@@ -13,7 +13,7 @@ import { useChat as useAIChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useCallback, useMemo, useRef } from 'react'
 
-import { type MessageMetadata, messageMetadataSchema } from '../types.js'
+import type { AgentMode, type MessageMetadata, messageMetadataSchema } from '../types.js'
 
 export type ChatMessageUI = UIMessage<MessageMetadata>
 
@@ -23,10 +23,12 @@ export interface UseChatOptions {
   endpointUrl?: string
   /** Pre-loaded messages (when resuming a conversation). */
   initialMessages?: UIMessage<MessageMetadata>[]
+  /** Agent mode sent with each request. */
+  mode?: AgentMode
   model?: string
   /** Called after messages are auto-saved. */
   onSave?: (conversationId: string) => void
-  /** Use superuser access (overrideAccess: true) instead of user's permissions. */
+  /** Use superuser access (overrideAccess: true) instead of user's permissions. @deprecated Use `mode: 'superuser'` instead. */
   overrideAccess?: boolean
 }
 
@@ -77,6 +79,7 @@ export function useChat(options?: string | UseChatOptions) {
   const endpointUrl =
     typeof options === 'string' ? options : (options?.endpointUrl ?? '/api/chat-agent/chat')
   const model = typeof options === 'object' ? options?.model : undefined
+  const mode = typeof options === 'object' ? options?.mode : undefined
   const overrideAccess = typeof options === 'object' ? options?.overrideAccess : undefined
   const chatId = typeof options === 'object' ? options?.chatId : undefined
   const initialMessages = typeof options === 'object' ? options?.initialMessages : undefined
@@ -123,6 +126,9 @@ export function useChat(options?: string | UseChatOptions) {
     if (model) {
       body.model = model
     }
+    if (mode) {
+      body.mode = mode
+    }
     if (overrideAccess) {
       body.overrideAccess = true
     }
@@ -131,7 +137,7 @@ export function useChat(options?: string | UseChatOptions) {
       body: Object.keys(body).length > 0 ? body : undefined,
       credentials: 'include',
     })
-  }, [endpointUrl, model, overrideAccess])
+  }, [endpointUrl, mode, model, overrideAccess])
 
   const chatOptions: Record<string, unknown> = {
     messageMetadataSchema,

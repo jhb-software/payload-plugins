@@ -5,6 +5,12 @@ export default defineConfig({
     jsx: 'automatic',
   },
   test: {
+    css: false,
     include: ['src/**/*.test.{ts,tsx}'],
+    server: {
+      deps: {
+        inline: [/react-image-crop/, /@payloadcms/],
+      },
+    },
   },
 })

@@ -5,10 +5,11 @@ import type { UIMessage } from 'ai'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { MessageMetadata } from '../types.js'
+import type { AgentMode, MessageMetadata } from '../types.js'
 
 import { ChatInput } from './ChatInput.js'
 import { MessageList } from './MessageList.js'
+import { ModeSelector } from './ModeSelector.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
 import { TokenBadge } from './TokenBadge.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
@@ -33,7 +34,9 @@ function setConversationParam(id: string | undefined) {
 // ---------------------------------------------------------------------------
 
 export interface ChatViewProps {
+  availableModes?: AgentMode[]
   conversationId?: string
+  defaultMode?: AgentMode
   initialConversations?: ConversationSummary[]
   initialMessages?: unknown[]
 }
@@ -43,15 +46,39 @@ export interface ChatViewProps {
 // ---------------------------------------------------------------------------
 
 export default function ChatView({
+  availableModes = ['ask'],
   conversationId,
+  defaultMode = 'ask',
   initialConversations,
   initialMessages: serverMessages,
 }: ChatViewProps) {
   const endpointUrl = '/api/chat-agent/chat'
   const [chatId, setChatId] = useState(conversationId)
+  const [mode, setMode] = useState<AgentMode>(defaultMode)
+  const [modes, setModes] = useState<AgentMode[]>(availableModes)
   const [initialMessages, setInitialMessages] = useState<UIMessage<MessageMetadata>[] | undefined>(
     serverMessages as UIMessage<MessageMetadata>[] | undefined,
   )
+
+  // Fetch available modes on mount
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/chat-agent/modes', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.modes) {
+          setModes(data.modes)
+          if (data.default && !mode) {
+            setMode(data.default)
+          }
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const setActiveChatId = useCallback((id: string | undefined) => {
     setChatId(id)
@@ -60,10 +87,11 @@ export default function ChatView({
 
   const { conversations, refresh, remove } = useConversations(endpointUrl, initialConversations)
 
-  const { error, messages, sendMessage, setMessages, status } = useChat({
+  const { addToolResult, error, messages, sendMessage, setMessages, status } = useChat({
     chatId,
     endpointUrl,
     initialMessages,
+    mode,
     onSave: (id) => {
       if (!chatId) {
         setActiveChatId(id)
@@ -71,6 +99,9 @@ export default function ChatView({
       void refresh()
     },
   })
+
+  // Track which tool calls are being executed (for ask mode confirmation)
+  const [executingTools, setExecutingTools] = useState<Set<string>>(new Set())
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isLoading = status === 'streaming' || status === 'submitted'
@@ -138,6 +169,46 @@ export default function ChatView({
     [sendMessage],
   )
 
+  // --- Ask mode: tool confirmation handlers --------------------------------
+
+  const handleToolAllow = useCallback(
+    async (toolCallId: string, toolName: string, input: unknown) => {
+      setExecutingTools((prev) => new Set(prev).add(toolCallId))
+      try {
+        const res = await fetch(`${endpointUrl.replace(/\/chat$/, '')}/execute-tool`, {
+          body: JSON.stringify({ input, toolCallId, toolName }),
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        })
+        const data = await res.json()
+        ;(addToolResult as any)({ result: data.result ?? data, toolCallId })
+      } catch (err: any) {
+        ;(addToolResult as any)({
+          result: { error: err?.message ?? 'Execution failed' },
+          toolCallId,
+        })
+      } finally {
+        setExecutingTools((prev) => {
+          const next = new Set(prev)
+          next.delete(toolCallId)
+          return next
+        })
+      }
+    },
+    [addToolResult, endpointUrl],
+  )
+
+  const handleToolDeny = useCallback(
+    (toolCallId: string) => {
+      ;(addToolResult as any)({
+        result: { denied: true, message: 'User denied this action.' },
+        toolCallId,
+      })
+    },
+    [addToolResult],
+  )
+
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 140px)' }}>
       <Sidebar
@@ -167,11 +238,21 @@ export default function ChatView({
           }}
         >
           <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>Content Assistant</h2>
+          <ModeSelector
+            availableModes={modes}
+            disabled={isLoading}
+            mode={mode}
+            onModeChange={setMode}
+          />
           <div style={{ flex: 1 }} />
           <TokenBadge messages={messages as UIMessage<MessageMetadata>[]} />
         </div>
         <MessageList
+          executingTools={mode === 'ask' ? executingTools : undefined}
           messages={messages as UIMessage<MessageMetadata>[]}
+          mode={mode}
+          onToolAllow={mode === 'ask' ? handleToolAllow : undefined}
+          onToolDeny={mode === 'ask' ? handleToolDeny : undefined}
           scrollRef={messagesEndRef}
         />
         {error ? (

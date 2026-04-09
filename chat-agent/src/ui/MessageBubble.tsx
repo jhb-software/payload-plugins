@@ -1,13 +1,18 @@
 'use client'
 
+import type React from 'react'
+
 import { getToolName, isToolUIPart, type UIMessage } from 'ai'
 import { useCallback, useState } from 'react'
 
-import type { MessageMetadata } from '../types.js'
+import type { AgentMode, MessageMetadata } from '../types.js'
 
 import { formatTokens } from './format-tokens.js'
 import { CheckIcon } from './icons/CheckIcon.js'
 import { ClipboardIcon } from './icons/ClipboardIcon.js'
+import { ToolConfirmation } from './ToolConfirmation.js'
+
+const WRITE_TOOLS = new Set(['callEndpoint', 'create', 'delete', 'update', 'updateGlobal'])
 
 function ToolCallIndicator({
   part,
@@ -41,9 +46,20 @@ function ToolCallIndicator({
       }}
     >
       <div
-        aria-expanded={hasOutput ? expanded : undefined}
-        onClick={() => hasOutput && setExpanded((v) => !v)}
-        role={hasOutput ? 'button' : undefined}
+        {...(hasOutput
+          ? {
+              'aria-expanded': expanded,
+              onClick: () => setExpanded((v) => !v),
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setExpanded((v) => !v)
+                }
+              },
+              role: 'button' as const,
+              tabIndex: 0,
+            }
+          : {})}
         style={{
           alignItems: 'center',
           color: 'var(--theme-elevation-500)',
@@ -54,7 +70,6 @@ function ToolCallIndicator({
           gap: '6px',
           padding: '4px 8px',
         }}
-        tabIndex={hasOutput ? 0 : undefined}
       >
         <span
           style={{
@@ -122,7 +137,19 @@ function ToolCallIndicator({
   )
 }
 
-export function MessageBubble({ message }: { message: UIMessage<MessageMetadata> }) {
+export function MessageBubble({
+  executingTools,
+  message,
+  mode,
+  onToolAllow,
+  onToolDeny,
+}: {
+  executingTools?: Set<string>
+  message: UIMessage<MessageMetadata>
+  mode?: AgentMode
+  onToolAllow?: (toolCallId: string, toolName: string, input: unknown) => void
+  onToolDeny?: (toolCallId: string) => void
+}) {
   const isUser = message.role === 'user'
   const meta = message.metadata
 
@@ -149,9 +176,41 @@ export function MessageBubble({ message }: { message: UIMessage<MessageMetadata>
         </div>
         {message.parts
           .filter((p) => isToolUIPart(p))
-          .map((p, i: number) => (
-            <ToolCallIndicator key={i} part={p as { input: unknown; state: string }} />
-          ))}
+          .map((p, i: number) => {
+            const toolPart = p as {
+              input: unknown
+              output?: unknown
+              state: string
+              toolCallId?: string
+              toolInvocation?: { toolCallId?: string; toolName?: string }
+              toolName?: string
+            }
+            const toolName = getToolName(toolPart as Parameters<typeof getToolName>[0])
+            const toolCallId =
+              toolPart.toolInvocation?.toolCallId ?? toolPart.toolCallId ?? `tool-${i}`
+            const needsConfirmation =
+              mode === 'ask' &&
+              WRITE_TOOLS.has(toolName) &&
+              toolPart.state !== 'output-available' &&
+              toolPart.state !== 'input-streaming' &&
+              onToolAllow &&
+              onToolDeny
+
+            if (needsConfirmation) {
+              return (
+                <ToolConfirmation
+                  input={toolPart.input}
+                  key={i}
+                  onAllow={() => onToolAllow(toolCallId, toolName, toolPart.input)}
+                  onDeny={() => onToolDeny(toolCallId)}
+                  status={executingTools?.has(toolCallId) ? 'executing' : 'pending'}
+                  toolName={toolName}
+                />
+              )
+            }
+
+            return <ToolCallIndicator key={i} part={toolPart} />
+          })}
         {!isUser && meta?.totalTokens ? (
           <div style={{ color: 'var(--theme-elevation-400)', fontSize: '11px', marginTop: '4px' }}>
             {[meta.model, formatTokens(meta.totalTokens)].filter(Boolean).join(' \u00b7 ')}

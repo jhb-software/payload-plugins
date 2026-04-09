@@ -6,6 +6,7 @@
  */
 
 import type { DiscoverableEndpoint } from './tools.js'
+import type { AgentMode } from './types.js'
 
 // ---------------------------------------------------------------------------
 // Field extraction (self-contained, no dependency on payload)
@@ -131,11 +132,13 @@ export function extractFields(
  * @param payloadConfig    The Payload runtime config (`req.payload.config`)
  * @param customPrefix     Optional user-provided text prepended to the prompt
  * @param customEndpoints  Discoverable custom endpoints to list for the agent
+ * @param mode             Current agent mode (affects behavioral instructions)
  */
 export function buildSystemPrompt(
   payloadConfig: any,
   customPrefix?: string,
   customEndpoints?: DiscoverableEndpoint[],
+  mode?: AgentMode,
 ): string {
   const sections: string[] = []
 
@@ -145,11 +148,32 @@ export function buildSystemPrompt(
 
   sections.push(
     'You are a CMS content assistant with access to the Payload CMS database.',
-    'You can read and write content using the provided tools.',
+    ...(mode === 'read'
+      ? ['You can only read content — you have no write tools available.']
+      : ['You can read and write content using the provided tools.']),
     '',
     '## Rules',
-    '- Always confirm with the user before creating, updating, or deleting documents.',
-    '- Use `find` or `findByID` to look up data before making changes.',
+    ...(mode === 'read'
+      ? [
+          '- You are in **read-only mode**. Do not suggest or attempt write operations.',
+          '- Use `find`, `findByID`, `count`, or `findGlobal` to look up data.',
+        ]
+      : mode === 'ask'
+        ? [
+            '- You are in **ask mode**. Write operations (create, update, delete) require explicit user confirmation before they execute.',
+            '- When you call a write tool, the user will be shown a confirmation dialog before it runs.',
+            '- Use `find` or `findByID` to look up data before making changes.',
+          ]
+        : mode === 'superuser'
+          ? [
+              '- You are in **superuser mode** with full access to the database, bypassing normal user permissions.',
+              '- Always confirm with the user before creating, updating, or deleting documents.',
+              '- Use `find` or `findByID` to look up data before making changes.',
+            ]
+          : [
+              '- Always confirm with the user before creating, updating, or deleting documents.',
+              '- Use `find` or `findByID` to look up data before making changes.',
+            ]),
     '- When showing results, format them clearly. Summarize large result sets.',
     '- If a query returns no results, say so clearly.',
     "- Respect that your actions are limited by the current user's permissions.",

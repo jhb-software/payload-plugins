@@ -17,6 +17,18 @@ import type { Tool } from 'ai'
 
 import { z } from 'zod'
 
+import type { AgentMode } from './types.js'
+
+// ---------------------------------------------------------------------------
+// Tool classification
+// ---------------------------------------------------------------------------
+
+/** Tools that only read data (safe in all modes). */
+export const READ_TOOL_NAMES = ['find', 'findByID', 'count', 'findGlobal'] as const
+
+/** Tools that modify data (restricted in read/ask modes). */
+export const WRITE_TOOL_NAMES = ['create', 'update', 'delete', 'updateGlobal'] as const
+
 // ---------------------------------------------------------------------------
 // Shared Zod schemas (reused across tools)
 // ---------------------------------------------------------------------------
@@ -444,4 +456,52 @@ export function buildTools(
         }
       : {}),
   }
+}
+
+// ---------------------------------------------------------------------------
+// Tool filtering by agent mode
+// ---------------------------------------------------------------------------
+
+const writeToolSet: ReadonlySet<string> = new Set(['callEndpoint', ...WRITE_TOOL_NAMES])
+const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
+
+/**
+ * Filter tools based on the active agent mode.
+ *
+ * - `read`:       Only read tools (write tools and callEndpoint removed).
+ * - `ask`:        All tools, but write tools have `execute` stripped so the
+ *                 AI SDK treats them as client-confirmed tools.
+ * - `read-write`: All tools unchanged.
+ * - `superuser`:  All tools unchanged (overrideAccess is handled at build time).
+ */
+export function filterToolsByMode(
+  tools: Record<string, ExecutableTool>,
+  mode: AgentMode,
+): Record<string, Tool<Record<string, unknown>, unknown>> {
+  if (mode === 'read') {
+    const filtered: Record<string, ExecutableTool> = {}
+    for (const [name, tool] of Object.entries(tools)) {
+      if (readToolSet.has(name)) {
+        filtered[name] = tool
+      }
+    }
+    return filtered
+  }
+
+  if (mode === 'ask') {
+    const result: Record<string, Tool<Record<string, unknown>, unknown>> = {}
+    for (const [name, tool] of Object.entries(tools)) {
+      if (writeToolSet.has(name)) {
+        // Strip execute so the AI SDK yields the tool call for client confirmation
+        const { execute: _, ...rest } = tool
+        result[name] = rest
+      } else {
+        result[name] = tool
+      }
+    }
+    return result
+  }
+
+  // read-write and superuser: all tools with execute
+  return tools
 }
