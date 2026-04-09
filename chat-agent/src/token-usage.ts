@@ -130,8 +130,8 @@ export async function checkBudget(
 
   // Resolve per-user limit override
   let limit = config.limit
-  if (config.access && req) {
-    const override = await config.access(req)
+  if (config.resolveLimit && req) {
+    const override = await config.resolveLimit(req)
     if (override !== undefined) {
       limit = override
     }

@@ -197,7 +197,7 @@ describe('checkBudget', () => {
     )
   })
 
-  it('uses access function for per-user limit override', async () => {
+  it('uses resolveLimit function for per-user limit override', async () => {
     const payload = {
       find: vi.fn().mockResolvedValue({ docs: [{ totalTokens: 800 }] }),
     }
@@ -206,7 +206,7 @@ describe('checkBudget', () => {
       payload,
       'u1',
       {
-        access: () => 2000,
+        resolveLimit: () => 2000,
         limit: 1000,
       },
       req,
@@ -215,7 +215,7 @@ describe('checkBudget', () => {
     expect(result.limit).toBe(2000)
   })
 
-  it('falls back to default limit when access returns undefined', async () => {
+  it('falls back to default limit when resolveLimit returns undefined', async () => {
     const payload = {
       find: vi.fn().mockResolvedValue({ docs: [{ totalTokens: 800 }] }),
     }
@@ -224,7 +224,7 @@ describe('checkBudget', () => {
       payload,
       'u1',
       {
-        access: () => undefined,
+        resolveLimit: () => undefined,
         limit: 1000,
       },
       req,

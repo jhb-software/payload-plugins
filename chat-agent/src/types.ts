@@ -10,10 +10,10 @@ import { z } from 'zod'
 
 export interface TokenBudgetConfig {
   /**
-   * Optional per-user budget override.
+   * Optional per-user limit override.
    * Return a custom limit for specific users, or `undefined` to use the default.
    */
-  access?: (req: any) => number | Promise<number | undefined> | undefined
+  resolveLimit?: (req: any) => number | Promise<number | undefined> | undefined
   /** Default token cap per period. */
   limit: number
   /** Whether the limit applies per user or globally. Default: 'user' */

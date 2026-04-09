@@ -34,8 +34,8 @@ chatAgentPlugin({
     period: 'monthly', // 'daily' | 'monthly' (default: 'monthly')
     limit: 1_000_000, // total tokens per user per period
     limitBy: 'user', // 'user' | 'global' (default: 'user')
-    access: ({ req }) => {
-      // optional: per-user budget override
+    resolveLimit: ({ req }) => {
+      // optional: per-user limit override
       if (req.user?.role === 'admin') return 5_000_000
       return undefined // fall back to default limit
     },
@@ -46,7 +46,7 @@ chatAgentPlugin({
 - `period` — budget reset interval
 - `limit` — default token cap per period
 - `limitBy` — whether the limit applies per user or globally across all users
-- `access` — optional function to return a custom limit for specific users (return `undefined` to use the default)
+- `resolveLimit` — optional function to return a custom limit for specific users (return `undefined` to use the default)
 
 ### Enforcement
 
