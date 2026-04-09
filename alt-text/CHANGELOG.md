@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.4
 
 - style: standardize icons to use Geist icon set (16x16 filled)
 - refactor: improve widget translations (pluralize title, simplify German translations, use i18next plural keys for bulk generate button)
