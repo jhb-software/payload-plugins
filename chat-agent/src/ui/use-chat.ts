@@ -1,0 +1,138 @@
+'use client'
+
+/**
+ * Thin wrapper around the Vercel AI SDK's useChat hook.
+ *
+ * Re-exports the hook with defaults configured for the chat agent endpoint,
+ * plus conversation persistence via the chat-conversations collection.
+ */
+
+import { useChat as useAIChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
+import { messageMetadataSchema, type MessageMetadata } from '../types.js'
+import type { UIMessage } from 'ai'
+import { useCallback, useMemo, useRef } from 'react'
+
+export type ChatMessageUI = UIMessage<MessageMetadata>
+
+export interface UseChatOptions {
+  endpointUrl?: string
+  model?: string
+  /** Use superuser access (overrideAccess: true) instead of user's permissions. */
+  overrideAccess?: boolean
+  /** Existing conversation ID to resume. */
+  chatId?: string
+  /** Pre-loaded messages (when resuming a conversation). */
+  initialMessages?: UIMessage<MessageMetadata>[]
+  /** Called after messages are auto-saved. */
+  onSave?: (conversationId: string) => void
+}
+
+/** Save or update a conversation via the REST API. */
+async function saveConversation(
+  baseUrl: string,
+  conversationId: string | undefined,
+  data: {
+    title?: string
+    messages: UIMessage<MessageMetadata>[]
+    model?: string
+    totalTokens?: number
+  },
+): Promise<string> {
+  if (conversationId) {
+    await fetch(`${baseUrl}/${conversationId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    })
+    return conversationId
+  }
+  const res = await fetch(baseUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  })
+  const doc = await res.json()
+  return doc.id
+}
+
+/** Derive a title from the first user message. */
+function titleFromMessages(messages: UIMessage[]): string {
+  const firstUser = messages.find((m) => m.role === 'user')
+  if (!firstUser) return 'New conversation'
+  const text = firstUser.parts
+    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map((p) => p.text)
+    .join('')
+  return text.slice(0, 80) || 'New conversation'
+}
+
+export function useChat(options?: string | UseChatOptions) {
+  const endpointUrl =
+    typeof options === 'string' ? options : (options?.endpointUrl ?? '/api/chat-agent/chat')
+  const model = typeof options === 'object' ? options?.model : undefined
+  const overrideAccess = typeof options === 'object' ? options?.overrideAccess : undefined
+  const chatId = typeof options === 'object' ? options?.chatId : undefined
+  const initialMessages = typeof options === 'object' ? options?.initialMessages : undefined
+  const onSave = typeof options === 'object' ? options?.onSave : undefined
+
+  const conversationsUrl = `${endpointUrl}/conversations`
+  const conversationIdRef = useRef<string | undefined>(chatId)
+
+  const handleFinish = useCallback(
+    async ({
+      message,
+      messages: allMessages,
+    }: {
+      message: UIMessage<MessageMetadata>
+      messages: UIMessage<MessageMetadata>[]
+    }) => {
+      if (message.role !== 'assistant') return
+      let totalTokens = 0
+      for (const msg of allMessages) {
+        if (msg.metadata?.totalTokens) totalTokens += msg.metadata.totalTokens
+      }
+      try {
+        const id = await saveConversation(conversationsUrl, conversationIdRef.current, {
+          title: titleFromMessages(allMessages),
+          messages: allMessages,
+          model,
+          totalTokens,
+        })
+        conversationIdRef.current = id
+        onSave?.(id)
+      } catch {
+        // Save failed silently — don't break the chat UX
+      }
+    },
+    [conversationsUrl, model, onSave],
+  )
+
+  const transport = useMemo(() => {
+    const body: Record<string, unknown> = {}
+    if (model) body.model = model
+    if (overrideAccess) body.overrideAccess = true
+    return new DefaultChatTransport({
+      api: endpointUrl,
+      body: Object.keys(body).length > 0 ? body : undefined,
+      credentials: 'include',
+    })
+  }, [endpointUrl, model, overrideAccess])
+
+  const chatOptions: Record<string, unknown> = {
+    transport,
+    messageMetadataSchema,
+    onFinish: handleFinish,
+  }
+  if (chatId) chatOptions.id = chatId
+  if (initialMessages) chatOptions.messages = initialMessages
+
+  const chat = useAIChat(chatOptions as any)
+
+  return {
+    ...chat,
+    conversationId: conversationIdRef.current,
+  }
+}
