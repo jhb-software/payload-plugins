@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build:all": "pnpm build:admin-search && pnpm build:alt-text && pnpm build:astro-payload-richtext-lexical && pnpm build:cloudinary && pnpm build:pages && pnpm build:geocoding && pnpm build:content-translator && pnpm build:vercel-deployments",
+    "build:all": "pnpm build:admin-search && pnpm build:alt-text && pnpm build:astro-payload-richtext-lexical && pnpm build:chat-agent && pnpm build:cloudinary && pnpm build:pages && pnpm build:geocoding && pnpm build:content-translator && pnpm build:vercel-deployments",
+    "build:chat-agent": "cd ./chat-agent && pnpm build",
     "build:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm build",
     "build:admin-search": "cd ./admin-search && pnpm build",
     "build:alt-text": "cd ./alt-text && pnpm build",
@@ -13,7 +14,8 @@
     "build:pages": "cd ./pages && pnpm build",
     "build:vercel-deployments": "cd ./vercel-deployments && pnpm build",
 
-    "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:astro-payload-richtext-lexical && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator && pnpm lint:vercel-deployments",
+    "lint:all": "pnpm lint:admin-search && pnpm lint:alt-text && pnpm lint:astro-payload-richtext-lexical && pnpm lint:chat-agent && pnpm lint:cloudinary && pnpm lint:geocoding && pnpm lint:pages && pnpm lint:content-translator && pnpm lint:vercel-deployments",
+    "lint:chat-agent": "cd ./chat-agent && pnpm lint",
     "lint:admin-search": "cd ./admin-search && pnpm lint",
     "lint:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm lint",
     "lint:alt-text": "cd ./alt-text && pnpm lint",
@@ -23,7 +25,8 @@
     "lint:pages": "cd ./pages && pnpm lint",
     "lint:vercel-deployments": "cd ./vercel-deployments && pnpm lint",
 
-    "format:all": "pnpm format:admin-search && pnpm format:alt-text && pnpm format:astro-payload-richtext-lexical && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:content-translator && pnpm format:vercel-deployments",
+    "format:all": "pnpm format:admin-search && pnpm format:alt-text && pnpm format:astro-payload-richtext-lexical && pnpm format:chat-agent && pnpm format:cloudinary && pnpm format:geocoding && pnpm format:pages && pnpm format:content-translator && pnpm format:vercel-deployments",
+    "format:chat-agent": "cd ./chat-agent && pnpm format",
     "format:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm format",
     "format:admin-search": "cd ./admin-search && pnpm format",
     "format:alt-text": "cd ./alt-text && pnpm format",
@@ -33,7 +36,8 @@
     "format:pages": "cd ./pages && pnpm format",
     "format:vercel-deployments": "cd ./vercel-deployments && pnpm format",
 
-    "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:astro-payload-richtext-lexical && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:content-translator && pnpm install:vercel-deployments",
+    "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:astro-payload-richtext-lexical && pnpm install:chat-agent && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:content-translator && pnpm install:vercel-deployments",
+    "install:chat-agent": "cd ./chat-agent && pnpm install --frozen-lockfile",
     "install:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm install",
     "install:admin-search": "cd ./admin-search && pnpm install --frozen-lockfile",
     "install:alt-text": "cd ./alt-text && pnpm install --frozen-lockfile",

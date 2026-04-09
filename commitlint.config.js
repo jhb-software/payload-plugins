@@ -26,6 +26,7 @@ module.exports = {
         'admin-search',
         'alt-text',
         'astro-payload-richtext-lexical',
+        'chat-agent',
         'cloudinary',
         'content-translator',
         'geocoding',
