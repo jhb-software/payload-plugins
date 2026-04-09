@@ -14,6 +14,7 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    meta: { titleSuffix: '- Alt Text Unlocalized Dev' },
     user: 'users',
   },
   collections: [

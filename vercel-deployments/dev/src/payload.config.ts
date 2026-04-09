@@ -15,6 +15,7 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    meta: { titleSuffix: '- Vercel Deployments Dev' },
     user: 'users',
   },
   collections: [

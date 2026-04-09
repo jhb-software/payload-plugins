@@ -1,5 +1,9 @@
 # Development Guidelines
 
+## Dev Servers
+
+Each plugin has a Next.js test app in its `dev/` directory. Start with `pnpm dev` from there (or use `PORT=<port> pnpm --filter <test-app-name> dev` from the root). Use different ports to run multiple plugins simultaneously.
+
 ## Conventional Commits
 
 All commit messages **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
