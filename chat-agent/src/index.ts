@@ -12,35 +12,17 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
-import type { ChatAgentPluginOptions, ModelsConfig } from './types.js'
+import type { ChatAgentPluginOptions } from './types.js'
 
 import { conversationEndpoints, conversationsCollection } from './conversations.js'
 import { buildSystemPrompt } from './schema.js'
 import { buildTools, discoverEndpoints } from './tools.js'
 
-export type { ChatAgentPluginOptions, ModelOption, ModelsConfig } from './types.js'
+export type { ChatAgentPluginOptions, ModelOption } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
-
-/**
- * Normalize the `model` / `models` plugin options into a resolved config.
- * - `models` takes precedence over `model` when both are provided.
- * - A plain `model` string yields an empty `available` list (no UI selector).
- */
-export function resolveModelsConfig(options?: ChatAgentPluginOptions): ModelsConfig {
-  if (options?.models) {
-    return {
-      available: options.models.available,
-      default: options.models.default,
-    }
-  }
-  return {
-    available: [],
-    default: options?.model ?? DEFAULT_MODEL,
-  }
-}
 
 /**
  * The package-relative path to the ChatView component.
@@ -100,7 +82,10 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
         ...conversationEndpoints,
         {
           handler: () => {
-            return Response.json(resolveModelsConfig(options))
+            return Response.json({
+              availableModels: options?.availableModels ?? [],
+              defaultModel: options?.defaultModel ?? DEFAULT_MODEL,
+            })
           },
           method: 'get',
           path: '/chat-agent/chat/models',
@@ -139,15 +124,16 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             }
 
             // --- Validate model against available list ---------------------
-            const modelsConfig = resolveModelsConfig(options)
+            const availableModels = options?.availableModels
             if (
               body.model &&
-              modelsConfig.available.length > 0 &&
-              !modelsConfig.available.some((m) => m.id === body.model)
+              availableModels &&
+              availableModels.length > 0 &&
+              !availableModels.some((m) => m.id === body.model)
             ) {
               return Response.json(
                 {
-                  error: `Model "${body.model}" is not available. Available models: ${modelsConfig.available.map((m) => m.id).join(', ')}`,
+                  error: `Model "${body.model}" is not available. Available models: ${availableModels.map((m) => m.id).join(', ')}`,
                 },
                 { status: 400 },
               )
@@ -173,7 +159,7 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
               options?.systemPrompt,
               customEndpoints,
             )
-            const modelId = body.model ?? modelsConfig.default
+            const modelId = body.model ?? options?.defaultModel ?? DEFAULT_MODEL
             const maxSteps = options?.maxSteps ?? 20
 
             // --- Stream response via AI SDK --------------------------------

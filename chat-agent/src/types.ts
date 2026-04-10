@@ -15,13 +15,6 @@ export interface ModelOption {
   label: string
 }
 
-export interface ModelsConfig {
-  /** List of models the user can choose from in the chat UI. */
-  available: ModelOption[]
-  /** Model used when no override is provided. */
-  default: string
-}
-
 // ---------------------------------------------------------------------------
 // Plugin options
 // ---------------------------------------------------------------------------
@@ -45,19 +38,12 @@ export interface ChatAgentPluginOptions {
     | false
   /** Anthropic API key. Falls back to ANTHROPIC_API_KEY env var. */
   apiKey?: string
+  /** Models the user can choose from in the chat UI. When provided, a selector dropdown is shown. */
+  availableModels?: ModelOption[]
+  /** Claude model ID used when no override is provided. Default: "claude-sonnet-4-20250514" */
+  defaultModel?: string
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
-  /**
-   * Single Claude model ID (backward-compatible shorthand).
-   * When set without `models`, uses this as the default with no UI selector.
-   * Default: "claude-sonnet-4-20250514"
-   */
-  model?: string
-  /**
-   * Configurable model selection.
-   * Takes precedence over the `model` option when both are provided.
-   */
-  models?: ModelsConfig
   /**
    * Controls who can use superuser mode (overrideAccess: true).
    * - Omit or `false` to disable superuser mode entirely (default).

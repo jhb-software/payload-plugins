@@ -5,7 +5,7 @@ import type { UIMessage } from 'ai'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { MessageMetadata, ModelsConfig } from '../types.js'
+import type { MessageMetadata, ModelOption } from '../types.js'
 
 import { ChatInput } from './ChatInput.js'
 import { MessageList } from './MessageList.js'
@@ -53,16 +53,18 @@ export default function ChatView({
   const [initialMessages, setInitialMessages] = useState<UIMessage<MessageMetadata>[] | undefined>(
     serverMessages as UIMessage<MessageMetadata>[] | undefined,
   )
-  const [modelsConfig, setModelsConfig] = useState<ModelsConfig | null>(null)
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([])
+  const [defaultModel, setDefaultModel] = useState<string | undefined>(undefined)
   const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined)
 
   // Fetch available models configuration on mount
   useEffect(() => {
     fetch(`${endpointUrl}/models`, { credentials: 'include' })
       .then((res) => res.json())
-      .then((config: ModelsConfig) => {
-        setModelsConfig(config)
-        setSelectedModel((prev) => prev ?? config.default)
+      .then((config: { availableModels: ModelOption[]; defaultModel: string }) => {
+        setAvailableModels(config.availableModels)
+        setDefaultModel(config.defaultModel)
+        setSelectedModel((prev) => prev ?? config.defaultModel)
       })
       .catch(() => {
         // Models config not available — proceed without selector
@@ -132,8 +134,8 @@ export default function ChatView({
     setActiveChatId(undefined)
     setInitialMessages(undefined)
     setMessages([])
-    setSelectedModel(modelsConfig?.default)
-  }, [setActiveChatId, setMessages, modelsConfig])
+    setSelectedModel(defaultModel)
+  }, [setActiveChatId, setMessages, defaultModel])
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -189,11 +191,11 @@ export default function ChatView({
         >
           <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>Content Assistant</h2>
           <div style={{ flex: 1 }} />
-          {modelsConfig && modelsConfig.available.length > 1 && (
+          {availableModels.length > 1 && (
             <ModelSelector
-              available={modelsConfig.available}
+              available={availableModels}
               onChange={setSelectedModel}
-              value={selectedModel ?? modelsConfig.default}
+              value={selectedModel ?? defaultModel ?? ''}
             />
           )}
           <TokenBadge messages={messages as UIMessage<MessageMetadata>[]} />

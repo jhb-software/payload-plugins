@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { chatAgentPlugin, resolveModelsConfig, validateMessages } from './index.js'
+import { chatAgentPlugin, validateMessages } from './index.js'
 
 // ---------------------------------------------------------------------------
 // validateMessages
@@ -197,49 +197,6 @@ describe('chatAgentPlugin admin view', () => {
 })
 
 // ---------------------------------------------------------------------------
-// resolveModelsConfig
-// ---------------------------------------------------------------------------
-
-describe('resolveModelsConfig', () => {
-  it('returns default model with empty available list when no options', () => {
-    expect(resolveModelsConfig()).toEqual({
-      available: [],
-      default: 'claude-sonnet-4-20250514',
-    })
-  })
-
-  it('uses model string as default with no available list', () => {
-    expect(resolveModelsConfig({ model: 'claude-haiku-4-5-20251001' })).toEqual({
-      available: [],
-      default: 'claude-haiku-4-5-20251001',
-    })
-  })
-
-  it('returns full models config when provided', () => {
-    const models = {
-      available: [
-        { id: 'claude-sonnet-4-20250514', label: 'Sonnet' },
-        { id: 'claude-haiku-4-5-20251001', label: 'Haiku' },
-      ],
-      default: 'claude-sonnet-4-20250514',
-    }
-    expect(resolveModelsConfig({ models })).toEqual(models)
-  })
-
-  it('prefers models config over model string when both provided', () => {
-    const result = resolveModelsConfig({
-      model: 'claude-haiku-4-5-20251001',
-      models: {
-        available: [{ id: 'claude-sonnet-4-20250514', label: 'Sonnet' }],
-        default: 'claude-sonnet-4-20250514',
-      },
-    })
-    expect(result.default).toBe('claude-sonnet-4-20250514')
-    expect(result.available).toHaveLength(1)
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Model validation in chat endpoint
 // ---------------------------------------------------------------------------
 
@@ -247,10 +204,8 @@ describe('chatAgentPlugin model validation', () => {
   it('rejects model not in available list', async () => {
     const plugin = chatAgentPlugin({
       apiKey: 'test-key',
-      models: {
-        available: [{ id: 'claude-sonnet-4-20250514', label: 'Sonnet' }],
-        default: 'claude-sonnet-4-20250514',
-      },
+      availableModels: [{ id: 'claude-sonnet-4-20250514', label: 'Sonnet' }],
+      defaultModel: 'claude-sonnet-4-20250514',
     })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
@@ -307,31 +262,31 @@ describe('chatAgentPlugin models endpoint', () => {
     expect(ep.method).toBe('get')
   })
 
-  it('returns models config with available models', async () => {
-    const models = {
-      available: [
+  it('returns configured available models and default', async () => {
+    const plugin = chatAgentPlugin({
+      availableModels: [
         { id: 'claude-sonnet-4-20250514', label: 'Sonnet' },
         { id: 'claude-haiku-4-5-20251001', label: 'Haiku' },
       ],
-      default: 'claude-sonnet-4-20250514',
-    }
-    const plugin = chatAgentPlugin({ models })
+      defaultModel: 'claude-sonnet-4-20250514',
+    })
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
 
     const response = await ep.handler()
     const body = await response.json()
-    expect(body).toEqual(models)
+    expect(body.defaultModel).toBe('claude-sonnet-4-20250514')
+    expect(body.availableModels).toHaveLength(2)
   })
 
-  it('returns empty available list when only model string configured', async () => {
-    const plugin = chatAgentPlugin({ model: 'claude-haiku-4-5-20251001' })
+  it('returns fallback default and empty list when unconfigured', async () => {
+    const plugin = chatAgentPlugin()
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
 
     const response = await ep.handler()
     const body = await response.json()
-    expect(body.default).toBe('claude-haiku-4-5-20251001')
-    expect(body.available).toEqual([])
+    expect(body.defaultModel).toBe('claude-sonnet-4-20250514')
+    expect(body.availableModels).toEqual([])
   })
 })
