@@ -6,5 +6,10 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
+    server: {
+      deps: {
+        inline: [/react-image-crop/, /@payloadcms/],
+      },
+    },
   },
 })

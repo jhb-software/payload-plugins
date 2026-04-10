@@ -18,7 +18,7 @@ import { conversationEndpoints, conversationsCollection } from './conversations.
 import { buildSystemPrompt } from './schema.js'
 import { buildTools, discoverEndpoints } from './tools.js'
 
-export type { ChatAgentPluginOptions } from './types.js'
+export type { ChatAgentPluginOptions, ModelOption } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
 
@@ -81,6 +81,16 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
         ...(config.endpoints ?? []),
         ...conversationEndpoints,
         {
+          handler: () => {
+            return Response.json({
+              availableModels: options?.availableModels ?? [],
+              defaultModel: options?.defaultModel ?? DEFAULT_MODEL,
+            })
+          },
+          method: 'get',
+          path: '/chat-agent/chat/models',
+        },
+        {
           handler: async (req: any) => {
             // --- Auth check -----------------------------------------------
             const allowed = options?.access ? await options.access(req) : !!req.user
@@ -113,6 +123,22 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
               return Response.json({ error: validationError }, { status: 400 })
             }
 
+            // --- Validate model against available list ---------------------
+            const availableModels = options?.availableModels
+            if (
+              body.model &&
+              availableModels &&
+              availableModels.length > 0 &&
+              !availableModels.some((m) => m.id === body.model)
+            ) {
+              return Response.json(
+                {
+                  error: `Model "${body.model}" is not available. Available models: ${availableModels.map((m) => m.id).join(', ')}`,
+                },
+                { status: 400 },
+              )
+            }
+
             // --- Resolve overrideAccess (superuser mode) -------------------
             let overrideAccess = false
             if (body.overrideAccess === true) {
@@ -133,7 +159,7 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
               options?.systemPrompt,
               customEndpoints,
             )
-            const modelId = body.model ?? options?.model ?? DEFAULT_MODEL
+            const modelId = body.model ?? options?.defaultModel ?? DEFAULT_MODEL
             const maxSteps = options?.maxSteps ?? 20
 
             // --- Stream response via AI SDK --------------------------------
