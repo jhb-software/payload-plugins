@@ -49,6 +49,18 @@ describe('MessageBubble', () => {
     expect(strong!.textContent).toBe('world')
   })
 
+  it('opens markdown links in a new tab to preserve the chat view', () => {
+    const message = makeMessage({
+      role: 'assistant',
+      text: 'See [the post](/admin/collections/posts/123).',
+    })
+    const { container } = render(<MessageBubble message={message} />)
+    const link = container.querySelector('a')
+    expect(link).not.toBeNull()
+    expect(link!.getAttribute('target')).toBe('_blank')
+    expect(link!.getAttribute('rel')).toContain('noopener')
+  })
+
   it('renders user messages as plain text without markdown', () => {
     const message = makeMessage({
       role: 'user',
