@@ -31,6 +31,12 @@ export { default as ChatViewServer } from './ui/ChatViewServer.js'
 const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent#ChatViewServer'
 
 /**
+ * The package-relative path to the ChatNavLink component shown at the top
+ * of the admin nav sidebar. Used by Payload's importMap system.
+ */
+const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent/client#ChatNavLink'
+
+/**
  * Validate that a messages array is non-empty and has valid roles.
  * Returns an error string if invalid, or null if valid.
  */
@@ -67,12 +73,27 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             },
           }
 
+    // Inject a "Chat" link at the top of the admin nav sidebar unless the
+    // admin view is disabled. The link navigates to the configured chat path.
+    const chatPath = options.adminView === false ? undefined : (options.adminView?.path ?? '/chat')
+    const beforeNavLinks =
+      options.adminView === false
+        ? config.admin?.components?.beforeNavLinks
+        : [
+            ...(config.admin?.components?.beforeNavLinks ?? []),
+            {
+              clientProps: { path: chatPath },
+              path: CHAT_NAV_LINK_COMPONENT,
+            },
+          ]
+
     return {
       ...config,
       admin: {
         ...config.admin,
         components: {
           ...config.admin?.components,
+          beforeNavLinks,
           views: adminViews,
         },
       },

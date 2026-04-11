@@ -22,6 +22,7 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ChatViewServer as ChatViewServer_58e4688362c6fde9fcb5d132423d2812 } from '@jhb.software/payload-chat-agent'
+import { ChatNavLink as ChatNavLink_2ad1e9a1d4de61f5c812a5d6a18e9a7c } from '@jhb.software/payload-chat-agent/client'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 export const importMap = {
@@ -49,5 +50,6 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@jhb.software/payload-chat-agent#ChatViewServer": ChatViewServer_58e4688362c6fde9fcb5d132423d2812,
+  "@jhb.software/payload-chat-agent/client#ChatNavLink": ChatNavLink_2ad1e9a1d4de61f5c812a5d6a18e9a7c,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
