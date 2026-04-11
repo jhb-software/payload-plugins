@@ -51,6 +51,7 @@ export default function ChatView({
   initialMessages: serverMessages,
 }: ChatViewProps) {
   const endpointUrl = '/api/chat-agent/chat'
+  const usageUrl = '/api/chat-agent/usage'
   const [chatId, setChatId] = useState(conversationId)
   const [initialMessages, setInitialMessages] = useState<UIMessage<MessageMetadata>[] | undefined>(
     serverMessages as UIMessage<MessageMetadata>[] | undefined,
@@ -85,7 +86,7 @@ export default function ChatView({
     percentage,
     refresh: refreshBudget,
     warning,
-  } = useTokenBudget(endpointUrl)
+  } = useTokenBudget(usageUrl)
 
   const { error, messages, sendMessage, setMessages, status } = useChat({
     chatId,

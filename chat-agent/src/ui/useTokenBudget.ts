@@ -10,17 +10,21 @@ export interface TokenBudgetInfo {
   totalTokens: number
 }
 
-export function useTokenBudget(endpointUrl: string) {
+/**
+ * Fetches token budget usage from the given URL.
+ *
+ * Pass the full path to the usage endpoint (e.g. `/api/chat-agent/usage`).
+ * Returns `budget: null` when the endpoint is not configured or the fetch
+ * fails, so callers can safely treat a missing budget as "no limit".
+ */
+export function useTokenBudget(usageUrl: string) {
   const [budget, setBudget] = useState<null | TokenBudgetInfo>(null)
-  const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`${endpointUrl.replace(/\/chat$/, '')}/usage`, {
-        credentials: 'include',
-      })
+      const res = await fetch(usageUrl, { credentials: 'include' })
       if (!res.ok) {
-        // Budget not configured or other error — treat as no budget
+        // Budget not configured (404) or other error — treat as no budget
         setBudget(null)
         return
       }
@@ -28,10 +32,8 @@ export function useTokenBudget(endpointUrl: string) {
       setBudget(data)
     } catch {
       setBudget(null)
-    } finally {
-      setLoading(false)
     }
-  }, [endpointUrl])
+  }, [usageUrl])
 
   useEffect(() => {
     void refresh()
@@ -43,5 +45,5 @@ export function useTokenBudget(endpointUrl: string) {
   const exhausted = budget ? budget.totalTokens >= budget.limit : false
   const warning = budget ? percentage >= 80 && !exhausted : false
 
-  return { budget, exhausted, loading, percentage, refresh, warning }
+  return { budget, exhausted, percentage, refresh, warning }
 }

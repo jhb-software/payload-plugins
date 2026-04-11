@@ -20,6 +20,7 @@ import { conversationEndpoints, conversationsCollection } from './conversations.
 import { buildSystemPrompt } from './schema.js'
 import {
   checkBudget,
+  computeMaxOutputTokens,
   createUsageHandler,
   recordUsage,
   tokenUsageCollection,
@@ -161,6 +162,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             // --- Budget enforcement ----------------------------------------
+            let budgetRemaining: null | number = null
             if (options.tokenBudget && req.user) {
               const budgetResult = await checkBudget(
                 req.payload,
@@ -179,6 +181,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                   { status: 429 },
                 )
               }
+              budgetRemaining = budgetResult.remaining
             }
 
             // --- Resolve overrideAccess (superuser mode) -------------------
@@ -204,9 +207,13 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             const modelId = body.model ?? options.defaultModel
             const maxSteps = options.maxSteps ?? 20
 
+            // --- Cap per-request output by remaining budget ----------------
+            const maxOutputTokens = computeMaxOutputTokens(budgetRemaining)
+
             // --- Stream response via AI SDK --------------------------------
             const result = streamText({
               messages: await (convertToModelMessages as any)(body.messages),
+              ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
               model: createAnthropic({ apiKey })(modelId),
               stopWhen: stepCountIs(maxSteps),
               system: systemPrompt,
@@ -221,14 +228,19 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                   const outputTokens = part.totalUsage?.outputTokens ?? 0
                   const totalTokens = part.totalUsage?.totalTokens ?? 0
 
-                  // Record usage asynchronously (don't block the response)
+                  // Record usage asynchronously (don't block the response).
+                  // Log failures so billing drift doesn't happen silently.
                   if (options.tokenBudget && req.user) {
-                    void recordUsage(
-                      req.payload,
-                      req.user.id,
-                      options.tokenBudget.period ?? 'monthly',
-                      { inputTokens, outputTokens, totalTokens },
-                    )
+                    recordUsage(req.payload, req.user.id, options.tokenBudget.period ?? 'monthly', {
+                      inputTokens,
+                      outputTokens,
+                      totalTokens,
+                    }).catch((err: unknown) => {
+                      req.payload.logger?.error?.(
+                        { err, userId: req.user.id },
+                        'chat-agent: failed to record token usage',
+                      )
+                    })
                   }
 
                   return {

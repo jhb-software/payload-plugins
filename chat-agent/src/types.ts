@@ -28,9 +28,10 @@ export interface TokenBudgetConfig {
   period?: 'daily' | 'monthly'
   /**
    * Optional per-user limit override.
-   * Return a custom limit for specific users, or `undefined` to use the default.
+   * Receives the Payload request and returns a custom limit for specific
+   * users, or `undefined` to use the default. May return a Promise.
    */
-  resolveLimit?: (req: any) => number | Promise<number | undefined> | undefined
+  resolveLimit?: (req: any) => number | Promise<number | undefined> | Promise<number> | undefined
 }
 
 // ---------------------------------------------------------------------------

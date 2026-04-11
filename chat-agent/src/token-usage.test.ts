@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { chatAgentPlugin } from './index.js'
 import {
   checkBudget,
+  computeMaxOutputTokens,
   createUsageHandler,
   getCurrentPeriod,
   getResetDate,
@@ -53,13 +54,21 @@ describe('tokenUsageCollection', () => {
     expect(tokenUsageCollection.slug).toBe('chat-token-usage')
   })
 
-  it('has required fields', () => {
+  it('has required fields including periodType', () => {
     const fieldNames = tokenUsageCollection.fields.map((f: any) => f.name)
     expect(fieldNames).toContain('user')
     expect(fieldNames).toContain('period')
+    expect(fieldNames).toContain('periodType')
     expect(fieldNames).toContain('inputTokens')
     expect(fieldNames).toContain('outputTokens')
     expect(fieldNames).toContain('totalTokens')
+  })
+
+  it('declares a compound index on (user, periodType, period) for fast lookups', () => {
+    const indexes = (tokenUsageCollection as any).indexes ?? []
+    expect(indexes).toContainEqual(
+      expect.objectContaining({ fields: ['user', 'periodType', 'period'] }),
+    )
   })
 
   it('has timestamps enabled', () => {
@@ -254,11 +263,11 @@ describe('checkBudget', () => {
 // recordUsage
 // ---------------------------------------------------------------------------
 
-describe('recordUsage', () => {
-  it('creates a new record when none exists', async () => {
+describe('recordUsage (append-only)', () => {
+  it('creates a new row for every call, never reads first', async () => {
     const payload = {
       create: vi.fn().mockResolvedValue({}),
-      find: vi.fn().mockResolvedValue({ docs: [] }),
+      find: vi.fn(),
     }
     await recordUsage(payload, 'u1', 'monthly', {
       inputTokens: 100,
@@ -266,12 +275,15 @@ describe('recordUsage', () => {
       totalTokens: 300,
     })
 
+    // Append-only: no read-modify-write pattern
+    expect(payload.find).not.toHaveBeenCalled()
     expect(payload.create).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: TOKEN_USAGE_SLUG,
         data: expect.objectContaining({
           inputTokens: 100,
           outputTokens: 200,
+          periodType: 'monthly',
           totalTokens: 300,
           user: 'u1',
         }),
@@ -280,46 +292,94 @@ describe('recordUsage', () => {
     )
   })
 
-  it('updates existing record by incrementing tokens', async () => {
-    const payload = {
-      find: vi.fn().mockResolvedValue({
-        docs: [{ id: 'doc1', inputTokens: 50, outputTokens: 100, totalTokens: 150 }],
-      }),
-      update: vi.fn().mockResolvedValue({}),
-    }
-    await recordUsage(payload, 'u1', 'monthly', {
-      inputTokens: 100,
-      outputTokens: 200,
-      totalTokens: 300,
+  it('stores periodType so daily and monthly records do not mix', async () => {
+    const payload = { create: vi.fn().mockResolvedValue({}) }
+    await recordUsage(payload, 'u1', 'daily', {
+      inputTokens: 1,
+      outputTokens: 2,
+      totalTokens: 3,
     })
 
-    expect(payload.update).toHaveBeenCalledWith(
+    expect(payload.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'doc1',
-        collection: TOKEN_USAGE_SLUG,
-        data: {
-          inputTokens: 150,
-          outputTokens: 300,
-          totalTokens: 450,
-        },
-        overrideAccess: true,
+        data: expect.objectContaining({ periodType: 'daily' }),
       }),
     )
   })
 
-  it('uses overrideAccess: true for all operations', async () => {
+  it('concurrent calls each produce a row, and checkBudget sums them correctly', async () => {
+    // Simulate an append-only store across concurrent recordUsage calls
+    const store: Array<{ period: string; periodType: string; totalTokens: number; user: string }> =
+      []
     const payload = {
-      create: vi.fn().mockResolvedValue({}),
-      find: vi.fn().mockResolvedValue({ docs: [] }),
+      create: vi.fn().mockImplementation(async ({ data }: any) => {
+        store.push(data)
+        return { id: String(store.length) }
+      }),
+      find: vi.fn().mockImplementation(async ({ where }: any) => {
+        const docs = store.filter(
+          (d) =>
+            d.user === where.user.equals &&
+            d.period === where.period.equals &&
+            d.periodType === where.periodType.equals,
+        )
+        return { docs }
+      }),
     }
+
+    // Fire 5 concurrent writes — with append-only they cannot lose updates
+    await Promise.all(
+      Array.from({ length: 5 }).map(() =>
+        recordUsage(payload, 'u1', 'monthly', {
+          inputTokens: 10,
+          outputTokens: 20,
+          totalTokens: 30,
+        }),
+      ),
+    )
+
+    expect(store).toHaveLength(5)
+
+    const result = await checkBudget(payload, 'u1', { limit: 1000, period: 'monthly' })
+    expect(result.totalTokens).toBe(150) // 5 × 30
+  })
+
+  it('uses overrideAccess: true', async () => {
+    const payload = { create: vi.fn().mockResolvedValue({}) }
     await recordUsage(payload, 'u1', 'daily', {
       inputTokens: 10,
       outputTokens: 20,
       totalTokens: 30,
     })
-
-    expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({ overrideAccess: true }))
     expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({ overrideAccess: true }))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// periodType filter isolation
+// ---------------------------------------------------------------------------
+
+describe('checkBudget periodType isolation', () => {
+  it('ignores rows with a different periodType', async () => {
+    // Same user, same period string, but different periodType
+    const payload = {
+      find: vi.fn().mockImplementation(async ({ where }: any) => {
+        const all = [
+          { period: '2026-04', periodType: 'monthly', totalTokens: 800 },
+          // A stale daily row that happens to match the period prefix
+          { period: '2026-04', periodType: 'daily', totalTokens: 500 },
+        ]
+        return {
+          docs: all.filter(
+            (d) => d.period === where.period.equals && d.periodType === where.periodType.equals,
+          ),
+        }
+      }),
+    }
+
+    const result = await checkBudget(payload, 'u1', { limit: 1000, period: 'monthly' })
+    expect(result.totalTokens).toBe(800)
+    expect(result.allowed).toBe(true)
   })
 })
 
@@ -450,5 +510,81 @@ describe('chat endpoint budget enforcement', () => {
     } catch {
       // Expected to fail at streamText — no 429 means budget check was skipped
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// computeMaxOutputTokens
+// ---------------------------------------------------------------------------
+
+describe('computeMaxOutputTokens', () => {
+  it('returns undefined when no budget is configured', () => {
+    expect(computeMaxOutputTokens(null)).toBeUndefined()
+  })
+
+  it('caps at the ceiling when remaining is large', () => {
+    expect(computeMaxOutputTokens(1_000_000)).toBe(8192)
+  })
+
+  it('returns remaining when it is below the ceiling', () => {
+    expect(computeMaxOutputTokens(2000)).toBe(2000)
+  })
+
+  it('never returns less than 1 even with 0 remaining', () => {
+    // 0 should never happen (the budget gate returns 429 first), but
+    // the helper must not return 0 which Anthropic would reject.
+    expect(computeMaxOutputTokens(0)).toBe(1)
+  })
+
+  it('respects a custom ceiling', () => {
+    expect(computeMaxOutputTokens(100_000, 4096)).toBe(4096)
+    expect(computeMaxOutputTokens(500, 4096)).toBe(500)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Query shape assertions — verify checkBudget uses pagination: false and
+// filters by periodType to prevent performance/correctness regressions.
+// ---------------------------------------------------------------------------
+
+describe('checkBudget query shape', () => {
+  it('uses pagination: false so the query is not capped at the Payload default', async () => {
+    const payload = { find: vi.fn().mockResolvedValue({ docs: [] }) }
+    await checkBudget(payload, 'u1', { limit: 1000 })
+    expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({ pagination: false }))
+  })
+
+  it('always filters by periodType to prevent cross-period-type leakage', async () => {
+    const payload = { find: vi.fn().mockResolvedValue({ docs: [] }) }
+    await checkBudget(payload, 'u1', { limit: 1000, period: 'daily' })
+    expect(payload.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ periodType: { equals: 'daily' } }),
+      }),
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Error logging — recordUsage failures must not be silent
+// ---------------------------------------------------------------------------
+
+describe('chat endpoint recordUsage error handling', () => {
+  it('logs recordUsage failures via req.payload.logger instead of swallowing', async () => {
+    // This is a structural test: we assert that the chat handler wires
+    // the recordUsage promise to `.catch(logger.error)` rather than `void`.
+    // We inspect the compiled handler source to verify the behavior is in
+    // place — the full path is integration-tested manually.
+    const plugin = chatAgentPlugin({
+      apiKey: 'test-key',
+      defaultModel: 'claude-sonnet-4-20250514',
+      tokenBudget: { limit: 100_000 },
+    })
+    const result = plugin({ collections: [], endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const source = handler.toString()
+    expect(source).toContain('recordUsage')
+    expect(source).toMatch(/\.catch\(/)
+    expect(source).toContain('failed to record token usage')
   })
 })

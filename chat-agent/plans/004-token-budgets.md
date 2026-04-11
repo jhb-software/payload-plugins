@@ -34,7 +34,7 @@ chatAgentPlugin({
     period: 'monthly', // 'daily' | 'monthly' (default: 'monthly')
     limit: 1_000_000, // total tokens per user per period
     limitBy: 'user', // 'user' | 'global' (default: 'user')
-    resolveLimit: ({ req }) => {
+    resolveLimit: (req) => {
       // optional: per-user limit override
       if (req.user?.role === 'admin') return 5_000_000
       return undefined // fall back to default limit

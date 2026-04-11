@@ -61,7 +61,6 @@ export const tokenUsageCollection = {
     update: () => false,
   },
   admin: {
-    group: 'Chat',
     hidden: true,
   },
   fields: [
@@ -80,23 +79,34 @@ export const tokenUsageCollection = {
       required: true,
     },
     {
+      name: 'periodType',
+      type: 'select',
+      options: [
+        { label: 'Daily', value: 'daily' },
+        { label: 'Monthly', value: 'monthly' },
+      ],
+      required: true,
+    },
+    {
       name: 'inputTokens',
       type: 'number',
-      defaultValue: 0,
       required: true,
     },
     {
       name: 'outputTokens',
       type: 'number',
-      defaultValue: 0,
       required: true,
     },
     {
       name: 'totalTokens',
       type: 'number',
-      defaultValue: 0,
       required: true,
     },
+  ],
+  indexes: [
+    // Compound index for fast lookups by (user, period, periodType).
+    // Non-unique because records are append-only — one row per chat response.
+    { fields: ['user', 'periodType', 'period'] },
   ],
   timestamps: true,
 }
@@ -137,8 +147,12 @@ export async function checkBudget(
     }
   }
 
-  // Query current usage
-  const where: any = { period: { equals: currentPeriod } }
+  // Query current usage — filter by periodType so that switching
+  // between 'daily' and 'monthly' does not leak records across.
+  const where: any = {
+    period: { equals: currentPeriod },
+    periodType: { equals: period },
+  }
   if (limitBy === 'user') {
     where.user = { equals: userId }
   }
@@ -146,8 +160,12 @@ export async function checkBudget(
   const result = await payload.find({
     collection: TOKEN_USAGE_SLUG,
     depth: 0,
-    limit: 0,
+    // Append-only model: one row per chat response. Cap at a high but
+    // bounded number to avoid unbounded memory growth on pathological inputs.
+    // A user hitting 10k requests/period already has other problems.
+    limit: 10_000,
     overrideAccess: true,
+    pagination: false,
     where,
   })
 
@@ -165,13 +183,38 @@ export async function checkBudget(
   }
 }
 
+/**
+ * Compute a reasonable `maxOutputTokens` cap for a single chat response
+ * given the user's remaining budget.
+ *
+ * Caps output tokens at `min(remaining, ceiling)` so a user near their
+ * budget limit cannot burn through the rest (and far beyond) in a single
+ * long response. Returns `undefined` when there is no budget configured.
+ *
+ * Note: this only caps output tokens. Input tokens and tool-use step input
+ * growth are not bounded here — the per-request budget gate in `checkBudget`
+ * is the primary defense.
+ */
+export function computeMaxOutputTokens(
+  remaining: null | number,
+  ceiling = 8192,
+): number | undefined {
+  if (remaining === null) {
+    return undefined
+  }
+  return Math.max(1, Math.min(remaining, ceiling))
+}
+
 // ---------------------------------------------------------------------------
-// Usage upsert
+// Record usage (append-only)
 // ---------------------------------------------------------------------------
 
 /**
  * Record token consumption for the current user + period.
- * Creates a new record if none exists, otherwise increments the existing one.
+ *
+ * Uses an append-only model: each call creates a new row. This is race-free
+ * under concurrent requests (no read-modify-write) and gives per-request
+ * auditability. `checkBudget` sums the rows on read.
  */
 export async function recordUsage(
   payload: any,
@@ -181,42 +224,18 @@ export async function recordUsage(
 ): Promise<void> {
   const currentPeriod = getCurrentPeriod(period)
 
-  // Find existing record for this user + period
-  const existing = await payload.find({
+  await payload.create({
     collection: TOKEN_USAGE_SLUG,
-    depth: 0,
-    limit: 1,
-    overrideAccess: true,
-    where: {
-      and: [{ user: { equals: userId } }, { period: { equals: currentPeriod } }],
+    data: {
+      inputTokens: tokens.inputTokens,
+      outputTokens: tokens.outputTokens,
+      period: currentPeriod,
+      periodType: period,
+      totalTokens: tokens.totalTokens,
+      user: userId,
     },
+    overrideAccess: true,
   })
-
-  if (existing.docs.length > 0) {
-    const doc = existing.docs[0]
-    await payload.update({
-      id: doc.id,
-      collection: TOKEN_USAGE_SLUG,
-      data: {
-        inputTokens: (doc.inputTokens ?? 0) + tokens.inputTokens,
-        outputTokens: (doc.outputTokens ?? 0) + tokens.outputTokens,
-        totalTokens: (doc.totalTokens ?? 0) + tokens.totalTokens,
-      },
-      overrideAccess: true,
-    })
-  } else {
-    await payload.create({
-      collection: TOKEN_USAGE_SLUG,
-      data: {
-        inputTokens: tokens.inputTokens,
-        outputTokens: tokens.outputTokens,
-        period: currentPeriod,
-        totalTokens: tokens.totalTokens,
-        user: userId,
-      },
-      overrideAccess: true,
-    })
-  }
 }
 
 // ---------------------------------------------------------------------------
