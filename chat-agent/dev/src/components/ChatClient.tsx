@@ -17,11 +17,16 @@ import type { MessageMetadata } from '@jhb.software/payload-chat-agent'
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
+//
+// Per-million-token rates (USD) used purely for the dev app's cost display.
+// Add a row here for any model you wire up in dev/src/payload.config.ts.
 
 const MODELS = [
-  { id: 'claude-haiku-4-5-20251001', label: 'Haiku', inputRate: 0.8, outputRate: 4 },
-  { id: 'claude-sonnet-4-20250514', label: 'Sonnet', inputRate: 3, outputRate: 15 },
-  { id: 'claude-opus-4-20250514', label: 'Opus', inputRate: 15, outputRate: 75 },
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', inputRate: 0.8, outputRate: 4 },
+  { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4', inputRate: 3, outputRate: 15 },
+  { id: 'claude-opus-4-20250514', label: 'Claude Opus 4', inputRate: 15, outputRate: 75 },
+  { id: 'gpt-4o-mini', label: 'GPT-4o mini', inputRate: 0.15, outputRate: 0.6 },
+  { id: 'gpt-4o', label: 'GPT-4o', inputRate: 2.5, outputRate: 10 },
 ] as const
 
 // ---------------------------------------------------------------------------

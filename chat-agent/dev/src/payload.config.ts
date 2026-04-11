@@ -1,3 +1,5 @@
+import { createAnthropic } from '@ai-sdk/anthropic'
+import { createOpenAI } from '@ai-sdk/openai'
 import { chatAgentPlugin } from '@jhb.software/payload-chat-agent'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
@@ -6,6 +8,37 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// ---------------------------------------------------------------------------
+// Multi-provider model factory
+// ---------------------------------------------------------------------------
+//
+// The chat-agent plugin is provider-agnostic: install whichever `@ai-sdk/*`
+// package you want and pass a `model` factory. This dev app demonstrates the
+// most flexible setup — both Anthropic and OpenAI providers wired up at once,
+// routed by the model id prefix.
+//
+// Set ANTHROPIC_API_KEY and/or OPENAI_API_KEY in your env. Each provider is
+// only instantiated lazily so you don't need both keys to test one provider.
+
+const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+const resolveModel = (id: string) => {
+  if (id.startsWith('claude-')) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY is not set — required to use Claude models in this dev app')
+    }
+    return anthropic(id)
+  }
+  if (id.startsWith('gpt-') || id.startsWith('o1-') || id.startsWith('o3-')) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set — required to use OpenAI models in this dev app')
+    }
+    return openai(id)
+  }
+  throw new Error(`Unknown model id "${id}". Add a routing rule in dev/src/payload.config.ts.`)
+}
 
 export default buildConfig({
   admin: {
@@ -126,7 +159,14 @@ export default buildConfig({
   },
   plugins: [
     chatAgentPlugin({
+      availableModels: [
+        { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+        { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+        { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
+        { id: 'gpt-4o', label: 'GPT-4o' },
+      ],
       defaultModel: 'claude-haiku-4-5-20251001',
+      model: resolveModel,
       superuserAccess: true,
     }),
   ],

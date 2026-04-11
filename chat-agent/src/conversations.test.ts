@@ -66,21 +66,30 @@ describe('conversationsCollection', () => {
 
 describe('chatAgentPlugin conversations', () => {
   it('registers the chat-conversations collection', () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test', defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: () => ({}) as any,
+    })
     const result = plugin({ collections: [], endpoints: [] })
     const slugs = result.collections.map((c: any) => c.slug)
     expect(slugs).toContain(CONVERSATIONS_SLUG)
   })
 
   it('preserves existing collections', () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test', defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: () => ({}) as any,
+    })
     const existing = { slug: 'posts', fields: [] }
     const result = plugin({ collections: [existing], endpoints: [] })
     expect(result.collections).toContainEqual(existing)
   })
 
   it('registers conversation CRUD endpoints', () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test', defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: () => ({}) as any,
+    })
     const result = plugin({ endpoints: [] })
     const paths = result.endpoints.map((ep: any) => `${ep.method}:${ep.path}`)
     expect(paths).toContain('get:/chat-agent/chat/conversations')

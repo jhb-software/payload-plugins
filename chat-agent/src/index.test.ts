@@ -1,6 +1,25 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { chatAgentPlugin, validateMessages } from './index.js'
+
+// ---------------------------------------------------------------------------
+// Test helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a fake model factory that records the model ids it was asked to
+ * resolve and returns a sentinel object. The sentinel intentionally is not a
+ * real LanguageModel — tests that go all the way to streamText will throw,
+ * which means the factory was at least invoked.
+ */
+function makeModelFactory() {
+  const calls: string[] = []
+  const factory = vi.fn((id: string) => {
+    calls.push(id)
+    return { id, __fake: true } as any
+  })
+  return { calls, factory }
+}
 
 // ---------------------------------------------------------------------------
 // validateMessages
@@ -49,7 +68,10 @@ describe('validateMessages', () => {
 
 describe('chatAgentPlugin', () => {
   it('adds /chat-agent/chat endpoint to config', () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
     const result = plugin({ endpoints: [] })
     const chatEndpoint = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat')
     expect(chatEndpoint).toBeDefined()
@@ -57,7 +79,10 @@ describe('chatAgentPlugin', () => {
   })
 
   it('preserves existing endpoints', () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
     const existing = { handler: () => {}, method: 'get', path: '/custom' }
     const result = plugin({ endpoints: [existing] })
     expect(result.endpoints[0]).toBe(existing)
@@ -65,7 +90,10 @@ describe('chatAgentPlugin', () => {
   })
 
   it('returns 401 when no user and no custom access', async () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -74,25 +102,52 @@ describe('chatAgentPlugin', () => {
     expect(await response.json()).toEqual({ error: 'Unauthorized' })
   })
 
-  it('returns 500 when no API key configured', async () => {
-    const original = process.env.ANTHROPIC_API_KEY
-    delete process.env.ANTHROPIC_API_KEY
+  it('returns 500 when no model factory is configured', async () => {
+    // Cast through unknown to bypass the type checker — we're verifying runtime
+    // behavior when a JS consumer omits the required option.
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+    } as unknown as Parameters<typeof chatAgentPlugin>[0])
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
+    const response = await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [
+            {
+              id: '1',
+              parts: [{ type: 'text', text: 'test' }],
+              role: 'user',
+            },
+          ],
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(response.status).toBe(500)
+    const body = await response.json()
+    expect(body.error).toContain('`model` option')
+  })
+
+  it('does not read ANTHROPIC_API_KEY from the environment', async () => {
+    // Ensure the plugin no longer falls back to env vars: if it did, this test
+    // would pass even without a `model` option, but our config-only contract
+    // requires the misconfiguration error regardless of env state.
+    const original = process.env.ANTHROPIC_API_KEY
+    process.env.ANTHROPIC_API_KEY = 'sk-should-be-ignored'
     try {
-      const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+      const plugin = chatAgentPlugin({
+        defaultModel: 'claude-sonnet-4-20250514',
+      } as unknown as Parameters<typeof chatAgentPlugin>[0])
       const result = plugin({ endpoints: [] })
       const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
       const response = await handler({
         json: () =>
           Promise.resolve({
-            messages: [
-              {
-                id: '1',
-                parts: [{ type: 'text', text: 'test' }],
-                role: 'user',
-              },
-            ],
+            messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
           }),
         payload: { config: { collections: [], globals: [] } },
         user: { id: 1 },
@@ -100,16 +155,22 @@ describe('chatAgentPlugin', () => {
 
       expect(response.status).toBe(500)
       const body = await response.json()
-      expect(body.error).toContain('API key')
+      expect(body.error).toContain('`model` option')
+      expect(body.error).not.toContain('ANTHROPIC')
     } finally {
-      if (original !== undefined) {
+      if (original === undefined) {
+        delete process.env.ANTHROPIC_API_KEY
+      } else {
         process.env.ANTHROPIC_API_KEY = original
       }
     }
   })
 
   it('returns 400 for invalid JSON body', async () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test-key', defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -124,7 +185,10 @@ describe('chatAgentPlugin', () => {
   })
 
   it('returns 400 for empty messages array', async () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test-key', defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -146,7 +210,10 @@ describe('chatAgentPlugin', () => {
 
 describe('chatAgentPlugin admin view', () => {
   it('auto-registers the chat view at /chat by default', () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
     const result = plugin({ endpoints: [] })
 
     const chatView = result.admin?.components?.views?.chat
@@ -156,7 +223,10 @@ describe('chatAgentPlugin admin view', () => {
   })
 
   it('preserves existing admin views', () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
     const result = plugin({
       admin: {
         components: {
@@ -176,6 +246,7 @@ describe('chatAgentPlugin admin view', () => {
     const plugin = chatAgentPlugin({
       adminView: false,
       defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
 
@@ -186,6 +257,7 @@ describe('chatAgentPlugin admin view', () => {
     const plugin = chatAgentPlugin({
       adminView: { path: '/assistant' },
       defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
 
@@ -196,6 +268,7 @@ describe('chatAgentPlugin admin view', () => {
     const plugin = chatAgentPlugin({
       adminView: { Component: './my-custom/ChatUI' },
       defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
 
@@ -210,9 +283,9 @@ describe('chatAgentPlugin admin view', () => {
 describe('chatAgentPlugin model validation', () => {
   it('rejects model not in available list', async () => {
     const plugin = chatAgentPlugin({
-      apiKey: 'test-key',
       availableModels: [{ id: 'claude-sonnet-4-20250514', label: 'Sonnet' }],
       defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
@@ -233,7 +306,11 @@ describe('chatAgentPlugin model validation', () => {
   })
 
   it('allows model when no available list is configured', async () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test-key', defaultModel: 'claude-sonnet-4-20250514' })
+    const { factory } = makeModelFactory()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: factory,
+    })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -257,12 +334,159 @@ describe('chatAgentPlugin model validation', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Model factory wiring
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin model factory', () => {
+  /**
+   * The chat handler runs validation, then resolves the model via the
+   * user-supplied factory, and finally hands it to streamText. streamText
+   * will throw because our fake model isn't a real LanguageModel — but the
+   * factory must have been invoked first, with the right id. That's the
+   * contract we want to lock in.
+   */
+  it('invokes the factory with the per-request model id when provided', async () => {
+    const { calls, factory } = makeModelFactory()
+    const plugin = chatAgentPlugin({
+      availableModels: [
+        { id: 'claude-sonnet-4-20250514', label: 'Claude' },
+        { id: 'gpt-4o', label: 'GPT-4o' },
+      ],
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    try {
+      await handler({
+        json: () =>
+          Promise.resolve({
+            messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+            model: 'gpt-4o',
+          }),
+        payload: { config: { collections: [], globals: [] } },
+        user: { id: 1 },
+      })
+    } catch {
+      // streamText will reject because the fake model isn't a real LanguageModel
+    }
+
+    expect(calls).toContain('gpt-4o')
+  })
+
+  it('falls back to defaultModel when no per-request model is supplied', async () => {
+    const { calls, factory } = makeModelFactory()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    try {
+      await handler({
+        json: () =>
+          Promise.resolve({
+            messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+          }),
+        payload: { config: { collections: [], globals: [] } },
+        user: { id: 1 },
+      })
+    } catch {
+      // streamText rejects on fake model
+    }
+
+    expect(calls).toEqual(['gpt-4o-mini'])
+  })
+
+  it('returns 500 with a clear error when the factory throws', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: () => {
+        throw new Error('OPENAI_API_KEY is not set')
+      },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    const response = await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(response.status).toBe(500)
+    const body = await response.json()
+    expect(body.error).toContain('Failed to resolve model "gpt-4o-mini"')
+    expect(body.error).toContain('OPENAI_API_KEY is not set')
+  })
+
+  it('supports routing to different providers based on the model id', async () => {
+    // Mixed-provider scenario: simulate one Anthropic and one OpenAI provider
+    // and verify the handler routes through the user-supplied factory each
+    // time without ever importing a provider package itself.
+    const anthropicCalls: string[] = []
+    const openaiCalls: string[] = []
+    const factory = (id: string) => {
+      if (id.startsWith('claude-')) {
+        anthropicCalls.push(id)
+      } else if (id.startsWith('gpt-')) {
+        openaiCalls.push(id)
+      } else {
+        throw new Error(`Unknown model: ${id}`)
+      }
+      return { id, __fake: true } as any
+    }
+    const plugin = chatAgentPlugin({
+      availableModels: [
+        { id: 'claude-sonnet-4-20250514', label: 'Claude' },
+        { id: 'gpt-4o', label: 'GPT-4o' },
+      ],
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    for (const modelId of ['claude-sonnet-4-20250514', 'gpt-4o']) {
+      try {
+        await handler({
+          json: () =>
+            Promise.resolve({
+              messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+              model: modelId,
+            }),
+          payload: { config: { collections: [], globals: [] } },
+          user: { id: 1 },
+        })
+      } catch {
+        // Expected — fake model
+      }
+    }
+
+    expect(anthropicCalls).toEqual(['claude-sonnet-4-20250514'])
+    expect(openaiCalls).toEqual(['gpt-4o'])
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Models endpoint
 // ---------------------------------------------------------------------------
 
 describe('chatAgentPlugin models endpoint', () => {
   it('adds /chat-agent/chat/models endpoint', () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
     expect(ep).toBeDefined()
@@ -273,9 +497,10 @@ describe('chatAgentPlugin models endpoint', () => {
     const plugin = chatAgentPlugin({
       availableModels: [
         { id: 'claude-sonnet-4-20250514', label: 'Sonnet' },
-        { id: 'claude-haiku-4-5-20251001', label: 'Haiku' },
+        { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
       ],
       defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
@@ -287,13 +512,16 @@ describe('chatAgentPlugin models endpoint', () => {
   })
 
   it('returns empty availableModels list when not configured', async () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-haiku-4-5-20251001' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+    })
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
 
     const response = await ep.handler()
     const body = await response.json()
-    expect(body.defaultModel).toBe('claude-haiku-4-5-20251001')
+    expect(body.defaultModel).toBe('gpt-4o-mini')
     expect(body.availableModels).toEqual([])
   })
 })
