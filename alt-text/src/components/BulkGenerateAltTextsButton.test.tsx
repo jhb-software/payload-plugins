@@ -46,8 +46,7 @@ describe('BulkGenerateAltTextsButton', () => {
       'fetch',
       vi.fn(() =>
         Promise.resolve({
-          json: () =>
-            Promise.resolve({ erroredDocs: [], totalDocs: 2, updatedDocs: 2 }),
+          json: () => Promise.resolve({ erroredDocs: [], totalDocs: 2, updatedDocs: 2 }),
           ok: true,
         } as Response),
       ),

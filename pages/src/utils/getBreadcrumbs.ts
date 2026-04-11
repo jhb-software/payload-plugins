@@ -79,9 +79,7 @@ export async function getBreadcrumbs({
     })
   } else {
     if (!apiURL) {
-      throw new Error(
-        '[Pages Plugin] getBreadcrumbs requires `apiURL` when called without `req`.',
-      )
+      throw new Error('[Pages Plugin] getBreadcrumbs requires `apiURL` when called without `req`.')
     }
     const query = stringify({ depth: 0, locale, select: { breadcrumbs: true } })
     const response = await fetch(`${apiURL}/${parentCollection}/${parentId}?${query}`, {
