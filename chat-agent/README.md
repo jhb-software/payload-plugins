@@ -31,6 +31,7 @@ export default buildConfig({
   plugins: [
     chatAgentPlugin({
       apiKey: process.env.ANTHROPIC_API_KEY,
+      defaultModel: 'claude-sonnet-4-20250514',
     }),
   ],
 })
@@ -42,15 +43,31 @@ The plugin will register a chat view at `/admin/chat` and a streaming chat endpo
 
 ### Plugin Options
 
-| Option            | Type                           | Required | Description                                                            |
-| ----------------- | ------------------------------ | -------- | ---------------------------------------------------------------------- |
-| `apiKey`          | `string`                       | No       | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var           |
-| `model`           | `string`                       | No       | Claude model ID (default: `claude-sonnet-4-20250514`)                  |
-| `systemPrompt`    | `string`                       | No       | Custom text prepended to the auto-generated system prompt              |
-| `access`          | `(req) => boolean`             | No       | Override the default auth check (default: requires authenticated user) |
-| `maxSteps`        | `number`                       | No       | Maximum tool-use loop steps per request (default: 20)                  |
-| `superuserAccess` | `boolean \| (req) => boolean`  | No       | Controls who can use superuser mode (`overrideAccess: true`)           |
-| `adminView`       | `false \| { path, Component }` | No       | Customize or disable the admin chat view                               |
+| Option            | Type                           | Required | Description                                                                     |
+| ----------------- | ------------------------------ | -------- | ------------------------------------------------------------------------------- |
+| `defaultModel`    | `string`                       | Yes      | Claude model ID used when no per-request override is provided                   |
+| `availableModels` | `ModelOption[]`                | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries) |
+| `apiKey`          | `string`                       | No       | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var                    |
+| `systemPrompt`    | `string`                       | No       | Custom text prepended to the auto-generated system prompt                       |
+| `access`          | `(req) => boolean`             | No       | Override the default auth check (default: requires authenticated user)          |
+| `maxSteps`        | `number`                       | No       | Maximum tool-use loop steps per request (default: 20)                           |
+| `superuserAccess` | `boolean \| (req) => boolean`  | No       | Controls who can use superuser mode (`overrideAccess: true`)                    |
+| `adminView`       | `false \| { path, Component }` | No       | Customize or disable the admin chat view                                        |
+
+### Model Selection
+
+Pass `availableModels` to let users pick a model from a dropdown in the chat view. The selected model is persisted per conversation, and the chat endpoint rejects model IDs not in the list.
+
+```ts
+chatAgentPlugin({
+  defaultModel: 'claude-sonnet-4-20250514',
+  availableModels: [
+    { id: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+    { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
+    { id: 'claude-opus-4-20250514', label: 'Opus 4' },
+  ],
+})
+```
 
 ### Custom Endpoints
 

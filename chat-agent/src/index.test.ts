@@ -49,7 +49,7 @@ describe('validateMessages', () => {
 
 describe('chatAgentPlugin', () => {
   it('adds /chat-agent/chat endpoint to config', () => {
-    const plugin = chatAgentPlugin()
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({ endpoints: [] })
     const chatEndpoint = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat')
     expect(chatEndpoint).toBeDefined()
@@ -57,7 +57,7 @@ describe('chatAgentPlugin', () => {
   })
 
   it('preserves existing endpoints', () => {
-    const plugin = chatAgentPlugin()
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
     const existing = { handler: () => {}, method: 'get', path: '/custom' }
     const result = plugin({ endpoints: [existing] })
     expect(result.endpoints[0]).toBe(existing)
@@ -65,7 +65,7 @@ describe('chatAgentPlugin', () => {
   })
 
   it('returns 401 when no user and no custom access', async () => {
-    const plugin = chatAgentPlugin()
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -79,7 +79,7 @@ describe('chatAgentPlugin', () => {
     delete process.env.ANTHROPIC_API_KEY
 
     try {
-      const plugin = chatAgentPlugin()
+      const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
       const result = plugin({ endpoints: [] })
       const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -109,7 +109,7 @@ describe('chatAgentPlugin', () => {
   })
 
   it('returns 400 for invalid JSON body', async () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test-key' })
+    const plugin = chatAgentPlugin({ apiKey: 'test-key', defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -124,7 +124,7 @@ describe('chatAgentPlugin', () => {
   })
 
   it('returns 400 for empty messages array', async () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test-key' })
+    const plugin = chatAgentPlugin({ apiKey: 'test-key', defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -146,7 +146,7 @@ describe('chatAgentPlugin', () => {
 
 describe('chatAgentPlugin admin view', () => {
   it('auto-registers the chat view at /chat by default', () => {
-    const plugin = chatAgentPlugin()
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({ endpoints: [] })
 
     const chatView = result.admin?.components?.views?.chat
@@ -156,7 +156,7 @@ describe('chatAgentPlugin admin view', () => {
   })
 
   it('preserves existing admin views', () => {
-    const plugin = chatAgentPlugin()
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({
       admin: {
         components: {
@@ -173,14 +173,20 @@ describe('chatAgentPlugin admin view', () => {
   })
 
   it('disables admin view when adminView is false', () => {
-    const plugin = chatAgentPlugin({ adminView: false })
+    const plugin = chatAgentPlugin({
+      adminView: false,
+      defaultModel: 'claude-sonnet-4-20250514',
+    })
     const result = plugin({ endpoints: [] })
 
     expect(result.admin?.components?.views?.chat).toBeUndefined()
   })
 
   it('uses custom path when provided', () => {
-    const plugin = chatAgentPlugin({ adminView: { path: '/assistant' } })
+    const plugin = chatAgentPlugin({
+      adminView: { path: '/assistant' },
+      defaultModel: 'claude-sonnet-4-20250514',
+    })
     const result = plugin({ endpoints: [] })
 
     expect(result.admin.components.views.chat.path).toBe('/assistant')
@@ -189,6 +195,7 @@ describe('chatAgentPlugin admin view', () => {
   it('uses custom Component when provided', () => {
     const plugin = chatAgentPlugin({
       adminView: { Component: './my-custom/ChatUI' },
+      defaultModel: 'claude-sonnet-4-20250514',
     })
     const result = plugin({ endpoints: [] })
 
@@ -226,7 +233,7 @@ describe('chatAgentPlugin model validation', () => {
   })
 
   it('allows model when no available list is configured', async () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test-key' })
+    const plugin = chatAgentPlugin({ apiKey: 'test-key', defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -255,7 +262,7 @@ describe('chatAgentPlugin model validation', () => {
 
 describe('chatAgentPlugin models endpoint', () => {
   it('adds /chat-agent/chat/models endpoint', () => {
-    const plugin = chatAgentPlugin()
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
     expect(ep).toBeDefined()
@@ -279,14 +286,14 @@ describe('chatAgentPlugin models endpoint', () => {
     expect(body.availableModels).toHaveLength(2)
   })
 
-  it('returns fallback default and empty list when unconfigured', async () => {
-    const plugin = chatAgentPlugin()
+  it('returns empty availableModels list when not configured', async () => {
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-haiku-4-5-20251001' })
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
 
     const response = await ep.handler()
     const body = await response.json()
-    expect(body.defaultModel).toBe('claude-sonnet-4-20250514')
+    expect(body.defaultModel).toBe('claude-haiku-4-5-20251001')
     expect(body.availableModels).toEqual([])
   })
 })

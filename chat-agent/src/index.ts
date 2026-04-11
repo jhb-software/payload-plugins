@@ -6,7 +6,9 @@
  *
  * Usage in payload.config.ts:
  *   import { chatAgentPlugin } from '@jhb.software/payload-chat-agent'
- *   export default buildConfig({ plugins: [chatAgentPlugin({ apiKey: '...' })] })
+ *   export default buildConfig({
+ *     plugins: [chatAgentPlugin({ apiKey: '...', defaultModel: 'claude-sonnet-4-20250514' })],
+ *   })
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic'
@@ -21,8 +23,6 @@ import { buildTools, discoverEndpoints } from './tools.js'
 export type { ChatAgentPluginOptions, ModelOption } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
-
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
 
 /**
  * The package-relative path to the ChatView component.
@@ -53,17 +53,17 @@ export function validateMessages(messages: unknown): null | string {
   return null
 }
 
-export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
+export function chatAgentPlugin(options: ChatAgentPluginOptions) {
   return (config: any): any => {
     // Auto-register the admin chat view unless explicitly disabled
     const adminViews =
-      options?.adminView === false
+      options.adminView === false
         ? config.admin?.components?.views
         : {
             ...config.admin?.components?.views,
             chat: {
-              Component: options?.adminView?.Component ?? CHAT_VIEW_COMPONENT,
-              path: options?.adminView?.path ?? '/chat',
+              Component: options.adminView?.Component ?? CHAT_VIEW_COMPONENT,
+              path: options.adminView?.path ?? '/chat',
             },
           }
 
@@ -83,8 +83,8 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
         {
           handler: () => {
             return Response.json({
-              availableModels: options?.availableModels ?? [],
-              defaultModel: options?.defaultModel ?? DEFAULT_MODEL,
+              availableModels: options.availableModels ?? [],
+              defaultModel: options.defaultModel,
             })
           },
           method: 'get',
@@ -93,13 +93,13 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
         {
           handler: async (req: any) => {
             // --- Auth check -----------------------------------------------
-            const allowed = options?.access ? await options.access(req) : !!req.user
+            const allowed = options.access ? await options.access(req) : !!req.user
             if (!allowed) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
 
             // --- Resolve API key ------------------------------------------
-            const apiKey = options?.apiKey ?? process.env.ANTHROPIC_API_KEY
+            const apiKey = options.apiKey ?? process.env.ANTHROPIC_API_KEY
             if (!apiKey) {
               return Response.json(
                 {
@@ -124,7 +124,7 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             }
 
             // --- Validate model against available list ---------------------
-            const availableModels = options?.availableModels
+            const availableModels = options.availableModels
             if (
               body.model &&
               availableModels &&
@@ -142,7 +142,7 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             // --- Resolve overrideAccess (superuser mode) -------------------
             let overrideAccess = false
             if (body.overrideAccess === true) {
-              const superuserAccess = options?.superuserAccess
+              const superuserAccess = options.superuserAccess
               if (superuserAccess === true) {
                 overrideAccess = true
               } else if (typeof superuserAccess === 'function') {
@@ -156,11 +156,11 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             const tools = buildTools(req.payload, req.user, overrideAccess, req, customEndpoints)
             const systemPrompt = buildSystemPrompt(
               req.payload.config,
-              options?.systemPrompt,
+              options.systemPrompt,
               customEndpoints,
             )
-            const modelId = body.model ?? options?.defaultModel ?? DEFAULT_MODEL
-            const maxSteps = options?.maxSteps ?? 20
+            const modelId = body.model ?? options.defaultModel
+            const maxSteps = options.maxSteps ?? 20
 
             // --- Stream response via AI SDK --------------------------------
             const result = streamText({
