@@ -462,22 +462,27 @@ export function buildTools(
 // Tool filtering by agent mode
 // ---------------------------------------------------------------------------
 
-const writeToolSet: ReadonlySet<string> = new Set(['callEndpoint', ...WRITE_TOOL_NAMES])
+/** Tools treated as writes for `read`/`ask` mode filtering. */
+export const WRITE_TOOLS_WITH_ENDPOINT: ReadonlySet<string> = new Set([
+  'callEndpoint',
+  ...WRITE_TOOL_NAMES,
+])
 const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
 
 /**
  * Filter tools based on the active agent mode.
  *
  * - `read`:       Only read tools (write tools and callEndpoint removed).
- * - `ask`:        All tools, but write tools have `execute` stripped so the
- *                 AI SDK treats them as client-confirmed tools.
+ * - `ask`:        All tools, but write tools gain `needsApproval: true` so the
+ *                 AI SDK pauses on them and waits for a client approval
+ *                 response before executing server-side.
  * - `read-write`: All tools unchanged.
  * - `superuser`:  All tools unchanged (overrideAccess is handled at build time).
  */
 export function filterToolsByMode(
   tools: Record<string, ExecutableTool>,
   mode: AgentMode,
-): Record<string, Tool<Record<string, unknown>, unknown>> {
+): Record<string, ExecutableTool> {
   if (mode === 'read') {
     const filtered: Record<string, ExecutableTool> = {}
     for (const [name, tool] of Object.entries(tools)) {
@@ -489,12 +494,12 @@ export function filterToolsByMode(
   }
 
   if (mode === 'ask') {
-    const result: Record<string, Tool<Record<string, unknown>, unknown>> = {}
+    const result: Record<string, ExecutableTool> = {}
     for (const [name, tool] of Object.entries(tools)) {
-      if (writeToolSet.has(name)) {
-        // Strip execute so the AI SDK yields the tool call for client confirmation
-        const { execute: _, ...rest } = tool
-        result[name] = rest
+      if (WRITE_TOOLS_WITH_ENDPOINT.has(name)) {
+        // Mark as requiring approval; the SDK pauses and waits for the client
+        // to respond via `addToolApprovalResponse` before executing.
+        result[name] = { ...tool, needsApproval: true } as ExecutableTool
       } else {
         result[name] = tool
       }

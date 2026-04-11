@@ -24,7 +24,7 @@ import {
   validateModeAccess,
 } from './modes.js'
 import { buildSystemPrompt } from './schema.js'
-import { buildTools, discoverEndpoints, filterToolsByMode, WRITE_TOOL_NAMES } from './tools.js'
+import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
 export type { ChatAgentPluginOptions, ModelOption } from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
@@ -59,8 +59,6 @@ export function validateMessages(messages: unknown): null | string {
   }
   return null
 }
-
-const writeToolSet: ReadonlySet<string> = new Set(['callEndpoint', ...WRITE_TOOL_NAMES])
 
 export function chatAgentPlugin(options: ChatAgentPluginOptions) {
   const modesConfig = resolveModeConfig(options)
@@ -108,59 +106,6 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
           },
           method: 'get',
           path: '/chat-agent/modes',
-        },
-
-        // --- POST /chat-agent/execute-tool ----------------------------------
-        // Used by the client in `ask` mode to execute a confirmed write tool.
-        {
-          handler: async (req: any) => {
-            const allowed = options.access ? await options.access(req) : !!req.user
-            if (!allowed) {
-              return Response.json({ error: 'Unauthorized' }, { status: 401 })
-            }
-
-            let body: any
-            try {
-              body = await req.json()
-            } catch {
-              return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
-            }
-
-            const { input, toolName } = body
-            if (!toolName || typeof toolName !== 'string') {
-              return Response.json({ error: '"toolName" is required' }, { status: 400 })
-            }
-            if (!writeToolSet.has(toolName)) {
-              return Response.json({ error: `"${toolName}" is not a write tool` }, { status: 400 })
-            }
-            if (!input || typeof input !== 'object') {
-              return Response.json({ error: '"input" must be an object' }, { status: 400 })
-            }
-
-            // Build tools with user's permissions (never overrideAccess for ask mode)
-            const customEndpoints = discoverEndpoints(req.payload.config)
-            const tools = buildTools(req.payload, req.user, false, req, customEndpoints)
-            const tool = tools[toolName]
-            if (!tool?.execute) {
-              return Response.json({ error: `Tool "${toolName}" not found` }, { status: 404 })
-            }
-
-            try {
-              const result = await tool.execute(input as Record<string, unknown>, {
-                abortSignal: new AbortController().signal,
-                messages: [],
-                toolCallId: body.toolCallId ?? 'manual',
-              })
-              return Response.json({ result })
-            } catch (err: any) {
-              return Response.json(
-                { error: err?.message ?? 'Tool execution failed' },
-                { status: 500 },
-              )
-            }
-          },
-          method: 'post',
-          path: '/chat-agent/execute-tool',
         },
 
         // --- GET /chat-agent/chat/models ------------------------------------

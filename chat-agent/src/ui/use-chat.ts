@@ -10,7 +10,7 @@
 import type { UIMessage } from 'ai'
 
 import { useChat as useAIChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai'
 import { useCallback, useMemo, useRef } from 'react'
 
 import type { AgentMode, type MessageMetadata, messageMetadataSchema } from '../types.js'
@@ -136,6 +136,9 @@ export function useChat(options?: string | UseChatOptions) {
   const chatOptions: Record<string, unknown> = {
     messageMetadataSchema,
     onFinish: handleFinish,
+    // When the user approves/denies a pending tool call, resubmit automatically
+    // so the server can execute (or skip) the tool and continue the stream.
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport,
   }
   if (chatId) {

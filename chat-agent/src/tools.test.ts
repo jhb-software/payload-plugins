@@ -595,32 +595,25 @@ describe('filterToolsByMode', () => {
       expect(Object.keys(filtered)).toHaveLength(8)
     })
 
-    it('read tools have execute functions', () => {
+    it('read tools are unchanged (no needsApproval, still have execute)', () => {
       const tools = getAllTools()
       const filtered = filterToolsByMode(tools, 'ask')
       for (const name of READ_TOOL_NAMES) {
         expect(filtered[name]).toHaveProperty('execute')
+        expect(filtered[name]).not.toHaveProperty('needsApproval')
       }
     })
 
-    it('write tools do NOT have execute functions', () => {
+    it('write tools keep execute but gain needsApproval: true', () => {
       const tools = getAllTools()
       const filtered = filterToolsByMode(tools, 'ask')
       for (const name of WRITE_TOOL_NAMES) {
-        expect(filtered[name]).not.toHaveProperty('execute')
+        expect(filtered[name]).toHaveProperty('execute')
+        expect((filtered[name] as { needsApproval?: boolean }).needsApproval).toBe(true)
       }
     })
 
-    it('write tools still have inputSchema and description', () => {
-      const tools = getAllTools()
-      const filtered = filterToolsByMode(tools, 'ask')
-      for (const name of WRITE_TOOL_NAMES) {
-        expect(filtered[name]).toHaveProperty('inputSchema')
-        expect(filtered[name]).toHaveProperty('description')
-      }
-    })
-
-    it('strips execute from callEndpoint', () => {
+    it('marks callEndpoint with needsApproval: true', () => {
       const endpoints = [
         {
           description: 'Test',
@@ -632,7 +625,8 @@ describe('filterToolsByMode', () => {
       const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
       const filtered = filterToolsByMode(tools, 'ask')
       expect(filtered.callEndpoint).toBeDefined()
-      expect(filtered.callEndpoint).not.toHaveProperty('execute')
+      expect(filtered.callEndpoint).toHaveProperty('execute')
+      expect((filtered.callEndpoint as { needsApproval?: boolean }).needsApproval).toBe(true)
     })
   })
 

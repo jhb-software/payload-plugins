@@ -3,23 +3,21 @@
 import type { UIMessage } from 'ai'
 import type React from 'react'
 
-import type { AgentMode, MessageMetadata } from '../types.js'
+import type { MessageMetadata } from '../types.js'
 
 import { MessageBubble } from './MessageBubble.js'
 
 export function MessageList({
-  executingTools,
+  isLoading,
   messages,
-  mode,
-  onToolAllow,
+  onToolApprove,
   onToolDeny,
   scrollRef,
 }: {
-  executingTools?: Set<string>
+  isLoading?: boolean
   messages: UIMessage<MessageMetadata>[]
-  mode?: AgentMode
-  onToolAllow?: (toolCallId: string, toolName: string, input: unknown) => void
-  onToolDeny?: (toolCallId: string) => void
+  onToolApprove?: (approvalId: string) => void
+  onToolDeny?: (approvalId: string) => void
   scrollRef: React.RefObject<HTMLDivElement | null>
 }) {
   if (messages.length === 0) {
@@ -51,11 +49,10 @@ export function MessageList({
     >
       {messages.map((msg) => (
         <MessageBubble
-          executingTools={executingTools}
+          isLoading={isLoading}
           key={msg.id}
           message={msg}
-          mode={mode}
-          onToolAllow={onToolAllow}
+          onToolApprove={onToolApprove}
           onToolDeny={onToolDeny}
         />
       ))}

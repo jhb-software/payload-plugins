@@ -107,7 +107,7 @@ export default function ChatView({
 
   const { conversations, refresh, remove } = useConversations(endpointUrl, initialConversations)
 
-  const { addToolResult, error, messages, sendMessage, setMessages, status } = useChat({
+  const { addToolApprovalResponse, error, messages, sendMessage, setMessages, status } = useChat({
     chatId,
     endpointUrl,
     initialMessages,
@@ -120,9 +120,6 @@ export default function ChatView({
       void refresh()
     },
   })
-
-  // Track which tool calls are being executed (for ask mode confirmation)
-  const [executingTools, setExecutingTools] = useState<Set<string>>(new Set())
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isLoading = status === 'streaming' || status === 'submitted'
@@ -194,44 +191,24 @@ export default function ChatView({
     [sendMessage],
   )
 
-  // --- Ask mode: tool confirmation handlers --------------------------------
+  // --- Ask mode: tool approval handlers ------------------------------------
 
-  const handleToolAllow = useCallback(
-    async (toolCallId: string, toolName: string, input: unknown) => {
-      setExecutingTools((prev) => new Set(prev).add(toolCallId))
-      try {
-        const res = await fetch(`${endpointUrl.replace(/\/chat$/, '')}/execute-tool`, {
-          body: JSON.stringify({ input, toolCallId, toolName }),
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          method: 'POST',
-        })
-        const data = await res.json()
-        ;(addToolResult as any)({ result: data.result ?? data, toolCallId })
-      } catch (err: any) {
-        ;(addToolResult as any)({
-          result: { error: err?.message ?? 'Execution failed' },
-          toolCallId,
-        })
-      } finally {
-        setExecutingTools((prev) => {
-          const next = new Set(prev)
-          next.delete(toolCallId)
-          return next
-        })
-      }
+  const handleToolApprove = useCallback(
+    (approvalId: string) => {
+      void (addToolApprovalResponse as any)({ id: approvalId, approved: true })
     },
-    [addToolResult, endpointUrl],
+    [addToolApprovalResponse],
   )
 
   const handleToolDeny = useCallback(
-    (toolCallId: string) => {
-      ;(addToolResult as any)({
-        result: { denied: true, message: 'User denied this action.' },
-        toolCallId,
+    (approvalId: string) => {
+      void (addToolApprovalResponse as any)({
+        id: approvalId,
+        approved: false,
+        reason: 'User denied this action.',
       })
     },
-    [addToolResult],
+    [addToolApprovalResponse],
   )
 
   return (
@@ -280,11 +257,10 @@ export default function ChatView({
           <TokenBadge messages={messages as UIMessage<MessageMetadata>[]} />
         </div>
         <MessageList
-          executingTools={mode === 'ask' ? executingTools : undefined}
+          isLoading={isLoading}
           messages={messages as UIMessage<MessageMetadata>[]}
-          mode={mode}
-          onToolAllow={mode === 'ask' ? handleToolAllow : undefined}
-          onToolDeny={mode === 'ask' ? handleToolDeny : undefined}
+          onToolApprove={handleToolApprove}
+          onToolDeny={handleToolDeny}
           scrollRef={messagesEndRef}
         />
         {error ? (

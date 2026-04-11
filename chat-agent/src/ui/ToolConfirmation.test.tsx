@@ -13,7 +13,6 @@ describe('ToolConfirmation', () => {
         input={{ collection: 'posts', data: { title: 'Hello' } }}
         onAllow={() => {}}
         onDeny={() => {}}
-        status="pending"
         toolName="create"
       />,
     )
@@ -24,45 +23,29 @@ describe('ToolConfirmation', () => {
 
   it('calls onAllow when the Allow button is clicked', () => {
     const onAllow = vi.fn()
-    render(
-      <ToolConfirmation
-        input={{}}
-        onAllow={onAllow}
-        onDeny={() => {}}
-        status="pending"
-        toolName="create"
-      />,
-    )
+    render(<ToolConfirmation input={{}} onAllow={onAllow} onDeny={() => {}} toolName="create" />)
     fireEvent.click(screen.getByRole('button', { name: /allow/i }))
     expect(onAllow).toHaveBeenCalledTimes(1)
   })
 
   it('calls onDeny when the Deny button is clicked', () => {
     const onDeny = vi.fn()
-    render(
-      <ToolConfirmation
-        input={{}}
-        onAllow={() => {}}
-        onDeny={onDeny}
-        status="pending"
-        toolName="create"
-      />,
-    )
+    render(<ToolConfirmation input={{}} onAllow={() => {}} onDeny={onDeny} toolName="create" />)
     fireEvent.click(screen.getByRole('button', { name: /deny/i }))
     expect(onDeny).toHaveBeenCalledTimes(1)
   })
 
-  it('disables both buttons and shows "Executing…" when status is executing', () => {
+  it('disables both buttons while the chat is loading', () => {
     render(
       <ToolConfirmation
         input={{}}
+        isLoading
         onAllow={() => {}}
         onDeny={() => {}}
-        status="executing"
         toolName="update"
       />,
     )
-    const allow = screen.getByRole<HTMLButtonElement>('button', { name: /executing/i })
+    const allow = screen.getByRole<HTMLButtonElement>('button', { name: /allow/i })
     const deny = screen.getByRole<HTMLButtonElement>('button', { name: /deny/i })
     expect(allow.disabled).toBe(true)
     expect(deny.disabled).toBe(true)

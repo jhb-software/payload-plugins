@@ -4,23 +4,22 @@ import { Button } from '@payloadcms/ui'
 
 /**
  * Confirmation dialog shown for write tool calls in `ask` mode.
- * Displays the tool name and input, with Allow/Deny buttons.
+ * Displays the tool name and input, with Allow/Deny buttons that trigger
+ * `addToolApprovalResponse` on the chat hook.
  */
 export function ToolConfirmation({
   input,
+  isLoading,
   onAllow,
   onDeny,
-  status,
   toolName,
 }: {
   input: unknown
+  isLoading?: boolean
   onAllow: () => void
   onDeny: () => void
-  status: 'executing' | 'pending'
   toolName: string
 }) {
-  const isExecuting = status === 'executing'
-
   return (
     <div
       style={{
@@ -68,10 +67,10 @@ export function ToolConfirmation({
         {JSON.stringify(input, null, 2)}
       </pre>
       <div style={{ display: 'flex', gap: '6px' }}>
-        <Button disabled={isExecuting} onClick={onAllow} size="small">
-          {isExecuting ? 'Executing\u2026' : 'Allow'}
+        <Button disabled={isLoading} onClick={onAllow} size="small">
+          Allow
         </Button>
-        <Button buttonStyle="secondary" disabled={isExecuting} onClick={onDeny} size="small">
+        <Button buttonStyle="secondary" disabled={isLoading} onClick={onDeny} size="small">
           Deny
         </Button>
       </div>

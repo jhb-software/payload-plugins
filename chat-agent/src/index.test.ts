@@ -153,14 +153,6 @@ describe('chatAgentPlugin modes', () => {
     expect(modesEndpoint.method).toBe('get')
   })
 
-  it('registers a POST /chat-agent/execute-tool endpoint', () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
-    const result = plugin({ endpoints: [] })
-    const execEndpoint = result.endpoints.find((ep: any) => ep.path === '/chat-agent/execute-tool')
-    expect(execEndpoint).toBeDefined()
-    expect(execEndpoint.method).toBe('post')
-  })
-
   it('modes endpoint returns 401 without auth', async () => {
     const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
     const result = plugin({ endpoints: [] })
@@ -282,61 +274,6 @@ describe('chatAgentPlugin modes', () => {
     expect(response.status).toBe(403)
     const body = await response.json()
     expect(body.error).toContain('Access denied')
-  })
-
-  it('execute-tool endpoint returns 401 without auth', async () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
-    const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/execute-tool',
-    ).handler
-
-    const response = await handler({ user: null })
-    expect(response.status).toBe(401)
-  })
-
-  it('execute-tool endpoint rejects non-write tools', async () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
-    const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/execute-tool',
-    ).handler
-
-    const response = await handler({
-      json: () => Promise.resolve({ input: { collection: 'posts' }, toolName: 'find' }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 'u1' },
-    })
-    expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body.error).toContain('not a write tool')
-  })
-
-  it('execute-tool endpoint executes a write tool', async () => {
-    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
-    const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/execute-tool',
-    ).handler
-
-    const mockCreate = { id: 'new-1', title: 'Test' }
-    const response = await handler({
-      json: () =>
-        Promise.resolve({
-          input: { collection: 'posts', data: { title: 'Test' } },
-          toolCallId: 'tc-1',
-          toolName: 'create',
-        }),
-      payload: {
-        config: { collections: [], globals: [] },
-        create: () => Promise.resolve(mockCreate),
-      },
-      user: { id: 'u1' },
-    })
-
-    expect(response.status).toBe(200)
-    const body = await response.json()
-    expect(body.result).toEqual(mockCreate)
   })
 })
 

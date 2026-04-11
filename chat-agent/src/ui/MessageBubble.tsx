@@ -5,15 +5,13 @@ import type React from 'react'
 import { getToolName, isToolUIPart, type UIMessage } from 'ai'
 import { useCallback, useState } from 'react'
 
-import type { AgentMode, MessageMetadata } from '../types.js'
+import type { MessageMetadata } from '../types.js'
 
 import { formatTokens } from './format-tokens.js'
 import { CheckIcon } from './icons/CheckIcon.js'
 import { ClipboardIcon } from './icons/ClipboardIcon.js'
 import { MarkdownContent } from './MarkdownContent.js'
 import { ToolConfirmation } from './ToolConfirmation.js'
-
-const WRITE_TOOLS = new Set(['callEndpoint', 'create', 'delete', 'update', 'updateGlobal'])
 
 function ToolCallIndicator({
   part,
@@ -139,17 +137,15 @@ function ToolCallIndicator({
 }
 
 export function MessageBubble({
-  executingTools,
+  isLoading,
   message,
-  mode,
-  onToolAllow,
+  onToolApprove,
   onToolDeny,
 }: {
-  executingTools?: Set<string>
+  isLoading?: boolean
   message: UIMessage<MessageMetadata>
-  mode?: AgentMode
-  onToolAllow?: (toolCallId: string, toolName: string, input: unknown) => void
-  onToolDeny?: (toolCallId: string) => void
+  onToolApprove?: (approvalId: string) => void
+  onToolDeny?: (approvalId: string) => void
 }) {
   const isUser = message.role === 'user'
   const meta = message.metadata
@@ -189,32 +185,28 @@ export function MessageBubble({
           .filter((p) => isToolUIPart(p))
           .map((p, i: number) => {
             const toolPart = p as {
+              approval?: { approved?: boolean; id: string }
               input: unknown
               output?: unknown
               state: string
-              toolCallId?: string
-              toolInvocation?: { toolCallId?: string; toolName?: string }
-              toolName?: string
             }
             const toolName = getToolName(toolPart as Parameters<typeof getToolName>[0])
-            const toolCallId =
-              toolPart.toolInvocation?.toolCallId ?? toolPart.toolCallId ?? `tool-${i}`
-            const needsConfirmation =
-              mode === 'ask' &&
-              WRITE_TOOLS.has(toolName) &&
-              toolPart.state !== 'output-available' &&
-              toolPart.state !== 'input-streaming' &&
-              onToolAllow &&
-              onToolDeny
 
-            if (needsConfirmation) {
+            // Show approval dialog when the SDK has emitted an approval request.
+            if (
+              toolPart.state === 'approval-requested' &&
+              toolPart.approval?.id &&
+              onToolApprove &&
+              onToolDeny
+            ) {
+              const approvalId = toolPart.approval.id
               return (
                 <ToolConfirmation
                   input={toolPart.input}
+                  isLoading={isLoading}
                   key={i}
-                  onAllow={() => onToolAllow(toolCallId, toolName, toolPart.input)}
-                  onDeny={() => onToolDeny(toolCallId)}
-                  status={executingTools?.has(toolCallId) ? 'executing' : 'pending'}
+                  onAllow={() => onToolApprove(approvalId)}
+                  onDeny={() => onToolDeny(approvalId)}
                   toolName={toolName}
                 />
               )
