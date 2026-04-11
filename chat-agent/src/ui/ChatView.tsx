@@ -84,8 +84,14 @@ export default function ChatView({
     fetch('/api/chat-agent/modes', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!cancelled && data?.modes) {
+        if (cancelled || !data) {
+          return
+        }
+        if (data.modes) {
           setModes(data.modes)
+        }
+        if (data.default) {
+          setMode(data.default)
         }
       })
       .catch(() => {})
