@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- fix: respect a user-customized `routes.api` in `fetchRestApi` (used by `getBreadcrumbs` from client-side field components); `getBreadcrumbs` now requires a `restApiConfig` argument when called without a `req`
+- fix: respect a user-customized `routes.api` when `getBreadcrumbs` is called from client-side field components. `getBreadcrumbs` now takes an optional `apiURL` argument (required when called without a `req`) that the `PathField` supplies from `useConfig()`. The internal `fetchRestApi` helper has been removed and inlined.
 - style: standardize icons to use Geist icon set (16x16 filled)
 - refactor: use i18next interpolation for translations
 

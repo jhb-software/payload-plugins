@@ -68,6 +68,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
     doc[breadcrumbLabelFieldName] = breadcrumbLabel
 
     const fechtchedBreadcrumbs = (await getBreadcrumbsForDoc({
+      apiURL: `${config.serverURL ?? ''}${config.routes.api}`,
       breadcrumbLabelField: breadcrumbLabelFieldName,
       data: doc,
       locale,
@@ -78,10 +79,6 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
       parentCollection,
       parentField,
       req: undefined, // payload req is not available here
-      restApiConfig: {
-        apiRoute: config.routes.api,
-        serverURL: config.serverURL,
-      },
     })) as Breadcrumb[]
 
     return fechtchedBreadcrumbs
