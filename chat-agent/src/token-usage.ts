@@ -157,21 +157,35 @@ export async function checkBudget(
     where.user = { equals: userId }
   }
 
-  const result = await payload.find({
-    collection: TOKEN_USAGE_SLUG,
-    depth: 0,
-    // Append-only model: one row per chat response. Cap at a high but
-    // bounded number to avoid unbounded memory growth on pathological inputs.
-    // A user hitting 10k requests/period already has other problems.
-    limit: 10_000,
-    overrideAccess: true,
-    pagination: false,
-    where,
-  })
-
+  // Iterate in pages to correctly sum the entire period's usage without
+  // loading everything into memory at once. The append-only model means
+  // a `limitBy: 'global'` deployment can easily exceed 10k rows/period;
+  // a naive single-query cap would silently undercount and give free tokens.
+  // For typical `limitBy: 'user'` usage there are few rows per period, so
+  // the loop exits after the first page.
+  const PAGE_SIZE = 1000
   let totalTokens = 0
-  for (const doc of result.docs) {
-    totalTokens += doc.totalTokens ?? 0
+  let page = 1
+  // Soft guard against runaway loops (e.g. a DB misconfigured to always
+  // report hasNextPage). 1000 pages × 1000 rows = 1M rows — far beyond
+  // any realistic period for a chat agent.
+  const MAX_PAGES = 1000
+  while (page <= MAX_PAGES) {
+    const result = await payload.find({
+      collection: TOKEN_USAGE_SLUG,
+      depth: 0,
+      limit: PAGE_SIZE,
+      overrideAccess: true,
+      page,
+      where,
+    })
+    for (const doc of result.docs) {
+      totalTokens += sanitizeTokenCount(doc.totalTokens)
+    }
+    if (!result.hasNextPage) {
+      break
+    }
+    page++
   }
 
   return {
@@ -184,16 +198,13 @@ export async function checkBudget(
 }
 
 /**
- * Compute a reasonable `maxOutputTokens` cap for a single chat response
- * given the user's remaining budget.
+ * Compute a reasonable `maxOutputTokens` cap for a single step given the
+ * user's remaining budget.
  *
- * Caps output tokens at `min(remaining, ceiling)` so a user near their
- * budget limit cannot burn through the rest (and far beyond) in a single
- * long response. Returns `undefined` when there is no budget configured.
- *
- * Note: this only caps output tokens. Input tokens and tool-use step input
- * growth are not bounded here — the per-request budget gate in `checkBudget`
- * is the primary defense.
+ * Combined with {@link createBudgetStopCondition}, this bounds the worst-case
+ * overspend per request to roughly one step's worth of output tokens (the
+ * stop condition fires after a step completes, so the step that trips the
+ * budget can still emit up to this ceiling).
  */
 export function computeMaxOutputTokens(
   remaining: null | number,
@@ -203,6 +214,45 @@ export function computeMaxOutputTokens(
     return undefined
   }
   return Math.max(1, Math.min(remaining, ceiling))
+}
+
+/**
+ * Build a stop condition that halts the AI SDK tool-use loop when the
+ * cumulative token usage across all completed steps exceeds `remaining`.
+ *
+ * Background: Vercel AI SDK's `maxOutputTokens` is applied to every step,
+ * not cumulatively. With `stepCountIs(20)` alone, a single request could
+ * emit up to 20 × maxOutputTokens tokens — easily 10× a user's remaining
+ * budget. This stop condition is evaluated after each step, so the worst
+ * case is one additional step beyond the budget.
+ */
+export function createBudgetStopCondition(remaining: number) {
+  return function budgetStopCondition({
+    steps,
+  }: {
+    steps: readonly { usage?: { totalTokens?: number } }[]
+  }): boolean {
+    let used = 0
+    for (const step of steps) {
+      used += sanitizeTokenCount(step.usage?.totalTokens)
+    }
+    return used >= remaining
+  }
+}
+
+/**
+ * Clamp a token count from the model to a safe non-negative integer.
+ *
+ * Returns 0 for NaN, undefined, negative, or non-number inputs. Without
+ * this, a rogue `NaN` from the provider (or a future SDK quirk) would
+ * poison `checkBudget` sums — `NaN < limit` is `false`, so the user
+ * would be permanently stuck above budget.
+ */
+export function sanitizeTokenCount(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return 0
+  }
+  return Math.floor(value)
 }
 
 // ---------------------------------------------------------------------------
@@ -215,27 +265,61 @@ export function computeMaxOutputTokens(
  * Uses an append-only model: each call creates a new row. This is race-free
  * under concurrent requests (no read-modify-write) and gives per-request
  * auditability. `checkBudget` sums the rows on read.
+ *
+ * Token counts are sanitized via {@link sanitizeTokenCount} so a NaN or
+ * negative value from the provider cannot poison future budget checks.
+ * If all three counts sanitize to 0, the record is skipped entirely.
  */
 export async function recordUsage(
   payload: any,
   userId: number | string,
   period: 'daily' | 'monthly',
-  tokens: { inputTokens: number; outputTokens: number; totalTokens: number },
+  tokens: { inputTokens: unknown; outputTokens: unknown; totalTokens: unknown },
 ): Promise<void> {
+  const inputTokens = sanitizeTokenCount(tokens.inputTokens)
+  const outputTokens = sanitizeTokenCount(tokens.outputTokens)
+  const totalTokens = sanitizeTokenCount(tokens.totalTokens)
+
+  if (inputTokens === 0 && outputTokens === 0 && totalTokens === 0) {
+    return
+  }
+
   const currentPeriod = getCurrentPeriod(period)
 
   await payload.create({
     collection: TOKEN_USAGE_SLUG,
     data: {
-      inputTokens: tokens.inputTokens,
-      outputTokens: tokens.outputTokens,
+      inputTokens,
+      outputTokens,
       period: currentPeriod,
       periodType: period,
-      totalTokens: tokens.totalTokens,
+      totalTokens,
       user: userId,
     },
     overrideAccess: true,
   })
+}
+
+/**
+ * Record final chat-response usage and log any failure.
+ *
+ * Extracted as a named helper so callers can await it (e.g. inside an AI
+ * SDK `onFinish` callback, which the SDK does await before tearing down
+ * the stream — important in serverless runtimes that terminate the
+ * function as soon as the stream closes).
+ */
+export async function recordUsageAndLogErrors(args: {
+  payload: any
+  period: 'daily' | 'monthly'
+  tokens: { inputTokens: unknown; outputTokens: unknown; totalTokens: unknown }
+  userId: number | string
+}): Promise<void> {
+  const { payload, period, tokens, userId } = args
+  try {
+    await recordUsage(payload, userId, period, tokens)
+  } catch (err: unknown) {
+    payload.logger?.error?.({ err, userId }, 'chat-agent: failed to record token usage')
+  }
 }
 
 // ---------------------------------------------------------------------------

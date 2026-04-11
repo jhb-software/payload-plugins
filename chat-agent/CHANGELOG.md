@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add agent modes (`read`, `ask`, `read-write`, `superuser`) with per-mode access control
+- Add `modes` plugin option for configuring available modes and per-user access
+- Add mode selector UI in chat view header
+- Add `ask` mode with write tool confirmation using the Vercel AI SDK's native `needsApproval` / `addToolApprovalResponse` flow
+- Add `read` mode that restricts the agent to read-only tools
+- Add `superuser` mode that bypasses Payload access control
+- Add `GET /api/chat-agent/modes` endpoint for resolving available modes
+- Remove `superuserAccess` option in favor of `modes.access.superuser`
 - Add configurable model selection via `defaultModel` and `availableModels` options, with a model selector dropdown in the chat UI (shown when 2+ models are available)
 - Add markdown rendering for assistant messages using `react-markdown` and `remark-gfm`
 - Include admin panel URL patterns in the system prompt so the agent can produce clickable links to documents it creates, updates, or finds (respects `config.routes.admin`)

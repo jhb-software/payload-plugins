@@ -14,20 +14,29 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
-import type { ChatAgentPluginOptions } from './types.js'
+import type { AgentMode, ChatAgentPluginOptions } from './types.js'
 
 import { conversationEndpoints, conversationsCollection } from './conversations.js'
+import {
+  getDefaultMode,
+  resolveAvailableModes,
+  resolveModeConfig,
+  validateModeAccess,
+} from './modes.js'
 import { buildSystemPrompt } from './schema.js'
 import {
   checkBudget,
   computeMaxOutputTokens,
+  createBudgetStopCondition,
   createUsageHandler,
-  recordUsage,
+  recordUsageAndLogErrors,
+  sanitizeTokenCount,
   tokenUsageCollection,
 } from './token-usage.js'
-import { buildTools, discoverEndpoints } from './tools.js'
+import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
 export type { ChatAgentPluginOptions, ModelOption, TokenBudgetConfig } from './types.js'
+export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
 
@@ -61,6 +70,8 @@ export function validateMessages(messages: unknown): null | string {
 }
 
 export function chatAgentPlugin(options: ChatAgentPluginOptions) {
+  const modesConfig = resolveModeConfig(options)
+
   return (config: any): any => {
     // Auto-register the admin chat view unless explicitly disabled
     const adminViews =
@@ -102,6 +113,26 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         ...(config.endpoints ?? []),
         ...conversationEndpoints,
         ...budgetEndpoints,
+
+        // --- GET /chat-agent/modes ------------------------------------------
+        {
+          handler: async (req: any) => {
+            const allowed = options.access ? await options.access(req) : !!req.user
+            if (!allowed) {
+              return Response.json({ error: 'Unauthorized' }, { status: 401 })
+            }
+
+            const available = await resolveAvailableModes(modesConfig, req)
+            return Response.json({
+              default: getDefaultMode(modesConfig),
+              modes: available,
+            })
+          },
+          method: 'get',
+          path: '/chat-agent/modes',
+        },
+
+        // --- GET /chat-agent/chat/models ------------------------------------
         {
           handler: () => {
             return Response.json({
@@ -112,6 +143,8 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
           method: 'get',
           path: '/chat-agent/chat/models',
         },
+
+        // --- POST /chat-agent/chat ------------------------------------------
         {
           handler: async (req: any) => {
             // --- Auth check -----------------------------------------------
@@ -162,6 +195,19 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             // --- Budget enforcement ----------------------------------------
+            // Fail-closed when a budget is configured but the request has
+            // no identifiable user. Skipping silently would let anyone
+            // using a custom auth scheme bypass the budget entirely.
+            if (options.tokenBudget && !req.user) {
+              return Response.json(
+                {
+                  error:
+                    'Token budget is configured, but this request has no authenticated user. ' +
+                    'Token budgets require a user context to attribute usage.',
+                },
+                { status: 401 },
+              )
+            }
             let budgetRemaining: null | number = null
             if (options.tokenBudget && req.user) {
               const budgetResult = await checkBudget(
@@ -184,65 +230,73 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               budgetRemaining = budgetResult.remaining
             }
 
-            // --- Resolve overrideAccess (superuser mode) -------------------
-            let overrideAccess = false
-            if (body.overrideAccess === true) {
-              const superuserAccess = options.superuserAccess
-              if (superuserAccess === true) {
-                overrideAccess = true
-              } else if (typeof superuserAccess === 'function') {
-                overrideAccess = await superuserAccess(req)
-              }
-              // If superuserAccess is false/undefined, ignore the request
+            // --- Resolve mode ----------------------------------------------
+            const requestedMode = body.mode ?? getDefaultMode(modesConfig)
+            const modeError = await validateModeAccess(requestedMode, modesConfig, req)
+            if (modeError) {
+              return Response.json({ error: modeError }, { status: 403 })
             }
+            const mode = requestedMode as AgentMode
+
+            // --- Resolve overrideAccess ------------------------------------
+            const overrideAccess = mode === 'superuser'
 
             // --- Discover custom endpoints and build tools ------------------
             const customEndpoints = discoverEndpoints(req.payload.config)
-            const tools = buildTools(req.payload, req.user, overrideAccess, req, customEndpoints)
+            const allTools = buildTools(req.payload, req.user, overrideAccess, req, customEndpoints)
+            const tools = filterToolsByMode(allTools, mode)
             const systemPrompt = buildSystemPrompt(
               req.payload.config,
               options.systemPrompt,
               customEndpoints,
+              mode,
             )
             const modelId = body.model ?? options.defaultModel
             const maxSteps = options.maxSteps ?? 20
 
-            // --- Cap per-request output by remaining budget ----------------
+            // --- Per-request budget enforcement ----------------------------
+            // `maxOutputTokens` bounds a single step. Combined with the
+            // budgetStopCondition it bounds the total per-request spend to
+            // roughly `remaining + maxOutputTokens` (worst case: the step
+            // that trips the budget can still emit a full output).
             const maxOutputTokens = computeMaxOutputTokens(budgetRemaining)
+            const stopConditions = [stepCountIs(maxSteps)]
+            if (budgetRemaining !== null) {
+              stopConditions.push(createBudgetStopCondition(budgetRemaining))
+            }
 
             // --- Stream response via AI SDK --------------------------------
             const result = streamText({
               messages: await (convertToModelMessages as any)(body.messages),
               ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
               model: createAnthropic({ apiKey })(modelId),
-              stopWhen: stepCountIs(maxSteps),
+              stopWhen: stopConditions,
               system: systemPrompt,
               toolChoice: 'auto',
               tools,
             })
 
+            // Capture state from the finish metadata for use in onFinish.
+            // `messageMetadata` is synchronous (the SDK awaits it inline),
+            // but `recordUsage` needs to await a DB write which the SDK
+            // must not block the outgoing stream on. Instead, we stash the
+            // numbers in closure state and do the write in `onFinish`,
+            // which the SDK does `await` before tearing down the stream —
+            // this keeps the serverless function alive long enough for the
+            // write to complete.
+            let finalUsage: {
+              inputTokens: number
+              outputTokens: number
+              totalTokens: number
+            } | null = null
+
             return result.toUIMessageStreamResponse({
               messageMetadata: ({ part }: { part: any }) => {
                 if (part.type === 'finish') {
-                  const inputTokens = part.totalUsage?.inputTokens ?? 0
-                  const outputTokens = part.totalUsage?.outputTokens ?? 0
-                  const totalTokens = part.totalUsage?.totalTokens ?? 0
-
-                  // Record usage asynchronously (don't block the response).
-                  // Log failures so billing drift doesn't happen silently.
-                  if (options.tokenBudget && req.user) {
-                    recordUsage(req.payload, req.user.id, options.tokenBudget.period ?? 'monthly', {
-                      inputTokens,
-                      outputTokens,
-                      totalTokens,
-                    }).catch((err: unknown) => {
-                      req.payload.logger?.error?.(
-                        { err, userId: req.user.id },
-                        'chat-agent: failed to record token usage',
-                      )
-                    })
-                  }
-
+                  const inputTokens = sanitizeTokenCount(part.totalUsage?.inputTokens)
+                  const outputTokens = sanitizeTokenCount(part.totalUsage?.outputTokens)
+                  const totalTokens = sanitizeTokenCount(part.totalUsage?.totalTokens)
+                  finalUsage = { inputTokens, outputTokens, totalTokens }
                   return {
                     inputTokens,
                     model: modelId,
@@ -251,6 +305,17 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                   }
                 }
                 return undefined
+              },
+              onFinish: async () => {
+                if (!options.tokenBudget || !req.user || !finalUsage) {
+                  return
+                }
+                await recordUsageAndLogErrors({
+                  payload: req.payload,
+                  period: options.tokenBudget.period ?? 'monthly',
+                  tokens: finalUsage,
+                  userId: req.user.id,
+                })
               },
             })
           },

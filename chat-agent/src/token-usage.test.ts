@@ -4,10 +4,13 @@ import { chatAgentPlugin } from './index.js'
 import {
   checkBudget,
   computeMaxOutputTokens,
+  createBudgetStopCondition,
   createUsageHandler,
   getCurrentPeriod,
   getResetDate,
   recordUsage,
+  recordUsageAndLogErrors,
+  sanitizeTokenCount,
   TOKEN_USAGE_SLUG,
   tokenUsageCollection,
 } from './token-usage.js'
@@ -223,8 +226,8 @@ describe('checkBudget', () => {
       payload,
       'u1',
       {
-        resolveLimit: () => 2000,
         limit: 1000,
+        resolveLimit: () => 2000,
       },
       req,
     )
@@ -241,8 +244,8 @@ describe('checkBudget', () => {
       payload,
       'u1',
       {
-        resolveLimit: () => undefined,
         limit: 1000,
+        resolveLimit: () => undefined,
       },
       req,
     )
@@ -312,18 +315,18 @@ describe('recordUsage (append-only)', () => {
     const store: Array<{ period: string; periodType: string; totalTokens: number; user: string }> =
       []
     const payload = {
-      create: vi.fn().mockImplementation(async ({ data }: any) => {
+      create: vi.fn().mockImplementation(({ data }: any) => {
         store.push(data)
-        return { id: String(store.length) }
+        return Promise.resolve({ id: String(store.length) })
       }),
-      find: vi.fn().mockImplementation(async ({ where }: any) => {
+      find: vi.fn().mockImplementation(({ where }: any) => {
         const docs = store.filter(
           (d) =>
             d.user === where.user.equals &&
             d.period === where.period.equals &&
             d.periodType === where.periodType.equals,
         )
-        return { docs }
+        return Promise.resolve({ docs, hasNextPage: false })
       }),
     }
 
@@ -363,17 +366,18 @@ describe('checkBudget periodType isolation', () => {
   it('ignores rows with a different periodType', async () => {
     // Same user, same period string, but different periodType
     const payload = {
-      find: vi.fn().mockImplementation(async ({ where }: any) => {
+      find: vi.fn().mockImplementation(({ where }: any) => {
         const all = [
           { period: '2026-04', periodType: 'monthly', totalTokens: 800 },
           // A stale daily row that happens to match the period prefix
           { period: '2026-04', periodType: 'daily', totalTokens: 500 },
         ]
-        return {
+        return Promise.resolve({
           docs: all.filter(
             (d) => d.period === where.period.equals && d.periodType === where.periodType.equals,
           ),
-        }
+          hasNextPage: false,
+        })
       }),
     }
 
@@ -543,19 +547,43 @@ describe('computeMaxOutputTokens', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Query shape assertions — verify checkBudget uses pagination: false and
-// filters by periodType to prevent performance/correctness regressions.
+// Query shape / paged iteration — verify checkBudget handles large row
+// counts correctly (no silent undercount) and always filters by periodType.
 // ---------------------------------------------------------------------------
 
 describe('checkBudget query shape', () => {
-  it('uses pagination: false so the query is not capped at the Payload default', async () => {
-    const payload = { find: vi.fn().mockResolvedValue({ docs: [] }) }
+  it('iterates across pages and sums correctly for large row counts', async () => {
+    // Simulate a global-scoped table with 2500 rows spanning 3 pages.
+    const allDocs = Array.from({ length: 2500 }).map(() => ({ totalTokens: 10 }))
+    const payload = {
+      find: vi.fn().mockImplementation(({ limit, page }: any) => {
+        const start = (page - 1) * limit
+        const docs = allDocs.slice(start, start + limit)
+        return Promise.resolve({ docs, hasNextPage: start + limit < allDocs.length })
+      }),
+    }
+
+    const result = await checkBudget(payload, 'u1', { limit: 100_000, limitBy: 'global' })
+
+    // All 2500 rows must contribute to the sum — no silent undercount.
+    expect(result.totalTokens).toBe(25_000)
+    // Page size is 1000, so 2500 rows needs 3 requests.
+    expect(payload.find).toHaveBeenCalledTimes(3)
+  })
+
+  it('stops paging as soon as hasNextPage is false', async () => {
+    const payload = {
+      find: vi
+        .fn()
+        .mockResolvedValueOnce({ docs: [{ totalTokens: 100 }], hasNextPage: false })
+        .mockResolvedValueOnce({ docs: [], hasNextPage: false }),
+    }
     await checkBudget(payload, 'u1', { limit: 1000 })
-    expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({ pagination: false }))
+    expect(payload.find).toHaveBeenCalledTimes(1)
   })
 
   it('always filters by periodType to prevent cross-period-type leakage', async () => {
-    const payload = { find: vi.fn().mockResolvedValue({ docs: [] }) }
+    const payload = { find: vi.fn().mockResolvedValue({ docs: [], hasNextPage: false }) }
     await checkBudget(payload, 'u1', { limit: 1000, period: 'daily' })
     expect(payload.find).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -566,25 +594,204 @@ describe('checkBudget query shape', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Error logging — recordUsage failures must not be silent
+// sanitizeTokenCount — poison-proofing against NaN/negative from the model
 // ---------------------------------------------------------------------------
 
-describe('chat endpoint recordUsage error handling', () => {
-  it('logs recordUsage failures via req.payload.logger instead of swallowing', async () => {
-    // This is a structural test: we assert that the chat handler wires
-    // the recordUsage promise to `.catch(logger.error)` rather than `void`.
-    // We inspect the compiled handler source to verify the behavior is in
-    // place — the full path is integration-tested manually.
+describe('sanitizeTokenCount', () => {
+  it('passes through non-negative integers unchanged', () => {
+    expect(sanitizeTokenCount(0)).toBe(0)
+    expect(sanitizeTokenCount(100)).toBe(100)
+    expect(sanitizeTokenCount(1_000_000)).toBe(1_000_000)
+  })
+
+  it('floors non-integer numbers', () => {
+    expect(sanitizeTokenCount(3.7)).toBe(3)
+  })
+
+  it('returns 0 for NaN', () => {
+    expect(sanitizeTokenCount(NaN)).toBe(0)
+  })
+
+  it('returns 0 for Infinity', () => {
+    expect(sanitizeTokenCount(Infinity)).toBe(0)
+    expect(sanitizeTokenCount(-Infinity)).toBe(0)
+  })
+
+  it('returns 0 for negative values', () => {
+    expect(sanitizeTokenCount(-5)).toBe(0)
+  })
+
+  it('returns 0 for non-number inputs', () => {
+    expect(sanitizeTokenCount(undefined)).toBe(0)
+    expect(sanitizeTokenCount(null)).toBe(0)
+    expect(sanitizeTokenCount('100')).toBe(0)
+    expect(sanitizeTokenCount({})).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// checkBudget tolerates poisoned rows — a NaN in one row must not poison
+// the sum for the whole period.
+// ---------------------------------------------------------------------------
+
+describe('checkBudget poison-proofing', () => {
+  it('ignores NaN/negative rows instead of propagating them to the sum', async () => {
+    const payload = {
+      find: vi.fn().mockResolvedValue({
+        docs: [
+          { totalTokens: 100 },
+          { totalTokens: NaN },
+          { totalTokens: -50 },
+          { totalTokens: 200 },
+        ],
+        hasNextPage: false,
+      }),
+    }
+    const result = await checkBudget(payload, 'u1', { limit: 1000 })
+    expect(result.totalTokens).toBe(300)
+    expect(result.allowed).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// createBudgetStopCondition — bounds cumulative tool-use loop output
+// ---------------------------------------------------------------------------
+
+describe('createBudgetStopCondition', () => {
+  it('returns false while cumulative usage is under remaining', () => {
+    const stop = createBudgetStopCondition(1000)
+    expect(stop({ steps: [{ usage: { totalTokens: 400 } }] })).toBe(false)
+    expect(
+      stop({ steps: [{ usage: { totalTokens: 400 } }, { usage: { totalTokens: 599 } }] }),
+    ).toBe(false)
+  })
+
+  it('returns true as soon as cumulative usage meets or exceeds remaining', () => {
+    const stop = createBudgetStopCondition(1000)
+    expect(
+      stop({ steps: [{ usage: { totalTokens: 500 } }, { usage: { totalTokens: 500 } }] }),
+    ).toBe(true)
+    expect(stop({ steps: [{ usage: { totalTokens: 2000 } }] })).toBe(true)
+  })
+
+  it('tolerates steps with missing or poisoned usage values', () => {
+    const stop = createBudgetStopCondition(100)
+    expect(
+      stop({
+        steps: [
+          { usage: undefined },
+          { usage: { totalTokens: NaN } },
+          { usage: { totalTokens: 50 } },
+        ],
+      }),
+    ).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// recordUsageAndLogErrors — behavioral test that errors are logged, not
+// swallowed, and that the helper resolves rather than rejecting (so an
+// AI SDK onFinish callback doesn't corrupt the stream tail on DB failure).
+// ---------------------------------------------------------------------------
+
+describe('recordUsageAndLogErrors', () => {
+  it('writes the usage row on success', async () => {
+    const payload = {
+      create: vi.fn().mockResolvedValue({ id: '1' }),
+      logger: { error: vi.fn() },
+    }
+    await recordUsageAndLogErrors({
+      payload,
+      period: 'monthly',
+      tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+      userId: 'u1',
+    })
+    expect(payload.create).toHaveBeenCalledTimes(1)
+    expect(payload.logger.error).not.toHaveBeenCalled()
+  })
+
+  it('resolves (does not throw) when the create fails, and logs via payload.logger.error', async () => {
+    const dbError = new Error('DB is down')
+    const payload = {
+      create: vi.fn().mockRejectedValue(dbError),
+      logger: { error: vi.fn() },
+    }
+    // Should not throw — a throw here would corrupt the stream tail.
+    await expect(
+      recordUsageAndLogErrors({
+        payload,
+        period: 'monthly',
+        tokens: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+        userId: 'u1',
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(payload.logger.error).toHaveBeenCalledTimes(1)
+    const [errContext, message] = payload.logger.error.mock.calls[0]
+    expect(errContext.err).toBe(dbError)
+    expect(errContext.userId).toBe('u1')
+    expect(message).toContain('failed to record token usage')
+  })
+
+  it('is a no-op and does not write when all token counts sanitize to 0', async () => {
+    const payload = {
+      create: vi.fn().mockResolvedValue({ id: '1' }),
+      logger: { error: vi.fn() },
+    }
+    await recordUsageAndLogErrors({
+      payload,
+      period: 'monthly',
+      // NaN/negative all sanitize to 0 — no reason to write an all-zero row.
+      tokens: { inputTokens: NaN, outputTokens: -5, totalTokens: undefined },
+      userId: 'u1',
+    })
+    expect(payload.create).not.toHaveBeenCalled()
+    expect(payload.logger.error).not.toHaveBeenCalled()
+  })
+
+  it('tolerates a missing logger without crashing', async () => {
+    const payload = {
+      create: vi.fn().mockRejectedValue(new Error('boom')),
+      // no logger property
+    }
+    await expect(
+      recordUsageAndLogErrors({
+        payload,
+        period: 'daily',
+        tokens: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+        userId: 'u1',
+      }),
+    ).resolves.toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Fail-closed when tokenBudget is set but the request has no user
+// ---------------------------------------------------------------------------
+
+describe('chat endpoint budget fails closed without a user', () => {
+  it('returns 401 when tokenBudget is configured but req.user is absent', async () => {
     const plugin = chatAgentPlugin({
+      access: () => true, // allow unauthenticated requests
       apiKey: 'test-key',
       defaultModel: 'claude-sonnet-4-20250514',
-      tokenBudget: { limit: 100_000 },
+      tokenBudget: { limit: 1000 },
     })
     const result = plugin({ collections: [], endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
-    const source = handler.toString()
-    expect(source).toContain('recordUsage')
-    expect(source).toMatch(/\.catch\(/)
-    expect(source).toContain('failed to record token usage')
+
+    const res = await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: null,
+    })
+
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toContain('Token budget')
+    expect(body.error).toContain('authenticated user')
   })
 })

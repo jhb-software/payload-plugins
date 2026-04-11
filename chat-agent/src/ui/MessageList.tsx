@@ -8,10 +8,16 @@ import type { MessageMetadata } from '../types.js'
 import { MessageBubble } from './MessageBubble.js'
 
 export function MessageList({
+  isLoading,
   messages,
+  onToolApprove,
+  onToolDeny,
   scrollRef,
 }: {
+  isLoading?: boolean
   messages: UIMessage<MessageMetadata>[]
+  onToolApprove?: (approvalId: string) => void
+  onToolDeny?: (approvalId: string) => void
   scrollRef: React.RefObject<HTMLDivElement | null>
 }) {
   if (messages.length === 0) {
@@ -42,7 +48,13 @@ export function MessageList({
       }}
     >
       {messages.map((msg) => (
-        <MessageBubble key={msg.id} message={msg} />
+        <MessageBubble
+          isLoading={isLoading}
+          key={msg.id}
+          message={msg}
+          onToolApprove={onToolApprove}
+          onToolDeny={onToolDeny}
+        />
       ))}
       <div ref={scrollRef} />
     </div>
