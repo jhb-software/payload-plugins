@@ -5,21 +5,32 @@
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
+// Model configuration
+// ---------------------------------------------------------------------------
+
+export interface ModelOption {
+  /** Model identifier passed to the Anthropic API. */
+  id: string
+  /** Human-readable label shown in the model selector UI. */
+  label: string
+}
+
+// ---------------------------------------------------------------------------
 // Token budget configuration
 // ---------------------------------------------------------------------------
 
 export interface TokenBudgetConfig {
-  /**
-   * Optional per-user limit override.
-   * Return a custom limit for specific users, or `undefined` to use the default.
-   */
-  resolveLimit?: (req: any) => number | Promise<number | undefined> | undefined
   /** Default token cap per period. */
   limit: number
   /** Whether the limit applies per user or globally. Default: 'user' */
   limitBy?: 'global' | 'user'
   /** Budget reset interval. Default: 'monthly' */
   period?: 'daily' | 'monthly'
+  /**
+   * Optional per-user limit override.
+   * Return a custom limit for specific users, or `undefined` to use the default.
+   */
+  resolveLimit?: (req: any) => number | Promise<number | undefined> | undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -45,10 +56,12 @@ export interface ChatAgentPluginOptions {
     | false
   /** Anthropic API key. Falls back to ANTHROPIC_API_KEY env var. */
   apiKey?: string
+  /** Models the user can choose from in the chat UI. When provided with 2+ entries, a selector dropdown is shown. */
+  availableModels?: ModelOption[]
+  /** Claude model ID used when no per-request override is provided. */
+  defaultModel: string
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
-  /** Claude model ID. Default: "claude-sonnet-4-20250514" */
-  model?: string
   /**
    * Controls who can use superuser mode (overrideAccess: true).
    * - Omit or `false` to disable superuser mode entirely (default).

@@ -103,6 +103,7 @@ describe('chatAgentPlugin token budget', () => {
   it('registers the token-usage collection when tokenBudget is configured', () => {
     const plugin = chatAgentPlugin({
       apiKey: 'test',
+      defaultModel: 'claude-sonnet-4-20250514',
       tokenBudget: { limit: 100_000 },
     })
     const result = plugin({ collections: [], endpoints: [] })
@@ -111,7 +112,10 @@ describe('chatAgentPlugin token budget', () => {
   })
 
   it('does not register the token-usage collection without tokenBudget', () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test' })
+    const plugin = chatAgentPlugin({
+      apiKey: 'test',
+      defaultModel: 'claude-sonnet-4-20250514',
+    })
     const result = plugin({ collections: [], endpoints: [] })
     const slugs = result.collections.map((c: any) => c.slug)
     expect(slugs).not.toContain(TOKEN_USAGE_SLUG)
@@ -120,6 +124,7 @@ describe('chatAgentPlugin token budget', () => {
   it('registers the usage endpoint when tokenBudget is configured', () => {
     const plugin = chatAgentPlugin({
       apiKey: 'test',
+      defaultModel: 'claude-sonnet-4-20250514',
       tokenBudget: { limit: 100_000 },
     })
     const result = plugin({ collections: [], endpoints: [] })
@@ -128,7 +133,10 @@ describe('chatAgentPlugin token budget', () => {
   })
 
   it('does not register the usage endpoint without tokenBudget', () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test' })
+    const plugin = chatAgentPlugin({
+      apiKey: 'test',
+      defaultModel: 'claude-sonnet-4-20250514',
+    })
     const result = plugin({ collections: [], endpoints: [] })
     const paths = result.endpoints.map((ep: any) => `${ep.method}:${ep.path}`)
     expect(paths).not.toContain('get:/chat-agent/usage')
@@ -364,6 +372,7 @@ describe('chat endpoint budget enforcement', () => {
   it('returns 429 when budget is exhausted', async () => {
     const plugin = chatAgentPlugin({
       apiKey: 'test-key',
+      defaultModel: 'claude-sonnet-4-20250514',
       tokenBudget: { limit: 1000 },
     })
     const result = plugin({ collections: [], endpoints: [] })
@@ -390,6 +399,7 @@ describe('chat endpoint budget enforcement', () => {
   it('allows request when budget has remaining tokens', async () => {
     const plugin = chatAgentPlugin({
       apiKey: 'test-key',
+      defaultModel: 'claude-sonnet-4-20250514',
       tokenBudget: { limit: 100_000 },
     })
     const result = plugin({ collections: [], endpoints: [] })
@@ -417,7 +427,10 @@ describe('chat endpoint budget enforcement', () => {
   })
 
   it('skips budget check when tokenBudget is not configured', async () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test-key' })
+    const plugin = chatAgentPlugin({
+      apiKey: 'test-key',
+      defaultModel: 'claude-sonnet-4-20250514',
+    })
     const result = plugin({ collections: [], endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 

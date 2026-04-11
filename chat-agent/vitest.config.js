@@ -8,8 +8,10 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     server: {
       deps: {
-        // Force Vitest to transform these packages so it can handle .css imports
-        inline: [/@payloadcms\/ui/, /react-image-crop/],
+        // Force these through Vite's transform so CSS imports (e.g.
+        // react-image-crop/dist/ReactCrop.css pulled in via @payloadcms/ui)
+        // don't hit Node's ESM loader, which can't handle .css extensions.
+        inline: [/react-image-crop/, /@payloadcms/],
       },
     },
   },
