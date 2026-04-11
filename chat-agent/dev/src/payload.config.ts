@@ -131,11 +131,11 @@ export default buildConfig({
 
     if (existingPosts.docs.length === 0) {
       const posts = [
-        { title: 'Getting Started with Payload CMS', slug: 'getting-started', status: 'published' },
-        { title: 'Advanced Field Configuration', slug: 'advanced-fields', status: 'published' },
-        { title: 'Building Custom Endpoints', slug: 'custom-endpoints', status: 'draft' },
-        { title: 'Authentication & Access Control', slug: 'auth-access', status: 'published' },
-        { title: 'Plugin Development Guide', slug: 'plugin-dev', status: 'draft' },
+        { title: 'Getting Started with Payload CMS', slug: 'getting-started', status: 'published' as const },
+        { title: 'Advanced Field Configuration', slug: 'advanced-fields', status: 'published' as const },
+        { title: 'Building Custom Endpoints', slug: 'custom-endpoints', status: 'draft' as const },
+        { title: 'Authentication & Access Control', slug: 'auth-access', status: 'published' as const },
+        { title: 'Plugin Development Guide', slug: 'plugin-dev', status: 'draft' as const },
       ]
       for (const post of posts) {
         await payload.create({ collection: 'posts', data: post })
