@@ -12,7 +12,7 @@ function makeMessage(meta?: MessageMetadata): UIMessage<MessageMetadata> {
   return {
     id: Math.random().toString(),
     metadata: meta,
-    parts: [{ text: 'hi', type: 'text' as const }],
+    parts: [{ type: 'text' as const, text: 'hi' }],
     role: 'assistant',
   } as UIMessage<MessageMetadata>
 }

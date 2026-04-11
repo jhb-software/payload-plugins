@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { buildTools, discoverEndpoints } from './tools.js'
+import {
+  buildTools,
+  discoverEndpoints,
+  filterToolsByMode,
+  READ_TOOL_NAMES,
+  WRITE_TOOL_NAMES,
+} from './tools.js'
 
 describe('buildTools', () => {
   const mockUser = { id: 'user-1', email: 'admin@test.com' }
@@ -509,5 +515,134 @@ describe('callEndpoint tool', () => {
     const result = await tools.callEndpoint.execute({ method: 'post', path: '/api/fail' }, ctx)
 
     expect(result).toEqual(expect.objectContaining({ error: 'handler crashed' }))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tool classification constants
+// ---------------------------------------------------------------------------
+
+describe('tool classification constants', () => {
+  it('READ_TOOL_NAMES contains only read tools', () => {
+    expect([...READ_TOOL_NAMES]).toEqual(['find', 'findByID', 'count', 'findGlobal'])
+  })
+
+  it('WRITE_TOOL_NAMES contains only write tools', () => {
+    expect([...WRITE_TOOL_NAMES]).toEqual(['create', 'update', 'delete', 'updateGlobal'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// filterToolsByMode
+// ---------------------------------------------------------------------------
+
+describe('filterToolsByMode', () => {
+  const mockPayload = {
+    count: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+    find: vi.fn(),
+    findByID: vi.fn(),
+    findGlobal: vi.fn(),
+    update: vi.fn(),
+    updateGlobal: vi.fn(),
+  }
+  const mockUser = { id: 'u1' }
+
+  function getAllTools() {
+    return buildTools(mockPayload, mockUser)
+  }
+
+  describe('read mode', () => {
+    it('only includes read tools', () => {
+      const tools = getAllTools()
+      const filtered = filterToolsByMode(tools, 'read')
+      const names = Object.keys(filtered)
+      expect(names).toEqual(expect.arrayContaining(['find', 'findByID', 'count', 'findGlobal']))
+      expect(names).not.toContain('create')
+      expect(names).not.toContain('update')
+      expect(names).not.toContain('delete')
+      expect(names).not.toContain('updateGlobal')
+    })
+
+    it('excludes callEndpoint', () => {
+      const endpoints = [
+        {
+          description: 'Test',
+          handler: () => Response.json({}),
+          method: 'post',
+          path: '/api/test',
+        },
+      ]
+      const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
+      const filtered = filterToolsByMode(tools, 'read')
+      expect(Object.keys(filtered)).not.toContain('callEndpoint')
+    })
+
+    it('read tools have execute functions', () => {
+      const tools = getAllTools()
+      const filtered = filterToolsByMode(tools, 'read')
+      for (const tool of Object.values(filtered)) {
+        expect(tool).toHaveProperty('execute')
+      }
+    })
+  })
+
+  describe('ask mode', () => {
+    it('includes all tools', () => {
+      const tools = getAllTools()
+      const filtered = filterToolsByMode(tools, 'ask')
+      expect(Object.keys(filtered)).toHaveLength(8)
+    })
+
+    it('read tools are unchanged (no needsApproval, still have execute)', () => {
+      const tools = getAllTools()
+      const filtered = filterToolsByMode(tools, 'ask')
+      for (const name of READ_TOOL_NAMES) {
+        expect(filtered[name]).toHaveProperty('execute')
+        expect(filtered[name]).not.toHaveProperty('needsApproval')
+      }
+    })
+
+    it('write tools keep execute but gain needsApproval: true', () => {
+      const tools = getAllTools()
+      const filtered = filterToolsByMode(tools, 'ask')
+      for (const name of WRITE_TOOL_NAMES) {
+        expect(filtered[name]).toHaveProperty('execute')
+        expect((filtered[name] as { needsApproval?: boolean }).needsApproval).toBe(true)
+      }
+    })
+
+    it('marks callEndpoint with needsApproval: true', () => {
+      const endpoints = [
+        {
+          description: 'Test',
+          handler: () => Response.json({}),
+          method: 'post',
+          path: '/api/test',
+        },
+      ]
+      const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
+      const filtered = filterToolsByMode(tools, 'ask')
+      expect(filtered.callEndpoint).toBeDefined()
+      expect(filtered.callEndpoint).toHaveProperty('execute')
+      expect((filtered.callEndpoint as { needsApproval?: boolean }).needsApproval).toBe(true)
+    })
+  })
+
+  describe('read-write mode', () => {
+    it('returns all tools unchanged', () => {
+      const tools = getAllTools()
+      const filtered = filterToolsByMode(tools, 'read-write')
+      expect(filtered).toBe(tools)
+    })
+  })
+
+  describe('superuser mode', () => {
+    it('returns all tools unchanged', () => {
+      const tools = getAllTools()
+      const filtered = filterToolsByMode(tools, 'superuser')
+      expect(filtered).toBe(tools)
+    })
   })
 })
