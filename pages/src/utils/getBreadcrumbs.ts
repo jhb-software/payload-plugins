@@ -3,7 +3,7 @@ import type { CollectionSlug, PayloadRequest } from 'payload'
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
 
-import { fetchRestApi } from './fetchRestApi.js'
+import { fetchRestApi, type FetchRestApiConfig } from './fetchRestApi.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
@@ -16,6 +16,7 @@ export async function getBreadcrumbs({
   parentCollection,
   parentField,
   req,
+  restApiConfig,
 }: {
   breadcrumbLabelField: string
   data: Record<string, any>
@@ -25,6 +26,8 @@ export async function getBreadcrumbs({
   parentCollection: CollectionSlug
   parentField: string
   req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
+  /** Required when `req` is undefined so the plugin can respect a user-customized `routes.api`. */
+  restApiConfig?: FetchRestApiConfig
 }): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
   const getCurrentDocBreadcrumb = (locale: Locale | undefined, parentBreadcrumbs: Breadcrumb[]) =>
     docToBreadcrumb(
@@ -61,23 +64,32 @@ export async function getBreadcrumbs({
     throw new Error('Parent ID not found for document with id ' + data.id)
   }
 
-  const parent = req
-    ? await findByIDCached({
-        id: parentId,
-        collection: parentCollection,
-        locale,
-        req,
-      })
-    : await fetchRestApi<{ breadcrumbs: Breadcrumb[]; id: number | string }>(
-        `/${parentCollection}/${parentId}`,
-        {
-          depth: 0,
-          locale,
-          select: {
-            breadcrumbs: true,
-          },
-        },
+  let parent: null | Record<string, unknown> | undefined
+  if (req) {
+    parent = await findByIDCached({
+      id: parentId,
+      collection: parentCollection,
+      locale,
+      req,
+    })
+  } else {
+    if (!restApiConfig) {
+      throw new Error(
+        '[Pages Plugin] getBreadcrumbs requires `restApiConfig` when called without `req`.',
       )
+    }
+    parent = await fetchRestApi<{ breadcrumbs: Breadcrumb[]; id: number | string }>(
+      `/${parentCollection}/${parentId}`,
+      {
+        depth: 0,
+        locale,
+        select: {
+          breadcrumbs: true,
+        },
+      },
+      restApiConfig,
+    )
+  }
 
   if (!parent) {
     // This can be the case, when the parent document got deleted.
