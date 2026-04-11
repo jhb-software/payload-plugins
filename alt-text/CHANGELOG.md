@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- fix: respect a user-customized `routes.api` in the generate and bulk-generate buttons (the fetch previously hardcoded `/api/alt-text-plugin/...`)
+- refactor: use Payload's `formatAdminURL` helper when linking from the health widget to collection lists
+
 ## 0.4.4
 
 - style: standardize icons to use Geist icon set (16x16 filled)

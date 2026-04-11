@@ -1,6 +1,14 @@
 'use client'
 
-import { Button, toast, useDocumentInfo, useField, useLocale, useTranslation } from '@payloadcms/ui'
+import {
+  Button,
+  toast,
+  useConfig,
+  useDocumentInfo,
+  useField,
+  useLocale,
+  useTranslation,
+} from '@payloadcms/ui'
 import { useTransition } from 'react'
 
 import type {
@@ -16,6 +24,12 @@ export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTyp
   const { id, collectionSlug } = useDocumentInfo()
   const locale = useLocale()
   const [isPending, startTransition] = useTransition()
+  const {
+    config: {
+      routes: { api: apiRoute },
+      serverURL,
+    },
+  } = useConfig()
 
   const { setValue: setKeywords } = useField<string>({ path: 'keywords' })
   const { setValue: setAltText } = useField<string>({ path: 'alt' })
@@ -32,7 +46,7 @@ export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTyp
 
     startTransition(async () => {
       try {
-        const response = await fetch('/api/alt-text-plugin/generate', {
+        const response = await fetch(`${serverURL ?? ''}${apiRoute}/alt-text-plugin/generate`, {
           body: JSON.stringify({
             id: id as string,
             collection: collectionSlug,

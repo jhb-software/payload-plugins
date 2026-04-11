@@ -57,6 +57,9 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.2(@types/node@25.5.2)(vite@8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.27.2)(sass@1.77.4)(tsx@4.21.0))
 
   dev:
     dependencies:
@@ -102,10 +105,10 @@ importers:
         version: 17.4.1
       vite:
         specifier: ^8.0.5
-        version: 8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.27.2)(sass@1.77.4)(tsx@4.21.0)
+        version: 8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.25.12)(sass@1.77.4)(tsx@4.21.0)
       vitest:
         specifier: ^4.1.2
-        version: 4.1.2(@types/node@25.5.2)(vite@8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.27.2)(sass@1.77.4)(tsx@4.21.0))
+        version: 4.1.2(@types/node@25.5.2)(vite@8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.25.12)(sass@1.77.4)(tsx@4.21.0))
 
   dev_multi_tenant:
     dependencies:
@@ -151,10 +154,10 @@ importers:
         version: 17.4.1
       vite:
         specifier: ^8.0.5
-        version: 8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.25.12)(sass@1.77.4)(tsx@4.21.0)
+        version: 8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.27.2)(sass@1.77.4)(tsx@4.21.0)
       vitest:
         specifier: ^4.1.2
-        version: 4.1.2(@types/node@25.5.2)(vite@8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.25.12)(sass@1.77.4)(tsx@4.21.0))
+        version: 4.1.2(@types/node@25.5.2)(vite@8.0.5(@emnapi/core@1.9.0)(@emnapi/runtime@1.9.0)(@types/node@25.5.2)(esbuild@0.27.2)(sass@1.77.4)(tsx@4.21.0))
 
   dev_unlocalized:
     dependencies:
