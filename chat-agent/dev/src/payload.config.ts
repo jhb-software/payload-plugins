@@ -31,13 +31,15 @@ const resolveModel = (id: string) => {
     }
     return anthropic(id)
   }
-  if (id.startsWith('gpt-') || id.startsWith('o1-') || id.startsWith('o3-')) {
+  if (id.startsWith('gpt-')) {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY is not set — required to use OpenAI models in this dev app')
     }
     return openai(id)
   }
-  throw new Error(`Unknown model id "${id}". Add a routing rule in dev/src/payload.config.ts.`)
+  throw new Error(
+    `Unknown model id "${id}". Add the id to availableModels and a routing rule in dev/src/payload.config.ts.`,
+  )
 }
 
 export default buildConfig({

@@ -62,6 +62,21 @@ export function validateMessages(messages: unknown): null | string {
 }
 
 export function chatAgentPlugin(options: ChatAgentPluginOptions) {
+  // --- Validate options at construction time --------------------------------
+  // Fail fast on misconfiguration so the issue surfaces at Payload startup
+  // instead of as a confusing per-request error.
+  if (
+    options.availableModels &&
+    options.availableModels.length > 0 &&
+    !options.availableModels.some((m) => m.id === options.defaultModel)
+  ) {
+    const ids = options.availableModels.map((m) => m.id).join(', ')
+    throw new Error(
+      `chatAgentPlugin: defaultModel "${options.defaultModel}" is not in availableModels [${ids}]. ` +
+        `Either add it to availableModels or change defaultModel to one of the listed ids.`,
+    )
+  }
+
   return (config: any): any => {
     // Auto-register the admin chat view unless explicitly disabled
     const adminViews =

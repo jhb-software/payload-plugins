@@ -1,6 +1,21 @@
+import { streamText } from 'ai'
 import { describe, expect, it, vi } from 'vitest'
 
 import { chatAgentPlugin, validateMessages } from './index.js'
+
+// Mock the `ai` module so the chat handler doesn't actually try to talk to a
+// provider. We keep every other export real (`convertToModelMessages`,
+// `stepCountIs`, …) and only swap `streamText` for a vi.fn whose return value
+// satisfies the handler's `result.toUIMessageStreamResponse(...)` call.
+vi.mock('ai', async () => {
+  const actual = await vi.importActual<typeof import('ai')>('ai')
+  return {
+    ...actual,
+    streamText: vi.fn(() => ({
+      toUIMessageStreamResponse: () => new Response('ok'),
+    })),
+  }
+})
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -8,9 +23,10 @@ import { chatAgentPlugin, validateMessages } from './index.js'
 
 /**
  * Returns a fake model factory that records the model ids it was asked to
- * resolve and returns a sentinel object. The sentinel intentionally is not a
- * real LanguageModel — tests that go all the way to streamText will throw,
- * which means the factory was at least invoked.
+ * resolve and returns a sentinel `LanguageModel`-shaped object. We never let
+ * the sentinel reach a real provider — `streamText` is mocked above — so
+ * tests can assert on the factory's call log and on the exact instance the
+ * handler hands to `streamText`.
  */
 function makeModelFactory() {
   const calls: string[] = []
@@ -67,6 +83,34 @@ describe('validateMessages', () => {
 // ---------------------------------------------------------------------------
 
 describe('chatAgentPlugin', () => {
+  it('throws at construction when defaultModel is not in availableModels', () => {
+    // A typo or copy-paste mistake here would otherwise produce confusing
+    // runtime behavior: the dropdown would list one set of models while
+    // unsupplied requests silently fall back to a model the UI never offers.
+    // Fail fast at config load time instead.
+    expect(() =>
+      chatAgentPlugin({
+        availableModels: [
+          { id: 'gpt-4o', label: 'GPT-4o' },
+          { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
+        ],
+        defaultModel: 'gpt-5-typo',
+        model: makeModelFactory().factory,
+      }),
+    ).toThrow(/defaultModel.*"gpt-5-typo".*availableModels/)
+  })
+
+  it('does not enforce defaultModel membership when availableModels is omitted', () => {
+    // Without an availableModels list there's no UI selector and no
+    // user-facing inconsistency to guard against — any id is allowed.
+    expect(() =>
+      chatAgentPlugin({
+        defaultModel: 'whatever-id',
+        model: makeModelFactory().factory,
+      }),
+    ).not.toThrow()
+  })
+
   it('adds /chat-agent/chat endpoint to config', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
@@ -103,11 +147,11 @@ describe('chatAgentPlugin', () => {
   })
 
   it('returns 500 when no model factory is configured', async () => {
-    // Cast through unknown to bypass the type checker — we're verifying runtime
-    // behavior when a JS consumer omits the required option.
+    // Verify runtime behavior when a JS consumer omits the required option.
+    // @ts-expect-error - intentionally missing required `model` to test runtime guard
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
-    } as unknown as Parameters<typeof chatAgentPlugin>[0])
+    })
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -138,9 +182,10 @@ describe('chatAgentPlugin', () => {
     const original = process.env.ANTHROPIC_API_KEY
     process.env.ANTHROPIC_API_KEY = 'sk-should-be-ignored'
     try {
+      // @ts-expect-error - intentionally missing required `model` to test runtime guard
       const plugin = chatAgentPlugin({
         defaultModel: 'claude-sonnet-4-20250514',
-      } as unknown as Parameters<typeof chatAgentPlugin>[0])
+      })
       const result = plugin({ endpoints: [] })
       const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
 
@@ -426,6 +471,36 @@ describe('chatAgentPlugin model factory', () => {
     const body = await response.json()
     expect(body.error).toContain('Failed to resolve model "gpt-4o-mini"')
     expect(body.error).toContain('OPENAI_API_KEY is not set')
+  })
+
+  it('passes the LanguageModel returned by the factory directly to streamText', async () => {
+    // The factory's *return value* must be the model instance streamText
+    // sees. A refactor that called the factory but forgot to wire the result
+    // through would silently break — this test locks the contract.
+    vi.mocked(streamText).mockClear()
+
+    const sentinel = { id: 'gpt-4o', __fake: true, sentinel: Symbol('marker') } as any
+    const factory = vi.fn(() => sentinel)
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(vi.mocked(streamText)).toHaveBeenCalledTimes(1)
+    const callArgs = vi.mocked(streamText).mock.calls[0][0] as any
+    expect(callArgs.model).toBe(sentinel)
   })
 
   it('supports routing to different providers based on the model id', async () => {
