@@ -9,12 +9,12 @@ import type { MessageMetadata } from '../types.js'
 import { MessageBubble } from './MessageBubble.js'
 
 function makeMessage(
-  overrides: Partial<UIMessage<MessageMetadata>> & { text?: string },
+  overrides: { text?: string } & Partial<UIMessage<MessageMetadata>>,
 ): UIMessage<MessageMetadata> {
   const { text = 'Hello', ...rest } = overrides
   return {
     id: '1',
-    parts: [{ text, type: 'text' as const }],
+    parts: [{ type: 'text' as const, text }],
     role: 'user',
     ...rest,
   } as UIMessage<MessageMetadata>
@@ -85,14 +85,14 @@ describe('MessageBubble', () => {
     const message = {
       id: '1',
       parts: [
-        { text: 'Let me look that up.', type: 'text' },
+        { type: 'text', text: 'Let me look that up.' },
         {
+          type: 'dynamic-tool',
           input: { collection: 'posts' },
           output: { docs: [{ id: '1', title: 'Hello World' }] },
           state: 'output-available',
           toolCallId: 'tc1',
           toolName: 'find',
-          type: 'dynamic-tool',
         },
       ],
       role: 'assistant',
@@ -113,7 +113,7 @@ describe('MessageBubble', () => {
     expect(screen.queryByText(/Hello World/)).toBeNull()
   })
 
-  it('copies tool output JSON to clipboard when copy button is clicked', async () => {
+  it('copies tool output JSON to clipboard when copy button is clicked', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
 
@@ -121,14 +121,14 @@ describe('MessageBubble', () => {
     const message = {
       id: '1',
       parts: [
-        { text: 'Result:', type: 'text' },
+        { type: 'text', text: 'Result:' },
         {
+          type: 'dynamic-tool',
           input: { collection: 'posts' },
           output,
           state: 'output-available',
           toolCallId: 'tc1',
           toolName: 'find',
-          type: 'dynamic-tool',
         },
       ],
       role: 'assistant',
@@ -151,11 +151,11 @@ describe('MessageBubble', () => {
       id: '1',
       parts: [
         {
+          type: 'dynamic-tool',
           input: { collection: 'posts' },
           state: 'input-available',
           toolCallId: 'tc1',
           toolName: 'find',
-          type: 'dynamic-tool',
         },
       ],
       role: 'assistant',

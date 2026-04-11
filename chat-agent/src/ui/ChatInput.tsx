@@ -37,10 +37,10 @@ export function ChatInput({
       }}
     >
       <input
-        ref={inputRef}
         disabled={isLoading}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Type a message&#x2026;"
+        ref={inputRef}
         style={{
           background: 'var(--theme-input-bg, var(--theme-bg))',
           border: '1px solid var(--theme-elevation-150)',

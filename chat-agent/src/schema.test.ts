@@ -212,3 +212,40 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('### bare')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Mode-aware system prompt
+// ---------------------------------------------------------------------------
+
+describe('buildSystemPrompt with modes', () => {
+  const minConfig = { collections: [], globals: [] }
+
+  it('includes read-only instructions in read mode', () => {
+    const prompt = buildSystemPrompt(minConfig, undefined, undefined, 'read')
+    expect(prompt).toContain('read-only mode')
+    expect(prompt).toContain('only read content')
+    expect(prompt).not.toContain('confirm with the user before creating')
+  })
+
+  it('includes ask mode instructions in ask mode', () => {
+    const prompt = buildSystemPrompt(minConfig, undefined, undefined, 'ask')
+    expect(prompt).toContain('ask mode')
+    expect(prompt).toContain('confirmation')
+  })
+
+  it('includes superuser instructions in superuser mode', () => {
+    const prompt = buildSystemPrompt(minConfig, undefined, undefined, 'superuser')
+    expect(prompt).toContain('superuser mode')
+    expect(prompt).toContain('bypassing normal user permissions')
+  })
+
+  it('includes standard rules in read-write mode', () => {
+    const prompt = buildSystemPrompt(minConfig, undefined, undefined, 'read-write')
+    expect(prompt).toContain('confirm with the user before creating')
+  })
+
+  it('includes standard rules when no mode specified', () => {
+    const prompt = buildSystemPrompt(minConfig)
+    expect(prompt).toContain('confirm with the user before creating')
+  })
+})

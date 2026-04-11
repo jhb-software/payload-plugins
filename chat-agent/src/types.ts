@@ -16,6 +16,26 @@ export interface ModelOption {
 }
 
 // ---------------------------------------------------------------------------
+// Agent modes
+// ---------------------------------------------------------------------------
+
+export const AGENT_MODES = ['read', 'ask', 'read-write', 'superuser'] as const
+export type AgentMode = (typeof AGENT_MODES)[number]
+
+export interface ModesConfig {
+  /**
+   * Per-mode access functions that determine availability per user.
+   * - If a mode has no access function, it is available to all authenticated users.
+   * - If an access function returns false, the mode is hidden from that user.
+   * - `read` should never be restricted (always available regardless).
+   * - `superuser` requires an explicit access function to be enabled.
+   */
+  access?: Partial<Record<AgentMode, (args: { req: any }) => boolean | Promise<boolean>>>
+  /** The mode the agent starts in. Default: `'ask'` */
+  default?: AgentMode
+}
+
+// ---------------------------------------------------------------------------
 // Plugin options
 // ---------------------------------------------------------------------------
 
@@ -45,14 +65,10 @@ export interface ChatAgentPluginOptions {
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
   /**
-   * Controls who can use superuser mode (overrideAccess: true).
-   * - Omit or `false` to disable superuser mode entirely (default).
-   * - `true` to allow any authenticated user.
-   * - A function receiving the request, returning true to allow.
-   *
-   * Example: `(req) => req.user?.role === 'admin'`
+   * Agent modes configuration. Controls which operations the agent can
+   * attempt and which users can use which access levels.
    */
-  superuserAccess?: ((req: any) => boolean | Promise<boolean>) | boolean
+  modes?: ModesConfig
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
 }

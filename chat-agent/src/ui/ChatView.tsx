@@ -5,11 +5,12 @@ import type { UIMessage } from 'ai'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { MessageMetadata, ModelOption } from '../types.js'
+import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
 
 import { ChatInput } from './ChatInput.js'
 import { MessageList } from './MessageList.js'
 import { ModelSelector } from './ModelSelector.js'
+import { ModeSelector } from './ModeSelector.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
 import { TokenBadge } from './TokenBadge.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
@@ -34,7 +35,9 @@ function setConversationParam(id: string | undefined) {
 // ---------------------------------------------------------------------------
 
 export interface ChatViewProps {
+  availableModes?: AgentMode[]
   conversationId?: string
+  defaultMode?: AgentMode
   initialConversations?: ConversationSummary[]
   initialMessages?: unknown[]
 }
@@ -44,12 +47,16 @@ export interface ChatViewProps {
 // ---------------------------------------------------------------------------
 
 export default function ChatView({
+  availableModes = ['ask'],
   conversationId,
+  defaultMode = 'ask',
   initialConversations,
   initialMessages: serverMessages,
 }: ChatViewProps) {
   const endpointUrl = '/api/chat-agent/chat'
   const [chatId, setChatId] = useState(conversationId)
+  const [mode, setMode] = useState<AgentMode>(defaultMode)
+  const [modes, setModes] = useState<AgentMode[]>(availableModes)
   const [initialMessages, setInitialMessages] = useState<UIMessage<MessageMetadata>[] | undefined>(
     serverMessages as UIMessage<MessageMetadata>[] | undefined,
   )
@@ -71,6 +78,28 @@ export default function ChatView({
       })
   }, [endpointUrl])
 
+  // Fetch available modes on mount
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/chat-agent/modes', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) {
+          return
+        }
+        if (data.modes) {
+          setModes(data.modes)
+        }
+        if (data.default) {
+          setMode(data.default)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const setActiveChatId = useCallback((id: string | undefined) => {
     setChatId(id)
     setConversationParam(id)
@@ -78,10 +107,11 @@ export default function ChatView({
 
   const { conversations, refresh, remove } = useConversations(endpointUrl, initialConversations)
 
-  const { error, messages, sendMessage, setMessages, status } = useChat({
+  const { addToolApprovalResponse, error, messages, sendMessage, setMessages, status } = useChat({
     chatId,
     endpointUrl,
     initialMessages,
+    mode,
     model: selectedModel,
     onSave: (id) => {
       if (!chatId) {
@@ -161,6 +191,26 @@ export default function ChatView({
     [sendMessage],
   )
 
+  // --- Ask mode: tool approval handlers ------------------------------------
+
+  const handleToolApprove = useCallback(
+    (approvalId: string) => {
+      void (addToolApprovalResponse as any)({ id: approvalId, approved: true })
+    },
+    [addToolApprovalResponse],
+  )
+
+  const handleToolDeny = useCallback(
+    (approvalId: string) => {
+      void (addToolApprovalResponse as any)({
+        id: approvalId,
+        approved: false,
+        reason: 'User denied this action.',
+      })
+    },
+    [addToolApprovalResponse],
+  )
+
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 140px)' }}>
       <Sidebar
@@ -190,6 +240,12 @@ export default function ChatView({
           }}
         >
           <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>Content Assistant</h2>
+          <ModeSelector
+            availableModes={modes}
+            disabled={isLoading}
+            mode={mode}
+            onModeChange={setMode}
+          />
           <div style={{ flex: 1 }} />
           {availableModels.length > 1 && (
             <ModelSelector
@@ -201,7 +257,10 @@ export default function ChatView({
           <TokenBadge messages={messages as UIMessage<MessageMetadata>[]} />
         </div>
         <MessageList
+          isLoading={isLoading}
           messages={messages as UIMessage<MessageMetadata>[]}
+          onToolApprove={handleToolApprove}
+          onToolDeny={handleToolDeny}
           scrollRef={messagesEndRef}
         />
         {error ? (
