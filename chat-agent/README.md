@@ -43,16 +43,17 @@ The plugin will register a chat view at `/admin/chat` and a streaming chat endpo
 
 ### Plugin Options
 
-| Option            | Type                           | Required | Description                                                                     |
-| ----------------- | ------------------------------ | -------- | ------------------------------------------------------------------------------- |
-| `defaultModel`    | `string`                       | Yes      | Claude model ID used when no per-request override is provided                   |
-| `availableModels` | `ModelOption[]`                | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries) |
-| `apiKey`          | `string`                       | No       | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var                    |
-| `systemPrompt`    | `string`                       | No       | Custom text prepended to the auto-generated system prompt                       |
-| `access`          | `(req) => boolean`             | No       | Override the default auth check (default: requires authenticated user)          |
-| `maxSteps`        | `number`                       | No       | Maximum tool-use loop steps per request (default: 20)                           |
-| `superuserAccess` | `boolean \| (req) => boolean`  | No       | Controls who can use superuser mode (`overrideAccess: true`)                    |
-| `adminView`       | `false \| { path, Component }` | No       | Customize or disable the admin chat view                                        |
+| Option            | Type                          | Required | Description                                                                     |
+| ----------------- | ----------------------------- | -------- | ------------------------------------------------------------------------------- |
+| `defaultModel`    | `string`                      | Yes      | Claude model ID used when no per-request override is provided                   |
+| `availableModels` | `ModelOption[]`               | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries) |
+| `apiKey`          | `string`                      | No       | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var                    |
+| `systemPrompt`    | `string`                      | No       | Custom text prepended to the auto-generated system prompt                       |
+| `access`          | `(req) => boolean`            | No       | Override the default auth check (default: requires authenticated user)          |
+| `maxSteps`        | `number`                      | No       | Maximum tool-use loop steps per request (default: 20)                           |
+| `superuserAccess` | `boolean \| (req) => boolean` | No       | Controls who can use superuser mode (`overrideAccess: true`)                    |
+| `adminView`       | `{ path, Component }`         | No       | Customize the admin chat view route or component                                |
+| `navLink`         | `boolean`                     | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)        |
 
 ### Model Selection
 

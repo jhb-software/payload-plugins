@@ -23,19 +23,15 @@ export interface ChatAgentPluginOptions {
   /** Override the default auth check (must return true to allow). */
   access?: (req: any) => boolean | Promise<boolean>
   /**
-   * Admin panel chat view configuration.
-   * - Omit or `{}` to auto-register at `/admin/chat` (default).
-   * - `false` to disable the admin view entirely.
-   * - `{ path, Component }` to customize the route or component.
+   * Admin panel chat view configuration. The chat view is always registered;
+   * use these fields to customize the route path or replace the component.
    */
-  adminView?:
-    | {
-        /** Custom component path for Payload's importMap. */
-        Component?: string
-        /** Admin route path. Default: "/chat" */
-        path?: `/${string}`
-      }
-    | false
+  adminView?: {
+    /** Custom component path for Payload's importMap. */
+    Component?: string
+    /** Admin route path. Default: "/chat" */
+    path?: `/${string}`
+  }
   /** Anthropic API key. Falls back to ANTHROPIC_API_KEY env var. */
   apiKey?: string
   /** Models the user can choose from in the chat UI. When provided with 2+ entries, a selector dropdown is shown. */
@@ -44,6 +40,11 @@ export interface ChatAgentPluginOptions {
   defaultModel: string
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
+  /**
+   * Show a "Chat" link at the top of the admin nav sidebar.
+   * Set to `false` to hide it. Default: `true`.
+   */
+  navLink?: boolean
   /**
    * Controls who can use superuser mode (overrideAccess: true).
    * - Omit or `false` to disable superuser mode entirely (default).

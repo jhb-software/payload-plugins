@@ -61,31 +61,28 @@ export function validateMessages(messages: unknown): null | string {
 
 export function chatAgentPlugin(options: ChatAgentPluginOptions) {
   return (config: any): any => {
-    // Auto-register the admin chat view unless explicitly disabled
-    const adminViews =
-      options.adminView === false
-        ? config.admin?.components?.views
-        : {
-            ...config.admin?.components?.views,
-            chat: {
-              Component: options.adminView?.Component ?? CHAT_VIEW_COMPONENT,
-              path: options.adminView?.path ?? '/chat',
-            },
-          }
+    // Always register the admin chat view. `adminView` customizes route/component.
+    const chatPath = options.adminView?.path ?? '/chat'
+    const adminViews = {
+      ...config.admin?.components?.views,
+      chat: {
+        Component: options.adminView?.Component ?? CHAT_VIEW_COMPONENT,
+        path: chatPath,
+      },
+    }
 
-    // Inject a "Chat" link at the top of the admin nav sidebar unless the
-    // admin view is disabled. The link navigates to the configured chat path.
-    const chatPath = options.adminView === false ? undefined : (options.adminView?.path ?? '/chat')
-    const beforeNavLinks =
-      options.adminView === false
-        ? config.admin?.components?.beforeNavLinks
-        : [
-            ...(config.admin?.components?.beforeNavLinks ?? []),
-            {
-              clientProps: { path: chatPath },
-              path: CHAT_NAV_LINK_COMPONENT,
-            },
-          ]
+    // Inject a "Chat" link at the top of the admin nav sidebar by default.
+    // Opt out with `navLink: false`.
+    const showNavLink = options.navLink !== false
+    const beforeNavLinks = showNavLink
+      ? [
+          ...(config.admin?.components?.beforeNavLinks ?? []),
+          {
+            clientProps: { path: chatPath },
+            path: CHAT_NAV_LINK_COMPONENT,
+          },
+        ]
+      : config.admin?.components?.beforeNavLinks
 
     return {
       ...config,

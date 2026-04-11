@@ -172,16 +172,6 @@ describe('chatAgentPlugin admin view', () => {
     expect(result.admin.components.views.chat).toBeDefined()
   })
 
-  it('disables admin view when adminView is false', () => {
-    const plugin = chatAgentPlugin({
-      adminView: false,
-      defaultModel: 'claude-sonnet-4-20250514',
-    })
-    const result = plugin({ endpoints: [] })
-
-    expect(result.admin?.components?.views?.chat).toBeUndefined()
-  })
-
   it('uses custom path when provided', () => {
     const plugin = chatAgentPlugin({
       adminView: { path: '/assistant' },
@@ -244,10 +234,10 @@ describe('chatAgentPlugin nav link', () => {
     expect(navLink.clientProps?.path).toBe('/chat')
   })
 
-  it('does NOT inject the nav link when adminView is false', () => {
+  it('does NOT inject the nav link when navLink is false', () => {
     const plugin = chatAgentPlugin({
-      adminView: false,
       defaultModel: 'claude-sonnet-4-20250514',
+      navLink: false,
     })
     const result = plugin({ endpoints: [] })
 
@@ -256,6 +246,30 @@ describe('chatAgentPlugin nav link', () => {
       typeof c === 'string' ? c.includes('ChatNavLink') : c?.path?.includes('ChatNavLink'),
     )
     expect(navLink).toBeUndefined()
+  })
+
+  it('still registers the admin chat view when navLink is false', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      navLink: false,
+    })
+    const result = plugin({ endpoints: [] })
+
+    expect(result.admin?.components?.views?.chat).toBeDefined()
+    expect(result.admin.components.views.chat.path).toBe('/chat')
+  })
+
+  it('injects the nav link when navLink is explicitly true', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      navLink: true,
+    })
+    const result = plugin({ endpoints: [] })
+
+    const navLink = result.admin.components.beforeNavLinks.find(
+      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+    )
+    expect(navLink).toBeDefined()
   })
 
   it('preserves existing beforeNavLinks entries', () => {
