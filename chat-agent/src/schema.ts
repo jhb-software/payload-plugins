@@ -146,6 +146,8 @@ export function buildSystemPrompt(
     sections.push(customPrefix)
   }
 
+  const adminRoute = payloadConfig.routes?.admin ?? '/admin'
+
   sections.push(
     'You are a CMS content assistant with access to the Payload CMS database.',
     ...(mode === 'read'
@@ -184,6 +186,9 @@ export function buildSystemPrompt(
     '- Keep `depth` at 0 (the default) unless you specifically need populated relationship data. Depth 0 returns relationship IDs only.',
     '- Use `limit` to fetch only as many documents as needed.',
     '- For listing/browsing, select only summary fields (e.g. id, title, slug, status) first, then fetch full details with findByID only when needed.',
+    '',
+    '## Admin Panel Links',
+    `When referencing a document (after create/update/find), render it as a markdown link to its admin page so the user can open it. Use the title as the label, ID as fallback. Patterns (relative URLs): \`${adminRoute}/collections/<slug>/<id>\`, \`${adminRoute}/collections/<slug>\`, \`${adminRoute}/globals/<slug>\`.`,
   )
 
   // Collections

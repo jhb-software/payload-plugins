@@ -6,7 +6,9 @@
  *
  * Usage in payload.config.ts:
  *   import { chatAgentPlugin } from '@jhb.software/payload-chat-agent'
- *   export default buildConfig({ plugins: [chatAgentPlugin({ apiKey: '...' })] })
+ *   export default buildConfig({
+ *     plugins: [chatAgentPlugin({ apiKey: '...', defaultModel: 'claude-sonnet-4-20250514' })],
+ *   })
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic'
@@ -24,12 +26,10 @@ import {
 import { buildSystemPrompt } from './schema.js'
 import { buildTools, discoverEndpoints, filterToolsByMode, WRITE_TOOL_NAMES } from './tools.js'
 
-export type { ChatAgentPluginOptions } from './types.js'
+export type { ChatAgentPluginOptions, ModelOption } from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
-
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
 
 /**
  * The package-relative path to the ChatView component.
@@ -62,19 +62,19 @@ export function validateMessages(messages: unknown): null | string {
 
 const writeToolSet: ReadonlySet<string> = new Set(['callEndpoint', ...WRITE_TOOL_NAMES])
 
-export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
+export function chatAgentPlugin(options: ChatAgentPluginOptions) {
   const modesConfig = resolveModeConfig(options)
 
   return (config: any): any => {
     // Auto-register the admin chat view unless explicitly disabled
     const adminViews =
-      options?.adminView === false
+      options.adminView === false
         ? config.admin?.components?.views
         : {
             ...config.admin?.components?.views,
             chat: {
-              Component: options?.adminView?.Component ?? CHAT_VIEW_COMPONENT,
-              path: options?.adminView?.path ?? '/chat',
+              Component: options.adminView?.Component ?? CHAT_VIEW_COMPONENT,
+              path: options.adminView?.path ?? '/chat',
             },
           }
 
@@ -95,7 +95,7 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
         // --- GET /chat-agent/modes ------------------------------------------
         {
           handler: async (req: any) => {
-            const allowed = options?.access ? await options.access(req) : !!req.user
+            const allowed = options.access ? await options.access(req) : !!req.user
             if (!allowed) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
@@ -114,7 +114,7 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
         // Used by the client in `ask` mode to execute a confirmed write tool.
         {
           handler: async (req: any) => {
-            const allowed = options?.access ? await options.access(req) : !!req.user
+            const allowed = options.access ? await options.access(req) : !!req.user
             if (!allowed) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
@@ -163,17 +163,29 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
           path: '/chat-agent/execute-tool',
         },
 
+        // --- GET /chat-agent/chat/models ------------------------------------
+        {
+          handler: () => {
+            return Response.json({
+              availableModels: options.availableModels ?? [],
+              defaultModel: options.defaultModel,
+            })
+          },
+          method: 'get',
+          path: '/chat-agent/chat/models',
+        },
+
         // --- POST /chat-agent/chat ------------------------------------------
         {
           handler: async (req: any) => {
             // --- Auth check -----------------------------------------------
-            const allowed = options?.access ? await options.access(req) : !!req.user
+            const allowed = options.access ? await options.access(req) : !!req.user
             if (!allowed) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
 
             // --- Resolve API key ------------------------------------------
-            const apiKey = options?.apiKey ?? process.env.ANTHROPIC_API_KEY
+            const apiKey = options.apiKey ?? process.env.ANTHROPIC_API_KEY
             if (!apiKey) {
               return Response.json(
                 {
@@ -197,6 +209,22 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
               return Response.json({ error: validationError }, { status: 400 })
             }
 
+            // --- Validate model against available list ---------------------
+            const availableModels = options.availableModels
+            if (
+              body.model &&
+              availableModels &&
+              availableModels.length > 0 &&
+              !availableModels.some((m) => m.id === body.model)
+            ) {
+              return Response.json(
+                {
+                  error: `Model "${body.model}" is not available. Available models: ${availableModels.map((m) => m.id).join(', ')}`,
+                },
+                { status: 400 },
+              )
+            }
+
             // --- Resolve mode ----------------------------------------------
             const requestedMode = body.mode ?? getDefaultMode(modesConfig)
             const modeError = await validateModeAccess(requestedMode, modesConfig, req)
@@ -214,12 +242,12 @@ export function chatAgentPlugin(options?: ChatAgentPluginOptions) {
             const tools = filterToolsByMode(allTools, mode)
             const systemPrompt = buildSystemPrompt(
               req.payload.config,
-              options?.systemPrompt,
+              options.systemPrompt,
               customEndpoints,
               mode,
             )
-            const modelId = body.model ?? options?.model ?? DEFAULT_MODEL
-            const maxSteps = options?.maxSteps ?? 20
+            const modelId = body.model ?? options.defaultModel
+            const maxSteps = options.maxSteps ?? 20
 
             // --- Stream response via AI SDK --------------------------------
             const result = streamText({

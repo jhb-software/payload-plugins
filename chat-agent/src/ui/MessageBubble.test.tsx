@@ -38,6 +38,39 @@ describe('MessageBubble', () => {
     expect(screen.getByText(/1\.5k/)).toBeDefined()
   })
 
+  it('renders assistant markdown as HTML', () => {
+    const message = makeMessage({
+      role: 'assistant',
+      text: 'Hello **world**',
+    })
+    const { container } = render(<MessageBubble message={message} />)
+    const strong = container.querySelector('strong')
+    expect(strong).not.toBeNull()
+    expect(strong!.textContent).toBe('world')
+  })
+
+  it('opens markdown links in a new tab to preserve the chat view', () => {
+    const message = makeMessage({
+      role: 'assistant',
+      text: 'See [the post](/admin/collections/posts/123).',
+    })
+    const { container } = render(<MessageBubble message={message} />)
+    const link = container.querySelector('a')
+    expect(link).not.toBeNull()
+    expect(link!.getAttribute('target')).toBe('_blank')
+    expect(link!.getAttribute('rel')).toContain('noopener')
+  })
+
+  it('renders user messages as plain text without markdown', () => {
+    const message = makeMessage({
+      role: 'user',
+      text: 'Hello **world**',
+    })
+    const { container } = render(<MessageBubble message={message} />)
+    expect(container.querySelector('strong')).toBeNull()
+    expect(screen.getByText('Hello **world**')).toBeDefined()
+  })
+
   it('renders ellipsis when message has no text parts', () => {
     const message = {
       id: '1',

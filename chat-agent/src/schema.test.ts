@@ -180,6 +180,26 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('"buttonText"')
   })
 
+  it('includes admin panel URL patterns so the agent can link documents', () => {
+    const prompt = buildSystemPrompt({
+      collections: [{ slug: 'posts', fields: [] }],
+      globals: [{ slug: 'settings', fields: [] }],
+    })
+    expect(prompt).toContain('Admin Panel')
+    expect(prompt).toContain('/admin/collections/')
+    expect(prompt).toContain('/admin/globals/')
+  })
+
+  it('uses the custom admin route prefix from config.routes.admin', () => {
+    const prompt = buildSystemPrompt({
+      collections: [{ slug: 'posts', fields: [] }],
+      globals: [],
+      routes: { admin: '/cms' },
+    })
+    expect(prompt).toContain('/cms/collections/')
+    expect(prompt).not.toContain('/admin/collections/')
+  })
+
   it('handles missing fields gracefully', () => {
     const config = {
       collections: [{ slug: 'empty' }],

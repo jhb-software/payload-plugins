@@ -5,6 +5,17 @@
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
+// Model configuration
+// ---------------------------------------------------------------------------
+
+export interface ModelOption {
+  /** Model identifier passed to the Anthropic API. */
+  id: string
+  /** Human-readable label shown in the model selector UI. */
+  label: string
+}
+
+// ---------------------------------------------------------------------------
 // Agent modes
 // ---------------------------------------------------------------------------
 
@@ -39,7 +50,7 @@ export interface ChatAgentPluginOptions {
    */
   adminView?:
     | {
-        /** Custom component path for Payload's importMap system. */
+        /** Custom component path for Payload's importMap. */
         Component?: string
         /** Admin route path. Default: "/chat" */
         path?: `/${string}`
@@ -47,10 +58,12 @@ export interface ChatAgentPluginOptions {
     | false
   /** Anthropic API key. Falls back to ANTHROPIC_API_KEY env var. */
   apiKey?: string
+  /** Models the user can choose from in the chat UI. When provided with 2+ entries, a selector dropdown is shown. */
+  availableModels?: ModelOption[]
+  /** Claude model ID used when no per-request override is provided. */
+  defaultModel: string
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
-  /** Claude model ID. Default: "claude-sonnet-4-20250514" */
-  model?: string
   /**
    * Agent modes configuration. Controls which operations the agent can
    * attempt and which users can use which access levels.

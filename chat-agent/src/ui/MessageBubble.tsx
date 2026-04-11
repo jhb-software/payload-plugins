@@ -10,6 +10,7 @@ import type { AgentMode, MessageMetadata } from '../types.js'
 import { formatTokens } from './format-tokens.js'
 import { CheckIcon } from './icons/CheckIcon.js'
 import { ClipboardIcon } from './icons/ClipboardIcon.js'
+import { MarkdownContent } from './MarkdownContent.js'
 import { ToolConfirmation } from './ToolConfirmation.js'
 
 const WRITE_TOOLS = new Set(['callEndpoint', 'create', 'delete', 'update', 'updateGlobal'])
@@ -162,17 +163,27 @@ export function MessageBubble({
             fontSize: '14px',
             lineHeight: '1.5',
             padding: '10px 14px',
-            whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
+            ...(isUser ? { whiteSpace: 'pre-wrap' as const } : {}),
             ...(isUser
               ? { background: 'var(--theme-elevation-900)', color: 'var(--theme-bg)' }
               : { background: 'var(--theme-elevation-50)', color: 'var(--theme-text)' }),
           }}
         >
-          {message.parts
-            .filter((p) => p.type === 'text')
-            .map((p) => (p as { text: string; type: 'text' }).text)
-            .join('') || '\u2026'}
+          {(() => {
+            const text = message.parts
+              .filter((p) => p.type === 'text')
+              .map((p) => (p as { text: string; type: 'text' }).text)
+              .join('')
+
+            if (!text) {
+              return '\u2026'
+            }
+            if (isUser) {
+              return text
+            }
+            return <MarkdownContent>{text}</MarkdownContent>
+          })()}
         </div>
         {message.parts
           .filter((p) => isToolUIPart(p))

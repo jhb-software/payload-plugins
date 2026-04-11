@@ -126,7 +126,7 @@ export default buildConfig({
   },
   plugins: [
     chatAgentPlugin({
-      model: 'claude-haiku-4-5-20251001',
+      defaultModel: 'claude-haiku-4-5-20251001',
       superuserAccess: true,
     }),
   ],
