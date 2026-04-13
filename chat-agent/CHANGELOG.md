@@ -16,3 +16,4 @@
 - Open markdown links in a new tab so clicking through to the admin panel preserves the current chat conversation
 - Add a "Chat" link at the top of the admin nav sidebar (via `beforeNavLinks`) that navigates to the chat view; respects the configured `adminView.path` and can be hidden with the new `navLink: false` option
 - Remove support for `adminView: false`; the admin chat view is now always registered (use `navLink: false` to hide the sidebar button instead)
+- Nav link is now a server component (`ChatNavLinkServer`) that checks the plugin's `access` function before rendering; users without access do not see the link

@@ -409,6 +409,33 @@ describe('chatAgentPlugin nav link', () => {
     expect(navLink).toBeDefined()
   })
 
+  it('uses a server component for the nav link', () => {
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+    const result = plugin({ endpoints: [] })
+
+    const navLink = result.admin.components.beforeNavLinks.find(
+      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+    )
+    expect(navLink.path).toContain('ChatNavLinkServer')
+    expect(navLink.path).not.toContain('/client')
+  })
+
+  it('stores the access function in config.custom.chatAgent', () => {
+    const access = () => true
+    const plugin = chatAgentPlugin({ access, defaultModel: 'claude-sonnet-4-20250514' })
+    const result = plugin({ endpoints: [] })
+
+    expect(result.custom?.chatAgent?.access).toBe(access)
+  })
+
+  it('stores chatAgent config even without a custom access function', () => {
+    const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
+    const result = plugin({ endpoints: [] })
+
+    expect(result.custom?.chatAgent).toBeDefined()
+    expect(result.custom.chatAgent.access).toBeUndefined()
+  })
+
   it('preserves existing beforeNavLinks entries', () => {
     const plugin = chatAgentPlugin({ defaultModel: 'claude-sonnet-4-20250514' })
     const existing = '@my-org/existing#SomeNavLink'

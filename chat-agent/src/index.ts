@@ -29,6 +29,7 @@ import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 export type { ChatAgentPluginOptions, ModelOption } from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
+export { default as ChatNavLinkServer } from './ui/ChatNavLinkServer.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
 
 /**
@@ -38,10 +39,11 @@ export { default as ChatViewServer } from './ui/ChatViewServer.js'
 const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent#ChatViewServer'
 
 /**
- * The package-relative path to the ChatNavLink component shown at the top
- * of the admin nav sidebar. Used by Payload's importMap system.
+ * The package-relative path to the ChatNavLinkServer component shown at the
+ * top of the admin nav sidebar. This is a server component that checks access
+ * before rendering the client ChatNavLink.
  */
-const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent/client#ChatNavLink'
+const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent#ChatNavLinkServer'
 
 /**
  * Validate that a messages array is non-empty and has valid roles.
@@ -104,6 +106,12 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         },
       },
       collections: [...(config.collections ?? []), conversationsCollection],
+      custom: {
+        ...config.custom,
+        chatAgent: {
+          access: options.access,
+        },
+      },
       endpoints: [
         ...(config.endpoints ?? []),
         ...conversationEndpoints,
