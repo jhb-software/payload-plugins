@@ -40,19 +40,19 @@
     "ts:check": "tsc"
   },
   "devDependencies": {
-    "@eslint/js": "^9.18.0",
-    "astro": "^5.15.9",
-    "eslint": "^9.18.0",
-    "eslint-plugin-astro": "^1.3.1",
-    "prettier": "^3.7.4",
+    "@eslint/js": "^10.0.1",
+    "astro": "^6.1.5",
+    "eslint": "^10.2.0",
+    "eslint-plugin-astro": "^1.7.0",
+    "prettier": "^3.8.2",
     "prettier-plugin-astro": "^0.14.1",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.21.0",
-    "vite": "^6.4.1",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.1",
+    "vite": "^8.0.8",
     "vite-plugin-dts": "^4.5.4"
   },
   "peerDependencies": {
-    "astro": ">=3.x"
+    "astro": ">=6.x"
   },
   "publishConfig": {},
   "engines": {

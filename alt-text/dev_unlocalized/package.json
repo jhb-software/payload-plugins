@@ -18,18 +18,18 @@
   },
   "dependencies": {
     "@jhb.software/payload-alt-text-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.81.0",
-    "@payloadcms/next": "^3.81.0",
-    "@payloadcms/ui": "^3.81.0",
+    "@payloadcms/db-mongodb": "^3.82.1",
+    "@payloadcms/next": "^3.82.1",
+    "@payloadcms/ui": "^3.82.1",
     "next": "15.4.11",
-    "payload": "^3.81.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "payload": "^3.82.1",
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
   },
   "devDependencies": {
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
-    "dotenv": "^17.4.1",
-    "typescript": "5.9.3"
+    "dotenv": "^17.4.2",
+    "typescript": "6.0.2"
   }
 }
