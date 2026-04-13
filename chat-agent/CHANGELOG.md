@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add file upload instructions to system prompt, directing users to upload files in upload-enabled collections
 - Add agent modes (`read`, `ask`, `read-write`, `superuser`) with per-mode access control
 - Add `modes` plugin option for configuring available modes and per-user access
 - Add mode selector UI in chat view header
