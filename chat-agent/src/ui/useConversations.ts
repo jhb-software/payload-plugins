@@ -1,12 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import type { ConversationSummary } from './Sidebar.js'
 
-export function useConversations(baseUrl: string, initial?: ConversationSummary[]) {
-  const [conversations, setConversations] = useState<ConversationSummary[]>(initial ?? [])
-  const [loading, setLoading] = useState(!initial)
+export function useConversations(baseUrl: string, initial: ConversationSummary[] = []) {
+  const [conversations, setConversations] = useState<ConversationSummary[]>(initial)
 
   const refresh = useCallback(async () => {
     try {
@@ -26,14 +25,8 @@ export function useConversations(baseUrl: string, initial?: ConversationSummary[
       )
     } catch {
       // silently ignore
-    } finally {
-      setLoading(false)
     }
   }, [baseUrl])
-
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
 
   const remove = useCallback(
     async (id: string) => {
@@ -63,5 +56,5 @@ export function useConversations(baseUrl: string, initial?: ConversationSummary[
     [baseUrl],
   )
 
-  return { conversations, loading, refresh, remove, rename }
+  return { conversations, refresh, remove, rename }
 }

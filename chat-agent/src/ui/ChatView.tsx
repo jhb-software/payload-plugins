@@ -3,6 +3,7 @@
 
 import type { UIMessage } from 'ai'
 
+import { Button, SetStepNav } from '@payloadcms/ui'
 import { useCallback, useEffect, useState } from 'react'
 
 import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
@@ -35,13 +36,16 @@ function setConversationParam(id: string | undefined) {
 // ---------------------------------------------------------------------------
 
 export interface ChatViewProps {
+  availableModels?: ModelOption[]
   availableModes?: AgentMode[]
   conversationId?: string
   defaultMode?: AgentMode
+  defaultModel?: string
   initialConversations?: ConversationSummary[]
   initialMessages?: unknown[]
   /** Model id persisted on the conversation doc; used as the initial selection when resuming. */
   initialModel?: string
+  suggestedPrompts?: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -49,63 +53,25 @@ export interface ChatViewProps {
 // ---------------------------------------------------------------------------
 
 export default function ChatView({
+  availableModels = [],
   availableModes = ['ask'],
   conversationId,
   defaultMode = 'ask',
+  defaultModel,
   initialConversations,
   initialMessages: serverMessages,
   initialModel,
+  suggestedPrompts,
 }: ChatViewProps) {
   const endpointUrl = '/api/chat-agent/chat'
   const [chatId, setChatId] = useState(conversationId)
   const [mode, setMode] = useState<AgentMode>(defaultMode)
-  const [modes, setModes] = useState<AgentMode[]>(availableModes)
-  const [suggestedPrompts, setSuggestedPrompts] = useState<string[] | undefined>(undefined)
   const [initialMessages, setInitialMessages] = useState<UIMessage<MessageMetadata>[] | undefined>(
     serverMessages as UIMessage<MessageMetadata>[] | undefined,
   )
-  const [availableModels, setAvailableModels] = useState<ModelOption[]>([])
-  const [defaultModel, setDefaultModel] = useState<string | undefined>(undefined)
-  const [selectedModel, setSelectedModel] = useState<string | undefined>(initialModel)
-
-  // Fetch available models configuration on mount
-  useEffect(() => {
-    fetch(`${endpointUrl}/models`, { credentials: 'include' })
-      .then((res) => res.json())
-      .then((config: { availableModels: ModelOption[]; defaultModel: string }) => {
-        setAvailableModels(config.availableModels)
-        setDefaultModel(config.defaultModel)
-        setSelectedModel((prev) => prev ?? config.defaultModel)
-      })
-      .catch(() => {
-        // Models config not available — proceed without selector
-      })
-  }, [endpointUrl])
-
-  // Fetch available modes on mount
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/chat-agent/modes', { credentials: 'include' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled || !data) {
-          return
-        }
-        if (data.modes) {
-          setModes(data.modes)
-        }
-        if (data.default) {
-          setMode(data.default)
-        }
-        if (data.suggestedPrompts) {
-          setSuggestedPrompts(data.suggestedPrompts)
-        }
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(
+    initialModel ?? defaultModel,
+  )
 
   const setActiveChatId = useCallback((id: string | undefined) => {
     setChatId(id)
@@ -256,77 +222,102 @@ export default function ChatView({
   )
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - var(--app-header-height))' }}>
-      <Sidebar
-        chatId={chatId}
-        conversations={conversations}
-        onDelete={handleDelete}
-        onLoad={handleLoad}
-        onNew={newConversation}
-        onRename={handleRename}
-      />
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          flexDirection: 'column',
-          minWidth: 0,
-          padding: '24px',
-        }}
-      >
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '24px',
+        height: 'calc(100vh - var(--app-header-height))',
+        padding: '0 var(--gutter-h) 24px',
+      }}
+    >
+      <SetStepNav nav={[{ label: 'Chat' }]} />
+      <header className="list-header">
+        <div className="list-header__content">
+          <div className="list-header__title-and-actions">
+            <h1 className="list-header__title">Content Assistant</h1>
+            <div className="list-header__title-actions">
+              <Button
+                buttonStyle="pill"
+                icon="plus"
+                iconPosition="left"
+                margin={false}
+                onClick={newConversation}
+                size="small"
+              >
+                New chat
+              </Button>
+            </div>
+          </div>
+          <div className="list-header__actions">
+            <ModeSelector
+              availableModes={availableModes}
+              disabled={isLoading}
+              mode={mode}
+              onModeChange={setMode}
+            />
+            {availableModels.length > 1 && (
+              <ModelSelector
+                available={availableModels}
+                onChange={setSelectedModel}
+                value={selectedModel ?? defaultModel ?? ''}
+              />
+            )}
+            <TokenBadge messages={messages as UIMessage<MessageMetadata>[]} />
+          </div>
+        </div>
+      </header>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <Sidebar
+          chatId={chatId}
+          conversations={conversations}
+          onDelete={handleDelete}
+          onLoad={handleLoad}
+          onRename={handleRename}
+        />
         <div
           style={{
-            alignItems: 'center',
-            borderBottom: '1px solid var(--theme-elevation-150)',
             display: 'flex',
-            gap: '12px',
-            marginBottom: '16px',
-            paddingBottom: '12px',
+            flex: 1,
+            flexDirection: 'column',
+            minWidth: 0,
+            paddingLeft: 'var(--gutter-h)',
           }}
         >
-          <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>Content Assistant</h2>
-          <ModeSelector
-            availableModes={modes}
-            disabled={isLoading}
-            mode={mode}
-            onModeChange={setMode}
+          <MessageList
+            isLoading={isLoading}
+            // Keying by conversation id makes switching conversations a fresh
+            // mount, so `MessageList` re-runs its initial pre-paint scroll-to-
+            // bottom for every conversation. Without this, navigating to (or
+            // reloading on) a different conversation re-uses the existing
+            // `MessageList` instance whose `useLayoutEffect` already ran with
+            // the previous conversation's messages and won't re-fire.
+            key={chatId ?? 'new'}
+            messages={messages as UIMessage<MessageMetadata>[]}
+            onEditMessage={handleEditMessage}
+            onRetry={handleRetry}
+            onSendSuggestion={handleSend}
+            onToolApprove={handleToolApprove}
+            onToolDeny={handleToolDeny}
+            suggestedPrompts={suggestedPrompts}
           />
-          <div style={{ flex: 1 }} />
-          {availableModels.length > 1 && (
-            <ModelSelector
-              available={availableModels}
-              onChange={setSelectedModel}
-              value={selectedModel ?? defaultModel ?? ''}
-            />
-          )}
-          <TokenBadge messages={messages as UIMessage<MessageMetadata>[]} />
+          {error ? (
+            <div
+              style={{
+                background: 'var(--theme-error-50, #fff5f5)',
+                border: '1px solid var(--theme-error-200, #fcc)',
+                borderRadius: '6px',
+                color: 'var(--theme-error-500)',
+                fontSize: '13px',
+                marginTop: '8px',
+                padding: '8px 12px',
+              }}
+            >
+              {error.message}
+            </div>
+          ) : null}
+          <ChatInput isLoading={isLoading} onSend={handleSend} onStop={handleStop} />
         </div>
-        <MessageList
-          isLoading={isLoading}
-          messages={messages as UIMessage<MessageMetadata>[]}
-          onEditMessage={handleEditMessage}
-          onRetry={handleRetry}
-          onSendSuggestion={handleSend}
-          onToolApprove={handleToolApprove}
-          onToolDeny={handleToolDeny}
-          suggestedPrompts={suggestedPrompts}
-        />
-        {error ? (
-          <div
-            style={{
-              background: 'var(--theme-error-50, #fff5f5)',
-              border: '1px solid var(--theme-error-200, #fcc)',
-              borderRadius: '6px',
-              color: 'var(--theme-error-500)',
-              fontSize: '13px',
-              marginTop: '8px',
-              padding: '8px 12px',
-            }}
-          >
-            {error.message}
-          </div>
-        ) : null}
-        <ChatInput isLoading={isLoading} onSend={handleSend} onStop={handleStop} />
       </div>
     </div>
   )

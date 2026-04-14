@@ -138,6 +138,10 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         ...config.custom,
         chatAgent: {
           access: options.access,
+          availableModels: options.availableModels,
+          defaultModel: options.defaultModel,
+          modesConfig,
+          suggestedPrompts: options.suggestedPrompts,
         },
       },
       endpoints: [

@@ -17,14 +17,12 @@ export function Sidebar({
   conversations,
   onDelete,
   onLoad,
-  onNew,
   onRename,
 }: {
   chatId: string | undefined
   conversations: ConversationSummary[]
   onDelete: (id: string) => void
   onLoad: (id: string) => void
-  onNew: () => void
   onRename?: (id: string, title: string) => void
 }) {
   const [search, setSearch] = useState('')
@@ -76,19 +74,6 @@ export function Sidebar({
 
   return (
     <div className="chat-agent-sidebar">
-      <div className="chat-agent-sidebar__new">
-        <Button
-          buttonStyle="secondary"
-          icon="plus"
-          iconPosition="left"
-          onClick={onNew}
-          size="small"
-        >
-          New chat
-        </Button>
-      </div>
-
-      {/* Search input */}
       <div className="chat-agent-sidebar__search">
         <SearchIcon className="chat-agent-sidebar__search-icon" height={14} width={14} />
         <input

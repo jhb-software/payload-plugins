@@ -2,10 +2,11 @@
 
 import type { UIMessage } from 'ai'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 
 import type { MessageMetadata } from '../types.js'
 
+import { useScrollToBottom } from './hooks/useScrollToBottom.js'
 import { ChevronDownIcon } from './icons/ChevronDownIcon.js'
 import { MessageBubble } from './MessageBubble.js'
 
@@ -103,8 +104,30 @@ export function MessageList({
   onToolDeny?: (approvalId: string) => void
   suggestedPrompts?: string[]
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isAtBottom, setIsAtBottom] = useState(true)
+  const { containerRef, isAtBottom, scrollToBottom } = useScrollToBottom()
+  const hasPinnedInitialRef = useRef(false)
+
+  // Vercel's hook sets up its `MutationObserver` / `ResizeObserver` inside a
+  // plain `useEffect`, which runs *after* the first browser paint — so the
+  // browser renders one frame scrolled to the top before the observer fires
+  // its first `scrollTo`. A `useLayoutEffect` that runs the moment the
+  // messages list first becomes non-empty pins the scroll position *before*
+  // that first paint, eliminating the visible jump.
+  //
+  // We depend on `messages.length` (not `[]`) because on conversation reload
+  // the component mounts with zero messages (the data is fetched async), then
+  // re-renders with the real list — if we only ran once on mount the
+  // container ref would still be null and the pin would be a no-op.
+  useLayoutEffect(() => {
+    if (hasPinnedInitialRef.current) {
+      return
+    }
+    const el = containerRef.current
+    if (el && messages.length > 0) {
+      el.scrollTop = el.scrollHeight
+      hasPinnedInitialRef.current = true
+    }
+  }, [messages.length, containerRef])
 
   // Find the last assistant message index for retry action visibility
   let lastAssistantIndex = -1
@@ -128,35 +151,6 @@ export function MessageList({
     }
   }
 
-  // Track scroll position
-  const handleScroll = useCallback(() => {
-    const el = containerRef.current
-    if (!el) {
-      return
-    }
-    const threshold = 40
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
-    setIsAtBottom(atBottom)
-  }, [])
-
-  // Auto-scroll when new messages arrive (only if the user is at the bottom)
-  useEffect(() => {
-    if (isAtBottom) {
-      const el = containerRef.current
-      if (el) {
-        el.scrollTo({ behavior: 'smooth', top: el.scrollHeight })
-      }
-    }
-  }, [messages, isAtBottom])
-
-  const scrollToBottom = useCallback(() => {
-    const el = containerRef.current
-    if (el) {
-      el.scrollTo({ behavior: 'smooth', top: el.scrollHeight })
-      setIsAtBottom(true)
-    }
-  }, [])
-
   if (messages.length === 0) {
     return (
       <SuggestedPrompts
@@ -175,7 +169,6 @@ export function MessageList({
         }
       `}</style>
       <div
-        onScroll={handleScroll}
         ref={containerRef}
         style={{
           display: 'flex',
@@ -209,7 +202,7 @@ export function MessageList({
       {!isAtBottom ? (
         <button
           aria-label="Scroll to bottom"
-          onClick={scrollToBottom}
+          onClick={() => scrollToBottom()}
           style={{
             alignItems: 'center',
             background: 'var(--theme-bg)',

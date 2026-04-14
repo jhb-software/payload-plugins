@@ -68,6 +68,7 @@ export default buildConfig({
         },
         { name: 'content', type: 'richText' },
         { name: 'author', type: 'relationship', relationTo: 'users' },
+        { name: 'featuredImage', type: 'relationship', relationTo: 'media' },
       ],
     },
     {
@@ -77,6 +78,15 @@ export default buildConfig({
         { name: 'name', type: 'text', required: true },
         { name: 'description', type: 'textarea' },
       ],
+    },
+    {
+      slug: 'media',
+      admin: { useAsTitle: 'filename' },
+      upload: {
+        staticDir: path.resolve(__dirname, '../media'),
+        mimeTypes: ['image/*'],
+      },
+      fields: [{ name: 'alt', type: 'text' }],
     },
   ],
   globals: [
@@ -173,7 +183,7 @@ export default buildConfig({
       defaultModel: 'claude-haiku-4-5-20251001',
       model: resolveModel,
       modes: {
-        default: 'read',
+        default: 'ask',
         access: {
           superuser: () => true,
         },

@@ -2,8 +2,11 @@ import type { AdminViewServerProps } from 'payload'
 
 import { DefaultTemplate } from '@payloadcms/next/templates'
 
+import type { ModelOption, ModesConfig } from '../types.js'
+
 import { isPluginAccessAllowed } from '../access.js'
 import { CONVERSATIONS_SLUG } from '../conversations.js'
+import { getDefaultMode, resolveAvailableModes } from '../modes.js'
 import ChatView from './ChatView.js'
 
 export default async function ChatViewServer({
@@ -42,6 +45,21 @@ export default async function ChatViewServer({
     )
   }
 
+  // Resolve modes + models config server-side so the selectors render with the
+  // first paint instead of flashing in after a client-side fetch on mount.
+  const pluginConfig = (payload.config.custom?.chatAgent ?? {}) as {
+    availableModels?: ModelOption[]
+    defaultModel?: string
+    modesConfig?: ModesConfig
+    suggestedPrompts?: string[]
+  }
+  const modesConfig = pluginConfig.modesConfig ?? {}
+  const availableModes = await resolveAvailableModes(modesConfig, req)
+  const defaultMode = getDefaultMode(modesConfig)
+  const availableModels = pluginConfig.availableModels ?? []
+  const defaultModel = pluginConfig.defaultModel
+  const suggestedPrompts = pluginConfig.suggestedPrompts
+
   // Fetch the conversation list server-side so the sidebar renders immediately
   const { docs: conversations } = user
     ? await payload.find({
@@ -74,7 +92,11 @@ export default async function ChatViewServer({
   return (
     <DefaultTemplate {...templateProps}>
       <ChatView
+        availableModels={availableModels}
+        availableModes={availableModes}
         conversationId={conversationId}
+        defaultMode={defaultMode}
+        defaultModel={defaultModel}
         initialConversations={conversations.map((d) => ({
           id: String(d.id),
           title: (d.title as string) ?? 'New conversation',
@@ -82,6 +104,7 @@ export default async function ChatViewServer({
         }))}
         initialMessages={initialMessages}
         initialModel={initialModel}
+        suggestedPrompts={suggestedPrompts}
       />
     </DefaultTemplate>
   )

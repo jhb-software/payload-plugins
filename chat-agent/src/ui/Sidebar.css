@@ -25,7 +25,6 @@
 .chat-agent-sidebar__item {
   align-items: center;
   background: transparent;
-  border-left: 3px solid transparent;
   border-radius: 4px;
   cursor: pointer;
   display: flex;
@@ -41,7 +40,6 @@
 
 .chat-agent-sidebar__item--active {
   background: var(--theme-elevation-100);
-  border-left-color: var(--theme-elevation-900);
   font-weight: 600;
 }
 
