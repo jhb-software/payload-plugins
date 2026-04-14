@@ -29,6 +29,7 @@
     "zod": "^3.25.67"
   },
   "peerDependencies": {
+    "@payloadcms/next": "^3.81.0",
     "@payloadcms/ui": "^3.81.0",
     "next": "15.4.11",
     "payload": "^3.81.0",

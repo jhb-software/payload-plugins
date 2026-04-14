@@ -1,3 +1,5 @@
+import type { PayloadRequest, SanitizedConfig } from 'payload'
+
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -7,6 +9,18 @@ import {
   READ_TOOL_NAMES,
   WRITE_TOOL_NAMES,
 } from './tools.js'
+
+/**
+ * Cast helpers for test mocks.
+ *
+ * `discoverEndpoints` and `buildTools` take strict Payload types
+ * (`SanitizedConfig`, `PayloadRequest`) that have 17+ required fields. Tests
+ * only exercise a handful of those fields, so supplying the full shape per
+ * test would be noise. These helpers document that the cast is deliberate
+ * — the mock is intentionally partial.
+ */
+const asConfig = (v: unknown) => v as SanitizedConfig
+const asReq = (v: unknown) => v as PayloadRequest
 
 describe('buildTools', () => {
   const mockUser = { id: 'user-1', email: 'admin@test.com' }
@@ -60,7 +74,7 @@ describe('buildTools', () => {
         sort: '-createdAt',
         where: { status: { equals: 'published' } },
       },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -84,7 +98,7 @@ describe('buildTools', () => {
 
     await tools.find.execute(
       { collection: 'posts' },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({ depth: 0 }))
@@ -96,7 +110,7 @@ describe('buildTools', () => {
 
     await tools.findByID.execute(
       { id: 'abc-123', collection: 'posts', depth: 2 },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.findByID).toHaveBeenCalledWith(
@@ -117,7 +131,7 @@ describe('buildTools', () => {
 
     await tools.create.execute(
       { collection: 'posts', data, locale: 'en' },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.create).toHaveBeenCalledWith(
@@ -138,7 +152,7 @@ describe('buildTools', () => {
 
     await tools.update.execute(
       { id: 'abc-123', collection: 'posts', data: { title: 'Updated' } },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.update).toHaveBeenCalledWith(
@@ -159,7 +173,7 @@ describe('buildTools', () => {
 
     await tools.delete.execute(
       { id: 'abc-123', collection: 'posts' },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.delete).toHaveBeenCalledWith(
@@ -179,7 +193,7 @@ describe('buildTools', () => {
 
     await tools.count.execute(
       { collection: 'posts', where: { status: { equals: 'published' } } },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.count).toHaveBeenCalledWith(
@@ -198,7 +212,7 @@ describe('buildTools', () => {
 
     await tools.findGlobal.execute(
       { slug: 'settings' },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.findGlobal).toHaveBeenCalledWith(
@@ -217,7 +231,7 @@ describe('buildTools', () => {
 
     await tools.updateGlobal.execute(
       { slug: 'settings', data: { siteName: 'New Name' } },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.updateGlobal).toHaveBeenCalledWith(
@@ -241,7 +255,7 @@ describe('buildTools', () => {
         populate: { author: true },
         select: { slug: true, title: true },
       },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -263,7 +277,7 @@ describe('buildTools', () => {
         fallbackLocale: 'en',
         locale: 'de',
       },
-      { abortSignal: undefined as any, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -279,7 +293,7 @@ describe('buildTools', () => {
     const payload = createMockPayload()
     const tools = buildTools(payload, mockUser)
     const ctx = {
-      abortSignal: undefined as any,
+      abortSignal: undefined,
       messages: [],
       toolCallId: '1',
     }
@@ -303,10 +317,9 @@ describe('buildTools', () => {
       'findGlobal',
       'updateGlobal',
     ] as const) {
-      expect(
-        (payload as any)[method],
-        `${method} should pass overrideAccess: false`,
-      ).toHaveBeenCalledWith(expect.objectContaining({ overrideAccess: false, user: mockUser }))
+      expect(payload[method], `${method} should pass overrideAccess: false`).toHaveBeenCalledWith(
+        expect.objectContaining({ overrideAccess: false, user: mockUser }),
+      )
     }
   })
 })
@@ -330,7 +343,7 @@ describe('discoverEndpoints', () => {
       ],
       globals: [],
     }
-    const eps = discoverEndpoints(config)
+    const eps = discoverEndpoints(asConfig(config))
     expect(eps).toHaveLength(1)
     expect(eps[0].path).toBe('/api/publish')
     expect(eps[0].description).toBe('Publish content')
@@ -354,7 +367,7 @@ describe('discoverEndpoints', () => {
       endpoints: [],
       globals: [],
     }
-    const eps = discoverEndpoints(config)
+    const eps = discoverEndpoints(asConfig(config))
     expect(eps).toHaveLength(1)
     expect(eps[0].path).toBe('/api/posts/publish/:id')
   })
@@ -377,7 +390,7 @@ describe('discoverEndpoints', () => {
         },
       ],
     }
-    const eps = discoverEndpoints(config)
+    const eps = discoverEndpoints(asConfig(config))
     expect(eps).toHaveLength(1)
     expect(eps[0].path).toBe('/api/globals/settings/reset')
   })
@@ -395,7 +408,7 @@ describe('discoverEndpoints', () => {
       ],
       globals: [],
     }
-    const eps = discoverEndpoints(config)
+    const eps = discoverEndpoints(asConfig(config))
     expect(eps).toHaveLength(0)
   })
 })
@@ -417,7 +430,7 @@ describe('callEndpoint tool', () => {
   }
   const mockUser = { id: 'u1' }
   const ctx = {
-    abortSignal: undefined as any,
+    abortSignal: undefined,
     messages: [],
     toolCallId: '1',
   }
@@ -428,7 +441,7 @@ describe('callEndpoint tool', () => {
   })
 
   it('is not included when custom endpoints is empty', () => {
-    const tools = buildTools(mockPayload, mockUser, false, {}, [])
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), [])
     expect(tools.callEndpoint).toBeUndefined()
   })
 
@@ -441,15 +454,15 @@ describe('callEndpoint tool', () => {
         path: '/api/publish',
       },
     ]
-    const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
     expect(tools.callEndpoint).toBeDefined()
     expect(tools.callEndpoint.description).toContain('custom API endpoint')
   })
 
   it('calls the matching handler with route params', async () => {
-    const handler = vi.fn((req: any) => {
+    const handler = vi.fn((req: PayloadRequest) => {
       return Response.json({
-        id: req.routeParams.id,
+        id: (req.routeParams as { id: string }).id,
         published: true,
       })
     })
@@ -461,7 +474,7 @@ describe('callEndpoint tool', () => {
         path: '/api/posts/publish/:id',
       },
     ]
-    const mockReq = { payload: mockPayload, user: mockUser }
+    const mockReq = asReq({ payload: mockPayload, user: mockUser })
     const tools = buildTools(mockPayload, mockUser, false, mockReq, endpoints)
 
     const result = await tools.callEndpoint.execute(
@@ -488,7 +501,7 @@ describe('callEndpoint tool', () => {
         path: '/api/publish',
       },
     ]
-    const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
 
     const result = await tools.callEndpoint.execute({ method: 'get', path: '/api/unknown' }, ctx)
 
@@ -510,7 +523,7 @@ describe('callEndpoint tool', () => {
         path: '/api/fail',
       },
     ]
-    const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
 
     const result = await tools.callEndpoint.execute({ method: 'post', path: '/api/fail' }, ctx)
 
@@ -574,7 +587,7 @@ describe('filterToolsByMode', () => {
           path: '/api/test',
         },
       ]
-      const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
+      const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
       const filtered = filterToolsByMode(tools, 'read')
       expect(Object.keys(filtered)).not.toContain('callEndpoint')
     })
@@ -622,7 +635,7 @@ describe('filterToolsByMode', () => {
           path: '/api/test',
         },
       ]
-      const tools = buildTools(mockPayload, mockUser, false, {}, endpoints)
+      const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
       const filtered = filterToolsByMode(tools, 'ask')
       expect(filtered.callEndpoint).toBeDefined()
       expect(filtered.callEndpoint).toHaveProperty('execute')

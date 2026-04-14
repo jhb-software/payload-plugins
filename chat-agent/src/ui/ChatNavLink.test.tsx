@@ -1,11 +1,19 @@
 // @vitest-environment jsdom
+import type { AnchorHTMLAttributes, ReactNode } from 'react'
+
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 let mockPathname = '/admin'
 
+/** Subset of Payload's `Link` props consumed by the component under test. */
+type LinkMockProps = { children?: ReactNode; href: string; prefetch?: boolean } & Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  'children' | 'href'
+>
+
 vi.mock('@payloadcms/ui', () => ({
-  Link: ({ children, href, prefetch: _prefetch, ...rest }: any) => (
+  Link: ({ children, href, prefetch: _prefetch, ...rest }: LinkMockProps) => (
     <a href={href} {...rest}>
       {children}
     </a>

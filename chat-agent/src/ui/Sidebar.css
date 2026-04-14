@@ -1,0 +1,89 @@
+.chat-agent-sidebar {
+  border-right: 1px solid var(--theme-elevation-150);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  width: 260px;
+}
+
+.chat-agent-sidebar__new {
+  border-bottom: 1px solid var(--theme-elevation-150);
+  padding: 12px;
+}
+
+.chat-agent-sidebar__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.chat-agent-sidebar__item {
+  align-items: center;
+  background: transparent;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px 8px;
+}
+
+.chat-agent-sidebar__item:hover {
+  background: var(--theme-elevation-50);
+}
+
+.chat-agent-sidebar__item--active {
+  background: var(--theme-elevation-100);
+  border-left-color: var(--theme-elevation-900);
+  font-weight: 600;
+}
+
+.chat-agent-sidebar__item--active:hover {
+  background: var(--theme-elevation-100);
+}
+
+.chat-agent-sidebar__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Plain <button> so the row height is driven by the title, not by Payload's
+   `Button` component (which has its own min-height / padding). Hidden until
+   hover / focus / active to keep the list visually quiet. */
+.chat-agent-sidebar__delete {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: 18px;
+  justify-content: center;
+  margin: 0;
+  opacity: 0;
+  padding: 0;
+  transition: opacity 0.1s ease;
+  width: 18px;
+}
+
+.chat-agent-sidebar__delete:hover {
+  background: var(--theme-elevation-200);
+}
+
+.chat-agent-sidebar__item:hover .chat-agent-sidebar__delete,
+.chat-agent-sidebar__item:focus-within .chat-agent-sidebar__delete,
+.chat-agent-sidebar__item--active .chat-agent-sidebar__delete {
+  opacity: 1;
+}

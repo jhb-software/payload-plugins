@@ -1,19 +1,44 @@
 import type { AdminViewServerProps } from 'payload'
 
+import { DefaultTemplate } from '@payloadcms/next/templates'
+
 import { isPluginAccessAllowed } from '../access.js'
 import { CONVERSATIONS_SLUG } from '../conversations.js'
 import ChatView from './ChatView.js'
 
-export default async function ChatViewServer({ initPageResult: { req } }: AdminViewServerProps) {
+export default async function ChatViewServer({
+  initPageResult,
+  params,
+  searchParams,
+}: AdminViewServerProps) {
+  const { locale, permissions, req, visibleEntities } = initPageResult
   const conversationId = req.searchParams.get('conversation') ?? undefined
-  const { payload, user } = req
+  const { i18n, payload, user } = req
+
+  // Payload's route resolver does NOT auto-wrap custom admin views registered
+  // via `admin.components.views` in DefaultTemplate — custom views get no
+  // template at all. Wrap the chat view ourselves so it keeps the standard
+  // admin chrome (nav sidebar + header).
+  const templateProps = {
+    i18n,
+    locale,
+    params,
+    payload,
+    permissions,
+    req,
+    searchParams,
+    user: user ?? undefined,
+    visibleEntities,
+  }
 
   if (!(await isPluginAccessAllowed(req))) {
     return (
-      <div style={{ padding: '2rem' }}>
-        <h2>Not authorized</h2>
-        <p>You do not have access to the chat agent.</p>
-      </div>
+      <DefaultTemplate {...templateProps}>
+        <div style={{ padding: '2rem' }}>
+          <h2>Not authorized</h2>
+          <p>You do not have access to the chat agent.</p>
+        </div>
+      </DefaultTemplate>
     )
   }
 
@@ -47,15 +72,17 @@ export default async function ChatViewServer({ initPageResult: { req } }: AdminV
   }
 
   return (
-    <ChatView
-      conversationId={conversationId}
-      initialConversations={conversations.map((d) => ({
-        id: String(d.id),
-        title: (d.title as string) ?? 'New conversation',
-        updatedAt: (d.updatedAt as string) ?? '',
-      }))}
-      initialMessages={initialMessages}
-      initialModel={initialModel}
-    />
+    <DefaultTemplate {...templateProps}>
+      <ChatView
+        conversationId={conversationId}
+        initialConversations={conversations.map((d) => ({
+          id: String(d.id),
+          title: (d.title as string) ?? 'New conversation',
+          updatedAt: (d.updatedAt as string) ?? '',
+        }))}
+        initialMessages={initialMessages}
+        initialModel={initialModel}
+      />
+    </DefaultTemplate>
   )
 }

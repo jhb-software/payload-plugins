@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Payload, PayloadRequest } from 'payload'
 
-export type PluginAccessFn = (req: any) => boolean | Promise<boolean>
+export type PluginAccessFn = (req: PayloadRequest) => boolean | Promise<boolean>
 
-export function getPluginAccess(payload: any): PluginAccessFn | undefined {
+export function getPluginAccess(payload: Payload | undefined): PluginAccessFn | undefined {
   return payload?.config?.custom?.chatAgent?.access as PluginAccessFn | undefined
 }
 
@@ -13,10 +13,12 @@ export function getPluginAccess(payload: any): PluginAccessFn | undefined {
  * request. When no access function is configured, falls back to
  * "any authenticated user".
  */
-export async function isPluginAccessAllowed(req: any): Promise<boolean> {
+export async function isPluginAccessAllowed(
+  req: Pick<PayloadRequest, 'payload' | 'user'>,
+): Promise<boolean> {
   const access = getPluginAccess(req?.payload)
   if (access) {
-    return Boolean(await access(req))
+    return Boolean(await access(req as PayloadRequest))
   }
   return !!req?.user
 }

@@ -14,6 +14,7 @@
  */
 
 import type { Tool } from 'ai'
+import type { PayloadRequest, SanitizedConfig } from 'payload'
 
 import { z } from 'zod'
 
@@ -108,7 +109,7 @@ type ExecutableTool = Required<Pick<Tool<Record<string, unknown>, unknown>, 'exe
 /** Minimal representation of a custom endpoint for the agent. */
 export interface DiscoverableEndpoint {
   description?: string
-  handler: (req: any) => Promise<Response> | Response
+  handler: (req: PayloadRequest) => Promise<Response> | Response
   method: string
   path: string
 }
@@ -117,7 +118,7 @@ export interface DiscoverableEndpoint {
  * Discover custom endpoints from Payload config that have a `custom.description`.
  * These are exposed to the chat agent as invocable tools.
  */
-export function discoverEndpoints(config: any): DiscoverableEndpoint[] {
+export function discoverEndpoints(config: SanitizedConfig): DiscoverableEndpoint[] {
   const endpoints: DiscoverableEndpoint[] = []
 
   for (const ep of config.endpoints ?? []) {
@@ -197,7 +198,7 @@ export function buildTools(
   user: unknown,
   overrideAccess = false,
   /** The original request, used for calling custom endpoint handlers. */
-  req?: any,
+  req?: PayloadRequest,
   /** Custom endpoints discoverable from config. */
   customEndpoints?: DiscoverableEndpoint[],
 ): Record<string, ExecutableTool> {
@@ -430,9 +431,9 @@ export function buildTools(
                   return await response.json()
                 }
                 return { body: await response.text(), status: response.status }
-              } catch (err: any) {
+              } catch (err) {
                 return {
-                  error: err?.message ?? 'Endpoint handler threw an error',
+                  error: err instanceof Error ? err.message : 'Endpoint handler threw an error',
                 }
               }
             },
