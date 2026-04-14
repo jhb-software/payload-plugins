@@ -1,11 +1,21 @@
 import type { AdminViewServerProps } from 'payload'
 
+import { isPluginAccessAllowed } from '../access.js'
 import { CONVERSATIONS_SLUG } from '../conversations.js'
 import ChatView from './ChatView.js'
 
 export default async function ChatViewServer({ initPageResult: { req } }: AdminViewServerProps) {
   const conversationId = req.searchParams.get('conversation') ?? undefined
   const { payload, user } = req
+
+  if (!(await isPluginAccessAllowed(req))) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <h2>Not authorized</h2>
+        <p>You do not have access to the chat agent.</p>
+      </div>
+    )
+  }
 
   // Fetch the conversation list server-side so the sidebar renders immediately
   const { docs: conversations } = user

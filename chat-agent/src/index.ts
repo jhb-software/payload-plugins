@@ -24,6 +24,7 @@ import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import type { AgentMode, ChatAgentPluginOptions } from './types.js'
 
+import { isPluginAccessAllowed } from './access.js'
 import { conversationEndpoints, conversationsCollection } from './conversations.js'
 import {
   getDefaultMode,
@@ -142,8 +143,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         // --- GET /chat-agent/modes ------------------------------------------
         {
           handler: async (req: any) => {
-            const allowed = options.access ? await options.access(req) : !!req.user
-            if (!allowed) {
+            if (!(await isPluginAccessAllowed(req))) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
 
@@ -159,7 +159,10 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
         // --- GET /chat-agent/chat/models ------------------------------------
         {
-          handler: () => {
+          handler: async (req: any) => {
+            if (!(await isPluginAccessAllowed(req))) {
+              return Response.json({ error: 'Unauthorized' }, { status: 401 })
+            }
             return Response.json({
               availableModels: options.availableModels ?? [],
               defaultModel: options.defaultModel,
@@ -173,8 +176,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         {
           handler: async (req: any) => {
             // --- Auth check -----------------------------------------------
-            const allowed = options.access ? await options.access(req) : !!req.user
-            if (!allowed) {
+            if (!(await isPluginAccessAllowed(req))) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
 

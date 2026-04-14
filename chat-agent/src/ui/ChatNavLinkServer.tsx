@@ -1,5 +1,6 @@
 import type { ServerProps } from 'payload'
 
+import { isPluginAccessAllowed } from '../access.js'
 import ChatNavLink from './ChatNavLink.js'
 
 interface ChatNavLinkServerProps extends ServerProps {
@@ -14,11 +15,7 @@ interface ChatNavLinkServerProps extends ServerProps {
  * from the admin nav sidebar.
  */
 export default async function ChatNavLinkServer({ path, payload, user }: ChatNavLinkServerProps) {
-  const chatAgent = (payload as any).config?.custom?.chatAgent
-  const access = chatAgent?.access as ((req: any) => boolean | Promise<boolean>) | undefined
-
-  const allowed = access ? await access({ payload, user }) : !!user
-  if (!allowed) {
+  if (!(await isPluginAccessAllowed({ payload, user }))) {
     return null
   }
 

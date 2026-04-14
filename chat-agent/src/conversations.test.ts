@@ -108,6 +108,30 @@ function findHandler(endpoints: any[], method: string, path: string) {
   return endpoints.find((ep: any) => ep.method === method && ep.path === path)?.handler
 }
 
+/** Builds a payload.config.custom.chatAgent.access shape for handler tests. */
+function payloadWithAccess(access: (req: any) => boolean | Promise<boolean>, extra: any = {}) {
+  return { config: { custom: { chatAgent: { access } } }, ...extra }
+}
+
+describe('conversation endpoints respect plugin access()', () => {
+  it.each([
+    ['get', '/chat-agent/chat/conversations'],
+    ['get', '/chat-agent/chat/conversations/:id'],
+    ['post', '/chat-agent/chat/conversations'],
+    ['patch', '/chat-agent/chat/conversations/:id'],
+    ['delete', '/chat-agent/chat/conversations/:id'],
+  ])('%s %s returns 401 when plugin access denies', async (method, path) => {
+    const handler = findHandler(conversationEndpoints, method, path)
+    const res = await handler({
+      json: () => Promise.resolve({}),
+      payload: payloadWithAccess(() => false),
+      routeParams: { id: 'c1' },
+      user: { id: 'u1' },
+    })
+    expect(res.status).toBe(401)
+  })
+})
+
 describe('conversation endpoint handlers', () => {
   // --- List ---------------------------------------------------------------
 

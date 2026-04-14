@@ -77,7 +77,15 @@ export interface ModesConfig {
 // ---------------------------------------------------------------------------
 
 export interface ChatAgentPluginOptions {
-  /** Override the default auth check (must return true to allow). */
+  /**
+   * Gates every plugin surface (endpoints, admin view, nav link). Return `true` to allow, `false` to deny.
+   *
+   * When omitted, any authenticated Payload user is allowed. Set this to
+   * restrict to specific roles, e.g. `({ user }) => user?.role === 'admin'`.
+   *
+   * For finer-grained control over which agent modes each user can use
+   * (read / ask / read-write / superuser), see `modes.access`.
+   */
   access?: (req: any) => boolean | Promise<boolean>
   /**
    * Admin panel chat view configuration. The chat view is always registered;

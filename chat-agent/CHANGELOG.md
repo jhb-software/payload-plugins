@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix: the plugin-level `access` function now gates every chat-agent surface. Previously, setting `access: () => false` still allowed any authenticated user to hit the `/chat-agent/chat/models` endpoint, all conversation CRUD endpoints, and the admin `/chat` view itself. Now a denied access check returns 401 on every endpoint and renders a "Not authorized" message in the admin view.
+- Improve mode selector labels to describe behavior ("Read only", "Confirm writes", "Read & write", "Superuser (bypass permissions)") instead of raw mode names.
 - **BREAKING**: Make the plugin AI-provider agnostic. The `apiKey` option has been removed and replaced with a required `model` factory of type `(modelId: string) => LanguageModel`. The `@ai-sdk/anthropic` package is no longer a dependency of the plugin — install whichever `@ai-sdk/*` provider you want (Anthropic, OpenAI, Google, Mistral, …) and pass the model instance through the factory. The plugin no longer reads `ANTHROPIC_API_KEY` (or any other key) from `process.env`; configuration must come entirely from the plugin options.
 
   Migration:
