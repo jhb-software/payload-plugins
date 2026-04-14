@@ -451,8 +451,23 @@ export function MessageBubble({
             </div>
           </div>
         ) : (
-          <>
-            {rendered}
+          rendered
+        )}
+        {!isEditing && (hasActions || (!isUser && meta?.totalTokens)) ? (
+          <div
+            style={{
+              alignItems: 'center',
+              display: 'flex',
+              gap: '8px',
+              justifyContent: isUser ? 'flex-end' : 'space-between',
+              minHeight: '24px',
+            }}
+          >
+            {!isUser && meta?.totalTokens ? (
+              <div style={{ color: 'var(--theme-elevation-400)', fontSize: '11px' }}>
+                {[meta.model, formatTokens(meta.totalTokens)].filter(Boolean).join(' \u00b7 ')}
+              </div>
+            ) : null}
             {hasActions ? (
               <div
                 className="chat-agent-actions"
@@ -461,7 +476,6 @@ export function MessageBubble({
                   gap: '4px',
                   opacity: 0,
                   transition: 'opacity 150ms',
-                  ...(isUser ? { justifyContent: 'flex-end' } : {}),
                 }}
               >
                 {showCopy ? (
@@ -485,11 +499,6 @@ export function MessageBubble({
                 ) : null}
               </div>
             ) : null}
-          </>
-        )}
-        {!isUser && meta?.totalTokens ? (
-          <div style={{ color: 'var(--theme-elevation-400)', fontSize: '11px' }}>
-            {[meta.model, formatTokens(meta.totalTokens)].filter(Boolean).join(' \u00b7 ')}
           </div>
         ) : null}
       </div>

@@ -142,6 +142,7 @@ export function ChatInput({
                 onStop?.()
               }}
               style={iconButtonStyle(true)}
+              title="Stop generating"
               type="button"
             >
               <StopIcon height="16" width="16" />
@@ -152,6 +153,7 @@ export function ChatInput({
               aria-label="Send message"
               disabled={!input.trim()}
               style={iconButtonStyle(input.trim().length > 0)}
+              title="Send message"
               type="submit"
             >
               <SendIcon height="16" width="16" />
