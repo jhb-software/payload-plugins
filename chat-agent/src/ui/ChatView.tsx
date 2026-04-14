@@ -256,7 +256,7 @@ export default function ChatView({
   )
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 140px)' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - var(--app-header-height))' }}>
       <Sidebar
         chatId={chatId}
         conversations={conversations}
