@@ -9,18 +9,6 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// ---------------------------------------------------------------------------
-// Multi-provider model factory
-// ---------------------------------------------------------------------------
-//
-// The chat-agent plugin is provider-agnostic: install whichever `@ai-sdk/*`
-// package you want and pass a `model` factory. This dev app demonstrates the
-// most flexible setup — both Anthropic and OpenAI providers wired up at once,
-// routed by the model id prefix.
-//
-// Set ANTHROPIC_API_KEY and/or OPENAI_API_KEY in your env. Each provider is
-// only instantiated lazily so you don't need both keys to test one provider.
-
 const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -179,11 +167,16 @@ export default buildConfig({
         { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
         { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
         { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
-        { id: 'gpt-4o', label: 'GPT-4o' },
+        { id: 'gpt-5-nano', label: 'GPT-5 nano' },
       ],
       defaultModel: 'claude-haiku-4-5-20251001',
       model: resolveModel,
-      superuserAccess: true,
+      modes: {
+        default: 'read',
+        access: {
+          superuser: () => true,
+        },
+      },
     }),
   ],
 })
