@@ -5,22 +5,19 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * Minimal prop shape consumed by the `Button` mock below — we reimplement
- * Payload's `Button` as a plain `<button>` for tests, so we only need the
- * subset of its public API that the component under test actually uses.
+ * Prop shape consumed by the `Button` mock below — we reimplement Payload's
+ * `Button` as a plain `<button>` for tests, forwarding the attributes the
+ * component under test actually uses.
  */
-type ButtonMockProps = {
+type ButtonMockProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  buttonStyle?: string
   children?: ReactNode
-  disabled?: boolean
-  onClick?: ButtonHTMLAttributes<HTMLButtonElement>['onClick']
-  type?: ButtonHTMLAttributes<HTMLButtonElement>['type']
+  size?: string
 }
 
 vi.mock('@payloadcms/ui', () => ({
-  Button: ({ type, children, disabled, onClick }: ButtonMockProps) => (
-    <button disabled={disabled} onClick={onClick} type={type}>
-      {children}
-    </button>
+  Button: ({ buttonStyle: _buttonStyle, size: _size, children, ...rest }: ButtonMockProps) => (
+    <button {...rest}>{children}</button>
   ),
 }))
 
@@ -90,5 +87,19 @@ describe('ChatInput', () => {
     render(<ChatInput isLoading={true} onSend={vi.fn()} onStop={onStop} />)
     expect(screen.getByText(/stop/i)).toBeDefined()
     expect(screen.queryByText(/^send$/i)).toBeNull()
+  })
+
+  it('renders textarea with at least 2 rows by default', () => {
+    render(<ChatInput isLoading={false} onSend={vi.fn()} />)
+    const textarea = screen.getByPlaceholderText(/type a message/i) as HTMLTextAreaElement
+    expect(textarea.rows).toBeGreaterThanOrEqual(2)
+  })
+
+  it('renders the send button as an icon-only button (no "Send" text)', () => {
+    render(<ChatInput isLoading={false} onSend={vi.fn()} />)
+    const submit = screen.getByRole('button', { name: /send/i }) as HTMLButtonElement
+    expect(submit.type).toBe('submit')
+    expect(submit.textContent?.trim()).toBe('')
+    expect(submit.querySelector('svg')).not.toBeNull()
   })
 })
