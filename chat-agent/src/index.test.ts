@@ -781,11 +781,14 @@ describe('chatAgentPlugin model factory', () => {
     expect(callArgs.model).toBe(sentinel)
   })
 
-  // Without this wiring, streamText keeps consuming tokens after the client
-  // disconnects (tab close, navigation, proxy timeout). Forwarding
-  // `req.signal` lets the AI SDK abort the in-flight provider call as soon
-  // as the request is cancelled.
-  it('forwards req.signal to streamText as abortSignal', async () => {
+  it('cancels the provider call when the client disconnects mid-stream', async () => {
+    // The observable user-facing symptom of this regression is token spend
+    // for a stream nobody is reading — we can't measure spend in a unit
+    // test, but the AI SDK treats `abortSignal` as the one knob that makes
+    // it stop mid-call. Wire the request's abort signal through and
+    // confirm the SDK would see it fire: `streamText` is the stubbed
+    // boundary here, so observing the `AbortSignal` it receives is the
+    // closest we can get without a live provider.
     vi.mocked(streamText).mockClear()
     const controller = new AbortController()
     const plugin = chatAgentPlugin({
@@ -806,9 +809,11 @@ describe('chatAgentPlugin model factory', () => {
       user: { id: 1 },
     })
 
-    expect(vi.mocked(streamText)).toHaveBeenCalledTimes(1)
-    const callArgs = vi.mocked(streamText).mock.calls[0][0]
-    expect(callArgs.abortSignal).toBe(controller.signal)
+    const forwarded = vi.mocked(streamText).mock.calls[0][0].abortSignal
+    expect(forwarded).toBeInstanceOf(AbortSignal)
+    expect(forwarded!.aborted).toBe(false)
+    controller.abort()
+    expect(forwarded!.aborted).toBe(true)
   })
 
   it('supports routing to different providers based on the model id', async () => {
