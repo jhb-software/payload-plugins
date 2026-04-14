@@ -121,7 +121,7 @@ export default function ChatView({
     addToolApprovalResponse,
     error,
     messages,
-    reload,
+    regenerate,
     sendMessage,
     setMessages,
     status,
@@ -210,8 +210,8 @@ export default function ChatView({
   }, [stop])
 
   const handleRetry = useCallback(() => {
-    void reload()
-  }, [reload])
+    void regenerate()
+  }, [regenerate])
 
   const handleEditMessage = useCallback(
     (messageId: string, newText: string) => {
