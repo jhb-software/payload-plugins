@@ -82,7 +82,6 @@ function ToolCallIndicator({
         background: 'var(--theme-elevation-50)',
         border: '1px solid var(--theme-elevation-150)',
         borderRadius: '4px',
-        marginTop: '6px',
       }}
     >
       <div
@@ -188,7 +187,6 @@ function ThinkingSection({ text }: { text: string }) {
         background: 'var(--theme-elevation-50)',
         border: '1px solid var(--theme-elevation-150)',
         borderRadius: '6px',
-        marginBottom: '6px',
       }}
     >
       <summary
@@ -248,14 +246,11 @@ export function MessageBubble({
   const [editText, setEditText] = useState('')
   const editRef = React.useRef<HTMLTextAreaElement>(null)
 
+  // Full concatenated text (used for copy-to-clipboard and the edit flow)
   const textContent = message.parts
     .filter((p) => p.type === 'text')
     .map((p) => (p as { text: string; type: 'text' }).text)
     .join('')
-
-  const reasoningParts = message.parts.filter(
-    (p) => (p as { type: string }).type === 'reasoning',
-  ) as { reasoning: string; type: 'reasoning' }[]
 
   const handleCopy = useCallback(() => {
     void navigator.clipboard.writeText(textContent)
@@ -286,18 +281,112 @@ export function MessageBubble({
   const showEdit = isUser && onEdit
   const hasActions = showCopy || showRetry || showEdit
 
+  // --- Render parts in their original order ---------------------------------
+  // The base renderer walks `message.parts` and interleaves text (as markdown
+  // bubbles) with tool indicators / approval dialogs, so the visual order
+  // matches the order the model produced them. We buffer consecutive text
+  // parts and flush on tool boundaries.
+
+  const bubbleStyle: React.CSSProperties = {
+    borderRadius: '12px',
+    fontSize: '14px',
+    lineHeight: '1.5',
+    padding: '10px 14px',
+    wordBreak: 'break-word',
+    ...(isUser ? { whiteSpace: 'pre-wrap' as const } : {}),
+    ...(isUser
+      ? { background: 'var(--theme-elevation-900)', color: 'var(--theme-bg)' }
+      : { background: 'var(--theme-elevation-50)', color: 'var(--theme-text)' }),
+  }
+
+  const rendered: React.ReactNode[] = []
+  let textBuffer = ''
+  let textKey = 0
+
+  const flushText = () => {
+    if (!textBuffer) {
+      return
+    }
+    const current = textBuffer
+    textBuffer = ''
+    rendered.push(
+      <div key={`text-${textKey++}`} style={bubbleStyle}>
+        {isUser ? current : <MarkdownContent>{current}</MarkdownContent>}
+      </div>,
+    )
+  }
+
+  message.parts.forEach((part, i) => {
+    // Reasoning parts render as collapsible "Thinking…" sections.
+    if ((part as { type: string }).type === 'reasoning') {
+      flushText()
+      const reasoning = (part as { reasoning: string; type: 'reasoning' }).reasoning
+      rendered.push(<ThinkingSection key={`reasoning-${i}`} text={reasoning} />)
+      return
+    }
+    if (part.type === 'text') {
+      textBuffer += (part as { text: string; type: 'text' }).text
+      return
+    }
+    if (!isToolUIPart(part)) {
+      return
+    }
+    flushText()
+    const toolPart = part as {
+      approval?: { approved?: boolean; id: string }
+      input: unknown
+      output?: unknown
+      state: string
+    }
+    const toolName = getToolName(toolPart as Parameters<typeof getToolName>[0])
+
+    if (
+      toolPart.state === 'approval-requested' &&
+      toolPart.approval?.id &&
+      onToolApprove &&
+      onToolDeny
+    ) {
+      const approvalId = toolPart.approval.id
+      rendered.push(
+        <ToolConfirmation
+          input={toolPart.input}
+          isLoading={isLoading}
+          key={`tool-${i}`}
+          onAllow={() => onToolApprove(approvalId)}
+          onDeny={() => onToolDeny(approvalId)}
+          toolName={toolName}
+        />,
+      )
+      return
+    }
+
+    rendered.push(<ToolCallIndicator key={`tool-${i}`} part={toolPart} />)
+  })
+  flushText()
+
+  if (rendered.length === 0) {
+    rendered.push(
+      <div key="empty" style={bubbleStyle}>
+        {'\u2026'}
+      </div>,
+    )
+  }
+
   return (
     <div
       className="chat-agent-message"
       style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}
     >
-      <div style={{ maxWidth: '85%', minWidth: '120px', position: 'relative' }}>
-        {/* Reasoning sections (rendered before the main bubble) */}
-        {reasoningParts.map((p, i) => (
-          <ThinkingSection key={i} text={p.reasoning} />
-        ))}
-
-        {/* Edit mode for user messages */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          maxWidth: '85%',
+          minWidth: '120px',
+          position: 'relative',
+        }}
+      >
         {isEditing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <textarea
@@ -363,39 +452,13 @@ export function MessageBubble({
           </div>
         ) : (
           <>
-            {/* Message bubble */}
-            <div
-              style={{
-                borderRadius: '12px',
-                fontSize: '14px',
-                lineHeight: '1.5',
-                padding: '10px 14px',
-                wordBreak: 'break-word',
-                ...(isUser ? { whiteSpace: 'pre-wrap' as const } : {}),
-                ...(isUser
-                  ? { background: 'var(--theme-elevation-900)', color: 'var(--theme-bg)' }
-                  : { background: 'var(--theme-elevation-50)', color: 'var(--theme-text)' }),
-              }}
-            >
-              {(() => {
-                if (!textContent) {
-                  return '\u2026'
-                }
-                if (isUser) {
-                  return textContent
-                }
-                return <MarkdownContent>{textContent}</MarkdownContent>
-              })()}
-            </div>
-
-            {/* Hover action bar */}
+            {rendered}
             {hasActions ? (
               <div
                 className="chat-agent-actions"
                 style={{
                   display: 'flex',
                   gap: '4px',
-                  marginTop: '4px',
                   opacity: 0,
                   transition: 'opacity 150ms',
                   ...(isUser ? { justifyContent: 'flex-end' } : {}),
@@ -424,45 +487,8 @@ export function MessageBubble({
             ) : null}
           </>
         )}
-
-        {/* Tool parts: approval dialogs, expandable indicators */}
-        {message.parts
-          .filter((p) => isToolUIPart(p))
-          .map((p, i: number) => {
-            const toolPart = p as {
-              approval?: { approved?: boolean; id: string }
-              input: unknown
-              output?: unknown
-              state: string
-            }
-            const toolName = getToolName(toolPart as Parameters<typeof getToolName>[0])
-
-            // Show approval dialog when the SDK has emitted an approval request.
-            if (
-              toolPart.state === 'approval-requested' &&
-              toolPart.approval?.id &&
-              onToolApprove &&
-              onToolDeny
-            ) {
-              const approvalId = toolPart.approval.id
-              return (
-                <ToolConfirmation
-                  input={toolPart.input}
-                  isLoading={isLoading}
-                  key={i}
-                  onAllow={() => onToolApprove(approvalId)}
-                  onDeny={() => onToolDeny(approvalId)}
-                  toolName={toolName}
-                />
-              )
-            }
-
-            return <ToolCallIndicator key={i} part={toolPart} />
-          })}
-
-        {/* Token/model metadata */}
         {!isUser && meta?.totalTokens ? (
-          <div style={{ color: 'var(--theme-elevation-400)', fontSize: '11px', marginTop: '4px' }}>
+          <div style={{ color: 'var(--theme-elevation-400)', fontSize: '11px' }}>
             {[meta.model, formatTokens(meta.totalTokens)].filter(Boolean).join(' \u00b7 ')}
           </div>
         ) : null}

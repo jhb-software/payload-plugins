@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix: chat messages now render text and tool-call parts in their original interleaved order. Previously all text was concatenated at the top of the bubble and all tool calls rendered after it, so the assistant's reply appeared before the tool calls it made earlier in the same turn.
 - Fix: the chat admin view now renders inside Payload's `DefaultTemplate`, so the nav sidebar and admin header stay visible on `/admin/chat` (custom admin views are not auto-wrapped by Payload's route resolver). Adds `@payloadcms/next` as a peer dependency.
 - Fix: the plugin-level `access` function now gates every chat-agent surface. Previously, setting `access: () => false` still allowed any authenticated user to hit the `/chat-agent/chat/models` endpoint, all conversation CRUD endpoints, and the admin `/chat` view itself. Now a denied access check returns 401 on every endpoint and renders a "Not authorized" message in the admin view.
 - Improve mode selector labels to describe behavior ("Read only", "Confirm writes", "Read & write", "Superuser (bypass permissions)") instead of raw mode names.
