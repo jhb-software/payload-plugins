@@ -269,7 +269,12 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             // --- Stream response via AI SDK --------------------------------
+            // Pass the request's abort signal so a client disconnect (tab
+            // close, navigation, server timeout) aborts the in-flight LLM
+            // call instead of racking up tokens on a stream nobody is
+            // listening to.
             const result = streamText({
+              abortSignal: req.signal,
               messages: await convertToModelMessages(
                 body.messages as Parameters<typeof convertToModelMessages>[0],
               ),

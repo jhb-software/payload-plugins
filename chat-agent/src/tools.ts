@@ -412,6 +412,12 @@ export function buildTools(
 
               // Build a minimal request object by extending the original.
               // Use defineProperty for read-only properties like `method`.
+              //
+              // Every per-request field is reset explicitly so the forged
+              // request can't inherit state from the chat request via the
+              // prototype chain (e.g. the chat endpoint's own `searchParams`
+              // leaking into a custom handler that forgot to use its own
+              // query input).
               const endpointReq = Object.create(req)
               Object.defineProperty(endpointReq, 'method', {
                 enumerable: true,
@@ -419,10 +425,10 @@ export function buildTools(
               })
               endpointReq.routeParams = routeParams
               endpointReq.json = () => Promise.resolve(body ?? {})
-
-              if (query && Object.keys(query).length > 0) {
-                endpointReq.searchParams = new URLSearchParams(query)
-              }
+              endpointReq.searchParams =
+                query && Object.keys(query).length > 0
+                  ? new URLSearchParams(query)
+                  : new URLSearchParams()
 
               try {
                 const response = await match.handler(endpointReq)

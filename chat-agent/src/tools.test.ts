@@ -529,6 +529,58 @@ describe('callEndpoint tool', () => {
 
     expect(result).toEqual(expect.objectContaining({ error: 'handler crashed' }))
   })
+
+  // The forged request is built with `Object.create(originalReq)`, so any
+  // per-request field the tool doesn't explicitly reset would leak through
+  // the prototype chain. The chat endpoint's own `?foo=bar` arriving on the
+  // POST would otherwise be visible to a custom handler that expected its
+  // own query — so the tool must hand the handler an empty `searchParams`
+  // when the agent doesn't pass a `query` input.
+  it('does not leak the chat endpoint searchParams through the prototype chain', async () => {
+    let capturedSearchParams: undefined | URLSearchParams
+    const endpoints = [
+      {
+        description: 'Capture query',
+        handler: (req: PayloadRequest) => {
+          capturedSearchParams = req.searchParams
+          return Response.json({ ok: true })
+        },
+        method: 'get',
+        path: '/api/ep',
+      },
+    ]
+    const originalSearchParams = new URLSearchParams({ chatSecret: 'leak-me' })
+    const mockReq = asReq({ searchParams: originalSearchParams })
+    const tools = buildTools(mockPayload, mockUser, false, mockReq, endpoints)
+
+    await tools.callEndpoint.execute({ method: 'get', path: '/api/ep' }, ctx)
+
+    expect(capturedSearchParams).toBeDefined()
+    expect(capturedSearchParams!.get('chatSecret')).toBeNull()
+  })
+
+  it('passes the agent-supplied query as searchParams', async () => {
+    let capturedSearchParams: undefined | URLSearchParams
+    const endpoints = [
+      {
+        description: 'Capture query',
+        handler: (req: PayloadRequest) => {
+          capturedSearchParams = req.searchParams
+          return Response.json({ ok: true })
+        },
+        method: 'get',
+        path: '/api/ep',
+      },
+    ]
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
+
+    await tools.callEndpoint.execute(
+      { method: 'get', path: '/api/ep', query: { status: 'published' } },
+      ctx,
+    )
+
+    expect(capturedSearchParams?.get('status')).toBe('published')
+  })
 })
 
 // ---------------------------------------------------------------------------

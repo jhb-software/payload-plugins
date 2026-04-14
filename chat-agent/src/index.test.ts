@@ -806,6 +806,36 @@ describe('chatAgentPlugin model factory', () => {
     expect(callArgs.model).toBe(sentinel)
   })
 
+  // Without this wiring, streamText keeps consuming tokens after the client
+  // disconnects (tab close, navigation, proxy timeout). Forwarding
+  // `req.signal` lets the AI SDK abort the in-flight provider call as soon
+  // as the request is cancelled.
+  it('forwards req.signal to streamText as abortSignal', async () => {
+    vi.mocked(streamText).mockClear()
+    const controller = new AbortController()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      signal: controller.signal,
+      user: { id: 1 },
+    })
+
+    expect(vi.mocked(streamText)).toHaveBeenCalledTimes(1)
+    const callArgs = vi.mocked(streamText).mock.calls[0][0]
+    expect(callArgs.abortSignal).toBe(controller.signal)
+  })
+
   it('supports routing to different providers based on the model id', async () => {
     // Mixed-provider scenario: simulate one Anthropic and one OpenAI provider
     // and verify the handler routes through the user-supplied factory each
