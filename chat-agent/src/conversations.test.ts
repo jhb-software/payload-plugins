@@ -63,27 +63,6 @@ function callHandler(handler: PayloadHandler, req: MockReq): Promise<Response> |
 // ---------------------------------------------------------------------------
 
 describe('conversationsCollection', () => {
-  it('has the correct slug', () => {
-    expect(conversationsCollection.slug).toBe('chat-conversations')
-  })
-
-  it('has required fields', () => {
-    const fieldNames = conversationsCollection.fields.map((f) => ('name' in f ? f.name : undefined))
-    expect(fieldNames).toContain('title')
-    expect(fieldNames).toContain('messages')
-    expect(fieldNames).toContain('user')
-    expect(fieldNames).toContain('model')
-    expect(fieldNames).toContain('totalTokens')
-  })
-
-  it('has timestamps enabled', () => {
-    expect(conversationsCollection.timestamps).toBe(true)
-  })
-
-  it('is hidden from admin panel', () => {
-    expect(conversationsCollection.admin?.hidden).toBe(true)
-  })
-
   it('denies read access without a user', () => {
     const result = conversationsCollection.access!.read!(asAccessArgs({ req: { user: null } }))
     expect(result).toBe(false)

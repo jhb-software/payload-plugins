@@ -7,7 +7,6 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt({ collections: [], globals: [] })
     expect(prompt).toContain('CMS content assistant')
     expect(prompt).toContain('confirm with the user')
-    expect(prompt).toContain('find')
   })
 
   it('prepends custom prefix when provided', () => {

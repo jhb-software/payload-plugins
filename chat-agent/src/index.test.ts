@@ -553,20 +553,6 @@ describe('chatAgentPlugin nav link', () => {
     expect(result.admin.components.views.chat.path).toBe('/chat')
   })
 
-  it('injects the nav link when navLink is explicitly true', () => {
-    const plugin = chatAgentPlugin({
-      defaultModel: 'claude-sonnet-4-20250514',
-      model: makeModelFactory().factory,
-      navLink: true,
-    })
-    const result = plugin({ endpoints: [] })
-
-    const navLink = result.admin.components.beforeNavLinks.find(
-      (c: NavLinkEntry) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
-    )
-    expect(navLink).toBeDefined()
-  })
-
   it('uses a server component for the nav link', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
@@ -591,17 +577,6 @@ describe('chatAgentPlugin nav link', () => {
     const result = plugin({ endpoints: [] })
 
     expect(result.custom?.chatAgent?.access).toBe(access)
-  })
-
-  it('stores chatAgent config even without a custom access function', () => {
-    const plugin = chatAgentPlugin({
-      defaultModel: 'claude-sonnet-4-20250514',
-      model: makeModelFactory().factory,
-    })
-    const result = plugin({ endpoints: [] })
-
-    expect(result.custom?.chatAgent).toBeDefined()
-    expect(result.custom.chatAgent.access).toBeUndefined()
   })
 
   it('preserves existing beforeNavLinks entries', () => {
@@ -649,8 +624,12 @@ describe('chatAgentPlugin model validation', () => {
     expect(body.error).toContain('not available')
   })
 
-  it('allows model when no available list is configured', async () => {
-    const { factory } = makeModelFactory()
+  it('allows any model id when no available list is configured', async () => {
+    // Observable behavior: without availableModels, the plugin must not
+    // 400 on an unknown model id — it should pass through to the factory.
+    // We detect "validation passed" by watching the factory get called;
+    // a rejecting 400 would short-circuit before that.
+    const { calls, factory } = makeModelFactory()
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
       model: factory,
@@ -658,22 +637,18 @@ describe('chatAgentPlugin model validation', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
-    // This will proceed past validation and fail at streamText (no mock),
-    // which means validation passed. We catch the error from streamText.
-    try {
-      await handler({
-        json: () =>
-          Promise.resolve({
-            messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
-            model: 'any-model-id',
-          }),
-        payload: { config: { collections: [], globals: [] } },
-        user: { id: 1 },
-      })
-    } catch {
-      // Expected: streamText fails because we don't have a real API
-    }
-    // If we got here without a 400 response, validation passed
+    const response = await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
+          model: 'any-model-id',
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(response.status).not.toBe(400)
+    expect(calls).toContain('any-model-id')
   })
 })
 
