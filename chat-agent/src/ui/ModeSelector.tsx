@@ -3,10 +3,10 @@
 import type { AgentMode } from '../types.js'
 
 const MODE_LABELS: Record<AgentMode, string> = {
-  ask: 'Ask',
-  read: 'Read',
-  'read-write': 'Read-Write',
-  superuser: 'Superuser',
+  ask: 'Confirm writes',
+  read: 'Read only',
+  'read-write': 'Read & write',
+  superuser: 'Superuser (bypass permissions)',
 }
 
 const MODE_DESCRIPTIONS: Record<AgentMode, string> = {

@@ -77,22 +77,26 @@ export interface ModesConfig {
 // ---------------------------------------------------------------------------
 
 export interface ChatAgentPluginOptions {
-  /** Override the default auth check (must return true to allow). */
+  /**
+   * Gates every plugin surface (endpoints, admin view, nav link). Return `true` to allow, `false` to deny.
+   *
+   * When omitted, any authenticated Payload user is allowed. Set this to
+   * restrict to specific roles, e.g. `({ user }) => user?.role === 'admin'`.
+   *
+   * For finer-grained control over which agent modes each user can use
+   * (read / ask / read-write / superuser), see `modes.access`.
+   */
   access?: (req: any) => boolean | Promise<boolean>
   /**
-   * Admin panel chat view configuration.
-   * - Omit or `{}` to auto-register at `/admin/chat` (default).
-   * - `false` to disable the admin view entirely.
-   * - `{ path, Component }` to customize the route or component.
+   * Admin panel chat view configuration. The chat view is always registered;
+   * use these fields to customize the route path or replace the component.
    */
-  adminView?:
-    | {
-        /** Custom component path for Payload's importMap. */
-        Component?: string
-        /** Admin route path. Default: "/chat" */
-        path?: `/${string}`
-      }
-    | false
+  adminView?: {
+    /** Custom component path for Payload's importMap. */
+    Component?: string
+    /** Admin route path. Default: "/chat" */
+    path?: `/${string}`
+  }
   /** Models the user can choose from in the chat UI. When provided with 2+ entries, a selector dropdown is shown. */
   availableModels?: ModelOption[]
   /** Model id used when no per-request override is provided. Passed to `model(id)`. */
@@ -112,6 +116,11 @@ export interface ChatAgentPluginOptions {
    * attempt and which users can use which access levels.
    */
   modes?: ModesConfig
+  /**
+   * Show a "Chat" link at the top of the admin nav sidebar.
+   * Set to `false` to hide it. Default: `true`.
+   */
+  navLink?: boolean
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
 }

@@ -24,6 +24,7 @@ import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import type { AgentMode, ChatAgentPluginOptions } from './types.js'
 
+import { isPluginAccessAllowed } from './access.js'
 import { conversationEndpoints, conversationsCollection } from './conversations.js'
 import {
   getDefaultMode,
@@ -37,6 +38,7 @@ import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 export type { ChatAgentPluginOptions, ModelFactory, ModelOption } from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
+export { default as ChatNavLinkServer } from './ui/ChatNavLinkServer.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
 
 /**
@@ -44,6 +46,13 @@ export { default as ChatViewServer } from './ui/ChatViewServer.js'
  * Used by Payload's importMap system.
  */
 const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent#ChatViewServer'
+
+/**
+ * The package-relative path to the ChatNavLinkServer component shown at the
+ * top of the admin nav sidebar. This is a server component that checks access
+ * before rendering the client ChatNavLink.
+ */
+const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent#ChatNavLinkServer'
 
 /**
  * Validate that a messages array is non-empty and has valid roles.
@@ -87,17 +96,28 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
   const modesConfig = resolveModeConfig(options)
 
   return (config: any): any => {
-    // Auto-register the admin chat view unless explicitly disabled
-    const adminViews =
-      options.adminView === false
-        ? config.admin?.components?.views
-        : {
-            ...config.admin?.components?.views,
-            chat: {
-              Component: options.adminView?.Component ?? CHAT_VIEW_COMPONENT,
-              path: options.adminView?.path ?? '/chat',
-            },
-          }
+    // Always register the admin chat view. `adminView` customizes route/component.
+    const chatPath = options.adminView?.path ?? '/chat'
+    const adminViews = {
+      ...config.admin?.components?.views,
+      chat: {
+        Component: options.adminView?.Component ?? CHAT_VIEW_COMPONENT,
+        path: chatPath,
+      },
+    }
+
+    // Inject a "Chat" link at the top of the admin nav sidebar by default.
+    // Opt out with `navLink: false`.
+    const showNavLink = options.navLink !== false
+    const beforeNavLinks = showNavLink
+      ? [
+          ...(config.admin?.components?.beforeNavLinks ?? []),
+          {
+            clientProps: { path: chatPath },
+            path: CHAT_NAV_LINK_COMPONENT,
+          },
+        ]
+      : config.admin?.components?.beforeNavLinks
 
     return {
       ...config,
@@ -105,10 +125,17 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         ...config.admin,
         components: {
           ...config.admin?.components,
+          beforeNavLinks,
           views: adminViews,
         },
       },
       collections: [...(config.collections ?? []), conversationsCollection],
+      custom: {
+        ...config.custom,
+        chatAgent: {
+          access: options.access,
+        },
+      },
       endpoints: [
         ...(config.endpoints ?? []),
         ...conversationEndpoints,
@@ -116,8 +143,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         // --- GET /chat-agent/modes ------------------------------------------
         {
           handler: async (req: any) => {
-            const allowed = options.access ? await options.access(req) : !!req.user
-            if (!allowed) {
+            if (!(await isPluginAccessAllowed(req))) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
 
@@ -133,7 +159,10 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
         // --- GET /chat-agent/chat/models ------------------------------------
         {
-          handler: () => {
+          handler: async (req: any) => {
+            if (!(await isPluginAccessAllowed(req))) {
+              return Response.json({ error: 'Unauthorized' }, { status: 401 })
+            }
             return Response.json({
               availableModels: options.availableModels ?? [],
               defaultModel: options.defaultModel,
@@ -147,8 +176,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         {
           handler: async (req: any) => {
             // --- Auth check -----------------------------------------------
-            const allowed = options.access ? await options.access(req) : !!req.user
-            if (!allowed) {
+            if (!(await isPluginAccessAllowed(req))) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
 

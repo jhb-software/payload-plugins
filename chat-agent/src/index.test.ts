@@ -436,17 +436,6 @@ describe('chatAgentPlugin admin view', () => {
     expect(result.admin.components.views.chat).toBeDefined()
   })
 
-  it('disables admin view when adminView is false', () => {
-    const plugin = chatAgentPlugin({
-      adminView: false,
-      defaultModel: 'claude-sonnet-4-20250514',
-      model: makeModelFactory().factory,
-    })
-    const result = plugin({ endpoints: [] })
-
-    expect(result.admin?.components?.views?.chat).toBeUndefined()
-  })
-
   it('uses custom path when provided', () => {
     const plugin = chatAgentPlugin({
       adminView: { path: '/assistant' },
@@ -467,6 +456,148 @@ describe('chatAgentPlugin admin view', () => {
     const result = plugin({ endpoints: [] })
 
     expect(result.admin.components.views.chat.Component).toBe('./my-custom/ChatUI')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Nav sidebar button (beforeNavLinks)
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin nav link', () => {
+  it('injects a chat nav link into admin.components.beforeNavLinks by default', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+
+    const beforeNavLinks = result.admin?.components?.beforeNavLinks
+    expect(Array.isArray(beforeNavLinks)).toBe(true)
+    const navLink = beforeNavLinks.find((c: any) =>
+      typeof c === 'string' ? c.includes('ChatNavLink') : c?.path?.includes('ChatNavLink'),
+    )
+    expect(navLink).toBeDefined()
+  })
+
+  it('passes the configured chat path to the nav link as a client prop', () => {
+    const plugin = chatAgentPlugin({
+      adminView: { path: '/assistant' },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+
+    const navLink = result.admin.components.beforeNavLinks.find(
+      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+    )
+    expect(navLink).toBeDefined()
+    expect(navLink.clientProps?.path).toBe('/assistant')
+  })
+
+  it('defaults the nav link path to /chat when adminView is unset', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+
+    const navLink = result.admin.components.beforeNavLinks.find(
+      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+    )
+    expect(navLink.clientProps?.path).toBe('/chat')
+  })
+
+  it('does NOT inject the nav link when navLink is false', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      navLink: false,
+    })
+    const result = plugin({ endpoints: [] })
+
+    const beforeNavLinks = result.admin?.components?.beforeNavLinks ?? []
+    const navLink = beforeNavLinks.find((c: any) =>
+      typeof c === 'string' ? c.includes('ChatNavLink') : c?.path?.includes('ChatNavLink'),
+    )
+    expect(navLink).toBeUndefined()
+  })
+
+  it('still registers the admin chat view when navLink is false', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      navLink: false,
+    })
+    const result = plugin({ endpoints: [] })
+
+    expect(result.admin?.components?.views?.chat).toBeDefined()
+    expect(result.admin.components.views.chat.path).toBe('/chat')
+  })
+
+  it('injects the nav link when navLink is explicitly true', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      navLink: true,
+    })
+    const result = plugin({ endpoints: [] })
+
+    const navLink = result.admin.components.beforeNavLinks.find(
+      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+    )
+    expect(navLink).toBeDefined()
+  })
+
+  it('uses a server component for the nav link', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+
+    const navLink = result.admin.components.beforeNavLinks.find(
+      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+    )
+    expect(navLink.path).toContain('ChatNavLinkServer')
+    expect(navLink.path).not.toContain('/client')
+  })
+
+  it('stores the access function in config.custom.chatAgent', () => {
+    const access = () => true
+    const plugin = chatAgentPlugin({
+      access,
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+
+    expect(result.custom?.chatAgent?.access).toBe(access)
+  })
+
+  it('stores chatAgent config even without a custom access function', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+
+    expect(result.custom?.chatAgent).toBeDefined()
+    expect(result.custom.chatAgent.access).toBeUndefined()
+  })
+
+  it('preserves existing beforeNavLinks entries', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const existing = '@my-org/existing#SomeNavLink'
+    const result = plugin({
+      admin: { components: { beforeNavLinks: [existing] } },
+      endpoints: [],
+    })
+
+    expect(result.admin.components.beforeNavLinks).toContain(existing)
+    expect(result.admin.components.beforeNavLinks.length).toBeGreaterThan(1)
   })
 })
 
@@ -729,7 +860,7 @@ describe('chatAgentPlugin models endpoint', () => {
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
 
-    const response = await ep.handler()
+    const response = await ep.handler({ user: { id: 1 } })
     const body = await response.json()
     expect(body.defaultModel).toBe('claude-sonnet-4-20250514')
     expect(body.availableModels).toHaveLength(2)
@@ -743,9 +874,99 @@ describe('chatAgentPlugin models endpoint', () => {
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
 
-    const response = await ep.handler()
+    const response = await ep.handler({ user: { id: 1 } })
     const body = await response.json()
     expect(body.defaultModel).toBe('gpt-4o-mini')
     expect(body.availableModels).toEqual([])
+  })
+
+  it('returns 401 when plugin access() denies', async () => {
+    const plugin = chatAgentPlugin({
+      access: () => false,
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+    })
+    const config = plugin({ endpoints: [] })
+    const ep = config.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
+
+    const response = await ep.handler({
+      payload: { config: { custom: config.custom } },
+      user: { id: 1 },
+    })
+    expect(response.status).toBe(401)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Plugin-level access() gates every surface
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin access()', () => {
+  // When an authenticated user is present but the plugin's access() returns
+  // false, every chat-agent endpoint must refuse. Before the fix, only the
+  // modes + chat endpoints honored access(); /models and the conversation
+  // CRUD routes still worked for any logged-in user.
+  const denyingPlugin = () =>
+    chatAgentPlugin({
+      access: () => false,
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+    })
+
+  it('denies /chat-agent/modes', async () => {
+    const config = denyingPlugin()({ endpoints: [] })
+    const handler = config.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+    const response = await handler({
+      payload: { config: { custom: config.custom } },
+      user: { id: 1 },
+    })
+    expect(response.status).toBe(401)
+  })
+
+  it('denies /chat-agent/chat', async () => {
+    const config = denyingPlugin()({ endpoints: [] })
+    const handler = config.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const response = await handler({
+      json: () => Promise.resolve({ messages: [] }),
+      payload: { config: { custom: config.custom } },
+      user: { id: 1 },
+    })
+    expect(response.status).toBe(401)
+  })
+
+  it('denies /chat-agent/chat/models', async () => {
+    const config = denyingPlugin()({ endpoints: [] })
+    const handler = config.endpoints.find(
+      (ep: any) => ep.path === '/chat-agent/chat/models',
+    ).handler
+    const response = await handler({
+      payload: { config: { custom: config.custom } },
+      user: { id: 1 },
+    })
+    expect(response.status).toBe(401)
+  })
+
+  it('denies every conversation CRUD endpoint', async () => {
+    const config = denyingPlugin()({ endpoints: [] })
+    const payload = { config: { custom: config.custom } }
+    const routes = [
+      ['get', '/chat-agent/chat/conversations'],
+      ['get', '/chat-agent/chat/conversations/:id'],
+      ['post', '/chat-agent/chat/conversations'],
+      ['patch', '/chat-agent/chat/conversations/:id'],
+      ['delete', '/chat-agent/chat/conversations/:id'],
+    ] as const
+    for (const [method, path] of routes) {
+      const handler = config.endpoints.find(
+        (ep: any) => ep.method === method && ep.path === path,
+      ).handler
+      const response = await handler({
+        json: () => Promise.resolve({}),
+        payload,
+        routeParams: { id: 'c1' },
+        user: { id: 1 },
+      })
+      expect(response.status, `${method} ${path}`).toBe(401)
+    }
   })
 })
