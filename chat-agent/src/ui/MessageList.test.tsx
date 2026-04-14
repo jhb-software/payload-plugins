@@ -39,4 +39,32 @@ describe('MessageList', () => {
     expect(screen.queryByText(/what can i help you with/i)).toBeNull()
     expect(screen.getByText('Hi')).toBeDefined()
   })
+
+  it('only exposes the edit action on the last user message', () => {
+    const messages = [
+      {
+        id: '1',
+        parts: [{ type: 'text' as const, text: 'first user' }],
+        role: 'user',
+      },
+      {
+        id: '2',
+        parts: [{ type: 'text' as const, text: 'assistant reply' }],
+        role: 'assistant',
+      },
+      {
+        id: '3',
+        parts: [{ type: 'text' as const, text: 'second user' }],
+        role: 'user',
+      },
+      {
+        id: '4',
+        parts: [{ type: 'text' as const, text: 'assistant follow-up' }],
+        role: 'assistant',
+      },
+    ] as UIMessage<MessageMetadata>[]
+    render(<MessageList messages={messages} onEditMessage={vi.fn()} />)
+    const editButtons = screen.getAllByTitle(/edit message/i)
+    expect(editButtons).toHaveLength(1)
+  })
 })

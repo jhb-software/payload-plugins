@@ -115,6 +115,19 @@ export function MessageList({
     }
   }
 
+  // Editing is only offered on the *last* user message. Editing an earlier
+  // message would require truncating the assistant replies (and any
+  // user/assistant turns) that came after it, which is surprising — so we
+  // restrict the action to the final user turn, where it behaves like a
+  // "retry with different wording".
+  let lastUserIndex = -1
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      lastUserIndex = i
+      break
+    }
+  }
+
   // Track scroll position
   const handleScroll = useCallback(() => {
     const el = containerRef.current
@@ -181,7 +194,7 @@ export function MessageList({
             key={msg.id}
             message={msg}
             onEdit={
-              msg.role === 'user' && onEditMessage
+              i === lastUserIndex && onEditMessage
                 ? (newText: string) => onEditMessage(msg.id, newText)
                 : undefined
             }
