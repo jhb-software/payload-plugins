@@ -1,6 +1,6 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
-import { chatAgentPlugin } from '@jhb.software/payload-chat-agent'
+import { chatAgentPlugin, createPayloadBudget } from '@jhb.software/payload-chat-agent'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -13,6 +13,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+// Per-user daily token budget wired to a Payload collection. Demonstrates the
+// `createPayloadBudget` helper in action — swap `period: 'daily'` for
+// `'monthly'` or a custom resolver, and `scope: 'user'` for `'global'` or a
+// custom key (e.g. `({ req }) => \`org:${req.user?.orgId}\``) to fit.
+const chatBudget = createPayloadBudget({
+  limit: 50_000,
+  period: 'daily',
+  scope: 'user',
+})
 
 const resolveModel = (id: string) => {
   if (id.startsWith('claude-')) {
@@ -91,6 +101,7 @@ export default buildConfig({
       },
       fields: [{ name: 'alt', type: 'text' }],
     },
+    chatBudget.collection,
   ],
   globals: [
     {
@@ -184,6 +195,7 @@ export default buildConfig({
         { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
         { id: 'gpt-5-nano', label: 'GPT-5 nano' },
       ],
+      budget: chatBudget.budget,
       defaultModel: 'claude-haiku-4-5-20251001',
       model: resolveModel,
       modes: {

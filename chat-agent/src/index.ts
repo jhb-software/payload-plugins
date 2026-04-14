@@ -38,6 +38,15 @@ import {
 import { buildSystemPrompt } from './schema.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
+export {
+  createPayloadBudget,
+  type CreatePayloadBudgetOptions,
+  type CreatePayloadBudgetResult,
+  DEFAULT_USAGE_COLLECTION_SLUG,
+  type PeriodResolver,
+  type ScopeResolver,
+} from './budget.js'
+export type { BudgetConfig, BudgetUsage } from './types.js'
 export type { ChatAgentPluginOptions, ModelFactory, ModelOption } from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
@@ -239,6 +248,31 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
             const mode = requestedMode as AgentMode
 
+            // --- Budget check ----------------------------------------------
+            // Surfaced as a 429 before we spend tokens. Errors from the
+            // user-supplied check() are deliberately surfaced as 500 (not
+            // swallowed) so a broken budget store fails loudly instead of
+            // silently allowing unlimited spend.
+            let remaining: null | number = null
+            if (options.budget) {
+              try {
+                remaining = await options.budget.check({ req })
+              } catch (err) {
+                return Response.json(
+                  {
+                    error: `Budget check failed: ${err instanceof Error ? err.message : String(err)}`,
+                  },
+                  { status: 500 },
+                )
+              }
+              if (remaining !== null && remaining <= 0) {
+                return Response.json(
+                  { error: 'Token budget exceeded', remaining: 0 },
+                  { status: 429 },
+                )
+              }
+            }
+
             // --- Resolve overrideAccess ------------------------------------
             const overrideAccess = mode === 'superuser'
 
@@ -268,19 +302,46 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               )
             }
 
+            // --- Budget recording hook -------------------------------------
+            // Attached as `onFinish` (PromiseLike-aware) so the AI SDK awaits
+            // it before closing the stream. Keeps the next check() for the
+            // same user consistent with the spend we just observed.
+            const record = options.budget?.record
+            const onFinish = record
+              ? async (event: { totalUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number } }) => {
+                  await record({
+                    model: modelId,
+                    req,
+                    usage: {
+                      inputTokens: event.totalUsage?.inputTokens,
+                      outputTokens: event.totalUsage?.outputTokens,
+                      totalTokens: event.totalUsage?.totalTokens,
+                    },
+                  })
+                }
+              : undefined
+
             // --- Stream response via AI SDK --------------------------------
             const result = streamText({
               messages: await convertToModelMessages(
                 body.messages as Parameters<typeof convertToModelMessages>[0],
               ),
               model: resolvedModel,
+              onFinish,
               stopWhen: stepCountIs(maxSteps),
               system: systemPrompt,
               toolChoice: 'auto',
               tools,
             })
 
+            // `X-Budget-Remaining` lets the client surface soft warnings as
+            // users approach the cap. Only set when a numeric remaining was
+            // returned (null = unlimited, i.e. no header).
+            const headers =
+              remaining !== null ? { 'X-Budget-Remaining': String(remaining) } : undefined
+
             return result.toUIMessageStreamResponse({
+              headers,
               messageMetadata: ({ part }: { part: TextStreamPart<ToolSet> }) => {
                 if (part.type === 'finish') {
                   return {
@@ -297,6 +358,26 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
           method: 'post',
           path: '/chat-agent/chat',
         },
+
+        // --- GET /chat-agent/budget -----------------------------------------
+        // Only registered when a budget is configured, so clients can detect
+        // the feature by checking for a 404 vs. a real response. Thin wrapper
+        // over the user's check() so no duplication of scope/period logic.
+        ...(options.budget
+          ? [
+              {
+                handler: async (req: PayloadRequest) => {
+                  if (!(await isPluginAccessAllowed(req))) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+                  }
+                  const r = await options.budget!.check({ req })
+                  return Response.json({ remaining: r })
+                },
+                method: 'get' as const,
+                path: '/chat-agent/budget',
+              },
+            ]
+          : []),
       ],
     }
   }

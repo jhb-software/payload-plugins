@@ -74,6 +74,75 @@ export interface ModesConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Budget
+// ---------------------------------------------------------------------------
+
+/**
+ * Token usage reported after a chat completion.
+ */
+export interface BudgetUsage {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+}
+
+/**
+ * Small, flexible primitive for limiting how many tokens users can spend.
+ *
+ * The plugin itself stores nothing — `check` decides if the next request is
+ * allowed and `record` stores the observed usage. Between them, you can
+ * implement per-user, per-day, global, or any other budget scope without the
+ * plugin needing to know which one.
+ *
+ * @example Per-user monthly budget
+ * ```ts
+ * budget: {
+ *   check: async ({ req }) => 1_000_000 - await getMonthlyUsage(req.user!.id),
+ *   record: ({ req, usage }) => addMonthlyUsage(req.user!.id, usage.totalTokens ?? 0),
+ * }
+ * ```
+ *
+ * @example Reuse the bundled per-user-per-day helper
+ * ```ts
+ * const { budget, collection } = createPayloadBudget({
+ *   limit: 50_000,
+ *   period: 'daily',
+ *   scope: 'user',
+ * })
+ * ```
+ */
+export interface BudgetConfig {
+  /**
+   * Called before each chat request. Return the remaining number of tokens in
+   * the current window.
+   * - A positive number allows the request; the value is echoed on the response
+   *   as the `X-Budget-Remaining` header so the client can warn users.
+   * - `0` or a negative number rejects the request with HTTP 429.
+   * - `null` skips the budget check entirely (unlimited).
+   *
+   * If this function throws, the request fails with HTTP 500 and the error is
+   * surfaced — the plugin does not swallow it.
+   */
+  check: (args: { req: PayloadRequest }) => null | number | Promise<null | number>
+
+  /**
+   * Called after a chat response has streamed to completion with the actual
+   * token usage. This call is awaited before the stream closes so the next
+   * `check` for the same user reflects the spend.
+   *
+   * If this function throws, the error is surfaced — the plugin does not
+   * swallow it. Typically this means the client sees a stream error on the
+   * otherwise-successful response; log and handle accordingly in your
+   * implementation.
+   */
+  record?: (args: {
+    model: string
+    req: PayloadRequest
+    usage: BudgetUsage
+  }) => Promise<void> | void
+}
+
+// ---------------------------------------------------------------------------
 // Plugin options
 // ---------------------------------------------------------------------------
 
@@ -100,6 +169,13 @@ export interface ChatAgentPluginOptions {
   }
   /** Models the user can choose from in the chat UI. When provided with 2+ entries, a selector dropdown is shown. */
   availableModels?: ModelOption[]
+  /**
+   * Optional token budget. Limits how many tokens the agent can consume per
+   * user, per day, globally, or any custom window — the shape is user-defined.
+   * See `BudgetConfig` for the two-function primitive and `createPayloadBudget`
+   * for a ready-made helper that persists usage to a Payload collection.
+   */
+  budget?: BudgetConfig
   /** Model id used when no per-request override is provided. Passed to `model(id)`. */
   defaultModel: string
   /** Maximum tool-use loop steps per request. Default: 20 */
