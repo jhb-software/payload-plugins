@@ -107,6 +107,46 @@ describe('conversationsCollection', () => {
     )
     expect(result).toBe(true)
   })
+
+  // Without this hook, a user who hits Payload's default collection REST
+  // (`POST /api/chat-conversations`) could send `data.user = '<other-id>'`.
+  // Access filters would still hide the record from them, but the
+  // collection would end up with records owned by someone who never
+  // created them. The hook forces `data.user` to the authenticated user
+  // on every create/update so the ownership field is server-authoritative.
+  describe('beforeValidate forces data.user to the authenticated user', () => {
+    // `beforeValidate` is a `CollectionBeforeValidateHook`, which is a
+    // discriminated-union return type (data | Promise<data>). The tests
+    // invoke it synchronously with known shapes, so the loose cast
+    // documents the intentional narrowing rather than restating the full
+    // hook signature.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hook = conversationsCollection.hooks!.beforeValidate![0] as any
+
+    it('overwrites data.user on create even when client supplies another id', async () => {
+      const result = await hook({
+        data: { messages: [], title: 'hi', user: 'someone-else' },
+        operation: 'create',
+        req: { user: { id: 'me' } },
+      })
+      expect(result.user).toBe('me')
+    })
+
+    it('overwrites data.user on update even when client supplies another id', async () => {
+      const result = await hook({
+        data: { title: 'renamed', user: 'someone-else' },
+        operation: 'update',
+        req: { user: { id: 'me' } },
+      })
+      expect(result.user).toBe('me')
+    })
+
+    it('leaves data untouched when there is no authenticated user', async () => {
+      const data = { title: 'hi', user: 'preserved' }
+      const result = await hook({ data, operation: 'create', req: { user: null } })
+      expect(result).toEqual(data)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -317,6 +357,37 @@ describe('conversation endpoint handlers', () => {
       })
       expect(res.status).toBe(400)
     })
+
+    // If `totalTokens` were honored as-is from the client, a user could send
+    // `{ totalTokens: 0 }` alongside a long conversation and desync the
+    // recorded usage metric from what was actually consumed. The server
+    // derives it by summing `metadata.totalTokens` on the provided messages
+    // instead — the source of truth is the server-streamed message metadata,
+    // so the total stays consistent with the message list.
+    it('derives totalTokens from message metadata, ignoring client-supplied totalTokens', async () => {
+      const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
+      let captured: MockApiArgs | undefined
+      const res = await callHandler(handler, {
+        json: () =>
+          Promise.resolve({
+            messages: [
+              { metadata: { totalTokens: 120 }, role: 'assistant' },
+              { metadata: { totalTokens: 80 }, role: 'assistant' },
+              { role: 'user' },
+            ],
+            totalTokens: 9999,
+          }),
+        payload: {
+          create: (args: MockApiArgs) => {
+            captured = args
+            return { id: 'c1' }
+          },
+        },
+        user: { id: 'u1' },
+      })
+      expect(res.status).toBe(201)
+      expect(captured?.data?.totalTokens).toBe(200)
+    })
   })
 
   // --- Update -------------------------------------------------------------
@@ -353,6 +424,62 @@ describe('conversation endpoint handlers', () => {
         user: { id: 'u1' },
       })
       expect(res.status).toBe(200)
+    })
+
+    // The PATCH handler must never write a client-supplied `totalTokens`.
+    // See the create-handler test for the equivalent guard on the POST
+    // route — the same reasoning applies here (server-derived, message-
+    // consistent usage metric).
+    it('ignores client-supplied totalTokens and derives from message metadata', async () => {
+      const handler = findHandler(
+        conversationEndpoints,
+        'patch',
+        '/chat-agent/chat/conversations/:id',
+      )
+      let captured: MockApiArgs | undefined
+      const res = await callHandler(handler, {
+        json: () =>
+          Promise.resolve({
+            messages: [
+              { metadata: { totalTokens: 50 }, role: 'assistant' },
+              { metadata: { totalTokens: 30 }, role: 'assistant' },
+            ],
+            totalTokens: 9999,
+          }),
+        payload: {
+          update: (args: MockApiArgs) => {
+            captured = args
+            return { id: 'c1' }
+          },
+        },
+        routeParams: { id: 'c1' },
+        user: { id: 'u1' },
+      })
+      expect(res.status).toBe(200)
+      expect(captured?.data?.totalTokens).toBe(80)
+    })
+
+    it('does not write totalTokens when messages are not part of the update', async () => {
+      const handler = findHandler(
+        conversationEndpoints,
+        'patch',
+        '/chat-agent/chat/conversations/:id',
+      )
+      let captured: MockApiArgs | undefined
+      await callHandler(handler, {
+        json: () => Promise.resolve({ title: 'renamed', totalTokens: 9999 }),
+        payload: {
+          update: (args: MockApiArgs) => {
+            captured = args
+            return { id: 'c1' }
+          },
+        },
+        routeParams: { id: 'c1' },
+        user: { id: 'u1' },
+      })
+      // totalTokens is only written when messages change, so a pure rename
+      // leaves the existing aggregate untouched.
+      expect(captured?.data).not.toHaveProperty('totalTokens')
     })
 
     it('returns 404 when not found', async () => {
