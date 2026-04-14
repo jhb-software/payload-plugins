@@ -320,7 +320,7 @@ export function MessageBubble({
     // Reasoning parts render as collapsible "Thinking…" sections.
     if ((part as { type: string }).type === 'reasoning') {
       flushText()
-      const reasoning = (part as { reasoning: string; type: 'reasoning' }).reasoning
+      const reasoning = (part as unknown as { reasoning: string; type: 'reasoning' }).reasoning
       rendered.push(<ThinkingSection key={`reasoning-${i}`} text={reasoning} />)
       return
     }

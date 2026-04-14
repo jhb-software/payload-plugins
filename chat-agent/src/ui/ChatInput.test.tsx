@@ -9,15 +9,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
  * `Button` as a plain `<button>` for tests, forwarding the attributes the
  * component under test actually uses.
  */
-type ButtonMockProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonMockProps = {
   buttonStyle?: string
   children?: ReactNode
   size?: string
-}
+} & ButtonHTMLAttributes<HTMLButtonElement>
 
 vi.mock('@payloadcms/ui', () => ({
-  Button: ({ buttonStyle: _buttonStyle, size: _size, children, ...rest }: ButtonMockProps) => (
-    <button {...rest}>{children}</button>
+  Button: ({ buttonStyle: _buttonStyle, children, size: _size, ...rest }: ButtonMockProps) => (
+    <button {...rest} type="button">
+      {children}
+    </button>
   ),
 }))
 
@@ -91,14 +93,14 @@ describe('ChatInput', () => {
 
   it('renders textarea with at least 2 rows by default', () => {
     render(<ChatInput isLoading={false} onSend={vi.fn()} />)
-    const textarea = screen.getByPlaceholderText(/type a message/i) as HTMLTextAreaElement
-    expect(textarea.rows).toBeGreaterThanOrEqual(2)
+    const textarea = screen.getByPlaceholderText(/type a message/i)
+    expect((textarea as HTMLTextAreaElement).rows).toBeGreaterThanOrEqual(2)
   })
 
   it('renders the send button as an icon-only button (no "Send" text)', () => {
     render(<ChatInput isLoading={false} onSend={vi.fn()} />)
-    const submit = screen.getByRole('button', { name: /send/i }) as HTMLButtonElement
-    expect(submit.type).toBe('submit')
+    const submit = screen.getByRole('button', { name: /send/i })
+    expect((submit as HTMLButtonElement).type).toBe('submit')
     expect(submit.textContent?.trim()).toBe('')
     expect(submit.querySelector('svg')).not.toBeNull()
   })
