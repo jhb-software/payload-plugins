@@ -43,9 +43,20 @@ Document IDs must always support both `string` and `number` (MongoDB uses string
 
 ## Test-Driven Fixes and Features
 
-For every new fix or feature, a failing test must be added **first** that succeeds once the fix/feature is in place. Do not add code changes without a corresponding test that proves the change is necessary.
+For every new fix or feature, a failing test must be added **first** that succeeds once the fix/feature is in place. For bug fixes, the failing test must reproduce the bug as a user would observe it (wrong response, wrong UI state, wrong DB row) — not merely exercise the line being changed.
 
-Every test must justify its existence by verifying meaningful behavior — not restating implementation details. If a test feels trivial or redundant, that's a signal to either test at a higher level (integration over unit) or reconsider whether the underlying code is over-abstracted. Prefer fewer, well-targeted integration tests over many granular unit tests.
+Every test must justify its existence by verifying meaningful behavior. A test earns its place only if **all** of these hold:
+
+- It describes a user- or API-visible behavior, not an implementation detail.
+- Inverting the implementation (flipping a branch, returning the opposite, deleting a guard) would make it fail.
+- It survives a reasonable refactor of the code under test.
+- It does not restate what TypeScript, a schema, or a constant already guarantees.
+
+**Do not add** render-without-crashing smoke tests, prop-passthrough assertions, tests whose assertions only check that a mock was called, or tests added to hit a coverage number.
+
+Default to integration tests against real Payload / real React rendering. Reach for unit tests only for pure logic with non-trivial branches. Only stub external boundaries: network, filesystem, time, randomness, LLM providers, third-party SDKs. If a test requires mocking the module under test's close collaborators, test at a higher level instead.
+
+Name each test by the behavior it protects in one sentence (*"rejects a confirmation when the tool call id is unknown"*), not by the method it calls (*"calls handleConfirm with false"*).
 
 ## Changelog
 
