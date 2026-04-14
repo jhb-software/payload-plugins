@@ -18,8 +18,9 @@ export default async function ChatViewServer({ initPageResult: { req } }: AdminV
       })
     : { docs: [] }
 
-  // If a conversation ID is in the URL, fetch its messages server-side
+  // If a conversation ID is in the URL, fetch its messages + model server-side
   let initialMessages: undefined | unknown[]
+  let initialModel: string | undefined
   if (conversationId && user) {
     try {
       const doc = await payload.findByID({
@@ -29,6 +30,7 @@ export default async function ChatViewServer({ initPageResult: { req } }: AdminV
         user,
       })
       initialMessages = (doc.messages as unknown[]) ?? []
+      initialModel = typeof doc.model === 'string' ? doc.model : undefined
     } catch {
       // Conversation not found — will start fresh
     }
@@ -43,6 +45,7 @@ export default async function ChatViewServer({ initPageResult: { req } }: AdminV
         updatedAt: (d.updatedAt as string) ?? '',
       }))}
       initialMessages={initialMessages}
+      initialModel={initialModel}
     />
   )
 }

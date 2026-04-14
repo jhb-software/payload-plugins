@@ -1,17 +1,25 @@
 /**
  * Chat Agent Plugin for Payload CMS.
  *
- * Adds a `/api/chat-agent/chat` endpoint that connects an AI agent (Claude)
- * to the Payload Local API. Uses the Vercel AI SDK for streaming and tool use.
+ * Adds a `/api/chat-agent/chat` endpoint that connects an AI agent to the
+ * Payload Local API. Uses the Vercel AI SDK for streaming and tool use, and
+ * is provider-agnostic — install whichever `@ai-sdk/*` package you want
+ * (Anthropic, OpenAI, Google, etc.) and pass a `model` factory.
  *
  * Usage in payload.config.ts:
  *   import { chatAgentPlugin } from '@jhb.software/payload-chat-agent'
+ *   import { createOpenAI } from '@ai-sdk/openai'
+ *   const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
  *   export default buildConfig({
- *     plugins: [chatAgentPlugin({ apiKey: '...', defaultModel: 'claude-sonnet-4-20250514' })],
+ *     plugins: [
+ *       chatAgentPlugin({
+ *         defaultModel: 'gpt-4o-mini',
+ *         model: (id) => openai(id),
+ *       }),
+ *     ],
  *   })
  */
 
-import { createAnthropic } from '@ai-sdk/anthropic'
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import type { AgentMode, ChatAgentPluginOptions } from './types.js'
@@ -26,7 +34,7 @@ import {
 import { buildSystemPrompt } from './schema.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
-export type { ChatAgentPluginOptions, ModelOption } from './types.js'
+export type { ChatAgentPluginOptions, ModelFactory, ModelOption } from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 export { default as ChatViewServer } from './ui/ChatViewServer.js'
@@ -61,6 +69,21 @@ export function validateMessages(messages: unknown): null | string {
 }
 
 export function chatAgentPlugin(options: ChatAgentPluginOptions) {
+  // --- Validate options at construction time --------------------------------
+  // Fail fast on misconfiguration so the issue surfaces at Payload startup
+  // instead of as a confusing per-request error.
+  if (
+    options.availableModels &&
+    options.availableModels.length > 0 &&
+    !options.availableModels.some((m) => m.id === options.defaultModel)
+  ) {
+    const ids = options.availableModels.map((m) => m.id).join(', ')
+    throw new Error(
+      `chatAgentPlugin: defaultModel "${options.defaultModel}" is not in availableModels [${ids}]. ` +
+        `Either add it to availableModels or change defaultModel to one of the listed ids.`,
+    )
+  }
+
   const modesConfig = resolveModeConfig(options)
 
   return (config: any): any => {
@@ -129,13 +152,12 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
 
-            // --- Resolve API key ------------------------------------------
-            const apiKey = options.apiKey ?? process.env.ANTHROPIC_API_KEY
-            if (!apiKey) {
+            // --- Validate model factory -----------------------------------
+            if (typeof options.model !== 'function') {
               return Response.json(
                 {
                   error:
-                    'Anthropic API key not configured. Set the apiKey option or ANTHROPIC_API_KEY environment variable.',
+                    'Chat agent plugin is misconfigured: the `model` option must be a function returning a LanguageModel. See https://github.com/jhb-software/payload-plugins/tree/main/chat-agent#setup',
                 },
                 { status: 500 },
               )
@@ -194,10 +216,23 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             const modelId = body.model ?? options.defaultModel
             const maxSteps = options.maxSteps ?? 20
 
+            // --- Resolve model from user-provided factory ------------------
+            let resolvedModel
+            try {
+              resolvedModel = options.model(modelId)
+            } catch (err) {
+              return Response.json(
+                {
+                  error: `Failed to resolve model "${modelId}": ${err instanceof Error ? err.message : String(err)}`,
+                },
+                { status: 500 },
+              )
+            }
+
             // --- Stream response via AI SDK --------------------------------
             const result = streamText({
               messages: await (convertToModelMessages as any)(body.messages),
-              model: createAnthropic({ apiKey })(modelId),
+              model: resolvedModel,
               stopWhen: stepCountIs(maxSteps),
               system: systemPrompt,
               toolChoice: 'auto',
