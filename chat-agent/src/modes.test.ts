@@ -51,16 +51,14 @@ describe('resolveAvailableModes', () => {
     const isAdmin = ({ req }: { req: PayloadRequest }) =>
       (req.user as { role?: string } | null)?.role === 'admin'
 
-    const adminModes = await resolveAvailableModes(
-      { access: { 'read-write': isAdmin } },
-      { user: { role: 'admin' } } as unknown as PayloadRequest,
-    )
+    const adminModes = await resolveAvailableModes({ access: { 'read-write': isAdmin } }, {
+      user: { role: 'admin' },
+    } as unknown as PayloadRequest)
     expect(adminModes).toContain('read-write')
 
-    const editorModes = await resolveAvailableModes(
-      { access: { 'read-write': isAdmin } },
-      { user: { role: 'editor' } } as unknown as PayloadRequest,
-    )
+    const editorModes = await resolveAvailableModes({ access: { 'read-write': isAdmin } }, {
+      user: { role: 'editor' },
+    } as unknown as PayloadRequest)
     expect(editorModes).not.toContain('read-write')
   })
 

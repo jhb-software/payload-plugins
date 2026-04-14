@@ -43,9 +43,16 @@ describe('buildTools', () => {
     // every agent prompt that references the removed name silently regresses.
     // Lock the contract in one place.
     const tools = buildTools(createMockPayload(), mockUser)
-    expect(Object.keys(tools).sort()).toEqual(
-      ['count', 'create', 'delete', 'find', 'findByID', 'findGlobal', 'update', 'updateGlobal'],
-    )
+    expect(Object.keys(tools).sort()).toEqual([
+      'count',
+      'create',
+      'delete',
+      'find',
+      'findByID',
+      'findGlobal',
+      'update',
+      'updateGlobal',
+    ])
   })
 
   it('find calls payload.find with correct arguments', async () => {
@@ -561,7 +568,6 @@ describe('filterToolsByMode', () => {
       const filtered = filterToolsByMode(tools, 'read')
       expect(Object.keys(filtered)).not.toContain('callEndpoint')
     })
-
   })
 
   describe('ask mode', () => {
@@ -615,9 +621,16 @@ describe('filterToolsByMode', () => {
         // reference equality — the former would pass even if the filter
         // were rewritten to clone-and-return, which we don't care about.
         const filtered = filterToolsByMode(getAllTools(), mode)
-        expect(Object.keys(filtered).sort()).toEqual(
-          ['count', 'create', 'delete', 'find', 'findByID', 'findGlobal', 'update', 'updateGlobal'],
-        )
+        expect(Object.keys(filtered).sort()).toEqual([
+          'count',
+          'create',
+          'delete',
+          'find',
+          'findByID',
+          'findGlobal',
+          'update',
+          'updateGlobal',
+        ])
         for (const tool of Object.values(filtered)) {
           expect(tool).not.toHaveProperty('needsApproval')
         }
