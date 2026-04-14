@@ -13,7 +13,7 @@ The plugin is **provider-agnostic**: bring your own LLM provider via the [Vercel
 - Streaming responses using the Vercel AI SDK
 - Supports custom endpoints: any endpoint with a `custom.description` is discoverable by the agent
 - Configurable access control, model selection, and system prompt
-- Superuser mode for bypassing collection-level access control (opt-in)
+- Agent modes (`read` / `ask` / `read-write` / `superuser`) with per-mode access control
 - Localization-aware: reads and writes localized fields when configured
 
 ## Installation
@@ -58,16 +58,16 @@ The plugin will register a chat view at `/admin/chat` and a streaming chat endpo
 
 ### Plugin Options
 
-| Option            | Type                                      | Required | Description                                                                                              |
-| ----------------- | ----------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------- |
-| `model`           | `(modelId: string) => LanguageModel`      | Yes      | Resolves a model id to a Vercel AI SDK `LanguageModel`. Called once per request with the selected model |
-| `defaultModel`    | `string`                                  | Yes      | Model id used when no per-request override is provided                                                   |
-| `availableModels` | `ModelOption[]`                           | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries)                          |
-| `systemPrompt`    | `string`                                  | No       | Custom text prepended to the auto-generated system prompt                                                |
-| `access`          | `(req) => boolean`                        | No       | Override the default auth check (default: requires authenticated user)                                   |
-| `maxSteps`        | `number`                                  | No       | Maximum tool-use loop steps per request (default: 20)                                                    |
-| `superuserAccess` | `boolean \| (req) => boolean`             | No       | Controls who can use superuser mode (`overrideAccess: true`)                                             |
-| `adminView`       | `false \| { path, Component }`            | No       | Customize or disable the admin chat view                                                                 |
+| Option            | Type                                 | Required | Description                                                                                             |
+| ----------------- | ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------- |
+| `model`           | `(modelId: string) => LanguageModel` | Yes      | Resolves a model id to a Vercel AI SDK `LanguageModel`. Called once per request with the selected model |
+| `defaultModel`    | `string`                             | Yes      | Model id used when no per-request override is provided                                                  |
+| `availableModels` | `ModelOption[]`                      | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries)                         |
+| `systemPrompt`    | `string`                             | No       | Custom text prepended to the auto-generated system prompt                                               |
+| `access`          | `(req) => boolean`                   | No       | Override the default auth check (default: requires authenticated user)                                  |
+| `maxSteps`        | `number`                             | No       | Maximum tool-use loop steps per request (default: 20)                                                   |
+| `modes`           | `ModesConfig`                        | No       | Agent modes configuration (see below)                                                                   |
+| `adminView`       | `false \| { path, Component }`       | No       | Customize or disable the admin chat view                                                                |
 
 ### Using OpenAI
 
@@ -144,15 +144,39 @@ export default buildConfig({
 
 The agent will see these endpoints in its system prompt and can call them via the `callEndpoint` tool.
 
-### Superuser Mode
+### Agent Modes
 
-By default, the agent respects the logged-in user's permissions. To allow bypassing access control (e.g. for admin users), configure `superuserAccess`:
+The agent supports four operational modes that control what it can do and how writes are handled:
+
+| Mode         | Behavior                                                                      |
+| ------------ | ----------------------------------------------------------------------------- |
+| `read`       | Write tools removed entirely — the agent cannot attempt writes                |
+| `ask`        | Write tools available but require explicit user confirmation before executing |
+| `read-write` | Full access, no confirmation required                                         |
+| `superuser`  | Full access with `overrideAccess: true` (bypasses Payload access control)     |
+
+Configure which modes each user can use via `modes.access`:
 
 ```ts
 chatAgentPlugin({
-  superuserAccess: (req) => req.user?.role === 'admin',
+  defaultModel: 'claude-sonnet-4-20250514',
+  modes: {
+    default: 'ask',
+    access: {
+      'read-write': ({ req }) => req.user?.role === 'admin',
+      superuser: ({ req }) => req.user?.role === 'superadmin',
+    },
+  },
 })
 ```
+
+- `modes.default` — the mode the agent starts in (default: `'ask'`)
+- `modes.access` — per-mode access functions that determine availability per user
+  - `read` is always available (cannot be restricted)
+  - Modes without an access function are available to all authenticated users
+  - `superuser` requires an explicit access function to be enabled
+
+Users only see modes they have access to in the mode selector.
 
 ## Agent Tools
 
@@ -178,11 +202,24 @@ Streaming chat endpoint. Accepts messages in the Vercel AI SDK format and return
 
 **Request body:**
 
-| Field            | Type      | Required | Description                                               |
-| ---------------- | --------- | -------- | --------------------------------------------------------- |
-| `messages`       | `array`   | Yes      | Conversation messages array                               |
-| `model`          | `string`  | No       | Override the model for this request                       |
-| `overrideAccess` | `boolean` | No       | Enable superuser mode (requires `superuserAccess` config) |
+| Field      | Type     | Required | Description                                              |
+| ---------- | -------- | -------- | -------------------------------------------------------- |
+| `messages` | `array`  | Yes      | Conversation messages array                              |
+| `model`    | `string` | No       | Override the model for this request                      |
+| `mode`     | `string` | No       | Agent mode (`read`, `ask`, `read-write`, or `superuser`) |
+
+### `GET /api/chat-agent/modes`
+
+Returns the list of modes available to the current user along with the configured default mode.
+
+**Response:**
+
+```json
+{
+  "modes": ["read", "ask", "read-write"],
+  "default": "ask"
+}
+```
 
 ### Conversation Endpoints
 

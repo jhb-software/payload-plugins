@@ -12,6 +12,12 @@
       }
     },
     {
+      "files": "**/*.css",
+      "options": {
+        "parser": "css"
+      }
+    },
+    {
       "files": ["**/importMap.js", "**/payload-types.ts", "**/**.yaml", "**/**.yml"],
       "options": {
         "requirePragma": true

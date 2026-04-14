@@ -250,6 +250,155 @@ describe('chatAgentPlugin', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Mode-related endpoint tests
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin modes', () => {
+  it('registers a GET /chat-agent/modes endpoint', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const modesEndpoint = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes')
+    expect(modesEndpoint).toBeDefined()
+    expect(modesEndpoint.method).toBe('get')
+  })
+
+  it('modes endpoint returns 401 without auth', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: null })
+    expect(response.status).toBe(401)
+  })
+
+  it('modes endpoint returns default modes for authenticated user', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.modes).toEqual(['read', 'ask', 'read-write'])
+    expect(body.default).toBe('ask')
+  })
+
+  it('modes endpoint includes superuser when configured', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      modes: {
+        access: { superuser: () => true },
+      },
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.modes).toContain('superuser')
+  })
+
+  it('modes endpoint respects access functions', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      modes: {
+        access: {
+          'read-write': ({ req }) => req.user?.role === 'admin',
+        },
+      },
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    // Non-admin user
+    const res1 = await handler({ user: { id: 'u1', role: 'editor' } })
+    const body1 = await res1.json()
+    expect(body1.modes).not.toContain('read-write')
+
+    // Admin user
+    const res2 = await handler({ user: { id: 'u2', role: 'admin' } })
+    const body2 = await res2.json()
+    expect(body2.modes).toContain('read-write')
+  })
+
+  it('modes endpoint returns custom default mode', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.default).toBe('read-write')
+  })
+
+  it('chat endpoint rejects invalid mode', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+
+    const response = await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
+          mode: 'invalid',
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body.error).toContain('Invalid mode')
+  })
+
+  it('chat endpoint rejects mode user lacks access to', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      modes: {
+        access: {
+          superuser: () => false,
+        },
+      },
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+
+    const response = await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
+          mode: 'superuser',
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body.error).toContain('Access denied')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Admin view auto-registration
 // ---------------------------------------------------------------------------
 

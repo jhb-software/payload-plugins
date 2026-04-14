@@ -1,5 +1,7 @@
 'use client'
 
+import type React from 'react'
+
 import { getToolName, isToolUIPart, type UIMessage } from 'ai'
 import { useCallback, useState } from 'react'
 
@@ -9,6 +11,7 @@ import { formatTokens } from './format-tokens.js'
 import { CheckIcon } from './icons/CheckIcon.js'
 import { ClipboardIcon } from './icons/ClipboardIcon.js'
 import { MarkdownContent } from './MarkdownContent.js'
+import { ToolConfirmation } from './ToolConfirmation.js'
 
 function ToolCallIndicator({
   part,
@@ -42,9 +45,20 @@ function ToolCallIndicator({
       }}
     >
       <div
-        aria-expanded={hasOutput ? expanded : undefined}
-        onClick={() => hasOutput && setExpanded((v) => !v)}
-        role={hasOutput ? 'button' : undefined}
+        {...(hasOutput
+          ? {
+              'aria-expanded': expanded,
+              onClick: () => setExpanded((v) => !v),
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setExpanded((v) => !v)
+                }
+              },
+              role: 'button' as const,
+              tabIndex: 0,
+            }
+          : {})}
         style={{
           alignItems: 'center',
           color: 'var(--theme-elevation-500)',
@@ -55,7 +69,6 @@ function ToolCallIndicator({
           gap: '6px',
           padding: '4px 8px',
         }}
-        tabIndex={hasOutput ? 0 : undefined}
       >
         <span
           style={{
@@ -123,7 +136,17 @@ function ToolCallIndicator({
   )
 }
 
-export function MessageBubble({ message }: { message: UIMessage<MessageMetadata> }) {
+export function MessageBubble({
+  isLoading,
+  message,
+  onToolApprove,
+  onToolDeny,
+}: {
+  isLoading?: boolean
+  message: UIMessage<MessageMetadata>
+  onToolApprove?: (approvalId: string) => void
+  onToolDeny?: (approvalId: string) => void
+}) {
   const isUser = message.role === 'user'
   const meta = message.metadata
 
@@ -149,16 +172,48 @@ export function MessageBubble({ message }: { message: UIMessage<MessageMetadata>
               .map((p) => (p as { text: string; type: 'text' }).text)
               .join('')
 
-            if (!text) return '\u2026'
-            if (isUser) return text
+            if (!text) {
+              return '\u2026'
+            }
+            if (isUser) {
+              return text
+            }
             return <MarkdownContent>{text}</MarkdownContent>
           })()}
         </div>
         {message.parts
           .filter((p) => isToolUIPart(p))
-          .map((p, i: number) => (
-            <ToolCallIndicator key={i} part={p as { input: unknown; output?: unknown; state: string }} />
-          ))}
+          .map((p, i: number) => {
+            const toolPart = p as {
+              approval?: { approved?: boolean; id: string }
+              input: unknown
+              output?: unknown
+              state: string
+            }
+            const toolName = getToolName(toolPart as Parameters<typeof getToolName>[0])
+
+            // Show approval dialog when the SDK has emitted an approval request.
+            if (
+              toolPart.state === 'approval-requested' &&
+              toolPart.approval?.id &&
+              onToolApprove &&
+              onToolDeny
+            ) {
+              const approvalId = toolPart.approval.id
+              return (
+                <ToolConfirmation
+                  input={toolPart.input}
+                  isLoading={isLoading}
+                  key={i}
+                  onAllow={() => onToolApprove(approvalId)}
+                  onDeny={() => onToolDeny(approvalId)}
+                  toolName={toolName}
+                />
+              )
+            }
+
+            return <ToolCallIndicator key={i} part={toolPart} />
+          })}
         {!isUser && meta?.totalTokens ? (
           <div style={{ color: 'var(--theme-elevation-400)', fontSize: '11px', marginTop: '4px' }}>
             {[meta.model, formatTokens(meta.totalTokens)].filter(Boolean).join(' \u00b7 ')}

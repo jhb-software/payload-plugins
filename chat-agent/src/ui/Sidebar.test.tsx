@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@payloadcms/ui', () => ({
-  Button: ({ children, disabled, onClick, tooltip, type }: any) => (
+  Button: ({ type, children, disabled, onClick, tooltip }: any) => (
     <button aria-label={tooltip} disabled={disabled} onClick={onClick} type={type}>
       {children}
     </button>
