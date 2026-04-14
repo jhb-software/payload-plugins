@@ -17,12 +17,14 @@ describe('resolveModeConfig', () => {
   })
 
   it('returns empty config when no modes configured', () => {
-    expect(resolveModeConfig({ apiKey: 'test' })).toEqual({})
+    expect(resolveModeConfig({ defaultModel: 'test', model: (() => ({})) as any })).toEqual({})
   })
 
   it('returns modes config directly when provided', () => {
     const modes = { access: {}, default: 'read-write' as const }
-    expect(resolveModeConfig({ modes })).toBe(modes)
+    expect(resolveModeConfig({ defaultModel: 'test', model: (() => ({})) as any, modes })).toBe(
+      modes,
+    )
   })
 })
 

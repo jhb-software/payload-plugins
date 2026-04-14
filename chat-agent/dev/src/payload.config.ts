@@ -1,3 +1,5 @@
+import { createAnthropic } from '@ai-sdk/anthropic'
+import { createOpenAI } from '@ai-sdk/openai'
 import { chatAgentPlugin } from '@jhb.software/payload-chat-agent'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
@@ -6,6 +8,29 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+const resolveModel = (id: string) => {
+  if (id.startsWith('claude-')) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error(
+        'ANTHROPIC_API_KEY is not set — required to use Claude models in this dev app',
+      )
+    }
+    return anthropic(id)
+  }
+  if (id.startsWith('gpt-')) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set — required to use OpenAI models in this dev app')
+    }
+    return openai(id)
+  }
+  throw new Error(
+    `Unknown model id "${id}". Add the id to availableModels and a routing rule in dev/src/payload.config.ts.`,
+  )
+}
 
 export default buildConfig({
   admin: {
@@ -96,11 +121,23 @@ export default buildConfig({
 
     if (existingPosts.docs.length === 0) {
       const posts = [
-        { title: 'Getting Started with Payload CMS', slug: 'getting-started', status: 'published' },
-        { title: 'Advanced Field Configuration', slug: 'advanced-fields', status: 'published' },
-        { title: 'Building Custom Endpoints', slug: 'custom-endpoints', status: 'draft' },
-        { title: 'Authentication & Access Control', slug: 'auth-access', status: 'published' },
-        { title: 'Plugin Development Guide', slug: 'plugin-dev', status: 'draft' },
+        {
+          title: 'Getting Started with Payload CMS',
+          slug: 'getting-started',
+          status: 'published' as const,
+        },
+        {
+          title: 'Advanced Field Configuration',
+          slug: 'advanced-fields',
+          status: 'published' as const,
+        },
+        { title: 'Building Custom Endpoints', slug: 'custom-endpoints', status: 'draft' as const },
+        {
+          title: 'Authentication & Access Control',
+          slug: 'auth-access',
+          status: 'published' as const,
+        },
+        { title: 'Plugin Development Guide', slug: 'plugin-dev', status: 'draft' as const },
       ]
       for (const post of posts) {
         await payload.create({ collection: 'posts', data: post })
@@ -126,8 +163,21 @@ export default buildConfig({
   },
   plugins: [
     chatAgentPlugin({
+      access: () => true,
+      availableModels: [
+        { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+        { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+        { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
+        { id: 'gpt-5-nano', label: 'GPT-5 nano' },
+      ],
       defaultModel: 'claude-haiku-4-5-20251001',
-      superuserAccess: true,
+      model: resolveModel,
+      modes: {
+        default: 'read',
+        access: {
+          superuser: () => true,
+        },
+      },
     }),
   ],
 })

@@ -215,6 +215,19 @@ export function buildSystemPrompt(
     }
   }
 
+  // Upload collections
+  const uploadCollections = collections.filter((col: any) => col.upload)
+  if (uploadCollections.length > 0) {
+    const uploadSlugs = uploadCollections.map((col: any) => col.slug)
+    sections.push(
+      '',
+      '## File Uploads',
+      'You cannot upload files through this chat. If a user wants to upload files, images, or media, instruct them to upload directly in the corresponding upload-enabled collection in the admin panel. Once uploaded, you can reference and use those files.',
+      '',
+      `Upload-enabled collections: ${uploadSlugs.map((slug: string) => `[\`${slug}\`](${adminRoute}/collections/${slug})`).join(', ')}`,
+    )
+  }
+
   // Localization
   if (payloadConfig.localization) {
     const locales = (payloadConfig.localization.locales as any[]).map((l: any) =>

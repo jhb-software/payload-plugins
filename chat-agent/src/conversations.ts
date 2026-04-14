@@ -9,6 +9,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { isPluginAccessAllowed } from './access.js'
+
 export const CONVERSATIONS_SLUG = 'chat-conversations'
 
 // ---------------------------------------------------------------------------
@@ -82,7 +84,7 @@ export const conversationsCollection = {
 
 /** GET /api/chat-agent/chat/conversations — list user's conversations */
 async function listConversations(req: any): Promise<Response> {
-  if (!req.user) {
+  if (!(await isPluginAccessAllowed(req))) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -99,7 +101,7 @@ async function listConversations(req: any): Promise<Response> {
 
 /** GET /api/chat-agent/chat/conversations/:id — get single conversation */
 async function getConversation(req: any): Promise<Response> {
-  if (!req.user) {
+  if (!(await isPluginAccessAllowed(req))) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -123,7 +125,7 @@ async function getConversation(req: any): Promise<Response> {
 
 /** POST /api/chat-agent/chat/conversations — create a conversation */
 async function createConversation(req: any): Promise<Response> {
-  if (!req.user) {
+  if (!(await isPluginAccessAllowed(req))) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -150,7 +152,7 @@ async function createConversation(req: any): Promise<Response> {
 
 /** PATCH /api/chat-agent/chat/conversations/:id — update a conversation */
 async function updateConversation(req: any): Promise<Response> {
-  if (!req.user) {
+  if (!(await isPluginAccessAllowed(req))) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -197,7 +199,7 @@ async function updateConversation(req: any): Promise<Response> {
 
 /** DELETE /api/chat-agent/chat/conversations/:id — delete a conversation */
 async function deleteConversation(req: any): Promise<Response> {
-  if (!req.user) {
+  if (!(await isPluginAccessAllowed(req))) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

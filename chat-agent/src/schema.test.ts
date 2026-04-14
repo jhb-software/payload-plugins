@@ -249,3 +249,60 @@ describe('buildSystemPrompt with modes', () => {
     expect(prompt).toContain('confirm with the user before creating')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Upload collections in system prompt
+// ---------------------------------------------------------------------------
+
+describe('buildSystemPrompt with upload collections', () => {
+  it('includes file upload instructions when upload collections exist', () => {
+    const config = {
+      collections: [
+        { slug: 'posts', fields: [{ name: 'title', type: 'text' }] },
+        { slug: 'media', fields: [{ name: 'alt', type: 'text' }], upload: true },
+      ],
+      globals: [],
+    }
+
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('## File Uploads')
+    expect(prompt).toContain('media')
+    expect(prompt).toContain('/admin/collections/media')
+  })
+
+  it('lists multiple upload collections', () => {
+    const config = {
+      collections: [
+        { slug: 'media', fields: [], upload: true },
+        { slug: 'documents', fields: [], upload: { staticDir: 'docs' } },
+      ],
+      globals: [],
+    }
+
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('media')
+    expect(prompt).toContain('documents')
+  })
+
+  it('omits file upload section when no upload collections exist', () => {
+    const config = {
+      collections: [{ slug: 'posts', fields: [{ name: 'title', type: 'text' }] }],
+      globals: [],
+    }
+
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('## File Uploads')
+  })
+
+  it('uses custom admin route in upload collection links', () => {
+    const config = {
+      collections: [{ slug: 'media', fields: [], upload: true }],
+      globals: [],
+      routes: { admin: '/cms' },
+    }
+
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('/cms/collections/media')
+    expect(prompt).not.toContain('/admin/collections/media')
+  })
+})

@@ -40,6 +40,8 @@ export interface ChatViewProps {
   defaultMode?: AgentMode
   initialConversations?: ConversationSummary[]
   initialMessages?: unknown[]
+  /** Model id persisted on the conversation doc; used as the initial selection when resuming. */
+  initialModel?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -52,6 +54,7 @@ export default function ChatView({
   defaultMode = 'ask',
   initialConversations,
   initialMessages: serverMessages,
+  initialModel,
 }: ChatViewProps) {
   const endpointUrl = '/api/chat-agent/chat'
   const [chatId, setChatId] = useState(conversationId)
@@ -63,7 +66,7 @@ export default function ChatView({
   )
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([])
   const [defaultModel, setDefaultModel] = useState<string | undefined>(undefined)
-  const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined)
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(initialModel)
 
   // Fetch available models configuration on mount
   useEffect(() => {

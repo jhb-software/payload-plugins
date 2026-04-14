@@ -66,21 +66,30 @@ describe('conversationsCollection', () => {
 
 describe('chatAgentPlugin conversations', () => {
   it('registers the chat-conversations collection', () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test', defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: () => ({}) as any,
+    })
     const result = plugin({ collections: [], endpoints: [] })
     const slugs = result.collections.map((c: any) => c.slug)
     expect(slugs).toContain(CONVERSATIONS_SLUG)
   })
 
   it('preserves existing collections', () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test', defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: () => ({}) as any,
+    })
     const existing = { slug: 'posts', fields: [] }
     const result = plugin({ collections: [existing], endpoints: [] })
     expect(result.collections).toContainEqual(existing)
   })
 
   it('registers conversation CRUD endpoints', () => {
-    const plugin = chatAgentPlugin({ apiKey: 'test', defaultModel: 'claude-sonnet-4-20250514' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: () => ({}) as any,
+    })
     const result = plugin({ endpoints: [] })
     const paths = result.endpoints.map((ep: any) => `${ep.method}:${ep.path}`)
     expect(paths).toContain('get:/chat-agent/chat/conversations')
@@ -98,6 +107,30 @@ describe('chatAgentPlugin conversations', () => {
 function findHandler(endpoints: any[], method: string, path: string) {
   return endpoints.find((ep: any) => ep.method === method && ep.path === path)?.handler
 }
+
+/** Builds a payload.config.custom.chatAgent.access shape for handler tests. */
+function payloadWithAccess(access: (req: any) => boolean | Promise<boolean>, extra: any = {}) {
+  return { config: { custom: { chatAgent: { access } } }, ...extra }
+}
+
+describe('conversation endpoints respect plugin access()', () => {
+  it.each([
+    ['get', '/chat-agent/chat/conversations'],
+    ['get', '/chat-agent/chat/conversations/:id'],
+    ['post', '/chat-agent/chat/conversations'],
+    ['patch', '/chat-agent/chat/conversations/:id'],
+    ['delete', '/chat-agent/chat/conversations/:id'],
+  ])('%s %s returns 401 when plugin access denies', async (method, path) => {
+    const handler = findHandler(conversationEndpoints, method, path)
+    const res = await handler({
+      json: () => Promise.resolve({}),
+      payload: payloadWithAccess(() => false),
+      routeParams: { id: 'c1' },
+      user: { id: 'u1' },
+    })
+    expect(res.status).toBe(401)
+  })
+})
 
 describe('conversation endpoint handlers', () => {
   // --- List ---------------------------------------------------------------

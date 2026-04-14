@@ -5,6 +5,7 @@
  * This is the entry point for `@jhb.software/payload-chat-agent/client`.
  */
 
+export { ChatNavLink, type ChatNavLinkProps } from '../ui/ChatNavLink.js'
 export { default as ChatView } from '../ui/ChatView.js'
 export { ModeSelector } from '../ui/ModeSelector.js'
 export { ToolConfirmation } from '../ui/ToolConfirmation.js'
