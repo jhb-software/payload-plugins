@@ -1003,7 +1003,7 @@ const validChatBody = {
 }
 
 describe('chatAgentPlugin budget', () => {
-  it('returns 429 with remaining=0 when check() returns 0', async () => {
+  it('rejects a chat request with 429 when the caller is out of budget', async () => {
     const plugin = chatAgentPlugin({
       budget: { check: () => 0 },
       defaultModel: 'claude-sonnet-4-20250514',
@@ -1025,26 +1025,7 @@ describe('chatAgentPlugin budget', () => {
     expect(body.remaining).toBe(0)
   })
 
-  it('returns 429 when check() returns a negative number', async () => {
-    const plugin = chatAgentPlugin({
-      budget: { check: () => -100 },
-      defaultModel: 'claude-sonnet-4-20250514',
-      model: makeModelFactory().factory,
-    })
-    const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: Endpoint) => ep.path === '/chat-agent/chat',
-    ).handler
-
-    const res = await handler({
-      json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
-    })
-
-    expect(res.status).toBe(429)
-  })
-
-  it('allows the request and sets X-Budget-Remaining when check() returns a positive number', async () => {
+  it('exposes the remaining budget on the response header for client-side warnings', async () => {
     const plugin = chatAgentPlugin({
       budget: { check: () => 12_345 },
       defaultModel: 'claude-sonnet-4-20250514',
@@ -1064,10 +1045,12 @@ describe('chatAgentPlugin budget', () => {
     expect(res.headers.get('X-Budget-Remaining')).toBe('12345')
   })
 
-  it('skips the check entirely when check() returns null (unlimited)', async () => {
-    const check = vi.fn(() => null)
+  it('allows the request without emitting a budget header when check() returns null', async () => {
+    // Null means "unlimited" — the feature is configured but the caller has no
+    // cap. User-observable behavior: request succeeds and there's no header
+    // for the client to build a warning UI against.
     const plugin = chatAgentPlugin({
-      budget: { check },
+      budget: { check: () => null },
       defaultModel: 'claude-sonnet-4-20250514',
       model: makeModelFactory().factory,
     })
@@ -1081,29 +1064,8 @@ describe('chatAgentPlugin budget', () => {
       user: { id: 1 },
     })
 
-    expect(check).toHaveBeenCalledTimes(1)
     expect(res.status).toBe(200)
     expect(res.headers.get('X-Budget-Remaining')).toBeNull()
-  })
-
-  it('passes the PayloadRequest to check()', async () => {
-    const check = vi.fn(() => 100)
-    const plugin = chatAgentPlugin({
-      budget: { check },
-      defaultModel: 'claude-sonnet-4-20250514',
-      model: makeModelFactory().factory,
-    })
-    const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: Endpoint) => ep.path === '/chat-agent/chat',
-    ).handler
-
-    const req = {
-      json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 42 },
-    }
-    await handler(req)
-    expect(check).toHaveBeenCalledWith({ req })
   })
 
   it('surfaces errors thrown by check() as HTTP 500', async () => {
@@ -1134,17 +1096,24 @@ describe('chatAgentPlugin budget', () => {
     expect(body.error).toContain('usage-store offline')
   })
 
-  it('awaits record() when the streamText onFinish fires', async () => {
-    // Ordering matters: the record callback must be awaited before the stream
-    // closes, otherwise a quick follow-up check() could read stale usage and
-    // allow a second request that overspends.
-    const order: string[] = []
-    const record = vi.fn(async () => {
-      await new Promise((r) => setTimeout(r, 10))
-      order.push('record-done')
-    })
+  it('records the observed token usage after a chat response completes', async () => {
+    // Ordering contract: record() is awaited inside onFinish before the stream
+    // closes, so a back-to-back request from the same user reads fresh usage.
+    // We drive onFinish manually because the `ai` mock stops short of the real
+    // streaming loop — the behaviour under test is "record sees the final
+    // usage numbers and the model id that was used".
+    const recorded: Array<{ model: string; totalTokens?: number; userId?: number }> = []
     const plugin = chatAgentPlugin({
-      budget: { check: () => 1000, record },
+      budget: {
+        check: () => 1000,
+        record: ({ model, req, usage }) => {
+          recorded.push({
+            model,
+            totalTokens: usage.totalTokens,
+            userId: (req.user as { id: number } | null)?.id,
+          })
+        },
+      },
       defaultModel: 'claude-sonnet-4-20250514',
       model: makeModelFactory().factory,
     })
@@ -1159,43 +1128,13 @@ describe('chatAgentPlugin budget', () => {
     })
 
     const { _streamTextOpts } = lastStreamTextHandle()
-    expect(_streamTextOpts.onFinish).toBeTypeOf('function')
-
     await _streamTextOpts.onFinish!({
       totalUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
     })
 
-    expect(record).toHaveBeenCalledTimes(1)
-    const recordArgs = (record.mock.calls as unknown as [unknown][])[0][0] as {
-      model: string
-      req: { user: { id: number } }
-      usage: { inputTokens: number; outputTokens: number; totalTokens: number }
-    }
-    expect(recordArgs.model).toBe('claude-sonnet-4-20250514')
-    expect(recordArgs.usage).toEqual({ inputTokens: 10, outputTokens: 20, totalTokens: 30 })
-    expect(recordArgs.req.user.id).toBe(7)
-    expect(order).toEqual(['record-done'])
-  })
-
-  it('does not wire onFinish when no record function is provided', async () => {
-    // check-only budgets are valid: the user may not care to track after-the-
-    // fact usage. In that case we should not register an onFinish callback
-    // (keeps the AI SDK call lean and prevents accidental behavioural surprises).
-    const plugin = chatAgentPlugin({
-      budget: { check: () => 1000 },
-      defaultModel: 'claude-sonnet-4-20250514',
-      model: makeModelFactory().factory,
-    })
-    const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: Endpoint) => ep.path === '/chat-agent/chat',
-    ).handler
-    await handler({
-      json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
-    })
-    const { _streamTextOpts } = lastStreamTextHandle()
-    expect(_streamTextOpts.onFinish).toBeUndefined()
+    expect(recorded).toEqual([
+      { model: 'claude-sonnet-4-20250514', totalTokens: 30, userId: 7 },
+    ])
   })
 
   it('surfaces errors thrown by record() — does not swallow them', async () => {

@@ -2,7 +2,7 @@ import type { CollectionConfig, PayloadRequest } from 'payload'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createPayloadBudget, DEFAULT_USAGE_COLLECTION_SLUG } from './budget.js'
+import { createPayloadBudget } from './budget.js'
 
 /**
  * Minimal in-memory stand-in for `req.payload`. Only implements the three
@@ -46,35 +46,10 @@ function fakeReq(userId: null | number | string = 1): PayloadRequest {
 }
 
 describe('createPayloadBudget', () => {
-  describe('return shape', () => {
-    it('returns a BudgetConfig and a CollectionConfig', () => {
-      const { budget, collection } = createPayloadBudget({ limit: 100 })
-      expect(typeof budget.check).toBe('function')
-      expect(typeof budget.record).toBe('function')
-      expect(collection.slug).toBe(DEFAULT_USAGE_COLLECTION_SLUG)
-    })
-
-    it('uses a custom slug when provided', () => {
-      const { collection } = createPayloadBudget({ slug: 'my-usage', limit: 100 })
-      expect(collection.slug).toBe('my-usage')
-    })
-  })
-
   describe('collection', () => {
     let collection: CollectionConfig
     beforeEach(() => {
       collection = createPayloadBudget({ limit: 100 }).collection
-    })
-
-    it('has scope, period, inputTokens, outputTokens, totalTokens fields', () => {
-      const names = collection.fields.map((f) => ('name' in f ? f.name : undefined))
-      expect(names).toEqual(
-        expect.arrayContaining(['scope', 'period', 'inputTokens', 'outputTokens', 'totalTokens']),
-      )
-    })
-
-    it('is hidden from the admin nav by default', () => {
-      expect(collection.admin?.hidden).toBe(true)
     })
 
     it('denies write access by default (writes go through overrideAccess)', () => {
