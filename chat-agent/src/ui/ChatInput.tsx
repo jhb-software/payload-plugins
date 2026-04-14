@@ -75,7 +75,7 @@ export function ChatInput({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         handleSend()
       }
@@ -111,7 +111,7 @@ export function ChatInput({
             autoResize()
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message… (Shift+Enter to send)"
+          placeholder="Type a message…"
           ref={textareaRef}
           rows={2}
           style={{

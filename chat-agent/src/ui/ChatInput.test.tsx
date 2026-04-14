@@ -64,21 +64,21 @@ describe('ChatInput', () => {
     expect(document.activeElement).toBe(textarea)
   })
 
-  it('sends on Shift+Enter', () => {
-    const onSend = vi.fn()
-    render(<ChatInput isLoading={false} onSend={onSend} />)
-    const textarea = screen.getByPlaceholderText(/type a message/i)
-    fireEvent.change(textarea, { target: { value: 'Hello' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true })
-    expect(onSend).toHaveBeenCalledWith('Hello')
-  })
-
-  it('does not send on plain Enter (allows newline)', () => {
+  it('sends on Enter', () => {
     const onSend = vi.fn()
     render(<ChatInput isLoading={false} onSend={onSend} />)
     const textarea = screen.getByPlaceholderText(/type a message/i)
     fireEvent.change(textarea, { target: { value: 'Hello' } })
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+    expect(onSend).toHaveBeenCalledWith('Hello')
+  })
+
+  it('does not send on Shift+Enter (allows newline)', () => {
+    const onSend = vi.fn()
+    render(<ChatInput isLoading={false} onSend={onSend} />)
+    const textarea = screen.getByPlaceholderText(/type a message/i)
+    fireEvent.change(textarea, { target: { value: 'Hello' } })
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true })
     expect(onSend).not.toHaveBeenCalled()
   })
 
