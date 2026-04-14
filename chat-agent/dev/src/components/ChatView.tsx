@@ -3,7 +3,7 @@ import { DefaultTemplate } from '@payloadcms/next/templates'
 import { Gutter } from '@payloadcms/ui'
 import type { AdminViewServerProps } from 'payload'
 
-import ChatClient from './ChatClient'
+import ChatClient from './ChatClient.js'
 
 const ChatView: React.FC<AdminViewServerProps> = ({ initPageResult, params, searchParams }) => {
   return (

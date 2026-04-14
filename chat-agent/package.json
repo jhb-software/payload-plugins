@@ -23,7 +23,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.68",
     "ai": "^6.0.154",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",

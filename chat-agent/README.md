@@ -1,6 +1,8 @@
 # Chat Agent Plugin for Payload CMS
 
-A [Payload CMS](https://payloadcms.com/) plugin that adds an AI chat agent for reading, creating, and updating content. It provides an admin panel chat view where users can interact with their content through natural language, powered by Claude and the Payload Local API.
+A [Payload CMS](https://payloadcms.com/) plugin that adds an AI chat agent for reading, creating, and updating content. It provides an admin panel chat view where users can interact with their content through natural language, powered by the Payload Local API.
+
+The plugin is **provider-agnostic**: bring your own LLM provider via the [Vercel AI SDK](https://sdk.vercel.ai/) — Anthropic, OpenAI, Google, Mistral, Bedrock, and others all work out of the box. You can also wire up multiple providers at once and let users pick a model from a dropdown.
 
 ## Features
 
@@ -22,16 +24,27 @@ pnpm add @jhb.software/payload-chat-agent
 
 ## Setup
 
-Install the plugin and add it to your Payload config:
+Install the plugin together with whichever Vercel AI SDK provider package you want to use:
+
+```bash
+pnpm add @jhb.software/payload-chat-agent @ai-sdk/anthropic
+# or
+pnpm add @jhb.software/payload-chat-agent @ai-sdk/openai
+```
+
+Then add it to your Payload config and pass a `model` factory that resolves a model id to a `LanguageModel` instance:
 
 ```ts
 import { chatAgentPlugin } from '@jhb.software/payload-chat-agent'
+import { createAnthropic } from '@ai-sdk/anthropic'
+
+const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export default buildConfig({
   plugins: [
     chatAgentPlugin({
-      apiKey: process.env.ANTHROPIC_API_KEY,
       defaultModel: 'claude-sonnet-4-20250514',
+      model: (id) => anthropic(id),
     }),
   ],
 })
@@ -39,21 +52,61 @@ export default buildConfig({
 
 The plugin will register a chat view at `/admin/chat` and a streaming chat endpoint at `/api/chat-agent/chat`.
 
+> **Heads up — no env-var fallbacks.** The plugin never reads provider API keys from `process.env` itself. Pass them explicitly through your `model` factory so the configuration is fully owned by your Payload config.
+
 ## Configuration
 
 ### Plugin Options
 
-| Option            | Type                  | Required | Description                                                                     |
-| ----------------- | --------------------- | -------- | ------------------------------------------------------------------------------- |
-| `defaultModel`    | `string`              | Yes      | Claude model ID used when no per-request override is provided                   |
-| `availableModels` | `ModelOption[]`       | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries) |
-| `apiKey`          | `string`              | No       | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var                    |
-| `systemPrompt`    | `string`              | No       | Custom text prepended to the auto-generated system prompt                       |
-| `access`          | `(req) => boolean`    | No       | Override the default auth check (default: requires authenticated user)          |
-| `maxSteps`        | `number`              | No       | Maximum tool-use loop steps per request (default: 20)                           |
-| `modes`           | `ModesConfig`         | No       | Agent modes configuration (see below)                                           |
-| `adminView`       | `{ path, Component }` | No       | Customize the admin chat view route or component                                |
-| `navLink`         | `boolean`             | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)        |
+| Option            | Type                                 | Required | Description                                                                                             |
+| ----------------- | ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------- |
+| `model`           | `(modelId: string) => LanguageModel` | Yes      | Resolves a model id to a Vercel AI SDK `LanguageModel`. Called once per request with the selected model |
+| `defaultModel`    | `string`                             | Yes      | Model id used when no per-request override is provided                                                  |
+| `availableModels` | `ModelOption[]`                      | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries)                         |
+| `systemPrompt`    | `string`                             | No       | Custom text prepended to the auto-generated system prompt                                               |
+| `access`          | `(req) => boolean`                   | No       | Override the default auth check (default: requires authenticated user)                                  |
+| `maxSteps`        | `number`                             | No       | Maximum tool-use loop steps per request (default: 20)                                                   |
+| `modes`           | `ModesConfig`                        | No       | Agent modes configuration (see below)                                                                   |
+| `adminView`       | `{ path, Component }`                | No       | Customize the admin chat view route or component                                                        |
+| `navLink`         | `boolean`                            | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
+
+### Using OpenAI
+
+```ts
+import { chatAgentPlugin } from '@jhb.software/payload-chat-agent'
+import { createOpenAI } from '@ai-sdk/openai'
+
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+chatAgentPlugin({
+  defaultModel: 'gpt-4o-mini',
+  model: (id) => openai(id),
+})
+```
+
+### Mixing providers
+
+The factory pattern lets you wire up multiple providers in a single install. Route each model id to the appropriate provider — typically by id prefix:
+
+```ts
+import { createAnthropic } from '@ai-sdk/anthropic'
+import { createOpenAI } from '@ai-sdk/openai'
+
+const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+chatAgentPlugin({
+  defaultModel: 'claude-sonnet-4-20250514',
+  availableModels: [
+    { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+    { id: 'gpt-4o', label: 'GPT-4o' },
+    { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
+  ],
+  model: (id) => (id.startsWith('claude-') ? anthropic(id) : openai(id)),
+})
+```
+
+> **Tool-calling support is per-model, not per-provider.** This plugin relies heavily on tool calls, so older or smaller models may perform poorly. Stick to tool-capable models (e.g. `claude-sonnet-4`, `gpt-4o`, `gpt-4o-mini`).
 
 ### Model Selection
 
@@ -67,6 +120,7 @@ chatAgentPlugin({
     { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
     { id: 'claude-opus-4-20250514', label: 'Opus 4' },
   ],
+  model: (id) => anthropic(id),
 })
 ```
 
