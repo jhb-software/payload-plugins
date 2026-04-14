@@ -5,7 +5,7 @@ import type { AgentMode } from '../types.js'
 const MODE_LABELS: Record<AgentMode, string> = {
   ask: 'Confirm writes',
   read: 'Read only',
-  'read-write': 'Auto write',
+  'read-write': 'Read & write',
   superuser: 'Superuser (bypass permissions)',
 }
 

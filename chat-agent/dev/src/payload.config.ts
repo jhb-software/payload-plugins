@@ -163,6 +163,7 @@ export default buildConfig({
   },
   plugins: [
     chatAgentPlugin({
+      access: () => true,
       availableModels: [
         { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
         { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },

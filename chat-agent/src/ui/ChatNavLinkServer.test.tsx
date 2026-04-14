@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@payloadcms/ui', () => ({
-  Link: ({ children, href, ...rest }: any) => (
+  Link: ({ children, href, prefetch: _prefetch, ...rest }: any) => (
     <a href={href} {...rest}>
       {children}
     </a>
@@ -11,6 +11,10 @@ vi.mock('@payloadcms/ui', () => ({
   useConfig: () => ({
     config: { routes: { admin: '/admin' } },
   }),
+}))
+
+vi.mock('next/navigation.js', () => ({
+  usePathname: () => '/admin',
 }))
 
 const { default: ChatNavLinkServer } = await import('./ChatNavLinkServer.js')
