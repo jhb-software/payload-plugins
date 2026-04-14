@@ -7,6 +7,8 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
+import { postsEndpoints, rootEndpoints } from './endpoints.js'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -57,6 +59,7 @@ export default buildConfig({
     {
       slug: 'posts',
       admin: { useAsTitle: 'title' },
+      endpoints: postsEndpoints,
       fields: [
         { name: 'title', type: 'text', required: true },
         { name: 'slug', type: 'text', required: true, unique: true },
@@ -102,6 +105,7 @@ export default buildConfig({
     url: process.env.DATABASE_URI || 'mongodb://localhost:27017/chat-agent-dev',
   }),
   editor: lexicalEditor(),
+  endpoints: rootEndpoints,
   secret: process.env.PAYLOAD_SECRET || 'chat-agent-dev-secret',
   typescript: {
     outputFile: path.resolve(__dirname, '../payload-types.ts'),
