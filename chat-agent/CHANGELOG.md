@@ -31,3 +31,6 @@
 - Add markdown rendering for assistant messages using `react-markdown` and `remark-gfm`
 - Include admin panel URL patterns in the system prompt so the agent can produce clickable links to documents it creates, updates, or finds (respects `config.routes.admin`)
 - Open markdown links in a new tab so clicking through to the admin panel preserves the current chat conversation
+- Restore the persisted model selection when resuming a conversation on page reload (previously the model selector snapped back to the default)
+- Apply model/mode changes to the next request immediately instead of the transport being cached at mount, which previously caused switching the model mid-conversation to have no effect until a full page reload
+- Persist the conversation when a stream errors so the user's message survives a reload and they can retry without retyping (the error itself stays ephemeral)
