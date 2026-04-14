@@ -109,13 +109,16 @@ jobs:
         run: cd admin-search && node --experimental-strip-types --test test/*.test.ts
 
       - name: Run tests (alt-text)
-        run: cd alt-text && node --experimental-strip-types --test test/*.test.ts
+        run: cd alt-text && pnpm test
 
       - name: Run tests (astro-payload-richtext-lexical)
         run: cd astro-payload-richtext-lexical && node --experimental-strip-types --test test/*.test.ts
 
       - name: Run tests (content-translator)
         run: cd content-translator && node --experimental-strip-types --test test/*.test.ts
+
+      - name: Run tests (pages)
+        run: cd pages && pnpm test:unit
 
       - name: Run tests (vercel-deployments)
         run: cd vercel-deployments && pnpm test
