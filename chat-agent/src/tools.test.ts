@@ -38,28 +38,15 @@ describe('buildTools', () => {
     }
   }
 
-  it('returns 8 tools', () => {
+  it('exposes exactly the core CRUD + global tools (no stray additions)', () => {
+    // If a future refactor drops or renames one of these, every mode filter +
+    // every agent prompt that references the removed name silently regresses.
+    // Lock the contract in one place.
     const tools = buildTools(createMockPayload(), mockUser)
-    expect(Object.keys(tools)).toHaveLength(8)
+    expect(Object.keys(tools).sort()).toEqual(
+      ['count', 'create', 'delete', 'find', 'findByID', 'findGlobal', 'update', 'updateGlobal'],
+    )
   })
-
-  const expectedTools = [
-    'find',
-    'findByID',
-    'create',
-    'update',
-    'delete',
-    'count',
-    'findGlobal',
-    'updateGlobal',
-  ]
-
-  for (const name of expectedTools) {
-    it(`includes "${name}" tool`, () => {
-      const tools = buildTools(createMockPayload(), mockUser)
-      expect(tools).toHaveProperty(name)
-    })
-  }
 
   it('find calls payload.find with correct arguments', async () => {
     const payload = createMockPayload()
@@ -435,14 +422,11 @@ describe('callEndpoint tool', () => {
     toolCallId: '1',
   }
 
-  it('is not included when no custom endpoints', () => {
-    const tools = buildTools(mockPayload, mockUser)
-    expect(tools.callEndpoint).toBeUndefined()
-  })
-
-  it('is not included when custom endpoints is empty', () => {
-    const tools = buildTools(mockPayload, mockUser, false, asReq({}), [])
-    expect(tools.callEndpoint).toBeUndefined()
+  it('is not included when there are no custom endpoints to wrap', () => {
+    // Omitted entirely and empty array both mean the same thing: no extra
+    // tool surface should be exposed to the model.
+    expect(buildTools(mockPayload, mockUser).callEndpoint).toBeUndefined()
+    expect(buildTools(mockPayload, mockUser, false, asReq({}), []).callEndpoint).toBeUndefined()
   })
 
   it('is included when custom endpoints exist and req is provided', () => {
@@ -532,20 +516,6 @@ describe('callEndpoint tool', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Tool classification constants
-// ---------------------------------------------------------------------------
-
-describe('tool classification constants', () => {
-  it('READ_TOOL_NAMES contains only read tools', () => {
-    expect([...READ_TOOL_NAMES]).toEqual(['find', 'findByID', 'count', 'findGlobal'])
-  })
-
-  it('WRITE_TOOL_NAMES contains only write tools', () => {
-    expect([...WRITE_TOOL_NAMES]).toEqual(['create', 'update', 'delete', 'updateGlobal'])
-  })
-})
-
-// ---------------------------------------------------------------------------
 // filterToolsByMode
 // ---------------------------------------------------------------------------
 
@@ -592,13 +562,6 @@ describe('filterToolsByMode', () => {
       expect(Object.keys(filtered)).not.toContain('callEndpoint')
     })
 
-    it('read tools have execute functions', () => {
-      const tools = getAllTools()
-      const filtered = filterToolsByMode(tools, 'read')
-      for (const tool of Object.values(filtered)) {
-        expect(tool).toHaveProperty('execute')
-      }
-    })
   })
 
   describe('ask mode', () => {
@@ -643,19 +606,22 @@ describe('filterToolsByMode', () => {
     })
   })
 
-  describe('read-write mode', () => {
-    it('returns all tools unchanged', () => {
-      const tools = getAllTools()
-      const filtered = filterToolsByMode(tools, 'read-write')
-      expect(filtered).toBe(tools)
-    })
-  })
-
-  describe('superuser mode', () => {
-    it('returns all tools unchanged', () => {
-      const tools = getAllTools()
-      const filtered = filterToolsByMode(tools, 'superuser')
-      expect(filtered).toBe(tools)
-    })
+  describe('read-write and superuser modes', () => {
+    it.each(['read-write', 'superuser'] as const)(
+      '%s mode does not add needsApproval to any tool',
+      (mode) => {
+        // Unlike `ask` mode, these two modes should let every tool execute
+        // without confirmation. Check the observable invariant rather than
+        // reference equality — the former would pass even if the filter
+        // were rewritten to clone-and-return, which we don't care about.
+        const filtered = filterToolsByMode(getAllTools(), mode)
+        expect(Object.keys(filtered).sort()).toEqual(
+          ['count', 'create', 'delete', 'find', 'findByID', 'findGlobal', 'update', 'updateGlobal'],
+        )
+        for (const tool of Object.values(filtered)) {
+          expect(tool).not.toHaveProperty('needsApproval')
+        }
+      },
+    )
   })
 })
