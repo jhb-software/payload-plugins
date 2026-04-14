@@ -2,7 +2,7 @@
 
 import type { UIMessage } from 'ai'
 
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 
 import type { MessageMetadata } from '../types.js'
 
@@ -106,13 +106,23 @@ export function MessageList({
 }) {
   const { containerRef, isAtBottom, scrollToBottom } = useScrollToBottom()
   const hasPinnedInitialRef = useRef(false)
+  const [isInitialPinned, setIsInitialPinned] = useState(false)
 
-  // Vercel's hook sets up its `MutationObserver` / `ResizeObserver` inside a
-  // plain `useEffect`, which runs *after* the first browser paint — so the
-  // browser renders one frame scrolled to the top before the observer fires
-  // its first `scrollTo`. A `useLayoutEffect` that runs the moment the
-  // messages list first becomes non-empty pins the scroll position *before*
-  // that first paint, eliminating the visible jump.
+  // On reload of an existing conversation the server streams the message HTML
+  // into the page, so the browser's *first paint* (~1.4s in on a cold admin
+  // load) shows the full list — but scrolled to the top, because `scrollTop`
+  // isn't something SSR can control. React doesn't hydrate and fire
+  // `useLayoutEffect` until hundreds of milliseconds later, so the user sees
+  // the top of the conversation briefly, then the pin-to-bottom happens and
+  // reads as a visible jump.
+  //
+  // To eliminate that, keep the scroll container `visibility: hidden` until
+  // the initial pin has happened. SSR renders hidden, the first paint shows
+  // blank space where messages will be, then hydration runs, this effect
+  // pins `scrollTop` to the bottom, and the re-render flips visibility on —
+  // so the user only ever sees the list already scrolled to the bottom. This
+  // is the ChatGPT/Claude.ai approach: brief blank area rather than a
+  // jarring top-to-bottom jump.
   //
   // We depend on `messages.length` (not `[]`) because on conversation reload
   // the component mounts with zero messages (the data is fetched async), then
@@ -126,6 +136,7 @@ export function MessageList({
     if (el && messages.length > 0) {
       el.scrollTop = el.scrollHeight
       hasPinnedInitialRef.current = true
+      setIsInitialPinned(true)
     }
   }, [messages.length, containerRef])
 
@@ -178,6 +189,7 @@ export function MessageList({
           overflowY: 'auto',
           paddingBottom: '8px',
           paddingRight: '4px',
+          visibility: isInitialPinned ? 'visible' : 'hidden',
         }}
       >
         {messages.map((msg, i) => (
