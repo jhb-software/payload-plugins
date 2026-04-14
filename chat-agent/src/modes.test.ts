@@ -1,3 +1,6 @@
+import type { LanguageModel } from 'ai'
+import type { PayloadRequest } from 'payload'
+
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -6,6 +9,17 @@ import {
   resolveModeConfig,
   validateModeAccess,
 } from './modes.js'
+
+/** Returns a placeholder `LanguageModel` for tests that never call the model. */
+const fakeModel = (): LanguageModel => ({}) as unknown as LanguageModel
+
+/**
+ * `resolveAvailableModes` / `validateModeAccess` take a full `PayloadRequest`
+ * (17+ required fields). The mode logic here only touches `req.user`, so the
+ * tests use this partial mock and cast through `unknown` — a deliberate
+ * signpost that the mock is intentionally minimal.
+ */
+const mockReq = { user: { id: 'u1' } } as unknown as PayloadRequest
 
 // ---------------------------------------------------------------------------
 // resolveModeConfig
@@ -17,14 +31,12 @@ describe('resolveModeConfig', () => {
   })
 
   it('returns empty config when no modes configured', () => {
-    expect(resolveModeConfig({ defaultModel: 'test', model: (() => ({})) as any })).toEqual({})
+    expect(resolveModeConfig({ defaultModel: 'test', model: fakeModel })).toEqual({})
   })
 
   it('returns modes config directly when provided', () => {
     const modes = { access: {}, default: 'read-write' as const }
-    expect(resolveModeConfig({ defaultModel: 'test', model: (() => ({})) as any, modes })).toBe(
-      modes,
-    )
+    expect(resolveModeConfig({ defaultModel: 'test', model: fakeModel, modes })).toBe(modes)
   })
 })
 
@@ -33,8 +45,6 @@ describe('resolveModeConfig', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolveAvailableModes', () => {
-  const mockReq = { user: { id: 'u1' } }
-
   it('returns read, ask, read-write by default (no config)', async () => {
     const modes = await resolveAvailableModes({}, mockReq)
     expect(modes).toEqual(['read', 'ask', 'read-write'])
@@ -68,8 +78,13 @@ describe('resolveAvailableModes', () => {
   })
 
   it('passes req to access functions', async () => {
-    const accessFn = vi.fn(({ req }: any) => req.user?.role === 'admin')
-    await resolveAvailableModes({ access: { 'read-write': accessFn } }, { user: { role: 'admin' } })
+    const accessFn = vi.fn(
+      ({ req }: { req: PayloadRequest }) =>
+        (req.user as { role?: string } | null)?.role === 'admin',
+    )
+    await resolveAvailableModes({ access: { 'read-write': accessFn } }, {
+      user: { role: 'admin' },
+    } as unknown as PayloadRequest)
     expect(accessFn).toHaveBeenCalledWith({ req: { user: { role: 'admin' } } })
   })
 
@@ -87,8 +102,6 @@ describe('resolveAvailableModes', () => {
 // ---------------------------------------------------------------------------
 
 describe('validateModeAccess', () => {
-  const mockReq = { user: { id: 'u1' } }
-
   it('returns null for valid mode with access', async () => {
     const error = await validateModeAccess('ask', {}, mockReq)
     expect(error).toBeNull()

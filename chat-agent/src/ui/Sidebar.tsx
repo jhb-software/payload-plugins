@@ -4,6 +4,7 @@ import { Button } from '@payloadcms/ui'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 
 import { SearchIcon } from './icons/SearchIcon.js'
+import './Sidebar.css'
 
 export interface ConversationSummary {
   id: string
@@ -74,18 +75,8 @@ export function Sidebar({
   }, [])
 
   return (
-    <div
-      style={{
-        borderRight: '1px solid var(--theme-elevation-150)',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-        overflow: 'hidden',
-        width: '260px',
-      }}
-    >
-      {/* New chat button */}
-      <div style={{ borderBottom: '1px solid var(--theme-elevation-150)', padding: '12px' }}>
+    <div className="chat-agent-sidebar">
+      <div className="chat-agent-sidebar__new">
         <Button
           buttonStyle="secondary"
           icon="plus"
@@ -98,86 +89,31 @@ export function Sidebar({
       </div>
 
       {/* Search input */}
-      <div
-        style={{
-          borderBottom: '1px solid var(--theme-elevation-150)',
-          padding: '8px 12px',
-        }}
-      >
-        <div
-          style={{
-            alignItems: 'center',
-            background: 'var(--theme-input-bg, var(--theme-bg))',
-            border: '1px solid var(--theme-elevation-150)',
-            borderRadius: '6px',
-            display: 'flex',
-            gap: '6px',
-            padding: '4px 8px',
-          }}
-        >
-          <SearchIcon
-            height="14"
-            style={{ color: 'var(--theme-elevation-400)', flexShrink: 0 }}
-            width="14"
-          />
-          <input
-            aria-label="Search conversations"
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search…"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--theme-text)',
-              flex: 1,
-              fontSize: '12px',
-              outline: 'none',
-              padding: '2px 0',
-            }}
-            type="text"
-            value={search}
-          />
-          {search ? (
-            <button
-              onClick={() => setSearch('')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--theme-elevation-400)',
-                cursor: 'pointer',
-                fontSize: '14px',
-                lineHeight: 1,
-                padding: 0,
-              }}
-              type="button"
-            >
-              ×
-            </button>
-          ) : null}
-        </div>
+      <div className="chat-agent-sidebar__search">
+        <SearchIcon className="chat-agent-sidebar__search-icon" height={14} width={14} />
+        <input
+          aria-label="Search conversations"
+          className="chat-agent-sidebar__search-input"
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search…"
+          type="text"
+          value={search}
+        />
+        {search ? (
+          <button
+            aria-label="Clear search"
+            className="chat-agent-sidebar__search-clear"
+            onClick={() => setSearch('')}
+            type="button"
+          >
+            ×
+          </button>
+        ) : null}
       </div>
 
-      {/* Conversation list */}
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          flexDirection: 'column',
-          gap: '2px',
-          overflowY: 'auto',
-          padding: '8px',
-        }}
-      >
+      <div className="chat-agent-sidebar__list">
         {filteredConversations.length === 0 && search ? (
-          <div
-            style={{
-              color: 'var(--theme-elevation-400)',
-              fontSize: '12px',
-              padding: '12px 10px',
-              textAlign: 'center',
-            }}
-          >
-            No conversations found
-          </div>
+          <div className="chat-agent-sidebar__empty">No conversations found</div>
         ) : null}
         {filteredConversations.map((conv) => {
           const isActive = conv.id === chatId
@@ -185,6 +121,11 @@ export function Sidebar({
 
           return (
             <div
+              className={
+                isActive
+                  ? 'chat-agent-sidebar__item chat-agent-sidebar__item--active'
+                  : 'chat-agent-sidebar__item'
+              }
               key={conv.id}
               onClick={() => {
                 if (!isRenaming) {
@@ -198,25 +139,12 @@ export function Sidebar({
                 }
               }}
               role="button"
-              style={{
-                alignItems: 'center',
-                background: isActive ? 'var(--theme-elevation-100)' : 'transparent',
-                borderLeft: isActive
-                  ? '3px solid var(--theme-elevation-900)'
-                  : '3px solid transparent',
-                borderRadius: '4px',
-                cursor: isRenaming ? 'default' : 'pointer',
-                display: 'flex',
-                fontSize: '13px',
-                fontWeight: isActive ? 600 : 400,
-                gap: '4px',
-                padding: '8px 10px',
-              }}
               tabIndex={0}
             >
               {isRenaming ? (
                 <input
                   aria-label="Rename conversation"
+                  className="chat-agent-sidebar__rename-input"
                   onBlur={submitRename}
                   onChange={(e) => setRenameText(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
@@ -229,40 +157,24 @@ export function Sidebar({
                     }
                   }}
                   ref={renameRef}
-                  style={{
-                    background: 'var(--theme-input-bg, var(--theme-bg))',
-                    border: '1px solid var(--theme-elevation-300)',
-                    borderRadius: '4px',
-                    color: 'var(--theme-text)',
-                    flex: 1,
-                    fontSize: '13px',
-                    outline: 'none',
-                    padding: '2px 6px',
-                  }}
                   type="text"
                   value={renameText}
                 />
               ) : (
-                <div
-                  style={{
-                    flex: 1,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {conv.title}
-                </div>
+                <div className="chat-agent-sidebar__title">{conv.title}</div>
               )}
               {!isRenaming ? (
-                <Button
-                  buttonStyle="icon-label"
-                  icon="x"
-                  onClick={(e: React.MouseEvent) => handleDeleteClick(e, conv.id)}
-                  round
-                  size="small"
-                  tooltip="Delete conversation"
-                />
+                <div className="chat-agent-sidebar__delete">
+                  <Button
+                    buttonStyle="icon-label"
+                    icon="x"
+                    iconStyle="without-border"
+                    margin={false}
+                    onClick={(e: React.MouseEvent) => handleDeleteClick(e, conv.id)}
+                    size="xsmall"
+                    tooltip="Delete conversation"
+                  />
+                </div>
               ) : null}
             </div>
           )

@@ -1,9 +1,23 @@
 // @vitest-environment jsdom
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+/**
+ * Minimal prop shape consumed by the `Button` mock below — we reimplement
+ * Payload's `Button` as a plain `<button>` for tests, so we only need the
+ * subset of its public API that the component under test actually uses.
+ */
+type ButtonMockProps = {
+  children?: ReactNode
+  disabled?: boolean
+  onClick?: ButtonHTMLAttributes<HTMLButtonElement>['onClick']
+  type?: ButtonHTMLAttributes<HTMLButtonElement>['type']
+}
+
 vi.mock('@payloadcms/ui', () => ({
-  Button: ({ type, children, disabled, onClick }: any) => (
+  Button: ({ type, children, disabled, onClick }: ButtonMockProps) => (
     <button disabled={disabled} onClick={onClick} type={type}>
       {children}
     </button>

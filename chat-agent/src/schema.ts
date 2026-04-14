@@ -25,16 +25,41 @@ interface FieldSchema {
   virtual?: boolean
 }
 
+/** Loose structural representation of a Payload field for prompt building. */
+type RawField = { [key: string]: unknown; type: string }
+
+/** Loose structural representation of a Payload block. */
+export interface RawBlock {
+  fields?: readonly unknown[]
+  slug: string
+}
+
+/** Structural subset of `SanitizedConfig` used to build the system prompt. */
+export interface PayloadConfigForPrompt {
+  blocks?: readonly RawBlock[]
+  collections?: readonly { fields?: readonly unknown[]; slug: string; upload?: unknown }[]
+  globals?: readonly { fields?: readonly unknown[]; slug: string }[]
+  localization?:
+    | {
+        defaultLocale: string
+        locales: readonly ({ code: string } | string)[]
+      }
+    | false
+  routes?: { admin?: string }
+}
+
 export function extractFields(
-  fields: any[],
-  blocksBySlug: Record<string, any> = {},
+  fields: readonly unknown[],
+  blocksBySlug: Record<string, RawBlock> = {},
 ): FieldSchema[] {
   const result: FieldSchema[] = []
 
-  for (const field of fields) {
+  for (const rawField of fields) {
+    const field = rawField as RawField
     // Tabs field: hoist unnamed tab fields, keep named tabs as nested
     if (field.type === 'tabs' && Array.isArray(field.tabs)) {
-      for (const tab of field.tabs) {
+      for (const rawTab of field.tabs as unknown[]) {
+        const tab = rawTab as { fields?: RawField[]; name?: string }
         if (tab.name) {
           // Named tab — behaves like a group
           result.push({
@@ -56,11 +81,11 @@ export function extractFields(
       !field.name &&
       Array.isArray(field.fields)
     ) {
-      result.push(...extractFields(field.fields, blocksBySlug))
+      result.push(...extractFields(field.fields as RawField[], blocksBySlug))
       continue
     }
 
-    if (!field.name) {
+    if (!field.name || typeof field.name !== 'string') {
       continue
     }
 
@@ -82,37 +107,41 @@ export function extractFields(
       schema.hasMany = true
     }
     if (field.relationTo) {
-      schema.relationTo = field.relationTo
+      schema.relationTo = field.relationTo as string | string[]
     }
 
     if (field.fields && Array.isArray(field.fields)) {
-      schema.fields = extractFields(field.fields, blocksBySlug)
+      schema.fields = extractFields(field.fields as RawField[], blocksBySlug)
     }
 
     // Resolve inline blocks + blockReferences (slugs pointing to config.blocks)
-    const inlineBlocks: any[] = field.blocks && Array.isArray(field.blocks) ? field.blocks : []
-    const refBlocks: any[] = Array.isArray(field.blockReferences)
-      ? field.blockReferences
-          .map((blockRef: any) => {
+    const inlineBlocks: RawBlock[] =
+      field.blocks && Array.isArray(field.blocks) ? (field.blocks as RawBlock[]) : []
+    const refBlocks: RawBlock[] = Array.isArray(field.blockReferences)
+      ? (field.blockReferences as ({ slug: string } | string)[])
+          .map((blockRef) => {
             const slug = typeof blockRef === 'string' ? blockRef : blockRef.slug
             return blocksBySlug[slug]
           })
-          .filter(Boolean)
+          .filter((b): b is RawBlock => Boolean(b))
       : []
     const allBlocks = [...inlineBlocks, ...refBlocks]
 
     if (allBlocks.length > 0) {
-      schema.blocks = allBlocks.map((block: any) => ({
+      schema.blocks = allBlocks.map((block) => ({
         slug: block.slug,
         fields: extractFields(block.fields || [], blocksBySlug),
       }))
     }
 
     if (field.options && Array.isArray(field.options)) {
-      schema.options = field.options.map((option: any) =>
+      schema.options = (field.options as unknown[]).map((option) =>
         typeof option === 'string'
           ? { label: option, value: option }
-          : { label: option.label, value: option.value },
+          : {
+              label: String((option as { label: unknown }).label),
+              value: String((option as { value: unknown }).value),
+            },
       )
     }
 
@@ -135,7 +164,7 @@ export function extractFields(
  * @param mode             Current agent mode (affects behavioral instructions)
  */
 export function buildSystemPrompt(
-  payloadConfig: any,
+  payloadConfig: PayloadConfigForPrompt,
   customPrefix?: string,
   customEndpoints?: DiscoverableEndpoint[],
   mode?: AgentMode,
@@ -192,7 +221,7 @@ export function buildSystemPrompt(
   )
 
   // Collections
-  const blocksBySlug: Record<string, any> = {}
+  const blocksBySlug: Record<string, RawBlock> = {}
   for (const block of payloadConfig.blocks ?? []) {
     blocksBySlug[block.slug] = block
   }
@@ -216,21 +245,21 @@ export function buildSystemPrompt(
   }
 
   // Upload collections
-  const uploadCollections = collections.filter((col: any) => col.upload)
+  const uploadCollections = collections.filter((col) => col.upload)
   if (uploadCollections.length > 0) {
-    const uploadSlugs = uploadCollections.map((col: any) => col.slug)
+    const uploadSlugs = uploadCollections.map((col) => col.slug)
     sections.push(
       '',
       '## File Uploads',
       'You cannot upload files through this chat. If a user wants to upload files, images, or media, instruct them to upload directly in the corresponding upload-enabled collection in the admin panel. Once uploaded, you can reference and use those files.',
       '',
-      `Upload-enabled collections: ${uploadSlugs.map((slug: string) => `[\`${slug}\`](${adminRoute}/collections/${slug})`).join(', ')}`,
+      `Upload-enabled collections: ${uploadSlugs.map((slug) => `[\`${slug}\`](${adminRoute}/collections/${slug})`).join(', ')}`,
     )
   }
 
   // Localization
   if (payloadConfig.localization) {
-    const locales = (payloadConfig.localization.locales as any[]).map((l: any) =>
+    const locales = payloadConfig.localization.locales.map((l) =>
       typeof l === 'string' ? l : l.code,
     )
     sections.push(

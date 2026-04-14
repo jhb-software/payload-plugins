@@ -15,7 +15,7 @@ interface ChatNavLinkServerProps extends ServerProps {
  * from the admin nav sidebar.
  */
 export default async function ChatNavLinkServer({ path, payload, user }: ChatNavLinkServerProps) {
-  if (!(await isPluginAccessAllowed({ payload, user }))) {
+  if (!(await isPluginAccessAllowed({ payload, user: user ?? null }))) {
     return null
   }
 

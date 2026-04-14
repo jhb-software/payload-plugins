@@ -20,6 +20,9 @@
  *   })
  */
 
+import type { TextStreamPart, ToolSet } from 'ai'
+import type { PayloadRequest } from 'payload'
+
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import type { AgentMode, ChatAgentPluginOptions } from './types.js'
@@ -95,6 +98,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
   const modesConfig = resolveModeConfig(options)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- plugin wrappers receive the in-flight user config, which hasn't been fully sanitized to `Config` yet.
   return (config: any): any => {
     // Always register the admin chat view. `adminView` customizes route/component.
     const chatPath = options.adminView?.path ?? '/chat'
@@ -142,7 +146,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
         // --- GET /chat-agent/modes ------------------------------------------
         {
-          handler: async (req: any) => {
+          handler: async (req: PayloadRequest) => {
             if (!(await isPluginAccessAllowed(req))) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
@@ -162,7 +166,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
         // --- GET /chat-agent/chat/models ------------------------------------
         {
-          handler: async (req: any) => {
+          handler: async (req: PayloadRequest) => {
             if (!(await isPluginAccessAllowed(req))) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
@@ -177,7 +181,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
         // --- POST /chat-agent/chat ------------------------------------------
         {
-          handler: async (req: any) => {
+          handler: async (req: PayloadRequest) => {
             // --- Auth check -----------------------------------------------
             if (!(await isPluginAccessAllowed(req))) {
               return Response.json({ error: 'Unauthorized' }, { status: 401 })
@@ -195,9 +199,9 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             // --- Parse and validate body -----------------------------------
-            let body: any
+            let body: { messages?: unknown; mode?: string; model?: string }
             try {
-              body = await req.json()
+              body = (await req.json?.()) as typeof body
             } catch {
               return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
             }
@@ -262,7 +266,9 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
             // --- Stream response via AI SDK --------------------------------
             const result = streamText({
-              messages: await (convertToModelMessages as any)(body.messages),
+              messages: await convertToModelMessages(
+                body.messages as Parameters<typeof convertToModelMessages>[0],
+              ),
               model: resolvedModel,
               stopWhen: stepCountIs(maxSteps),
               system: systemPrompt,
@@ -271,7 +277,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             })
 
             return result.toUIMessageStreamResponse({
-              messageMetadata: ({ part }: { part: any }) => {
+              messageMetadata: ({ part }: { part: TextStreamPart<ToolSet> }) => {
                 if (part.type === 'finish') {
                   return {
                     inputTokens: part.totalUsage?.inputTokens,

@@ -1,7 +1,18 @@
+import type { LanguageModel } from 'ai'
+import type { Endpoint } from 'payload'
+
 import { streamText } from 'ai'
 import { describe, expect, it, vi } from 'vitest'
 
 import { chatAgentPlugin, validateMessages } from './index.js'
+
+/**
+ * Structural type for entries in `config.admin.components.beforeNavLinks`.
+ * Payload's real `CustomComponent` type is a deep union; tests only read
+ * `path` and `clientProps.path`, so this narrow shape keeps callbacks typed
+ * without pulling in the full Payload component machinery.
+ */
+type NavLinkEntry = { clientProps?: { path?: string }; path?: string } | string
 
 // Mock the `ai` module so the chat handler doesn't actually try to talk to a
 // provider. We keep every other export real (`convertToModelMessages`,
@@ -28,11 +39,17 @@ vi.mock('ai', async () => {
  * tests can assert on the factory's call log and on the exact instance the
  * handler hands to `streamText`.
  */
+/**
+ * The sentinel is typed as `LanguageModel` only at the boundary — its real
+ * shape (`{ id, __fake }`) never reaches a provider, because `streamText`
+ * is mocked. The cast via `unknown` is the deliberate bridge between a test
+ * stub and the AI SDK's deep `LanguageModel` interface.
+ */
 function makeModelFactory() {
   const calls: string[] = []
-  const factory = vi.fn((id: string) => {
+  const factory = vi.fn((id: string): LanguageModel => {
     calls.push(id)
-    return { id, __fake: true } as any
+    return { id, __fake: true } as unknown as LanguageModel
   })
   return { calls, factory }
 }
@@ -117,7 +134,7 @@ describe('chatAgentPlugin', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const chatEndpoint = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat')
+    const chatEndpoint = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat')
     expect(chatEndpoint).toBeDefined()
     expect(chatEndpoint.method).toBe('post')
   })
@@ -130,7 +147,7 @@ describe('chatAgentPlugin', () => {
     const existing = { handler: () => {}, method: 'get', path: '/custom' }
     const result = plugin({ endpoints: [existing] })
     expect(result.endpoints[0]).toBe(existing)
-    expect(result.endpoints.some((ep: any) => ep.path === '/chat-agent/chat')).toBe(true)
+    expect(result.endpoints.some((ep: Endpoint) => ep.path === '/chat-agent/chat')).toBe(true)
   })
 
   it('returns 401 when no user and no custom access', async () => {
@@ -139,7 +156,7 @@ describe('chatAgentPlugin', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({ payload: {}, user: null })
     expect(response.status).toBe(401)
@@ -153,7 +170,7 @@ describe('chatAgentPlugin', () => {
       defaultModel: 'claude-sonnet-4-20250514',
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({
       json: () =>
@@ -187,7 +204,9 @@ describe('chatAgentPlugin', () => {
         defaultModel: 'claude-sonnet-4-20250514',
       })
       const result = plugin({ endpoints: [] })
-      const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+      const handler = result.endpoints.find(
+        (ep: Endpoint) => ep.path === '/chat-agent/chat',
+      ).handler
 
       const response = await handler({
         json: () =>
@@ -217,7 +236,7 @@ describe('chatAgentPlugin', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({
       json: () => Promise.reject(new Error('Invalid JSON')),
@@ -235,7 +254,7 @@ describe('chatAgentPlugin', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({
       json: () => Promise.resolve({ messages: [] }),
@@ -260,7 +279,7 @@ describe('chatAgentPlugin modes', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const modesEndpoint = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes')
+    const modesEndpoint = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes')
     expect(modesEndpoint).toBeDefined()
     expect(modesEndpoint.method).toBe('get')
   })
@@ -271,7 +290,7 @@ describe('chatAgentPlugin modes', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
     const response = await handler({ user: null })
     expect(response.status).toBe(401)
@@ -283,7 +302,7 @@ describe('chatAgentPlugin modes', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
     const response = await handler({ user: { id: 'u1' } })
     expect(response.status).toBe(200)
@@ -301,7 +320,7 @@ describe('chatAgentPlugin modes', () => {
       },
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
     const response = await handler({ user: { id: 'u1' } })
     const body = await response.json()
@@ -319,7 +338,7 @@ describe('chatAgentPlugin modes', () => {
       },
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
     // Non-admin user
     const res1 = await handler({ user: { id: 'u1', role: 'editor' } })
@@ -339,7 +358,7 @@ describe('chatAgentPlugin modes', () => {
       modes: { default: 'read-write' },
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
     const response = await handler({ user: { id: 'u1' } })
     const body = await response.json()
@@ -352,7 +371,7 @@ describe('chatAgentPlugin modes', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({
       json: () =>
@@ -380,7 +399,7 @@ describe('chatAgentPlugin modes', () => {
       },
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({
       json: () =>
@@ -473,7 +492,7 @@ describe('chatAgentPlugin nav link', () => {
 
     const beforeNavLinks = result.admin?.components?.beforeNavLinks
     expect(Array.isArray(beforeNavLinks)).toBe(true)
-    const navLink = beforeNavLinks.find((c: any) =>
+    const navLink = beforeNavLinks.find((c: NavLinkEntry) =>
       typeof c === 'string' ? c.includes('ChatNavLink') : c?.path?.includes('ChatNavLink'),
     )
     expect(navLink).toBeDefined()
@@ -488,7 +507,7 @@ describe('chatAgentPlugin nav link', () => {
     const result = plugin({ endpoints: [] })
 
     const navLink = result.admin.components.beforeNavLinks.find(
-      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+      (c: NavLinkEntry) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
     )
     expect(navLink).toBeDefined()
     expect(navLink.clientProps?.path).toBe('/assistant')
@@ -502,7 +521,7 @@ describe('chatAgentPlugin nav link', () => {
     const result = plugin({ endpoints: [] })
 
     const navLink = result.admin.components.beforeNavLinks.find(
-      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+      (c: NavLinkEntry) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
     )
     expect(navLink.clientProps?.path).toBe('/chat')
   })
@@ -516,7 +535,7 @@ describe('chatAgentPlugin nav link', () => {
     const result = plugin({ endpoints: [] })
 
     const beforeNavLinks = result.admin?.components?.beforeNavLinks ?? []
-    const navLink = beforeNavLinks.find((c: any) =>
+    const navLink = beforeNavLinks.find((c: NavLinkEntry) =>
       typeof c === 'string' ? c.includes('ChatNavLink') : c?.path?.includes('ChatNavLink'),
     )
     expect(navLink).toBeUndefined()
@@ -543,7 +562,7 @@ describe('chatAgentPlugin nav link', () => {
     const result = plugin({ endpoints: [] })
 
     const navLink = result.admin.components.beforeNavLinks.find(
-      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+      (c: NavLinkEntry) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
     )
     expect(navLink).toBeDefined()
   })
@@ -556,7 +575,7 @@ describe('chatAgentPlugin nav link', () => {
     const result = plugin({ endpoints: [] })
 
     const navLink = result.admin.components.beforeNavLinks.find(
-      (c: any) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
+      (c: NavLinkEntry) => typeof c === 'object' && c?.path?.includes('ChatNavLink'),
     )
     expect(navLink.path).toContain('ChatNavLinkServer')
     expect(navLink.path).not.toContain('/client')
@@ -613,7 +632,7 @@ describe('chatAgentPlugin model validation', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
     const response = await handler({
       json: () =>
@@ -637,7 +656,7 @@ describe('chatAgentPlugin model validation', () => {
       model: factory,
     })
     const result = plugin({ endpoints: [] })
-    const handler = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
 
     // This will proceed past validation and fail at streamText (no mock),
     // which means validation passed. We catch the error from streamText.
@@ -681,7 +700,7 @@ describe('chatAgentPlugin model factory', () => {
       model: factory,
     })
     const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/chat',
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
     ).handler
 
     try {
@@ -708,7 +727,7 @@ describe('chatAgentPlugin model factory', () => {
       model: factory,
     })
     const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/chat',
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
     ).handler
 
     try {
@@ -735,7 +754,7 @@ describe('chatAgentPlugin model factory', () => {
       },
     })
     const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/chat',
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
     ).handler
 
     const response = await handler({
@@ -759,14 +778,18 @@ describe('chatAgentPlugin model factory', () => {
     // through would silently break — this test locks the contract.
     vi.mocked(streamText).mockClear()
 
-    const sentinel = { id: 'gpt-4o', __fake: true, sentinel: Symbol('marker') } as any
+    const sentinel = {
+      id: 'gpt-4o',
+      __fake: true,
+      sentinel: Symbol('marker'),
+    } as unknown as LanguageModel
     const factory = vi.fn(() => sentinel)
     const plugin = chatAgentPlugin({
       defaultModel: 'gpt-4o',
       model: factory,
     })
     const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/chat',
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
     ).handler
 
     await handler({
@@ -779,7 +802,7 @@ describe('chatAgentPlugin model factory', () => {
     })
 
     expect(vi.mocked(streamText)).toHaveBeenCalledTimes(1)
-    const callArgs = vi.mocked(streamText).mock.calls[0][0] as any
+    const callArgs = vi.mocked(streamText).mock.calls[0][0]
     expect(callArgs.model).toBe(sentinel)
   })
 
@@ -797,7 +820,7 @@ describe('chatAgentPlugin model factory', () => {
       } else {
         throw new Error(`Unknown model: ${id}`)
       }
-      return { id, __fake: true } as any
+      return { id, __fake: true } as unknown as LanguageModel
     }
     const plugin = chatAgentPlugin({
       availableModels: [
@@ -808,7 +831,7 @@ describe('chatAgentPlugin model factory', () => {
       model: factory,
     })
     const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/chat',
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
     ).handler
 
     for (const modelId of ['claude-sonnet-4-20250514', 'gpt-4o']) {
@@ -843,7 +866,7 @@ describe('chatAgentPlugin models endpoint', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
+    const ep = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat/models')
     expect(ep).toBeDefined()
     expect(ep.method).toBe('get')
   })
@@ -858,7 +881,7 @@ describe('chatAgentPlugin models endpoint', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
+    const ep = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat/models')
 
     const response = await ep.handler({ user: { id: 1 } })
     const body = await response.json()
@@ -872,7 +895,7 @@ describe('chatAgentPlugin models endpoint', () => {
       model: makeModelFactory().factory,
     })
     const result = plugin({ endpoints: [] })
-    const ep = result.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
+    const ep = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat/models')
 
     const response = await ep.handler({ user: { id: 1 } })
     const body = await response.json()
@@ -887,7 +910,7 @@ describe('chatAgentPlugin models endpoint', () => {
       model: makeModelFactory().factory,
     })
     const config = plugin({ endpoints: [] })
-    const ep = config.endpoints.find((ep: any) => ep.path === '/chat-agent/chat/models')
+    const ep = config.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat/models')
 
     const response = await ep.handler({
       payload: { config: { custom: config.custom } },
@@ -915,7 +938,7 @@ describe('chatAgentPlugin access()', () => {
 
   it('denies /chat-agent/modes', async () => {
     const config = denyingPlugin()({ endpoints: [] })
-    const handler = config.endpoints.find((ep: any) => ep.path === '/chat-agent/modes').handler
+    const handler = config.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
     const response = await handler({
       payload: { config: { custom: config.custom } },
       user: { id: 1 },
@@ -925,7 +948,7 @@ describe('chatAgentPlugin access()', () => {
 
   it('denies /chat-agent/chat', async () => {
     const config = denyingPlugin()({ endpoints: [] })
-    const handler = config.endpoints.find((ep: any) => ep.path === '/chat-agent/chat').handler
+    const handler = config.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
     const response = await handler({
       json: () => Promise.resolve({ messages: [] }),
       payload: { config: { custom: config.custom } },
@@ -937,7 +960,7 @@ describe('chatAgentPlugin access()', () => {
   it('denies /chat-agent/chat/models', async () => {
     const config = denyingPlugin()({ endpoints: [] })
     const handler = config.endpoints.find(
-      (ep: any) => ep.path === '/chat-agent/chat/models',
+      (ep: Endpoint) => ep.path === '/chat-agent/chat/models',
     ).handler
     const response = await handler({
       payload: { config: { custom: config.custom } },
@@ -958,7 +981,7 @@ describe('chatAgentPlugin access()', () => {
     ] as const
     for (const [method, path] of routes) {
       const handler = config.endpoints.find(
-        (ep: any) => ep.method === method && ep.path === path,
+        (ep: Endpoint) => ep.method === method && ep.path === path,
       ).handler
       const response = await handler({
         json: () => Promise.resolve({}),

@@ -3,6 +3,7 @@
  */
 
 import type { LanguageModel } from 'ai'
+import type { PayloadRequest } from 'payload'
 
 import { z } from 'zod'
 
@@ -67,7 +68,7 @@ export interface ModesConfig {
    * - `read` should never be restricted (always available regardless).
    * - `superuser` requires an explicit access function to be enabled.
    */
-  access?: Partial<Record<AgentMode, (args: { req: any }) => boolean | Promise<boolean>>>
+  access?: Partial<Record<AgentMode, (args: { req: PayloadRequest }) => boolean | Promise<boolean>>>
   /** The mode the agent starts in. Default: `'ask'` */
   default?: AgentMode
 }
@@ -86,7 +87,7 @@ export interface ChatAgentPluginOptions {
    * For finer-grained control over which agent modes each user can use
    * (read / ask / read-write / superuser), see `modes.access`.
    */
-  access?: (req: any) => boolean | Promise<boolean>
+  access?: (req: PayloadRequest) => boolean | Promise<boolean>
   /**
    * Admin panel chat view configuration. The chat view is always registered;
    * use these fields to customize the route path or replace the component.

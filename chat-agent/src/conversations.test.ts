@@ -1,3 +1,12 @@
+import type { LanguageModel } from 'ai'
+import type {
+  AccessArgs,
+  CollectionConfig,
+  Endpoint,
+  PayloadHandler,
+  PayloadRequest,
+} from 'payload'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -6,6 +15,48 @@ import {
   conversationsCollection,
 } from './conversations.js'
 import { chatAgentPlugin } from './index.js'
+
+/**
+ * Cast helpers for test mocks.
+ *
+ * The real Payload/AI-SDK types (`AccessArgs.req`, `PayloadRequest`,
+ * `LanguageModel`) require 17+ fields. Tests only touch a handful of them,
+ * so these helpers route the minimal mock through an explicit cast — a
+ * signpost that the partial shape is deliberate.
+ */
+const asAccessArgs = (v: unknown) => v as AccessArgs
+const fakeModel = () => ({}) as unknown as LanguageModel
+
+/**
+ * Loose shape for args captured by mocked `payload.find/create/update/...`
+ * stubs. Tests only read a few keys (`collection`, `id`, `where`, `data`) —
+ * this narrow alias avoids `any` without forcing the full Payload operation
+ * types (which are generic over collection slug literal types).
+ */
+type MockApiArgs = {
+  collection?: string
+  data?: Record<string, unknown>
+  id?: number | string
+  where?: Record<string, { equals?: unknown }>
+}
+
+/**
+ * Shape tests provide for a mocked `PayloadRequest`. Accepting `unknown` on
+ * the `payload` and `user` fields lets tests pass minimal stubs (e.g. a
+ * custom `payload` whose only job is to capture `find` args) without
+ * restating every field of Payload's strict types.
+ */
+type MockReq = {
+  json?: () => Promise<unknown>
+  payload?: unknown
+  routeParams?: Record<string, unknown>
+  user?: unknown
+}
+
+/** Call a handler with a partial `PayloadRequest` — avoids per-call casts. */
+function callHandler(handler: PayloadHandler, req: MockReq): Promise<Response> | Response {
+  return handler(req as unknown as PayloadRequest)
+}
 
 // ---------------------------------------------------------------------------
 // Collection definition
@@ -17,7 +68,7 @@ describe('conversationsCollection', () => {
   })
 
   it('has required fields', () => {
-    const fieldNames = conversationsCollection.fields.map((f: any) => f.name)
+    const fieldNames = conversationsCollection.fields.map((f) => ('name' in f ? f.name : undefined))
     expect(fieldNames).toContain('title')
     expect(fieldNames).toContain('messages')
     expect(fieldNames).toContain('user')
@@ -30,32 +81,30 @@ describe('conversationsCollection', () => {
   })
 
   it('is hidden from admin panel', () => {
-    expect(conversationsCollection.admin.hidden).toBe(true)
+    expect(conversationsCollection.admin?.hidden).toBe(true)
   })
 
   it('denies read access without a user', () => {
-    const result = conversationsCollection.access.read({ req: { user: null } })
+    const result = conversationsCollection.access!.read!(asAccessArgs({ req: { user: null } }))
     expect(result).toBe(false)
   })
 
   it('returns a where constraint for read with a user', () => {
-    const result = conversationsCollection.access.read({
-      req: { user: { id: 'u1' } },
-    })
+    const result = conversationsCollection.access!.read!(
+      asAccessArgs({ req: { user: { id: 'u1' } } }),
+    )
     expect(result).toEqual({ user: { equals: 'u1' } })
   })
 
   it('denies create access without a user', () => {
-    const result = conversationsCollection.access.create({
-      req: { user: null },
-    })
+    const result = conversationsCollection.access!.create!(asAccessArgs({ req: { user: null } }))
     expect(result).toBe(false)
   })
 
   it('allows create access with a user', () => {
-    const result = conversationsCollection.access.create({
-      req: { user: { id: 'u1' } },
-    })
+    const result = conversationsCollection.access!.create!(
+      asAccessArgs({ req: { user: { id: 'u1' } } }),
+    )
     expect(result).toBe(true)
   })
 })
@@ -68,17 +117,17 @@ describe('chatAgentPlugin conversations', () => {
   it('registers the chat-conversations collection', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
-      model: () => ({}) as any,
+      model: fakeModel,
     })
     const result = plugin({ collections: [], endpoints: [] })
-    const slugs = result.collections.map((c: any) => c.slug)
+    const slugs = (result.collections as CollectionConfig[]).map((c) => c.slug)
     expect(slugs).toContain(CONVERSATIONS_SLUG)
   })
 
   it('preserves existing collections', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
-      model: () => ({}) as any,
+      model: fakeModel,
     })
     const existing = { slug: 'posts', fields: [] }
     const result = plugin({ collections: [existing], endpoints: [] })
@@ -88,10 +137,10 @@ describe('chatAgentPlugin conversations', () => {
   it('registers conversation CRUD endpoints', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
-      model: () => ({}) as any,
+      model: fakeModel,
     })
     const result = plugin({ endpoints: [] })
-    const paths = result.endpoints.map((ep: any) => `${ep.method}:${ep.path}`)
+    const paths = (result.endpoints as Endpoint[]).map((ep) => `${ep.method}:${ep.path}`)
     expect(paths).toContain('get:/chat-agent/chat/conversations')
     expect(paths).toContain('get:/chat-agent/chat/conversations/:id')
     expect(paths).toContain('post:/chat-agent/chat/conversations')
@@ -104,12 +153,19 @@ describe('chatAgentPlugin conversations', () => {
 // Endpoint handlers
 // ---------------------------------------------------------------------------
 
-function findHandler(endpoints: any[], method: string, path: string) {
-  return endpoints.find((ep: any) => ep.method === method && ep.path === path)?.handler
+function findHandler(endpoints: Endpoint[], method: string, path: string): PayloadHandler {
+  const handler = endpoints.find((ep) => ep.method === method && ep.path === path)?.handler
+  if (!handler) {
+    throw new Error(`No endpoint handler registered for ${method} ${path}`)
+  }
+  return handler
 }
 
 /** Builds a payload.config.custom.chatAgent.access shape for handler tests. */
-function payloadWithAccess(access: (req: any) => boolean | Promise<boolean>, extra: any = {}) {
+function payloadWithAccess(
+  access: (req: PayloadRequest) => boolean | Promise<boolean>,
+  extra: Record<string, unknown> = {},
+) {
   return { config: { custom: { chatAgent: { access } } }, ...extra }
 }
 
@@ -122,7 +178,7 @@ describe('conversation endpoints respect plugin access()', () => {
     ['delete', '/chat-agent/chat/conversations/:id'],
   ])('%s %s returns 401 when plugin access denies', async (method, path) => {
     const handler = findHandler(conversationEndpoints, method, path)
-    const res = await handler({
+    const res = await callHandler(handler, {
       json: () => Promise.resolve({}),
       payload: payloadWithAccess(() => false),
       routeParams: { id: 'c1' },
@@ -138,18 +194,18 @@ describe('conversation endpoint handlers', () => {
   describe('GET /conversations (list)', () => {
     it('returns 401 without a user', async () => {
       const handler = findHandler(conversationEndpoints, 'get', '/chat-agent/chat/conversations')
-      const res = await handler({ user: null })
+      const res = await callHandler(handler, { user: null })
       expect(res.status).toBe(401)
     })
 
     it('returns conversations for the user', async () => {
       const docs = [{ id: 'c1', title: 'Test' }]
       const handler = findHandler(conversationEndpoints, 'get', '/chat-agent/chat/conversations')
-      const res = await handler({
+      const res = await callHandler(handler, {
         payload: {
-          find: (args: any) => {
+          find: (args: MockApiArgs) => {
             expect(args.collection).toBe(CONVERSATIONS_SLUG)
-            expect(args.where.user.equals).toBe('u1')
+            expect(args.where?.user?.equals).toBe('u1')
             return { docs }
           },
         },
@@ -170,7 +226,7 @@ describe('conversation endpoint handlers', () => {
         'get',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({ routeParams: { id: 'c1' }, user: null })
+      const res = await callHandler(handler, { routeParams: { id: 'c1' }, user: null })
       expect(res.status).toBe(401)
     })
 
@@ -180,7 +236,7 @@ describe('conversation endpoint handlers', () => {
         'get',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({ routeParams: {}, user: { id: 'u1' } })
+      const res = await callHandler(handler, { routeParams: {}, user: { id: 'u1' } })
       expect(res.status).toBe(400)
     })
 
@@ -191,9 +247,9 @@ describe('conversation endpoint handlers', () => {
         'get',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({
+      const res = await callHandler(handler, {
         payload: {
-          findByID: (args: any) => {
+          findByID: (args: MockApiArgs) => {
             expect(args.collection).toBe(CONVERSATIONS_SLUG)
             expect(args.id).toBe('c1')
             return doc
@@ -212,7 +268,7 @@ describe('conversation endpoint handlers', () => {
         'get',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({
+      const res = await callHandler(handler, {
         payload: {
           findByID: () => {
             throw new Error('Not Found')
@@ -230,20 +286,20 @@ describe('conversation endpoint handlers', () => {
   describe('POST /conversations (create)', () => {
     it('returns 401 without a user', async () => {
       const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
-      const res = await handler({ user: null })
+      const res = await callHandler(handler, { user: null })
       expect(res.status).toBe(401)
     })
 
     it('creates a conversation with defaults', async () => {
       const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
       const created = { id: 'c1', messages: [], title: 'New conversation' }
-      const res = await handler({
+      const res = await callHandler(handler, {
         json: () => Promise.resolve({}),
         payload: {
-          create: (args: any) => {
+          create: (args: MockApiArgs) => {
             expect(args.collection).toBe(CONVERSATIONS_SLUG)
-            expect(args.data.user).toBe('u1')
-            expect(args.data.title).toBe('New conversation')
+            expect(args.data?.user).toBe('u1')
+            expect(args.data?.title).toBe('New conversation')
             return created
           },
         },
@@ -255,7 +311,7 @@ describe('conversation endpoint handlers', () => {
 
     it('returns 400 for invalid JSON', async () => {
       const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
-      const res = await handler({
+      const res = await callHandler(handler, {
         json: () => Promise.reject(new Error('bad')),
         user: { id: 'u1' },
       })
@@ -272,7 +328,7 @@ describe('conversation endpoint handlers', () => {
         'patch',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({ routeParams: { id: 'c1' }, user: null })
+      const res = await callHandler(handler, { routeParams: { id: 'c1' }, user: null })
       expect(res.status).toBe(401)
     })
 
@@ -283,13 +339,13 @@ describe('conversation endpoint handlers', () => {
         '/chat-agent/chat/conversations/:id',
       )
       const updated = { id: 'c1', title: 'Updated' }
-      const res = await handler({
+      const res = await callHandler(handler, {
         json: () => Promise.resolve({ messages: [{ role: 'user' }], title: 'Updated' }),
         payload: {
-          update: (args: any) => {
+          update: (args: MockApiArgs) => {
             expect(args.id).toBe('c1')
-            expect(args.data.title).toBe('Updated')
-            expect(args.data.messages).toEqual([{ role: 'user' }])
+            expect(args.data?.title).toBe('Updated')
+            expect(args.data?.messages).toEqual([{ role: 'user' }])
             return updated
           },
         },
@@ -305,7 +361,7 @@ describe('conversation endpoint handlers', () => {
         'patch',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({
+      const res = await callHandler(handler, {
         json: () => Promise.resolve({ title: 'x' }),
         payload: {
           update: () => {
@@ -328,7 +384,7 @@ describe('conversation endpoint handlers', () => {
         'delete',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({ routeParams: { id: 'c1' }, user: null })
+      const res = await callHandler(handler, { routeParams: { id: 'c1' }, user: null })
       expect(res.status).toBe(401)
     })
 
@@ -338,9 +394,9 @@ describe('conversation endpoint handlers', () => {
         'delete',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({
+      const res = await callHandler(handler, {
         payload: {
-          delete: (args: any) => {
+          delete: (args: MockApiArgs) => {
             expect(args.id).toBe('c1')
             return { id: 'c1' }
           },
@@ -358,7 +414,7 @@ describe('conversation endpoint handlers', () => {
         'delete',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await handler({
+      const res = await callHandler(handler, {
         payload: {
           delete: () => {
             throw new Error('Not Found')

@@ -7,7 +7,7 @@
  * Types are kept inline to avoid a hard dependency on `payload`.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { AccessArgs, CollectionConfig, Endpoint, PayloadRequest } from 'payload'
 
 import { isPluginAccessAllowed } from './access.js'
 
@@ -17,23 +17,23 @@ export const CONVERSATIONS_SLUG = 'chat-conversations'
 // Collection definition
 // ---------------------------------------------------------------------------
 
-export const conversationsCollection = {
+export const conversationsCollection: CollectionConfig = {
   slug: CONVERSATIONS_SLUG,
   access: {
-    create: ({ req }: any) => !!req.user,
-    delete: ({ req }: any) => {
+    create: ({ req }: AccessArgs) => !!req.user,
+    delete: ({ req }: AccessArgs) => {
       if (!req.user) {
         return false
       }
       return { user: { equals: req.user.id } }
     },
-    read: ({ req }: any) => {
+    read: ({ req }: AccessArgs) => {
       if (!req.user) {
         return false
       }
       return { user: { equals: req.user.id } }
     },
-    update: ({ req }: any) => {
+    update: ({ req }: AccessArgs) => {
       if (!req.user) {
         return false
       }
@@ -83,8 +83,8 @@ export const conversationsCollection = {
 // ---------------------------------------------------------------------------
 
 /** GET /api/chat-agent/chat/conversations — list user's conversations */
-async function listConversations(req: any): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req))) {
+async function listConversations(req: PayloadRequest): Promise<Response> {
+  if (!(await isPluginAccessAllowed(req)) || !req.user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -100,13 +100,13 @@ async function listConversations(req: any): Promise<Response> {
 }
 
 /** GET /api/chat-agent/chat/conversations/:id — get single conversation */
-async function getConversation(req: any): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req))) {
+async function getConversation(req: PayloadRequest): Promise<Response> {
+  if (!(await isPluginAccessAllowed(req)) || !req.user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const id = req.routeParams?.id
-  if (!id) {
+  if (typeof id !== 'string' && typeof id !== 'number') {
     return Response.json({ error: 'Missing conversation ID' }, { status: 400 })
   }
 
@@ -123,15 +123,22 @@ async function getConversation(req: any): Promise<Response> {
   }
 }
 
+interface ConversationBody {
+  messages?: unknown[]
+  model?: string
+  title?: string
+  totalTokens?: number
+}
+
 /** POST /api/chat-agent/chat/conversations — create a conversation */
-async function createConversation(req: any): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req))) {
+async function createConversation(req: PayloadRequest): Promise<Response> {
+  if (!(await isPluginAccessAllowed(req)) || !req.user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let body: any
+  let body: ConversationBody
   try {
-    body = await req.json()
+    body = (await req.json?.()) as ConversationBody
   } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
@@ -151,19 +158,19 @@ async function createConversation(req: any): Promise<Response> {
 }
 
 /** PATCH /api/chat-agent/chat/conversations/:id — update a conversation */
-async function updateConversation(req: any): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req))) {
+async function updateConversation(req: PayloadRequest): Promise<Response> {
+  if (!(await isPluginAccessAllowed(req)) || !req.user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const id = req.routeParams?.id
-  if (!id) {
+  if (typeof id !== 'string' && typeof id !== 'number') {
     return Response.json({ error: 'Missing conversation ID' }, { status: 400 })
   }
 
-  let body: any
+  let body: ConversationBody
   try {
-    body = await req.json()
+    body = (await req.json?.()) as ConversationBody
   } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
@@ -198,13 +205,13 @@ async function updateConversation(req: any): Promise<Response> {
 }
 
 /** DELETE /api/chat-agent/chat/conversations/:id — delete a conversation */
-async function deleteConversation(req: any): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req))) {
+async function deleteConversation(req: PayloadRequest): Promise<Response> {
+  if (!(await isPluginAccessAllowed(req)) || !req.user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const id = req.routeParams?.id
-  if (!id) {
+  if (typeof id !== 'string' && typeof id !== 'number') {
     return Response.json({ error: 'Missing conversation ID' }, { status: 400 })
   }
 
@@ -225,30 +232,30 @@ async function deleteConversation(req: any): Promise<Response> {
 // Endpoint definitions for the plugin
 // ---------------------------------------------------------------------------
 
-export const conversationEndpoints = [
+export const conversationEndpoints: Endpoint[] = [
   {
     handler: listConversations,
-    method: 'get' as const,
+    method: 'get',
     path: '/chat-agent/chat/conversations',
   },
   {
     handler: getConversation,
-    method: 'get' as const,
+    method: 'get',
     path: '/chat-agent/chat/conversations/:id',
   },
   {
     handler: createConversation,
-    method: 'post' as const,
+    method: 'post',
     path: '/chat-agent/chat/conversations',
   },
   {
     handler: updateConversation,
-    method: 'patch' as const,
+    method: 'patch',
     path: '/chat-agent/chat/conversations/:id',
   },
   {
     handler: deleteConversation,
-    method: 'delete' as const,
+    method: 'delete',
     path: '/chat-agent/chat/conversations/:id',
   },
 ]

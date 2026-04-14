@@ -1,9 +1,20 @@
 // @vitest-environment jsdom
+import type { ButtonHTMLAttributes, MouseEventHandler, ReactNode } from 'react'
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+/** Subset of Payload's `Button` props exercised by the Sidebar tests. */
+type ButtonMockProps = {
+  children?: ReactNode
+  disabled?: boolean
+  onClick?: MouseEventHandler<HTMLButtonElement>
+  tooltip?: string
+  type?: ButtonHTMLAttributes<HTMLButtonElement>['type']
+}
+
 vi.mock('@payloadcms/ui', () => ({
-  Button: ({ type, children, disabled, onClick, tooltip }: any) => (
+  Button: ({ type, children, disabled, onClick, tooltip }: ButtonMockProps) => (
     <button aria-label={tooltip} disabled={disabled} onClick={onClick} type={type}>
       {children}
     </button>

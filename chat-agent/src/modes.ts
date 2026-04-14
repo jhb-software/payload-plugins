@@ -5,6 +5,8 @@
  * that a requested mode is allowed.
  */
 
+import type { PayloadRequest } from 'payload'
+
 import {
   AGENT_MODES,
   type AgentMode,
@@ -40,7 +42,7 @@ export function resolveModeConfig(options: ChatAgentPluginOptions | undefined): 
  */
 export async function resolveAvailableModes(
   modesConfig: ModesConfig,
-  req: any,
+  req: PayloadRequest,
 ): Promise<AgentMode[]> {
   const available: AgentMode[] = []
 
@@ -79,7 +81,7 @@ export async function resolveAvailableModes(
 export async function validateModeAccess(
   mode: unknown,
   modesConfig: ModesConfig,
-  req: any,
+  req: PayloadRequest,
 ): Promise<null | string> {
   if (typeof mode !== 'string' || !(AGENT_MODES as readonly string[]).includes(mode)) {
     return `Invalid mode "${mode}". Must be one of: ${AGENT_MODES.join(', ')}`
