@@ -146,6 +146,35 @@ describe('MessageBubble', () => {
     expect(writeText).toHaveBeenCalledWith(JSON.stringify(output, null, 2))
   })
 
+  it('renders text and tool parts in their original order', () => {
+    const message = {
+      id: '1',
+      parts: [
+        { type: 'text', text: 'Let me check that.' },
+        {
+          type: 'dynamic-tool',
+          input: { collection: 'posts' },
+          output: { docs: [] },
+          state: 'output-available',
+          toolCallId: 'tc1',
+          toolName: 'find',
+        },
+        { type: 'text', text: 'Found nothing.' },
+      ],
+      role: 'assistant',
+    } as unknown as UIMessage<MessageMetadata>
+
+    const { container } = render(<MessageBubble message={message} />)
+    const text = container.textContent ?? ''
+    const firstTextIdx = text.indexOf('Let me check that.')
+    const toolIdx = text.indexOf('find(')
+    const secondTextIdx = text.indexOf('Found nothing.')
+
+    expect(firstTextIdx).toBeGreaterThanOrEqual(0)
+    expect(toolIdx).toBeGreaterThan(firstTextIdx)
+    expect(secondTextIdx).toBeGreaterThan(toolIdx)
+  })
+
   it('does not show expand toggle for pending tool calls', () => {
     const message = {
       id: '1',

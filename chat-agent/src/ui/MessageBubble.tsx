@@ -41,7 +41,6 @@ function ToolCallIndicator({
         background: 'var(--theme-elevation-50)',
         border: '1px solid var(--theme-elevation-150)',
         borderRadius: '4px',
-        marginTop: '6px',
       }}
     >
       <div
@@ -150,72 +149,98 @@ export function MessageBubble({
   const isUser = message.role === 'user'
   const meta = message.metadata
 
+  const bubbleStyle: React.CSSProperties = {
+    borderRadius: '12px',
+    fontSize: '14px',
+    lineHeight: '1.5',
+    padding: '10px 14px',
+    wordBreak: 'break-word',
+    ...(isUser ? { whiteSpace: 'pre-wrap' as const } : {}),
+    ...(isUser
+      ? { background: 'var(--theme-elevation-900)', color: 'var(--theme-bg)' }
+      : { background: 'var(--theme-elevation-50)', color: 'var(--theme-text)' }),
+  }
+
+  const rendered: React.ReactNode[] = []
+  let textBuffer = ''
+  let textKey = 0
+
+  const flushText = () => {
+    if (!textBuffer) {
+      return
+    }
+    const current = textBuffer
+    textBuffer = ''
+    rendered.push(
+      <div key={`text-${textKey++}`} style={bubbleStyle}>
+        {isUser ? current : <MarkdownContent>{current}</MarkdownContent>}
+      </div>,
+    )
+  }
+
+  message.parts.forEach((part, i) => {
+    if (part.type === 'text') {
+      textBuffer += (part as { text: string; type: 'text' }).text
+      return
+    }
+    if (!isToolUIPart(part)) {
+      return
+    }
+    flushText()
+    const toolPart = part as {
+      approval?: { approved?: boolean; id: string }
+      input: unknown
+      output?: unknown
+      state: string
+    }
+    const toolName = getToolName(toolPart as Parameters<typeof getToolName>[0])
+
+    if (
+      toolPart.state === 'approval-requested' &&
+      toolPart.approval?.id &&
+      onToolApprove &&
+      onToolDeny
+    ) {
+      const approvalId = toolPart.approval.id
+      rendered.push(
+        <ToolConfirmation
+          input={toolPart.input}
+          isLoading={isLoading}
+          key={`tool-${i}`}
+          onAllow={() => onToolApprove(approvalId)}
+          onDeny={() => onToolDeny(approvalId)}
+          toolName={toolName}
+        />,
+      )
+      return
+    }
+
+    rendered.push(<ToolCallIndicator key={`tool-${i}`} part={toolPart} />)
+  })
+  flushText()
+
+  if (rendered.length === 0) {
+    rendered.push(
+      <div key="empty" style={bubbleStyle}>
+        {'\u2026'}
+      </div>,
+    )
+  }
+
   return (
     <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
-      <div style={{ maxWidth: '85%', minWidth: '120px' }}>
-        <div
-          style={{
-            borderRadius: '12px',
-            fontSize: '14px',
-            lineHeight: '1.5',
-            padding: '10px 14px',
-            wordBreak: 'break-word',
-            ...(isUser ? { whiteSpace: 'pre-wrap' as const } : {}),
-            ...(isUser
-              ? { background: 'var(--theme-elevation-900)', color: 'var(--theme-bg)' }
-              : { background: 'var(--theme-elevation-50)', color: 'var(--theme-text)' }),
-          }}
-        >
-          {(() => {
-            const text = message.parts
-              .filter((p) => p.type === 'text')
-              .map((p) => (p as { text: string; type: 'text' }).text)
-              .join('')
-
-            if (!text) {
-              return '\u2026'
-            }
-            if (isUser) {
-              return text
-            }
-            return <MarkdownContent>{text}</MarkdownContent>
-          })()}
-        </div>
-        {message.parts
-          .filter((p) => isToolUIPart(p))
-          .map((p, i: number) => {
-            const toolPart = p as {
-              approval?: { approved?: boolean; id: string }
-              input: unknown
-              output?: unknown
-              state: string
-            }
-            const toolName = getToolName(toolPart as Parameters<typeof getToolName>[0])
-
-            // Show approval dialog when the SDK has emitted an approval request.
-            if (
-              toolPart.state === 'approval-requested' &&
-              toolPart.approval?.id &&
-              onToolApprove &&
-              onToolDeny
-            ) {
-              const approvalId = toolPart.approval.id
-              return (
-                <ToolConfirmation
-                  input={toolPart.input}
-                  isLoading={isLoading}
-                  key={i}
-                  onAllow={() => onToolApprove(approvalId)}
-                  onDeny={() => onToolDeny(approvalId)}
-                  toolName={toolName}
-                />
-              )
-            }
-
-            return <ToolCallIndicator key={i} part={toolPart} />
-          })}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          maxWidth: '85%',
+          minWidth: '120px',
+        }}
+      >
+        {rendered}
         {!isUser && meta?.totalTokens ? (
-          <div style={{ color: 'var(--theme-elevation-400)', fontSize: '11px', marginTop: '4px' }}>
+          <div style={{ color: 'var(--theme-elevation-400)', fontSize: '11px' }}>
             {[meta.model, formatTokens(meta.totalTokens)].filter(Boolean).join(' \u00b7 ')}
           </div>
         ) : null}
