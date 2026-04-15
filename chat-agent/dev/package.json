@@ -1,0 +1,38 @@
+{
+  "name": "chat-agent-dev",
+  "description": "Dev app for the chat-agent plugin.",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev --port 3940",
+    "dev:turbo": "pnpm dev --turbo",
+    "dev:safe": "rm -rf .next && pnpm dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "payload": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload",
+    "generate:types": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload generate:types",
+    "generate:importmap": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload generate:importmap"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.68",
+    "@ai-sdk/openai": "^3.0.52",
+    "@ai-sdk/react": "^3.0.156",
+    "@jhb.software/payload-chat-agent": "workspace:*",
+    "@payloadcms/db-mongodb": "^3.81.0",
+    "@payloadcms/next": "^3.81.0",
+    "@payloadcms/richtext-lexical": "^3.81.0",
+    "@payloadcms/ui": "^3.81.0",
+    "ai": "^6.0.154",
+    "next": "15.4.11",
+    "payload": "^3.81.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.4.1"
+  }
+}

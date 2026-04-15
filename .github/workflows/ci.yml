@@ -84,6 +84,9 @@ jobs:
       - name: Run ESLint (vercel-deployments)
         run: cd vercel-deployments && pnpm lint
 
+      - name: Run ESLint (chat-agent)
+        run: cd chat-agent && pnpm lint
+
   test-unit:
     runs-on: ubuntu-latest
     needs: format
@@ -119,6 +122,9 @@ jobs:
 
       - name: Run tests (vercel-deployments)
         run: cd vercel-deployments && pnpm test
+
+      - name: Run tests (chat-agent)
+        run: cd chat-agent && pnpm test
 
   test-pages-localized:
     runs-on: ubuntu-latest

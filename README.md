@@ -72,6 +72,12 @@ A plugin for managing Vercel deployments of static websites. When your site is s
 
 [→ Vercel Deployments plugin ](./vercel-deployments)
 
+### Chat Agent Plugin
+
+A Payload CMS plugin that adds an AI chat agent for reading, creating, and updating content. It provides an admin panel chat view where users can interact with their content through natural language, powered by Claude and the Payload Local API.
+
+[→ Chat Agent plugin ](./chat-agent)
+
 ### Astro Payload RichText Lexical
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fastro-payload-richtext-lexical)](https://www.npmjs.com/package/@jhb.software/astro-payload-richtext-lexical)
