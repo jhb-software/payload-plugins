@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.2
 
-- fix: normalize all Payload label shapes (`string`, localized `Record`, `LabelFunction`, `false`) in `getCollectionSchema` / `getGlobalSchema` output instead of emitting `"[object Object]"`. Shared `normalizeLabel` utility exported from `schema.ts` for reuse anywhere a label surfaces.
+- fix: normalize all Payload label shapes (`string`, localized `Record`, `LabelFunction`, `false`) in `getCollectionSchema` / `getGlobalSchema` output instead of emitting `"[object Object]"`.
 
 ## 0.1.0-beta.1
 
