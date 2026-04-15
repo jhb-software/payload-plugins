@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: surface tool-call status in the chat UI (running / failed / denied) and show failed tool error text in a collapsible panel instead of only a colored dot.
+
 ## 0.1.0-beta.2
 
 - fix: normalize all Payload label shapes (`string`, localized `Record`, `LabelFunction`, `false`) in `getCollectionSchema` / `getGlobalSchema` output instead of emitting `"[object Object]"`.
