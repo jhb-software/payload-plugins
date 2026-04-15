@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- fix: keep streamed messages on screen after the first save of a new conversation (the AI SDK's chat instance was being recreated empty when `chatId` flipped from `undefined` to the server-assigned id, so the UI fell back to the empty new-chat state even though the URL retained the conversation id)
+- fix: keep streamed messages visible after the first save of a new conversation
+- fix: retarget saves to the new conversation id after switching conversations from the sidebar (previous behaviour PATCHed the prior conversation)
 
 ## 0.1.0-beta.2
 

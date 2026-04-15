@@ -89,7 +89,13 @@ export function useChat(options?: string | UseChatOptions) {
   const onSave = typeof options === 'object' ? options?.onSave : undefined
 
   const conversationsUrl = `${endpointUrl}/conversations`
+  // Tracks the persistence id across saves so subsequent saves PATCH instead
+  // of POSTing a duplicate. Re-synced to `chatId` on every render so a
+  // sidebar switch retargets saves to the new conversation, and overridden
+  // by `persistMessages` after a POST so the tool-approval auto-send (which
+  // can fire before React re-renders) also PATCHes the new id.
   const conversationIdRef = useRef<string | undefined>(chatId)
+  conversationIdRef.current = chatId
 
   // Keep a live view of messages so the error handler can read the latest
   // state without re-memoizing (AI SDK's `onError` signature only receives the
@@ -181,16 +187,9 @@ export function useChat(options?: string | UseChatOptions) {
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport,
   }
-  // Intentionally do NOT pass `chatId` as the AI SDK's `id`. Our `chatId` is
-  // the persistence id (used by `saveConversation` to choose POST vs PATCH);
-  // the AI SDK's `id` keys its internal Chat instance and any change to it
-  // tears down the current chat and replaces it with an empty one. Coupling
-  // them caused the just-streamed messages of a brand-new conversation to
-  // disappear the instant the first save flipped `chatId` from `undefined`
-  // to the server-assigned id (the URL kept the id, but the UI fell back to
-  // the empty "new chat" state). `loadConversation` and `newConversation`
-  // already drive the message list explicitly via `setMessages`, so the AI
-  // SDK never needs to know about the persistence id.
+  // Don't pass `chatId` as the AI SDK's `id`: the SDK recreates its Chat
+  // (and drops messages) whenever `id` changes. Our `chatId` is the
+  // persistence id only; the SDK's internal id can stay opaque.
   if (initialMessages) {
     chatOptions.messages = initialMessages
   }
