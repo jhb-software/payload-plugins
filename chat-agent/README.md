@@ -69,6 +69,7 @@ The plugin will register a chat view at `/admin/chat` and a streaming chat endpo
 | `modes`           | `ModesConfig`                        | No       | Agent modes configuration (see below)                                                                   |
 | `adminView`       | `{ path, Component }`                | No       | Customize the admin chat view route or component                                                        |
 | `navLink`         | `boolean`                            | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
+| `budget`          | `BudgetConfig`                       | No       | Optional token budget — see [Budget limiting](#budget-limiting) below                                   |
 
 ### Using OpenAI
 
@@ -179,6 +180,46 @@ chatAgentPlugin({
 
 Users only see modes they have access to in the mode selector.
 
+### Budget limiting
+
+Cap how many tokens the agent can spend per request without the plugin needing to know whether you want per-user, per-day, global, or something else. Implement two functions:
+
+```ts
+chatAgentPlugin({
+  // ...
+  budget: {
+    // Return remaining tokens. 0 or negative → 429; null → unlimited.
+    check: async ({ req }) => 50_000 - (await getUsageToday(req.user!.id)),
+    // Awaited after the response completes, with the actual token usage.
+    record: ({ req, usage }) => addUsageToday(req.user!.id, usage.totalTokens ?? 0),
+  },
+})
+```
+
+The plugin sets `X-Budget-Remaining` on successful responses so the client can surface warnings, and registers a `GET /api/chat-agent/budget` endpoint returning `{ remaining }`.
+
+If you'd rather not implement the store yourself, the bundled `createPayloadBudget` helper persists usage to a Payload collection with built-in `daily` / `monthly` periods and `user` / `global` scopes:
+
+```ts
+import { chatAgentPlugin, createPayloadBudget } from '@jhb.software/payload-chat-agent'
+
+const chatBudget = createPayloadBudget({
+  limit: 50_000,
+  period: 'daily', // or 'monthly' | (req) => string
+  scope: 'user', // or 'global' | (req) => string
+})
+
+export default buildConfig({
+  collections: [
+    // ...your collections
+    chatBudget.collection,
+  ],
+  plugins: [chatAgentPlugin({ budget: chatBudget.budget /* ... */ })],
+})
+```
+
+Errors thrown by `check` or `record` are surfaced — the plugin does not swallow them — so a broken usage store fails loudly instead of silently letting unlimited spend through.
+
 ## Agent Tools
 
 The agent has access to the following Payload Local API operations:
@@ -258,10 +299,6 @@ The agent reads arbitrary CMS content via its tools — including user-submitted
 ### Custom endpoints are opt-in via `custom.description`
 
 Any endpoint in your Payload config with a `custom.description` becomes invocable by the agent through the `callEndpoint` tool. This is an intentional opt-in, but an easy one to trip over — a plugin that adds a `custom.description` to an endpoint will automatically expose that endpoint to the chat agent. Audit your config before publishing, and prefer endpoints that re-check access inside their own handler instead of relying on the caller.
-
-### No built-in rate limiting
-
-The `/api/chat-agent/chat` endpoint accepts any request size and does not rate-limit by user. An authenticated user could spam requests or submit large message arrays, running up your LLM bill. Put a rate limiter (e.g. Vercel's `@vercel/edge-config`, Cloudflare rate rules, or your own middleware) in front of `/api/chat-agent/*` before shipping.
 
 ### No server-authoritative usage tracking
 

@@ -1,8 +1,15 @@
 ---
 title: Token budgets and rate limiting
 description: Cap token usage per user with configurable budgets and persist consumption for tracking and enforcement
-status: planned
+status: shipped
 ---
+
+> **Shipped** as a minimal `budget: { check, record }` primitive plus a
+> `createPayloadBudget` helper for the common case. The detailed proposal
+> below is kept for historical context — the shipped version deliberately
+> trades some of the feature set (thresholded warnings, HTTP 429 reset-date
+> message, dedicated `/usage` endpoint) for a smaller public API that scales
+> by delegating storage to the user.
 
 ## Problem
 

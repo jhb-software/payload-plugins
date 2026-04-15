@@ -18,13 +18,25 @@ type NavLinkEntry = { clientProps?: { path?: string }; path?: string } | string
 // provider. We keep every other export real (`convertToModelMessages`,
 // `stepCountIs`, …) and only swap `streamText` for a vi.fn whose return value
 // satisfies the handler's `result.toUIMessageStreamResponse(...)` call.
+//
+// The mock captures the options passed to both `streamText` and
+// `toUIMessageStreamResponse` on the returned object so budget tests can
+// assert on `headers` / invoke the `onFinish` callback.
 vi.mock('ai', async () => {
   const actual = await vi.importActual<typeof import('ai')>('ai')
   return {
     ...actual,
-    streamText: vi.fn(() => ({
-      toUIMessageStreamResponse: () => new Response('ok'),
-    })),
+    streamText: vi.fn((streamTextOpts: unknown) => {
+      const handle = {
+        _streamTextOpts: streamTextOpts,
+        _uiStreamOpts: undefined as unknown,
+        toUIMessageStreamResponse: (uiStreamOpts: { headers?: HeadersInit } = {}) => {
+          handle._uiStreamOpts = uiStreamOpts
+          return new Response('ok', { headers: uiStreamOpts.headers })
+        },
+      }
+      return handle
+    }),
   }
 })
 
@@ -1001,5 +1013,228 @@ describe('chatAgentPlugin access()', () => {
       })
       expect(response.status, `${method} ${path}`).toBe(401)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Budget enforcement
+// ---------------------------------------------------------------------------
+
+/**
+ * Finds the mocked streamText handle for the most recent chat request so a
+ * test can pull `_streamTextOpts.onFinish` off it and simulate a completed
+ * stream — the mock doesn't actually run the AI SDK machinery.
+ */
+function lastStreamTextHandle() {
+  const results = vi.mocked(streamText).mock.results
+  return results[results.length - 1]?.value as {
+    _streamTextOpts: { onFinish?: (event: unknown) => Promise<void> | void }
+    _uiStreamOpts: { headers?: Record<string, string> }
+  }
+}
+
+const validChatBody = {
+  messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+}
+
+describe('chatAgentPlugin budget', () => {
+  it('rejects a chat request with 429 when the caller is out of budget', async () => {
+    const plugin = chatAgentPlugin({
+      budget: { check: () => 0 },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    const res = await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(res.status).toBe(429)
+    const body = await res.json()
+    expect(body.error).toMatch(/budget/i)
+    expect(body.remaining).toBe(0)
+  })
+
+  it('exposes the remaining budget on the response header for client-side warnings', async () => {
+    const plugin = chatAgentPlugin({
+      budget: { check: () => 12_345 },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    const res = await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('X-Budget-Remaining')).toBe('12345')
+  })
+
+  it('allows the request without emitting a budget header when check() returns null', async () => {
+    // Null means "unlimited" — the feature is configured but the caller has no
+    // cap. User-observable behavior: request succeeds and there's no header
+    // for the client to build a warning UI against.
+    const plugin = chatAgentPlugin({
+      budget: { check: () => null },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    const res = await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('X-Budget-Remaining')).toBeNull()
+  })
+
+  it('surfaces errors thrown by check() as HTTP 500', async () => {
+    // Errors must surface — we do not swallow them. This is a deliberate
+    // design decision so that a broken budget store fails loudly instead of
+    // silently letting unlimited spend through.
+    const plugin = chatAgentPlugin({
+      budget: {
+        check: () => {
+          throw new Error('usage-store offline')
+        },
+      },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    const res = await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toContain('usage-store offline')
+  })
+
+  it('records the observed token usage after a chat response completes', async () => {
+    // Ordering contract: record() is awaited inside onFinish before the stream
+    // closes, so a back-to-back request from the same user reads fresh usage.
+    // We drive onFinish manually because the `ai` mock stops short of the real
+    // streaming loop — the behaviour under test is "record sees the final
+    // usage numbers and the model id that was used".
+    const recorded: Array<{ model: string; totalTokens?: number; userId?: number }> = []
+    const plugin = chatAgentPlugin({
+      budget: {
+        check: () => 1000,
+        record: ({ model, req, usage }) => {
+          recorded.push({
+            model,
+            totalTokens: usage.totalTokens,
+            userId: (req.user as { id: number } | null)?.id,
+          })
+        },
+      },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 7 },
+    })
+
+    const { _streamTextOpts } = lastStreamTextHandle()
+    await _streamTextOpts.onFinish!({
+      totalUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+    })
+
+    expect(recorded).toEqual([{ model: 'claude-sonnet-4-20250514', totalTokens: 30, userId: 7 }])
+  })
+
+  it('surfaces errors thrown by record() — does not swallow them', async () => {
+    const record = vi.fn(() => {
+      throw new Error('db write failed')
+    })
+    const plugin = chatAgentPlugin({
+      budget: { check: () => 1000, record },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+    const { _streamTextOpts } = lastStreamTextHandle()
+
+    await expect(_streamTextOpts.onFinish!({ totalUsage: {} })).rejects.toThrow('db write failed')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET /chat-agent/budget
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin GET /chat-agent/budget', () => {
+  it('is not registered when no budget is configured', () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const ep = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/budget')
+    expect(ep).toBeUndefined()
+  })
+
+  it('returns the current remaining budget when configured', async () => {
+    const plugin = chatAgentPlugin({
+      budget: { check: () => 42 },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const ep = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/budget')
+    expect(ep).toBeDefined()
+    const res = await ep.handler({ user: { id: 1 } })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ remaining: 42 })
+  })
+
+  it('returns 401 when plugin access() denies', async () => {
+    const plugin = chatAgentPlugin({
+      access: () => false,
+      budget: { check: () => 42 },
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const config = plugin({ endpoints: [] })
+    const ep = config.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/budget')
+    const res = await ep.handler({
+      payload: { config: { custom: config.custom } },
+      user: { id: 1 },
+    })
+    expect(res.status).toBe(401)
   })
 })
