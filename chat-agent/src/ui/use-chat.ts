@@ -181,9 +181,16 @@ export function useChat(options?: string | UseChatOptions) {
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport,
   }
-  if (chatId) {
-    chatOptions.id = chatId
-  }
+  // Intentionally do NOT pass `chatId` as the AI SDK's `id`. Our `chatId` is
+  // the persistence id (used by `saveConversation` to choose POST vs PATCH);
+  // the AI SDK's `id` keys its internal Chat instance and any change to it
+  // tears down the current chat and replaces it with an empty one. Coupling
+  // them caused the just-streamed messages of a brand-new conversation to
+  // disappear the instant the first save flipped `chatId` from `undefined`
+  // to the server-assigned id (the URL kept the id, but the UI fell back to
+  // the empty "new chat" state). `loadConversation` and `newConversation`
+  // already drive the message list explicitly via `setMessages`, so the AI
+  // SDK never needs to know about the persistence id.
   if (initialMessages) {
     chatOptions.messages = initialMessages
   }
