@@ -2,11 +2,12 @@ import type { AdminViewServerProps } from 'payload'
 
 import { DefaultTemplate } from '@payloadcms/next/templates'
 
-import type { ModelOption, ModesConfig } from '../types.js'
+import type { AgentMode, ModelOption, ModesConfig } from '../types.js'
 
 import { isPluginAccessAllowed } from '../access.js'
 import { CONVERSATIONS_SLUG } from '../conversations.js'
 import { getDefaultMode, resolveAvailableModes } from '../modes.js'
+import { AGENT_MODES } from '../types.js'
 import ChatView from './ChatView.js'
 
 export default async function ChatViewServer({
@@ -71,8 +72,9 @@ export default async function ChatViewServer({
       })
     : { docs: [] }
 
-  // If a conversation ID is in the URL, fetch its messages + model server-side
+  // If a conversation ID is in the URL, fetch its messages + model + mode server-side
   let initialMessages: undefined | unknown[]
+  let initialMode: AgentMode | undefined
   let initialModel: string | undefined
   if (conversationId && user) {
     try {
@@ -84,6 +86,10 @@ export default async function ChatViewServer({
       })
       initialMessages = (doc.messages as unknown[]) ?? []
       initialModel = typeof doc.model === 'string' ? doc.model : undefined
+      initialMode =
+        typeof doc.mode === 'string' && (AGENT_MODES as readonly string[]).includes(doc.mode)
+          ? (doc.mode as AgentMode)
+          : undefined
     } catch {
       // Conversation not found — will start fresh
     }
@@ -103,6 +109,7 @@ export default async function ChatViewServer({
           updatedAt: (d.updatedAt as string) ?? '',
         }))}
         initialMessages={initialMessages}
+        initialMode={initialMode}
         initialModel={initialModel}
         suggestedPrompts={suggestedPrompts}
       />

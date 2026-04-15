@@ -43,6 +43,8 @@ export interface ChatViewProps {
   defaultModel?: string
   initialConversations?: ConversationSummary[]
   initialMessages?: unknown[]
+  /** Mode persisted on the conversation doc; used as the initial selection when resuming. */
+  initialMode?: AgentMode
   /** Model id persisted on the conversation doc; used as the initial selection when resuming. */
   initialModel?: string
   suggestedPrompts?: string[]
@@ -60,12 +62,22 @@ export default function ChatView({
   defaultModel,
   initialConversations,
   initialMessages: serverMessages,
+  initialMode,
   initialModel,
   suggestedPrompts,
 }: ChatViewProps) {
   const endpointUrl = '/api/chat-agent/chat'
   const [chatId, setChatId] = useState(conversationId)
-  const [mode, setMode] = useState<AgentMode>(defaultMode)
+  const resolveMode = useCallback(
+    (candidate: unknown): AgentMode => {
+      if (typeof candidate === 'string' && (availableModes as string[]).includes(candidate)) {
+        return candidate as AgentMode
+      }
+      return defaultMode
+    },
+    [availableModes, defaultMode],
+  )
+  const [mode, setMode] = useState<AgentMode>(() => resolveMode(initialMode))
   const [initialMessages, setInitialMessages] = useState<UIMessage<MessageMetadata>[] | undefined>(
     serverMessages as UIMessage<MessageMetadata>[] | undefined,
   )
@@ -125,11 +137,12 @@ export default function ChatView({
         if (doc.model) {
           setSelectedModel(doc.model)
         }
+        setMode(resolveMode(doc.mode))
       } catch {
         // silently ignore
       }
     },
-    [endpointUrl, setActiveChatId, setMessages],
+    [endpointUrl, resolveMode, setActiveChatId, setMessages],
   )
 
   // Load conversation on mount only if server didn't provide messages
@@ -145,7 +158,8 @@ export default function ChatView({
     setInitialMessages(undefined)
     setMessages([])
     setSelectedModel(defaultModel)
-  }, [setActiveChatId, setMessages, defaultModel])
+    setMode(defaultMode)
+  }, [setActiveChatId, setMessages, defaultModel, defaultMode])
 
   const handleDelete = useCallback(
     (id: string) => {

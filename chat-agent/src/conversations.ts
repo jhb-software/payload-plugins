@@ -10,6 +10,7 @@
 import type { AccessArgs, CollectionConfig, Endpoint, PayloadRequest } from 'payload'
 
 import { isPluginAccessAllowed } from './access.js'
+import { AGENT_MODES, type AgentMode } from './types.js'
 
 export const CONVERSATIONS_SLUG = 'chat-conversations'
 
@@ -42,7 +43,7 @@ export const conversationsCollection: CollectionConfig = {
   },
   admin: {
     group: 'Chat',
-    hidden: true,
+    // hidden: true,
     useAsTitle: 'title',
   },
   fields: [
@@ -68,6 +69,11 @@ export const conversationsCollection: CollectionConfig = {
     {
       name: 'model',
       type: 'text',
+    },
+    {
+      name: 'mode',
+      type: 'select',
+      options: AGENT_MODES.map((m) => ({ label: m, value: m })),
     },
     {
       name: 'totalTokens',
@@ -145,6 +151,7 @@ async function getConversation(req: PayloadRequest): Promise<Response> {
 
 interface ConversationBody {
   messages?: unknown[]
+  mode?: AgentMode
   model?: string
   title?: string
 }
@@ -189,6 +196,7 @@ async function createConversation(req: PayloadRequest): Promise<Response> {
     collection: CONVERSATIONS_SLUG,
     data: {
       messages: body.messages ?? [],
+      mode: body.mode,
       model: body.model,
       title: body.title ?? 'New conversation',
       totalTokens: sumMessageTokens(body.messages),
@@ -231,6 +239,9 @@ async function updateConversation(req: PayloadRequest): Promise<Response> {
   }
   if (body.model !== undefined) {
     data.model = body.model
+  }
+  if (body.mode !== undefined) {
+    data.mode = body.mode
   }
 
   try {

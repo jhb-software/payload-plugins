@@ -42,6 +42,7 @@ async function saveConversation(
   conversationId: string | undefined,
   data: {
     messages: UIMessage<MessageMetadata>[]
+    mode?: AgentMode
     model?: string
     title?: string
   },
@@ -100,6 +101,7 @@ export function useChat(options?: string | UseChatOptions) {
       try {
         const id = await saveConversation(conversationsUrl, conversationIdRef.current, {
           messages: allMessages,
+          mode,
           model,
           title: titleFromMessages(allMessages),
         })
@@ -109,7 +111,7 @@ export function useChat(options?: string | UseChatOptions) {
         // Save failed silently — don't break the chat UX
       }
     },
-    [conversationsUrl, model, onSave],
+    [conversationsUrl, mode, model, onSave],
   )
 
   const handleFinish = useCallback(

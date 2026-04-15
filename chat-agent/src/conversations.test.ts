@@ -343,6 +343,27 @@ describe('conversation endpoint handlers', () => {
     // derives it by summing `metadata.totalTokens` on the provided messages
     // instead — the source of truth is the server-streamed message metadata,
     // so the total stays consistent with the message list.
+    // Mode is persisted per conversation so reloading a chat restores the
+    // user's selected escalation level. Without this, a user who dropped to
+    // `read` for safety would silently fall back to `modes.default` after a
+    // page reload.
+    it('persists the agent mode when provided', async () => {
+      const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
+      let captured: MockApiArgs | undefined
+      const res = await callHandler(handler, {
+        json: () => Promise.resolve({ messages: [], mode: 'read-write' }),
+        payload: {
+          create: (args: MockApiArgs) => {
+            captured = args
+            return { id: 'c1' }
+          },
+        },
+        user: { id: 'u1' },
+      })
+      expect(res.status).toBe(201)
+      expect(captured?.data?.mode).toBe('read-write')
+    })
+
     it('derives totalTokens from message metadata, ignoring client-supplied totalTokens', async () => {
       const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
       let captured: MockApiArgs | undefined
@@ -409,6 +430,31 @@ describe('conversation endpoint handlers', () => {
     // See the create-handler test for the equivalent guard on the POST
     // route — the same reasoning applies here (server-derived, message-
     // consistent usage metric).
+    // Mirrors the create-handler guarantee: PATCH must write the `mode` when
+    // the client sends it so a reload-restored conversation resumes in the
+    // same mode it was last used in.
+    it('persists the agent mode when provided', async () => {
+      const handler = findHandler(
+        conversationEndpoints,
+        'patch',
+        '/chat-agent/chat/conversations/:id',
+      )
+      let captured: MockApiArgs | undefined
+      const res = await callHandler(handler, {
+        json: () => Promise.resolve({ mode: 'read' }),
+        payload: {
+          update: (args: MockApiArgs) => {
+            captured = args
+            return { id: 'c1' }
+          },
+        },
+        routeParams: { id: 'c1' },
+        user: { id: 'u1' },
+      })
+      expect(res.status).toBe(200)
+      expect(captured?.data?.mode).toBe('read')
+    })
+
     it('ignores client-supplied totalTokens and derives from message metadata', async () => {
       const handler = findHandler(
         conversationEndpoints,

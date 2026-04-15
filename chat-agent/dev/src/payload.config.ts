@@ -19,7 +19,7 @@ const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 // `'monthly'` or a custom resolver, and `scope: 'user'` for `'global'` or a
 // custom key (e.g. `({ req }) => \`org:${req.user?.orgId}\``) to fit.
 const chatBudget = createPayloadBudget({
-  limit: 50_000,
+  limit: 200_000,
   period: 'daily',
   scope: 'user',
 })
