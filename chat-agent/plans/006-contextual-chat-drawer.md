@@ -1,7 +1,8 @@
 ---
 title: Contextual chat drawer
 description: Open the chat from anywhere in the admin panel with automatic context about the document currently being viewed
-status: planned
+type: feature
+readiness: draft
 ---
 
 ## Problem

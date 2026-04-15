@@ -1,7 +1,8 @@
 ---
 title: Custom system instructions
 description: Allow users to provide their own system instructions or extend the default ones from the chat UI
-status: planned
+type: feature
+readiness: draft
 ---
 
 ## Problem

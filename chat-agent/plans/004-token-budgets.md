@@ -1,7 +1,8 @@
 ---
 title: Token budgets and rate limiting
 description: Cap token usage per user with configurable budgets and persist consumption for tracking and enforcement
-status: shipped
+type: feature
+readiness: shipped
 ---
 
 > **Shipped** as a minimal `budget: { check, record }` primitive plus a
