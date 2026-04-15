@@ -793,6 +793,41 @@ describe('chatAgentPlugin model factory', () => {
     expect(callArgs.model).toBe(sentinel)
   })
 
+  it('cancels the provider call when the client disconnects mid-stream', async () => {
+    // The observable user-facing symptom of this regression is token spend
+    // for a stream nobody is reading — we can't measure spend in a unit
+    // test, but the AI SDK treats `abortSignal` as the one knob that makes
+    // it stop mid-call. Wire the request's abort signal through and
+    // confirm the SDK would see it fire: `streamText` is the stubbed
+    // boundary here, so observing the `AbortSignal` it receives is the
+    // closest we can get without a live provider.
+    vi.mocked(streamText).mockClear()
+    const controller = new AbortController()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      signal: controller.signal,
+      user: { id: 1 },
+    })
+
+    const forwarded = vi.mocked(streamText).mock.calls[0][0].abortSignal
+    expect(forwarded).toBeInstanceOf(AbortSignal)
+    expect(forwarded!.aborted).toBe(false)
+    controller.abort()
+    expect(forwarded!.aborted).toBe(true)
+  })
+
   it('supports routing to different providers based on the model id', async () => {
     // Mixed-provider scenario: simulate one Anthropic and one OpenAI provider
     // and verify the handler routes through the user-supplied factory each
@@ -1132,9 +1167,7 @@ describe('chatAgentPlugin budget', () => {
       totalUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
     })
 
-    expect(recorded).toEqual([
-      { model: 'claude-sonnet-4-20250514', totalTokens: 30, userId: 7 },
-    ])
+    expect(recorded).toEqual([{ model: 'claude-sonnet-4-20250514', totalTokens: 30, userId: 7 }])
   })
 
   it('surfaces errors thrown by record() — does not swallow them', async () => {

@@ -30,7 +30,13 @@ export interface UseChatOptions {
   onSave?: (conversationId: string) => void
 }
 
-/** Save or update a conversation via the REST API. */
+/**
+ * Save or update a conversation via the REST API.
+ *
+ * `totalTokens` is intentionally not part of the payload — the server derives
+ * it from `metadata.totalTokens` on each message to keep usage metrics
+ * consistent with the message list.
+ */
 async function saveConversation(
   baseUrl: string,
   conversationId: string | undefined,
@@ -38,7 +44,6 @@ async function saveConversation(
     messages: UIMessage<MessageMetadata>[]
     model?: string
     title?: string
-    totalTokens?: number
   },
 ): Promise<string> {
   if (conversationId) {
@@ -92,18 +97,11 @@ export function useChat(options?: string | UseChatOptions) {
 
   const persistMessages = useCallback(
     async (allMessages: UIMessage<MessageMetadata>[]) => {
-      let totalTokens = 0
-      for (const msg of allMessages) {
-        if (msg.metadata?.totalTokens) {
-          totalTokens += msg.metadata.totalTokens
-        }
-      }
       try {
         const id = await saveConversation(conversationsUrl, conversationIdRef.current, {
           messages: allMessages,
           model,
           title: titleFromMessages(allMessages),
-          totalTokens,
         })
         conversationIdRef.current = id
         onSave?.(id)

@@ -308,7 +308,9 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             // same user consistent with the spend we just observed.
             const record = options.budget?.record
             const onFinish = record
-              ? async (event: { totalUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number } }) => {
+              ? async (event: {
+                  totalUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+                }) => {
                   await record({
                     model: modelId,
                     req,
@@ -322,7 +324,12 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               : undefined
 
             // --- Stream response via AI SDK --------------------------------
+            // Pass the request's abort signal so a client disconnect (tab
+            // close, navigation, server timeout) aborts the in-flight LLM
+            // call instead of racking up tokens on a stream nobody is
+            // listening to.
             const result = streamText({
+              abortSignal: req.signal,
               messages: await convertToModelMessages(
                 body.messages as Parameters<typeof convertToModelMessages>[0],
               ),

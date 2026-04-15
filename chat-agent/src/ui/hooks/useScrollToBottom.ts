@@ -34,6 +34,7 @@ export function useScrollToBottom() {
     if (!containerRef.current) {
       return true
     }
+    // eslint-disable-next-line perfectionist/sort-objects -- kept in upstream destructure order
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current
     return scrollTop + clientHeight >= scrollHeight - 100
   }, [])

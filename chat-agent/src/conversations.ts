@@ -75,6 +75,26 @@ export const conversationsCollection: CollectionConfig = {
       defaultValue: 0,
     },
   ],
+  hooks: {
+    // Force the `user` field to the authenticated user, regardless of what the
+    // client sent. Without this, a user hitting Payload's default REST
+    // (`POST /api/chat-conversations`) could create a record with
+    // `data.user` set to someone else's id — they still can't read/update/
+    // delete it thanks to the access filters, but they'd pollute the
+    // collection. The `update` guard also protects against a client trying to
+    // re-assign ownership to escalate visibility.
+    beforeValidate: [
+      ({ data, operation, req }) => {
+        if (!req.user) {
+          return data
+        }
+        if (operation === 'create' || operation === 'update') {
+          return { ...data, user: req.user.id }
+        }
+        return data
+      },
+    ],
+  },
   timestamps: true,
 }
 
@@ -127,7 +147,29 @@ interface ConversationBody {
   messages?: unknown[]
   model?: string
   title?: string
-  totalTokens?: number
+}
+
+/**
+ * Derive `totalTokens` server-side by summing `metadata.totalTokens` across
+ * the provided messages array. The metadata is attached to the SSE stream by
+ * the chat endpoint (see `toUIMessageStreamResponse` in `index.ts`), so
+ * trusting the messages round-tripped from the client is equivalent to
+ * trusting the messages themselves — but computing the aggregate server-side
+ * prevents a client from sending a mismatched total (e.g. `totalTokens: 0`
+ * with a long conversation attached) to skew usage metrics.
+ */
+function sumMessageTokens(messages: undefined | unknown[]): number {
+  if (!Array.isArray(messages)) {
+    return 0
+  }
+  let total = 0
+  for (const msg of messages) {
+    const meta = (msg as { metadata?: { totalTokens?: unknown } } | null)?.metadata
+    if (typeof meta?.totalTokens === 'number') {
+      total += meta.totalTokens
+    }
+  }
+  return total
 }
 
 /** POST /api/chat-agent/chat/conversations — create a conversation */
@@ -149,7 +191,7 @@ async function createConversation(req: PayloadRequest): Promise<Response> {
       messages: body.messages ?? [],
       model: body.model,
       title: body.title ?? 'New conversation',
-      totalTokens: body.totalTokens ?? 0,
+      totalTokens: sumMessageTokens(body.messages),
       user: req.user.id,
     },
   })
@@ -175,19 +217,20 @@ async function updateConversation(req: PayloadRequest): Promise<Response> {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  // Only allow updating specific fields
+  // Only allow updating specific fields. `totalTokens` is intentionally not
+  // in the allowlist: whenever messages are updated we re-derive it server-
+  // side from `metadata.totalTokens` on each message, so the client cannot
+  // skew the aggregate independently from the message list.
   const data: Record<string, unknown> = {}
   if (body.title !== undefined) {
     data.title = body.title
   }
   if (body.messages !== undefined) {
     data.messages = body.messages
+    data.totalTokens = sumMessageTokens(body.messages)
   }
   if (body.model !== undefined) {
     data.model = body.model
-  }
-  if (body.totalTokens !== undefined) {
-    data.totalTokens = body.totalTokens
   }
 
   try {

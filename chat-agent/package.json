@@ -1,7 +1,9 @@
 {
   "name": "@jhb.software/payload-chat-agent",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.0",
   "description": "A Payload CMS plugin that adds an AI chat agent for reading, creating, and updating content",
+  "bugs": "https://github.com/jhb-software/payload-plugins/issues",
+  "repository": "https://github.com/jhb-software/payload-plugins",
   "keywords": ["payload", "plugin", "chat", "agent", "ai"],
   "author": "JHB Software",
   "license": "MIT",
@@ -54,6 +56,8 @@
   },
   "files": ["dist"],
   "publishConfig": {
+    "access": "public",
+    "tag": "beta",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
