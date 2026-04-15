@@ -21,7 +21,7 @@
     "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
     "clean": "rimraf --glob {dist,*.tsbuildinfo}",
     "dev": "tsc -w",
-    "format": "prettier --write src",
+    "format": "prettier --write src \"*.{json,md,js,mjs,cjs}\"",
     "test": "pnpm test:localized && pnpm test:unlocalized && pnpm test:multi-tenant",
     "test:localized": "pnpm test:localized:mongodb && pnpm test:localized:sqlite",
     "test:localized:mongodb": "cd dev && pnpm test:mongodb",
