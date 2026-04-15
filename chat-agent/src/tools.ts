@@ -415,7 +415,7 @@ export function buildTools(
           getCollectionSchema: {
             description:
               'Get the field schema for a collection by slug. Call this before querying, filtering, or writing to a collection so you know which fields exist and their types.',
-            execute: async (input: Record<string, unknown>) => {
+            execute: (input: Record<string, unknown>) => {
               const slug = input.slug as string
               const collection = config.collections?.find((c) => c.slug === slug)
               if (!collection) {
@@ -436,7 +436,7 @@ export function buildTools(
           getGlobalSchema: {
             description:
               'Get the field schema for a global by slug. Call this before reading or updating a global so you know which fields exist.',
-            execute: async (input: Record<string, unknown>) => {
+            execute: (input: Record<string, unknown>) => {
               const slug = input.slug as string
               const global = config.globals?.find((g) => g.slug === slug)
               if (!global) {
@@ -459,7 +459,7 @@ export function buildTools(
           listEndpoints: {
             description:
               'List plugin-provided custom API endpoints that can be invoked via `callEndpoint`. Returns method, path, and description for each.',
-            execute: async () => {
+            execute: () => {
               return {
                 endpoints: customEndpoints.map((ep) => ({
                   description: ep.description,

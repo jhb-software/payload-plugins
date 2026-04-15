@@ -636,7 +636,9 @@ describe('filterToolsByMode', () => {
       // read tools (schema inspection, listEndpoints) only register when
       // their prerequisites (config, endpoints) are passed to buildTools.
       for (const name of READ_TOOL_NAMES) {
-        if (!(name in tools)) continue
+        if (!(name in tools)) {
+          continue
+        }
         expect(filtered[name]).toHaveProperty('execute')
         expect(filtered[name]).not.toHaveProperty('needsApproval')
       }
