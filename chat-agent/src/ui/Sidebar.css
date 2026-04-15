@@ -1,4 +1,5 @@
 .chat-agent-sidebar {
+  background: var(--theme-bg);
   border-right: 1px solid var(--theme-elevation-150);
   display: flex;
   flex-direction: column;
@@ -143,4 +144,45 @@
   min-width: 0;
   outline: none;
   padding: 2px 6px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Mobile drawer
+ *
+ * Below Payload's `--breakpoint-s` (falls back to 768px) the sidebar collapses
+ * into a left-edge off-canvas drawer. The chat fills the viewport; opening
+ * the drawer slides the sidebar in over the chat with a dimmed backdrop.
+ * ------------------------------------------------------------------------ */
+
+.chat-agent-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .chat-agent-sidebar {
+    bottom: 0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
+    left: 0;
+    position: absolute;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    width: min(300px, 85vw);
+    z-index: 20;
+  }
+
+  .chat-agent-sidebar--open {
+    transform: translateX(0);
+  }
+
+  .chat-agent-backdrop {
+    background: rgba(0, 0, 0, 0.3);
+    bottom: 0;
+    display: block;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 10;
+  }
 }

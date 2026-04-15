@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: make the chat view usable on narrow viewports — the conversation sidebar collapses into an off-canvas drawer below 768px with a leading menu toggle in the header, dimmed backdrop, Escape-to-close, and auto-dismiss when a conversation is opened.
+
 ## 0.1.0-beta.2
 
 - fix: normalize all Payload label shapes (`string`, localized `Record`, `LabelFunction`, `false`) in `getCollectionSchema` / `getGlobalSchema` output instead of emitting `"[object Object]"`.

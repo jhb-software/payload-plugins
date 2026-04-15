@@ -1,0 +1,53 @@
+/* ChatView layout styles, kept alongside the component file.
+ *
+ * The sidebar toggle is hidden on desktop and only appears below Payload's
+ * `--breakpoint-s` (falls back to 768px), where the sidebar collapses into a
+ * drawer. See `Sidebar.css` for the drawer itself.
+ */
+
+.chat-agent-view__title-group {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-agent-view__sidebar-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m, 4px);
+  color: var(--theme-text);
+  cursor: pointer;
+  display: none;
+  flex-shrink: 0;
+  height: 28px;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: 28px;
+}
+
+.chat-agent-view__sidebar-toggle:hover {
+  background: var(--theme-elevation-50);
+}
+
+.chat-agent-view__column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: var(--gutter-h);
+}
+
+@media (max-width: 768px) {
+  .chat-agent-view__sidebar-toggle {
+    display: inline-flex;
+  }
+
+  /* Remove the gutter between sidebar and chat on mobile: the sidebar is
+   * absolutely positioned off-canvas, so the chat should sit flush left. */
+  .chat-agent-view__column {
+    padding-left: 0;
+  }
+}
