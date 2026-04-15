@@ -35,7 +35,7 @@ import {
   resolveModeConfig,
   validateModeAccess,
 } from './modes.js'
-import { buildSystemPrompt } from './schema.js'
+import { buildSystemPrompt } from './system-prompt.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
 export {
@@ -286,6 +286,10 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               customEndpoints,
               mode,
             )
+            // TODO: remove — temporary debug logging to inspect prompt size/content
+            console.log('\n===== CHAT AGENT SYSTEM PROMPT =====\n')
+            console.log(systemPrompt)
+            console.log(`\n===== (${systemPrompt.length} chars) =====\n`)
             const modelId = body.model ?? options.defaultModel
             const maxSteps = options.maxSteps ?? 20
 
