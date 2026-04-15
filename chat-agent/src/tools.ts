@@ -18,14 +18,25 @@ import type { PayloadRequest, SanitizedConfig } from 'payload'
 
 import { z } from 'zod'
 
+import type { PayloadConfigForPrompt, RawBlock } from './schema.js'
 import type { AgentMode } from './types.js'
+
+import { extractFields } from './schema.js'
 
 // ---------------------------------------------------------------------------
 // Tool classification
 // ---------------------------------------------------------------------------
 
 /** Tools that only read data (safe in all modes). */
-export const READ_TOOL_NAMES = ['find', 'findByID', 'count', 'findGlobal'] as const
+export const READ_TOOL_NAMES = [
+  'find',
+  'findByID',
+  'count',
+  'findGlobal',
+  'getCollectionSchema',
+  'getGlobalSchema',
+  'listEndpoints',
+] as const
 
 /** Tools that modify data (restricted in read/ask modes). */
 export const WRITE_TOOL_NAMES = ['create', 'update', 'delete', 'updateGlobal'] as const
@@ -201,8 +212,20 @@ export function buildTools(
   req?: PayloadRequest,
   /** Custom endpoints discoverable from config. */
   customEndpoints?: DiscoverableEndpoint[],
+  /**
+   * Payload config used by schema inspection tools (`getCollectionSchema`,
+   * `getGlobalSchema`). When omitted, those tools are not registered.
+   */
+  config?: PayloadConfigForPrompt,
 ): Record<string, ExecutableTool> {
   const access = { overrideAccess, user }
+
+  // Shared block registry for schema inspection — resolves `blockReferences`
+  // in collection/global field trees to their field definitions.
+  const blocksBySlug: Record<string, RawBlock> = {}
+  for (const block of config?.blocks ?? []) {
+    blocksBySlug[block.slug] = block
+  }
 
   return {
     find: {
@@ -382,12 +405,80 @@ export function buildTools(
       }),
     },
 
+    // --- Schema inspection (on-demand field discovery) ----------------------
+    // Registered only when the plugin has access to the Payload config. The
+    // system prompt lists slugs; these tools hand back the full field shape
+    // so the agent can query, filter, or write without needing to carry the
+    // entire schema in the prompt.
+    ...(config
+      ? {
+          getCollectionSchema: {
+            description:
+              'Get the field schema for a collection by slug. Call this before querying, filtering, or writing to a collection so you know which fields exist and their types.',
+            execute: async (input: Record<string, unknown>) => {
+              const slug = input.slug as string
+              const collection = config.collections?.find((c) => c.slug === slug)
+              if (!collection) {
+                return { error: `Unknown collection slug "${slug}"` }
+              }
+              return {
+                fields: extractFields(collection.fields ?? [], blocksBySlug),
+                upload: Boolean(collection.upload),
+              }
+            },
+            inputSchema: z.object({
+              slug: z
+                .string()
+                .describe('Collection slug (see the slug catalog in the system prompt)'),
+            }),
+          } satisfies ExecutableTool,
+
+          getGlobalSchema: {
+            description:
+              'Get the field schema for a global by slug. Call this before reading or updating a global so you know which fields exist.',
+            execute: async (input: Record<string, unknown>) => {
+              const slug = input.slug as string
+              const global = config.globals?.find((g) => g.slug === slug)
+              if (!global) {
+                return { error: `Unknown global slug "${slug}"` }
+              }
+              return {
+                fields: extractFields(global.fields ?? [], blocksBySlug),
+              }
+            },
+            inputSchema: z.object({
+              slug: z.string().describe('Global slug (see the slug catalog in the system prompt)'),
+            }),
+          } satisfies ExecutableTool,
+        }
+      : {}),
+
+    // --- Custom endpoint listing --------------------------------------------
+    ...(customEndpoints && customEndpoints.length > 0
+      ? {
+          listEndpoints: {
+            description:
+              'List plugin-provided custom API endpoints that can be invoked via `callEndpoint`. Returns method, path, and description for each.',
+            execute: async () => {
+              return {
+                endpoints: customEndpoints.map((ep) => ({
+                  description: ep.description,
+                  method: ep.method.toUpperCase(),
+                  path: ep.path,
+                })),
+              }
+            },
+            inputSchema: z.object({}),
+          } satisfies ExecutableTool,
+        }
+      : {}),
+
     // --- Custom endpoint invocation -----------------------------------------
     ...(customEndpoints && customEndpoints.length > 0 && req
       ? {
           callEndpoint: {
             description:
-              "Invoke a custom API endpoint. Use this to call plugin-provided endpoints listed in the system prompt under 'Custom Endpoints'.",
+              'Invoke a custom API endpoint. Call `listEndpoints` first to see which endpoints are available.',
             execute: async (input: Record<string, unknown>) => {
               const path = input.path as string
               const method = (input.method as string).toLowerCase()

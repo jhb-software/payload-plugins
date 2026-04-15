@@ -1,27 +1,29 @@
 /**
  * System prompt generation for the chat agent.
  *
- * Builds a schema-aware prompt from the Payload config so the agent knows
- * the data model, available endpoints, and mode-specific behavioral rules.
+ * The prompt carries a lightweight slug catalog so the agent knows what
+ * collections, globals, and endpoints exist. Field-level details (types,
+ * required, block structure) are fetched on demand via the
+ * `getCollectionSchema` / `getGlobalSchema` / `listEndpoints` tools — keeping
+ * the prompt small even for configs with many collections.
  */
 
-import type { DiscoverableEndpoint } from './tools.js'
+import type { PayloadConfigForPrompt } from './schema.js'
 import type { AgentMode } from './types.js'
-
-import { extractFields, type PayloadConfigForPrompt, type RawBlock } from './schema.js'
 
 /**
  * Build the system prompt for the chat agent.
  *
- * @param payloadConfig    The Payload runtime config (`req.payload.config`)
- * @param customPrefix     Optional user-provided text prepended to the prompt
- * @param customEndpoints  Discoverable custom endpoints to list for the agent
- * @param mode             Current agent mode (affects behavioral instructions)
+ * @param payloadConfig        The Payload runtime config (`req.payload.config`)
+ * @param customPrefix         Optional user-provided text prepended to the prompt
+ * @param hasCustomEndpoints   Whether `listEndpoints` is available — controls
+ *                             whether to mention it in the rules
+ * @param mode                 Current agent mode (affects behavioral instructions)
  */
 export function buildSystemPrompt(
   payloadConfig: PayloadConfigForPrompt,
   customPrefix?: string,
-  customEndpoints?: DiscoverableEndpoint[],
+  hasCustomEndpoints = false,
   mode?: AgentMode,
 ): string {
   const sections: string[] = []
@@ -60,6 +62,12 @@ export function buildSystemPrompt(
               '- Always confirm with the user before creating, updating, or deleting documents.',
               '- Use `find` or `findByID` to look up data before making changes.',
             ]),
+    '- Call `getCollectionSchema({ slug })` or `getGlobalSchema({ slug })` to inspect field details before querying, filtering, or writing. Only the slugs are listed below — field names and types are fetched on demand.',
+    ...(hasCustomEndpoints
+      ? [
+          '- Call `listEndpoints` to see plugin-provided custom endpoints that can be invoked via `callEndpoint`.',
+        ]
+      : []),
     '- When showing results, format them clearly. Summarize large result sets.',
     '- If a query returns no results, say so clearly.',
     "- Respect that your actions are limited by the current user's permissions.",
@@ -75,31 +83,20 @@ export function buildSystemPrompt(
     `When referencing a document (after create/update/find), render it as a markdown link to its admin page so the user can open it. Use the title as the label, ID as fallback. Patterns (relative URLs): \`${adminRoute}/collections/<slug>/<id>\`, \`${adminRoute}/collections/<slug>\`, \`${adminRoute}/globals/<slug>\`.`,
   )
 
-  // Collections
-  const blocksBySlug: Record<string, RawBlock> = {}
-  for (const block of payloadConfig.blocks ?? []) {
-    blocksBySlug[block.slug] = block
-  }
-
+  // Slug catalog — collections
   const collections = payloadConfig.collections ?? []
   if (collections.length > 0) {
-    sections.push('', '## Collections')
-    for (const col of collections) {
-      const fields = extractFields(col.fields ?? [], blocksBySlug)
-      sections.push('', `### ${col.slug}`, '```json', JSON.stringify(fields, null, 2), '```')
-    }
+    sections.push('', '## Collections', collections.map((c) => c.slug).join(', '))
   }
 
+  // Slug catalog — globals
   const globals = payloadConfig.globals ?? []
   if (globals.length > 0) {
-    sections.push('', '## Globals')
-    for (const global of globals) {
-      const fields = extractFields(global.fields ?? [], blocksBySlug)
-      sections.push('', `### ${global.slug}`, '```json', JSON.stringify(fields, null, 2), '```')
-    }
+    sections.push('', '## Globals', globals.map((g) => g.slug).join(', '))
   }
 
-  // Upload collections
+  // Upload collections (stays inline — small, always needed to know where
+  // users upload media).
   const uploadCollections = collections.filter((col) => col.upload)
   if (uploadCollections.length > 0) {
     const uploadSlugs = uploadCollections.map((col) => col.slug)
@@ -112,7 +109,7 @@ export function buildSystemPrompt(
     )
   }
 
-  // Localization
+  // Localization (stays inline — small, needed to pick `locale` on tool calls).
   if (payloadConfig.localization) {
     const locales = payloadConfig.localization.locales.map((l) =>
       typeof l === 'string' ? l : l.code,
@@ -124,19 +121,6 @@ export function buildSystemPrompt(
       `Default locale: ${payloadConfig.localization.defaultLocale}`,
       'Use the `locale` parameter in tool calls to read/write localized fields.',
     )
-  }
-
-  // Custom endpoints
-  if (customEndpoints && customEndpoints.length > 0) {
-    sections.push(
-      '',
-      '## Custom Endpoints',
-      'These endpoints can be invoked with the `callEndpoint` tool. Use the exact path and method shown.',
-      '',
-    )
-    for (const ep of customEndpoints) {
-      sections.push(`- **${ep.method.toUpperCase()} ${ep.path}** — ${ep.description}`)
-    }
   }
 
   return sections.join('\n')

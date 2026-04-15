@@ -632,7 +632,11 @@ describe('filterToolsByMode', () => {
     it('read tools are unchanged (no needsApproval, still have execute)', () => {
       const tools = getAllTools()
       const filtered = filterToolsByMode(tools, 'ask')
+      // Only iterate over read tools that were actually registered — some
+      // read tools (schema inspection, listEndpoints) only register when
+      // their prerequisites (config, endpoints) are passed to buildTools.
       for (const name of READ_TOOL_NAMES) {
+        if (!(name in tools)) continue
         expect(filtered[name]).toHaveProperty('execute')
         expect(filtered[name]).not.toHaveProperty('needsApproval')
       }
@@ -688,5 +692,196 @@ describe('filterToolsByMode', () => {
         }
       },
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Schema inspection tools (getCollectionSchema, getGlobalSchema)
+// ---------------------------------------------------------------------------
+
+describe('schema inspection tools', () => {
+  const mockPayload = {
+    count: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+    find: vi.fn(),
+    findByID: vi.fn(),
+    findGlobal: vi.fn(),
+    update: vi.fn(),
+    updateGlobal: vi.fn(),
+  }
+  const mockUser = { id: 'u1' }
+  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+
+  it('are not registered when config is not passed', () => {
+    const tools = buildTools(mockPayload, mockUser)
+    expect(tools.getCollectionSchema).toBeUndefined()
+    expect(tools.getGlobalSchema).toBeUndefined()
+  })
+
+  it('are registered when config is passed', () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [],
+      globals: [],
+    })
+    expect(tools.getCollectionSchema).toBeDefined()
+    expect(tools.getGlobalSchema).toBeDefined()
+  })
+
+  it('getCollectionSchema returns extracted fields for a known slug', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [
+            { name: 'title', type: 'text', required: true },
+            { name: 'body', type: 'richText' },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'posts' }, ctx)) as {
+      fields: { name: string; required?: boolean; type: string }[]
+      upload: boolean
+    }
+
+    expect(result.fields).toEqual([
+      { name: 'title', type: 'text', required: true },
+      { name: 'body', type: 'richText' },
+    ])
+    expect(result.upload).toBe(false)
+  })
+
+  it('getCollectionSchema returns upload: true for upload-enabled collections', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [{ slug: 'media', fields: [{ name: 'alt', type: 'text' }], upload: true }],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'media' }, ctx)) as {
+      upload: boolean
+    }
+    expect(result.upload).toBe(true)
+  })
+
+  it('getCollectionSchema returns error (not throw) for unknown slug', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [{ slug: 'posts', fields: [] }],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'does-not-exist' }, ctx)) as {
+      error: string
+    }
+    expect(result.error).toMatch(/unknown collection slug/i)
+    expect(result.error).toContain('does-not-exist')
+  })
+
+  it('getCollectionSchema resolves blockReferences from config.blocks', async () => {
+    // Block field details come along when inspecting a collection, so a
+    // separate getBlockSchema tool isn't needed.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'cta',
+          fields: [{ name: 'buttonText', type: 'text' }],
+        },
+      ],
+      collections: [
+        {
+          slug: 'pages',
+          fields: [
+            {
+              name: 'layout',
+              type: 'blocks',
+              blockReferences: ['cta'],
+              blocks: [],
+            },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'pages' }, ctx)) as {
+      fields: unknown[]
+    }
+    expect(JSON.stringify(result.fields)).toContain('buttonText')
+  })
+
+  it('getGlobalSchema returns extracted fields for a known slug', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [],
+      globals: [{ slug: 'settings', fields: [{ name: 'siteName', type: 'text' }] }],
+    })
+
+    const result = (await tools.getGlobalSchema.execute({ slug: 'settings' }, ctx)) as {
+      fields: { name: string; type: string }[]
+    }
+    expect(result.fields).toEqual([{ name: 'siteName', type: 'text' }])
+  })
+
+  it('getGlobalSchema returns error for unknown slug', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [],
+      globals: [{ slug: 'settings', fields: [] }],
+    })
+
+    const result = (await tools.getGlobalSchema.execute({ slug: 'missing' }, ctx)) as {
+      error: string
+    }
+    expect(result.error).toMatch(/unknown global slug/i)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// listEndpoints tool
+// ---------------------------------------------------------------------------
+
+describe('listEndpoints', () => {
+  const mockPayload = {
+    count: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+    find: vi.fn(),
+    findByID: vi.fn(),
+    findGlobal: vi.fn(),
+    update: vi.fn(),
+    updateGlobal: vi.fn(),
+  }
+  const mockUser = { id: 'u1' }
+  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+
+  it('is not registered when no custom endpoints exist', () => {
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), [])
+    expect(tools.listEndpoints).toBeUndefined()
+  })
+
+  it('returns method, path, and description for each endpoint', async () => {
+    const endpoints = [
+      {
+        description: 'Publish a post',
+        handler: () => Response.json({}),
+        method: 'post',
+        path: '/api/posts/publish/:id',
+      },
+      {
+        description: 'Archive a post',
+        handler: () => Response.json({}),
+        method: 'delete',
+        path: '/api/posts/archive/:id',
+      },
+    ]
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
+
+    const result = (await tools.listEndpoints.execute({}, ctx)) as {
+      endpoints: { description?: string; method: string; path: string }[]
+    }
+    expect(result.endpoints).toEqual([
+      { description: 'Publish a post', method: 'POST', path: '/api/posts/publish/:id' },
+      { description: 'Archive a post', method: 'DELETE', path: '/api/posts/archive/:id' },
+    ])
   })
 })

@@ -15,11 +15,10 @@ describe('buildSystemPrompt', () => {
       'You are a marketing assistant.',
     )
     expect(prompt.startsWith('You are a marketing assistant.')).toBe(true)
-    // Should still include the default rules after
     expect(prompt).toContain('CMS content assistant')
   })
 
-  it('includes collection schemas', () => {
+  it('lists collection slugs only, not their fields', () => {
     const config = {
       collections: [
         {
@@ -39,14 +38,16 @@ describe('buildSystemPrompt', () => {
 
     const prompt = buildSystemPrompt(config)
     expect(prompt).toContain('## Collections')
-    expect(prompt).toContain('### posts')
-    expect(prompt).toContain('"title"')
-    expect(prompt).toContain('"required": true')
-    expect(prompt).toContain('### categories')
-    expect(prompt).toContain('"name"')
+    expect(prompt).toContain('posts')
+    expect(prompt).toContain('categories')
+    // Field details must NOT leak into the prompt — agent fetches them via
+    // getCollectionSchema on demand.
+    expect(prompt).not.toContain('"title"')
+    expect(prompt).not.toContain('"required": true')
+    expect(prompt).not.toContain('richText')
   })
 
-  it('includes global schemas', () => {
+  it('lists global slugs only, not their fields', () => {
     const config = {
       collections: [],
       globals: [
@@ -62,9 +63,30 @@ describe('buildSystemPrompt', () => {
 
     const prompt = buildSystemPrompt(config)
     expect(prompt).toContain('## Globals')
-    expect(prompt).toContain('### settings')
-    expect(prompt).toContain('"siteName"')
-    expect(prompt).toContain('"logo"')
+    expect(prompt).toContain('settings')
+    expect(prompt).not.toContain('"siteName"')
+    expect(prompt).not.toContain('"logo"')
+  })
+
+  it('tells the agent how to inspect field details on demand', () => {
+    const prompt = buildSystemPrompt({ collections: [], globals: [] })
+    expect(prompt).toContain('getCollectionSchema')
+    expect(prompt).toContain('getGlobalSchema')
+  })
+
+  it('mentions listEndpoints only when custom endpoints exist', () => {
+    const withEndpoints = buildSystemPrompt({ collections: [], globals: [] }, undefined, true)
+    expect(withEndpoints).toContain('listEndpoints')
+
+    const withoutEndpoints = buildSystemPrompt({ collections: [], globals: [] })
+    expect(withoutEndpoints).not.toContain('listEndpoints')
+  })
+
+  it('does not dump endpoint paths/descriptions into the prompt', () => {
+    // Endpoints live behind listEndpoints now — the prompt only signals that
+    // they exist. Agent pays one round trip to see them.
+    const prompt = buildSystemPrompt({ collections: [], globals: [] }, undefined, true)
+    expect(prompt).not.toContain('## Custom Endpoints')
   })
 
   it('includes localization info when present', () => {
@@ -115,70 +137,6 @@ describe('buildSystemPrompt', () => {
     expect(prompt).not.toContain('## Globals')
   })
 
-  it('extracts fields from layout wrappers (tabs, rows, collapsibles)', () => {
-    const config = {
-      collections: [
-        {
-          slug: 'pages',
-          fields: [
-            {
-              type: 'tabs',
-              tabs: [
-                {
-                  fields: [{ name: 'title', type: 'text' }],
-                  label: 'Content',
-                },
-              ],
-            },
-            {
-              type: 'row',
-              fields: [
-                { name: 'startDate', type: 'date' },
-                { name: 'endDate', type: 'date' },
-              ],
-            },
-          ],
-        },
-      ],
-      globals: [],
-    }
-
-    const prompt = buildSystemPrompt(config)
-    // Fields should be hoisted from unnamed tabs and rows
-    expect(prompt).toContain('"title"')
-    expect(prompt).toContain('"startDate"')
-    expect(prompt).toContain('"endDate"')
-  })
-
-  it('resolves block references from config.blocks', () => {
-    const config = {
-      blocks: [
-        {
-          slug: 'cta',
-          fields: [{ name: 'buttonText', type: 'text' }],
-        },
-      ],
-      collections: [
-        {
-          slug: 'pages',
-          fields: [
-            {
-              name: 'layout',
-              type: 'blocks',
-              blockReferences: ['cta'],
-              blocks: [],
-            },
-          ],
-        },
-      ],
-      globals: [],
-    }
-
-    const prompt = buildSystemPrompt(config)
-    expect(prompt).toContain('"cta"')
-    expect(prompt).toContain('"buttonText"')
-  })
-
   it('includes admin panel URL patterns so the agent can link documents', () => {
     const prompt = buildSystemPrompt({
       collections: [{ slug: 'posts', fields: [] }],
@@ -205,10 +163,35 @@ describe('buildSystemPrompt', () => {
       globals: [{ slug: 'bare' }],
     }
 
-    // Should not throw
     const prompt = buildSystemPrompt(config)
-    expect(prompt).toContain('### empty')
-    expect(prompt).toContain('### bare')
+    expect(prompt).toContain('empty')
+    expect(prompt).toContain('bare')
+  })
+
+  it('keeps the prompt small regardless of schema size', () => {
+    // A prompt built from a large schema (many collections with deeply
+    // nested fields) should stay within a modest size bound because fields
+    // are not inlined — only slugs are.
+    const manyFields = Array.from({ length: 50 }, (_, i) => ({
+      name: `field${i}`,
+      type: 'text',
+      required: true,
+    }))
+    const config = {
+      collections: Array.from({ length: 20 }, (_, i) => ({
+        slug: `col${i}`,
+        fields: manyFields,
+      })),
+      globals: Array.from({ length: 5 }, (_, i) => ({
+        slug: `global${i}`,
+        fields: manyFields,
+      })),
+    }
+
+    const prompt = buildSystemPrompt(config)
+    // 20 collections × 50 fields inlined as JSON would be ~40 KB. The
+    // slug-catalog version should be a small fraction of that.
+    expect(prompt.length).toBeLessThan(5000)
   })
 })
 
@@ -220,26 +203,26 @@ describe('buildSystemPrompt with modes', () => {
   const minConfig = { collections: [], globals: [] }
 
   it('includes read-only instructions in read mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, undefined, 'read')
+    const prompt = buildSystemPrompt(minConfig, undefined, false, 'read')
     expect(prompt).toContain('read-only mode')
     expect(prompt).toContain('only read content')
     expect(prompt).not.toContain('confirm with the user before creating')
   })
 
   it('includes ask mode instructions in ask mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, undefined, 'ask')
+    const prompt = buildSystemPrompt(minConfig, undefined, false, 'ask')
     expect(prompt).toContain('ask mode')
     expect(prompt).toContain('confirmation')
   })
 
   it('includes superuser instructions in superuser mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, undefined, 'superuser')
+    const prompt = buildSystemPrompt(minConfig, undefined, false, 'superuser')
     expect(prompt).toContain('superuser mode')
     expect(prompt).toContain('bypassing normal user permissions')
   })
 
   it('includes standard rules in read-write mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, undefined, 'read-write')
+    const prompt = buildSystemPrompt(minConfig, undefined, false, 'read-write')
     expect(prompt).toContain('confirm with the user before creating')
   })
 

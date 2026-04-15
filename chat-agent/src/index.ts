@@ -278,12 +278,19 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
             // --- Discover custom endpoints and build tools ------------------
             const customEndpoints = discoverEndpoints(req.payload.config)
-            const allTools = buildTools(req.payload, req.user, overrideAccess, req, customEndpoints)
+            const allTools = buildTools(
+              req.payload,
+              req.user,
+              overrideAccess,
+              req,
+              customEndpoints,
+              req.payload.config,
+            )
             const tools = filterToolsByMode(allTools, mode)
             const systemPrompt = buildSystemPrompt(
               req.payload.config,
               options.systemPrompt,
-              customEndpoints,
+              customEndpoints.length > 0,
               mode,
             )
             // TODO: remove — temporary debug logging to inspect prompt size/content
