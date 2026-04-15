@@ -1,12 +1,39 @@
 // @vitest-environment jsdom
 import type { UIMessage } from 'ai'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MessageMetadata } from '../types.js'
 
-import { MessageBubble } from './MessageBubble.js'
+// Reimplement Payload's `Button` as a plain `<button>` for tests.
+vi.mock('@payloadcms/ui', () => ({
+  Button: ({
+    type = 'button',
+    buttonStyle: _buttonStyle,
+    children,
+    margin: _margin,
+    round: _round,
+    size: _size,
+    tooltip,
+    ...rest
+  }: {
+    buttonStyle?: string
+    children?: ReactNode
+    margin?: boolean
+    round?: boolean
+    size?: string
+    tooltip?: string
+    type?: 'button' | 'submit'
+  } & ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...rest} title={rest.title ?? tooltip} type={type}>
+      {children}
+    </button>
+  ),
+}))
+
+const { MessageBubble } = await import('./MessageBubble.js')
 
 function makeMessage(
   overrides: { text?: string } & Partial<UIMessage<MessageMetadata>>,

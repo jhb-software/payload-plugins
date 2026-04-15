@@ -1,25 +1,10 @@
 'use client'
 
+import { Button } from '@payloadcms/ui'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { SendIcon } from './icons/SendIcon.js'
 import { StopIcon } from './icons/StopIcon.js'
-
-const iconButtonStyle = (enabled: boolean): React.CSSProperties => ({
-  alignItems: 'center',
-  background: enabled ? 'var(--theme-text)' : 'var(--theme-elevation-150)',
-  border: 'none',
-  borderRadius: '8px',
-  color: enabled ? 'var(--theme-bg)' : 'var(--theme-elevation-500)',
-  cursor: enabled ? 'pointer' : 'not-allowed',
-  display: 'inline-flex',
-  flexShrink: 0,
-  height: '32px',
-  justifyContent: 'center',
-  padding: 0,
-  transition: 'background 0.15s ease',
-  width: '32px',
-})
 
 const visuallyHidden: React.CSSProperties = {
   border: 0,
@@ -135,29 +120,30 @@ export function ChatInput({
         />
         <div style={{ bottom: '8px', position: 'absolute', right: '8px' }}>
           {isLoading ? (
-            <button
+            <Button
               aria-label="Stop"
+              margin={false}
               onClick={(e) => {
                 e.preventDefault()
                 onStop?.()
               }}
-              style={iconButtonStyle(true)}
-              title="Stop generating"
-              type="button"
+              size="small"
+              tooltip="Stop generating"
             >
               <StopIcon height="16" width="16" />
               <span style={visuallyHidden}>Stop</span>
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               aria-label="Send message"
               disabled={!input.trim()}
-              style={iconButtonStyle(input.trim().length > 0)}
-              title="Send message"
+              margin={false}
+              size="small"
+              tooltip="Send message"
               type="submit"
             >
               <SendIcon height="16" width="16" />
-            </button>
+            </Button>
           )}
         </div>
       </div>

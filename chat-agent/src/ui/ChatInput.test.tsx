@@ -16,8 +16,16 @@ type ButtonMockProps = {
 } & ButtonHTMLAttributes<HTMLButtonElement>
 
 vi.mock('@payloadcms/ui', () => ({
-  Button: ({ buttonStyle: _buttonStyle, children, size: _size, ...rest }: ButtonMockProps) => (
-    <button {...rest} type="button">
+  Button: ({
+    type = 'button',
+    buttonStyle: _buttonStyle,
+    children,
+    margin: _margin,
+    size: _size,
+    tooltip: _tooltip,
+    ...rest
+  }: { margin?: boolean; tooltip?: string; type?: 'button' | 'submit' } & ButtonMockProps) => (
+    <button {...rest} type={type}>
       {children}
     </button>
   ),

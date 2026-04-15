@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@payloadcms/ui'
 import { useCallback, useState } from 'react'
 
 import { CheckIcon } from './icons/CheckIcon.js'
@@ -37,54 +38,40 @@ export function CodeBlock({ children, language }: { children: string; language?:
           }}
         >
           <span>{language}</span>
-          <button
+          <Button
+            aria-label={copied ? 'Copied' : 'Copy code'}
+            buttonStyle="none"
+            margin={false}
             onClick={handleCopy}
-            style={{
-              alignItems: 'center',
-              background: 'none',
-              border: 'none',
-              color: copied ? 'var(--theme-success-500, #34c759)' : 'var(--theme-elevation-400)',
-              cursor: 'pointer',
-              display: 'flex',
-              gap: '4px',
-              padding: 0,
-            }}
-            title={copied ? 'Copied!' : 'Copy code'}
-            type="button"
+            size="xsmall"
+            tooltip={copied ? 'Copied!' : 'Copy code'}
           >
             {copied ? (
               <CheckIcon height={12} width={12} />
             ) : (
               <ClipboardIcon height={12} width={12} />
             )}
-          </button>
+          </Button>
         </div>
       ) : null}
       <div style={{ position: 'relative' }}>
         {!language ? (
-          <button
-            onClick={handleCopy}
-            style={{
-              alignItems: 'center',
-              background: 'none',
-              border: 'none',
-              color: copied ? 'var(--theme-success-500, #34c759)' : 'var(--theme-elevation-400)',
-              cursor: 'pointer',
-              display: 'flex',
-              padding: '6px',
-              position: 'absolute',
-              right: '4px',
-              top: '4px',
-            }}
-            title={copied ? 'Copied!' : 'Copy code'}
-            type="button"
-          >
-            {copied ? (
-              <CheckIcon height={12} width={12} />
-            ) : (
-              <ClipboardIcon height={12} width={12} />
-            )}
-          </button>
+          <div style={{ position: 'absolute', right: '4px', top: '4px' }}>
+            <Button
+              aria-label={copied ? 'Copied' : 'Copy code'}
+              buttonStyle="none"
+              margin={false}
+              onClick={handleCopy}
+              size="xsmall"
+              tooltip={copied ? 'Copied!' : 'Copy code'}
+            >
+              {copied ? (
+                <CheckIcon height={12} width={12} />
+              ) : (
+                <ClipboardIcon height={12} width={12} />
+              )}
+            </Button>
+          </div>
         ) : null}
         <pre
           style={{

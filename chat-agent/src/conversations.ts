@@ -43,7 +43,9 @@ export const conversationsCollection: CollectionConfig = {
   },
   admin: {
     group: 'Chat',
-    // hidden: true,
+    // Conversations are user-private chat history consumed by the chat UI,
+    // not by an admin editor. Hide from the admin nav by default.
+    hidden: true,
     useAsTitle: 'title',
   },
   fields: [

@@ -2,6 +2,7 @@
 
 import type { UIMessage } from 'ai'
 
+import { Button } from '@payloadcms/ui'
 import { useLayoutEffect, useRef, useState } from 'react'
 
 import type { MessageMetadata } from '../types.js'
@@ -58,23 +59,15 @@ function SuggestedPrompts({
         }}
       >
         {suggestions.map((suggestion) => (
-          <button
+          <Button
+            buttonStyle="pill"
             key={suggestion}
+            margin={false}
             onClick={() => onSelect(suggestion)}
-            style={{
-              background: 'var(--theme-elevation-50)',
-              border: '1px solid var(--theme-elevation-200)',
-              borderRadius: '20px',
-              color: 'var(--theme-text)',
-              cursor: 'pointer',
-              fontSize: '13px',
-              padding: '8px 16px',
-              transition: 'background 150ms, border-color 150ms',
-            }}
-            type="button"
+            size="small"
           >
             {suggestion}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -186,6 +179,7 @@ export function MessageList({
           flexDirection: 'column',
           gap: '12px',
           height: '100%',
+          overflowX: 'hidden',
           overflowY: 'auto',
           paddingBottom: '8px',
           paddingRight: '4px',
@@ -210,33 +204,28 @@ export function MessageList({
         ))}
       </div>
 
-      {/* Scroll-to-bottom FAB */}
+      {/* Scroll-to-bottom FAB — centered pill above the input */}
       {!isAtBottom ? (
-        <button
-          aria-label="Scroll to bottom"
-          onClick={() => scrollToBottom()}
+        <div
           style={{
-            alignItems: 'center',
-            background: 'var(--theme-bg)',
-            border: '1px solid var(--theme-elevation-200)',
-            borderRadius: '50%',
             bottom: '8px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-            cursor: 'pointer',
-            display: 'flex',
-            height: '36px',
-            justifyContent: 'center',
             left: '50%',
             position: 'absolute',
             transform: 'translateX(-50%)',
-            transition: 'box-shadow 150ms',
-            width: '36px',
           }}
-          title="Scroll to bottom"
-          type="button"
         >
-          <ChevronDownIcon height={16} width={16} />
-        </button>
+          <Button
+            aria-label="Scroll to bottom"
+            buttonStyle="subtle"
+            margin={false}
+            onClick={() => scrollToBottom()}
+            round
+            size="small"
+            tooltip="Scroll to bottom"
+          >
+            <ChevronDownIcon height={16} width={16} />
+          </Button>
+        </div>
       ) : null}
     </div>
   )

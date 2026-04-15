@@ -25,6 +25,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.156",
     "ai": "^6.0.154",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
@@ -39,7 +40,6 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^3.0.156",
     "@payloadcms/eslint-config": "^3.28.0",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.24",
@@ -70,6 +70,11 @@
         "import": "./dist/exports/client.js",
         "types": "./dist/exports/client.d.ts",
         "default": "./dist/exports/client.js"
+      },
+      "./server": {
+        "import": "./dist/exports/server.js",
+        "types": "./dist/exports/server.d.ts",
+        "default": "./dist/exports/server.js"
       }
     }
   },
@@ -83,6 +88,11 @@
       "import": "./src/exports/client.ts",
       "types": "./src/exports/client.ts",
       "default": "./src/exports/client.ts"
+    },
+    "./server": {
+      "import": "./src/exports/server.ts",
+      "types": "./src/exports/server.ts",
+      "default": "./src/exports/server.ts"
     }
   },
   "engines": {

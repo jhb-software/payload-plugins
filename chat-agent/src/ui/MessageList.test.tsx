@@ -1,12 +1,40 @@
 // @vitest-environment jsdom
 import type { UIMessage } from 'ai'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import type { MessageMetadata } from '../types.js'
 
-import { MessageList } from './MessageList.js'
+// Reimplement Payload's `Button` as a plain `<button>` so tests don't depend
+// on the full @payloadcms/ui tooltip/observer machinery.
+vi.mock('@payloadcms/ui', () => ({
+  Button: ({
+    type = 'button',
+    buttonStyle: _buttonStyle,
+    children,
+    margin: _margin,
+    round: _round,
+    size: _size,
+    tooltip,
+    ...rest
+  }: {
+    buttonStyle?: string
+    children?: ReactNode
+    margin?: boolean
+    round?: boolean
+    size?: string
+    tooltip?: string
+    type?: 'button' | 'submit'
+  } & ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...rest} title={rest.title ?? tooltip} type={type}>
+      {children}
+    </button>
+  ),
+}))
+
+const { MessageList } = await import('./MessageList.js')
 
 beforeAll(() => {
   // jsdom doesn't support scrollTo

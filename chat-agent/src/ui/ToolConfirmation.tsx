@@ -28,7 +28,9 @@ export function ToolConfirmation({
         borderRadius: '6px',
         fontSize: '13px',
         marginTop: '6px',
+        minWidth: 'min(560px, 100%)',
         padding: '8px 12px',
+        width: '100%',
       }}
     >
       <div
@@ -67,10 +69,16 @@ export function ToolConfirmation({
         {JSON.stringify(input, null, 2)}
       </pre>
       <div style={{ display: 'flex', gap: '6px' }}>
-        <Button disabled={isLoading} onClick={onAllow} size="small">
+        <Button disabled={isLoading} margin={false} onClick={onAllow} size="small">
           Allow
         </Button>
-        <Button buttonStyle="secondary" disabled={isLoading} onClick={onDeny} size="small">
+        <Button
+          buttonStyle="secondary"
+          disabled={isLoading}
+          margin={false}
+          onClick={onDeny}
+          size="small"
+        >
           Deny
         </Button>
       </div>

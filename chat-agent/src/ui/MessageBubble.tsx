@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@payloadcms/ui'
 import { getToolName, isToolUIPart, type UIMessage } from 'ai'
 import React, { useCallback, useState } from 'react'
 
@@ -7,6 +8,7 @@ import type { MessageMetadata } from '../types.js'
 
 import { formatTokens } from './format-tokens.js'
 import { CheckIcon } from './icons/CheckIcon.js'
+import { ChevronDownIcon } from './icons/ChevronDownIcon.js'
 import { ClipboardIcon } from './icons/ClipboardIcon.js'
 import { CopyIcon } from './icons/CopyIcon.js'
 import { PencilIcon } from './icons/PencilIcon.js'
@@ -28,25 +30,16 @@ function ActionButton({
   title: string
 }) {
   return (
-    <button
+    <Button
       aria-label={title}
+      buttonStyle="subtle"
+      margin={false}
       onClick={onClick}
-      style={{
-        alignItems: 'center',
-        background: 'var(--theme-elevation-50)',
-        border: '1px solid var(--theme-elevation-150)',
-        borderRadius: '6px',
-        color: 'var(--theme-elevation-500)',
-        cursor: 'pointer',
-        display: 'flex',
-        justifyContent: 'center',
-        padding: '4px',
-      }}
-      title={title}
-      type="button"
+      size="xsmall"
+      tooltip={title}
     >
       {children}
-    </button>
+    </Button>
   )
 }
 
@@ -122,38 +115,53 @@ function ToolCallIndicator({
             width: '6px',
           }}
         />
-        <span style={{ flex: 1 }}>
+        <span
+          style={{
+            display: '-webkit-box',
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 3,
+            wordBreak: 'break-word',
+          }}
+        >
           {`${getToolName(part as Parameters<typeof getToolName>[0])}(${part.state !== 'input-streaming' ? JSON.stringify(part.input) : '...'})`}
         </span>
         {hasOutput ? (
-          <span style={{ fontSize: '10px', opacity: 0.6 }}>{expanded ? '\u25B2' : '\u25BC'}</span>
+          <span
+            aria-hidden
+            style={{
+              alignItems: 'center',
+              display: 'flex',
+              flexShrink: 0,
+              opacity: 0.6,
+              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 150ms',
+            }}
+          >
+            <ChevronDownIcon height={12} width={12} />
+          </span>
         ) : null}
       </div>
       {expanded && hasOutput ? (
         <div style={{ borderTop: '1px solid var(--theme-elevation-150)', position: 'relative' }}>
-          <button
-            aria-label={copied ? 'Copied' : 'Copy JSON'}
-            onClick={handleCopy}
-            style={{
-              background: 'var(--theme-elevation-50)',
-              border: '1px solid var(--theme-elevation-150)',
-              borderRadius: '4px',
-              color: copied ? 'var(--theme-success-500, #34c759)' : 'var(--theme-elevation-500)',
-              cursor: 'pointer',
-              padding: '4px',
-              position: 'absolute',
-              right: '6px',
-              top: '6px',
-            }}
-            title={copied ? 'Copied' : 'Copy JSON'}
-            type="button"
-          >
-            {copied ? (
-              <CheckIcon height={14} width={14} />
-            ) : (
-              <ClipboardIcon height={14} width={14} />
-            )}
-          </button>
+          <div style={{ position: 'absolute', right: '6px', top: '6px' }}>
+            <Button
+              aria-label={copied ? 'Copied' : 'Copy JSON'}
+              buttonStyle="subtle"
+              margin={false}
+              onClick={handleCopy}
+              size="xsmall"
+              tooltip={copied ? 'Copied' : 'Copy JSON'}
+            >
+              {copied ? (
+                <CheckIcon height={14} width={14} />
+              ) : (
+                <ClipboardIcon height={14} width={14} />
+              )}
+            </Button>
+          </div>
           <pre
             style={{
               background: 'var(--theme-elevation-100)',
@@ -302,6 +310,10 @@ export function MessageBubble({
   const rendered: React.ReactNode[] = []
   let textBuffer = ''
   let textKey = 0
+  // The tool-approval card has controls + a JSON preview; the 85% bubble cap
+  // shrinks it into an awkward narrow column. Widen this bubble when one is
+  // present.
+  let hasToolApproval = false
 
   const flushText = () => {
     if (!textBuffer) {
@@ -347,6 +359,7 @@ export function MessageBubble({
       onToolDeny
     ) {
       const approvalId = toolPart.approval.id
+      hasToolApproval = true
       rendered.push(
         <ToolConfirmation
           input={toolPart.input}
@@ -382,9 +395,10 @@ export function MessageBubble({
           display: 'flex',
           flexDirection: 'column',
           gap: '6px',
-          maxWidth: '85%',
+          maxWidth: hasToolApproval ? '95%' : '85%',
           minWidth: '120px',
           position: 'relative',
+          width: hasToolApproval ? 'min(640px, 95%)' : undefined,
         }}
       >
         {isEditing ? (
@@ -417,37 +431,22 @@ export function MessageBubble({
               value={editText}
             />
             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-              <button
+              <Button
+                buttonStyle="secondary"
+                margin={false}
                 onClick={handleEditCancel}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--theme-elevation-250)',
-                  borderRadius: '6px',
-                  color: 'var(--theme-text)',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  padding: '4px 12px',
-                }}
-                type="button"
+                size="small"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 disabled={!editText.trim()}
+                margin={false}
                 onClick={handleEditSubmit}
-                style={{
-                  background: 'var(--theme-elevation-900)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: 'var(--theme-bg)',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  padding: '4px 12px',
-                }}
-                type="button"
+                size="small"
               >
                 Save & Send
-              </button>
+              </Button>
             </div>
           </div>
         ) : (

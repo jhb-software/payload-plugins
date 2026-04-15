@@ -85,14 +85,17 @@ export function Sidebar({
           value={search}
         />
         {search ? (
-          <button
-            aria-label="Clear search"
-            className="chat-agent-sidebar__search-clear"
-            onClick={() => setSearch('')}
-            type="button"
-          >
-            ×
-          </button>
+          <div className="chat-agent-sidebar__search-clear">
+            <Button
+              aria-label="Clear search"
+              buttonStyle="none"
+              icon={['x']}
+              iconStyle="none"
+              margin={false}
+              onClick={() => setSearch('')}
+              size="xsmall"
+            />
+          </div>
         ) : null}
       </div>
 

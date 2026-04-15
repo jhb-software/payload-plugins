@@ -50,21 +50,12 @@ export type { BudgetConfig, BudgetUsage } from './types.js'
 export type { ChatAgentPluginOptions, ModelFactory, ModelOption } from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
-export { default as ChatNavLinkServer } from './ui/ChatNavLinkServer.js'
-export { default as ChatViewServer } from './ui/ChatViewServer.js'
 
-/**
- * The package-relative path to the ChatView component.
- * Used by Payload's importMap system.
- */
-const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent#ChatViewServer'
-
-/**
- * The package-relative path to the ChatNavLinkServer component shown at the
- * top of the admin nav sidebar. This is a server component that checks access
- * before rendering the client ChatNavLink.
- */
-const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent#ChatNavLinkServer'
+// Server components are exported from `./server` — NOT from the main entry —
+// so that `payload generate:importmap` can load the plugin under tsx without
+// triggering a CSS import chain (DefaultTemplate → @payloadcms/ui → react-image-crop).
+const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent/server#ChatViewServer'
+const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent/server#ChatNavLinkServer'
 
 /**
  * Validate that a messages array is non-empty and has valid roles.
@@ -293,10 +284,6 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               customEndpoints.length > 0,
               mode,
             )
-            // TODO: remove — temporary debug logging to inspect prompt size/content
-            console.log('\n===== CHAT AGENT SYSTEM PROMPT =====\n')
-            console.log(systemPrompt)
-            console.log(`\n===== (${systemPrompt.length} chars) =====\n`)
             const modelId = body.model ?? options.defaultModel
             const maxSteps = options.maxSteps ?? 20
 
