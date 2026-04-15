@@ -23,7 +23,7 @@ function makeFakePayload() {
       const matches = docs.filter((d) =>
         where.and.every((cond) => {
           const [field] = Object.keys(cond)
-          return d[field] === cond[field]!.equals
+          return d[field] === cond[field].equals
         }),
       )
       return Promise.resolve({ docs: limit === 1 ? matches.slice(0, 1) : matches })
