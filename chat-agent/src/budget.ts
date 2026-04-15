@@ -129,14 +129,17 @@ function buildUsageCollection(slug: string): CollectionConfig {
       update: () => false,
     },
     admin: {
-      defaultColumns: ['scope', 'period', 'totalTokens', 'updatedAt'],
+      defaultColumns: ['scope', 'period', 'model', 'totalTokens', 'updatedAt'],
       group: 'Chat',
       hidden: true,
     },
     fields: [
-      // A composite (scope, period) defines a single usage bucket.
+      // A composite (scope, period, model) defines a single usage bucket.
+      // Keeping `model` in the key preserves per-model breakdowns for cost
+      // attribution; `check` still aggregates across models.
       { name: 'scope', type: 'text', index: true, required: true },
       { name: 'period', type: 'text', index: true, required: true },
+      { name: 'model', type: 'text', index: true, required: true },
       { name: 'inputTokens', type: 'number', defaultValue: 0 },
       { name: 'outputTokens', type: 'number', defaultValue: 0 },
       { name: 'totalTokens', type: 'number', defaultValue: 0 },
@@ -167,6 +170,7 @@ async function findUsageDoc(
   slug: string,
   scope: string,
   period: string,
+  model: string,
 ): Promise<null | UsageDoc> {
   const result = await req.payload.find({
     collection: slug as never,
@@ -175,7 +179,11 @@ async function findUsageDoc(
     overrideAccess: true,
     pagination: false,
     where: {
-      and: [{ scope: { equals: scope } }, { period: { equals: period } }],
+      and: [
+        { scope: { equals: scope } },
+        { period: { equals: period } },
+        { model: { equals: model } },
+      ],
     },
   })
   return (result.docs[0] as undefined | UsageDoc) ?? null
@@ -187,8 +195,19 @@ async function getUsedTokens(
   scope: string,
   period: string,
 ): Promise<number> {
-  const doc = await findUsageDoc(req, slug, scope, period)
-  return doc?.totalTokens ?? 0
+  // Sum across every model in this (scope, period) bucket — the budget caps
+  // total spend regardless of which model was used.
+  const result = await req.payload.find({
+    collection: slug as never,
+    depth: 0,
+    limit: 0,
+    overrideAccess: true,
+    pagination: false,
+    where: {
+      and: [{ scope: { equals: scope } }, { period: { equals: period } }],
+    },
+  })
+  return (result.docs as UsageDoc[]).reduce((sum, d) => sum + (d.totalTokens ?? 0), 0)
 }
 
 async function addUsage(
@@ -196,9 +215,10 @@ async function addUsage(
   slug: string,
   scope: string,
   period: string,
+  model: string,
   usage: BudgetUsage,
 ): Promise<void> {
-  const existing = await findUsageDoc(req, slug, scope, period)
+  const existing = await findUsageDoc(req, slug, scope, period, model)
   const delta = {
     inputTokens: usage.inputTokens ?? 0,
     outputTokens: usage.outputTokens ?? 0,
@@ -207,7 +227,7 @@ async function addUsage(
   if (!existing) {
     await req.payload.create({
       collection: slug as never,
-      data: { ...delta, period, scope } as never,
+      data: { ...delta, model, period, scope } as never,
       overrideAccess: true,
     })
     return
@@ -244,9 +264,10 @@ async function addUsage(
  * })
  * ```
  *
- * Under the hood: one row per (scope, period). On each completed chat request
- * the `totalTokens` field for the current bucket is incremented. On every
- * incoming request `check` reads the current row and returns `limit - used`.
+ * Under the hood: one row per (scope, period, model). On each completed chat
+ * request the `totalTokens` field for the current bucket is incremented. On
+ * every incoming request `check` sums `totalTokens` across every model in the
+ * current (scope, period) and returns `limit - used`.
  */
 export function createPayloadBudget(
   options: CreatePayloadBudgetOptions,
@@ -263,10 +284,10 @@ export function createPayloadBudget(
         const used = await getUsedTokens(req, slug, scope, period)
         return options.limit - used
       },
-      record: async ({ req, usage }) => {
+      record: async ({ model, req, usage }) => {
         const scope = resolveScopeFn(req)
         const period = resolvePeriodFn(req)
-        await addUsage(req, slug, scope, period, usage)
+        await addUsage(req, slug, scope, period, model, usage)
       },
     },
     collection: buildUsageCollection(slug),

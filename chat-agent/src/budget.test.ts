@@ -14,14 +14,19 @@ function makeFakePayload() {
   let nextId = 1
   const find = vi.fn(
     ({
+      limit,
       where,
     }: {
-      where: { and: [{ scope: { equals: string } }, { period: { equals: string } }] }
+      limit?: number
+      where: { and: Array<Record<string, { equals: unknown }>> }
     }) => {
-      const scope = where.and[0].scope.equals
-      const period = where.and[1].period.equals
-      const doc = docs.find((d) => d.scope === scope && d.period === period)
-      return Promise.resolve({ docs: doc ? [doc] : [] })
+      const matches = docs.filter((d) =>
+        where.and.every((cond) => {
+          const [field] = Object.keys(cond)
+          return d[field] === cond[field]!.equals
+        }),
+      )
+      return Promise.resolve({ docs: limit === 1 ? matches.slice(0, 1) : matches })
     },
   )
   const create = vi.fn(({ data }: { data: Record<string, unknown> }) => {
@@ -62,9 +67,7 @@ describe('createPayloadBudget', () => {
     })
 
     it('allows authenticated read so users/admins can inspect usage', () => {
-      const readFn = collection.access?.read as (args: {
-        req: { user: unknown }
-      }) => boolean
+      const readFn = collection.access?.read as (args: { req: { user: unknown } }) => boolean
       expect(readFn({ req: { user: null } })).toBe(false)
       expect(readFn({ req: { user: { id: 1 } } })).toBe(true)
     })
@@ -264,6 +267,44 @@ describe('createPayloadBudget', () => {
         _docs: Array<{ totalTokens: number }>
       }
       expect(payload._docs[0].totalTokens).toBe(0)
+    })
+
+    it('persists the model on the usage row', async () => {
+      // The model is part of the bucket key, so downstream consumers can
+      // break usage down by model for cost attribution without re-deriving
+      // it from logs.
+      const { budget } = createPayloadBudget({ limit: 1000 })
+      const req = fakeReq(1)
+      await budget.record!({ model: 'gpt-4o', req, usage: { totalTokens: 10 } })
+      const payload = req.payload as unknown as { _docs: Array<{ model: string }> }
+      expect(payload._docs[0].model).toBe('gpt-4o')
+    })
+
+    it('maintains a separate row per model within the same (scope, period)', async () => {
+      // Two records from the same user/period but different models must not
+      // collapse into one row — otherwise the per-model breakdown is lost.
+      const { budget } = createPayloadBudget({ limit: 1000 })
+      const req = fakeReq(1)
+      await budget.record!({ model: 'gpt-4o', req, usage: { totalTokens: 30 } })
+      await budget.record!({ model: 'claude-sonnet-4', req, usage: { totalTokens: 70 } })
+      const payload = req.payload as unknown as {
+        _docs: Array<{ model: string; totalTokens: number }>
+      }
+      expect(payload._docs).toHaveLength(2)
+      expect(payload._docs.find((d) => d.model === 'gpt-4o')?.totalTokens).toBe(30)
+      expect(payload._docs.find((d) => d.model === 'claude-sonnet-4')?.totalTokens).toBe(70)
+    })
+  })
+
+  describe('check() aggregates across models', () => {
+    it('sums totalTokens across every model in the (scope, period) bucket', async () => {
+      // The budget caps total spend in a bucket regardless of which model
+      // was used, so check() must aggregate across per-model rows.
+      const { budget } = createPayloadBudget({ limit: 1000 })
+      const req = fakeReq(1)
+      await budget.record!({ model: 'gpt-4o', req, usage: { totalTokens: 300 } })
+      await budget.record!({ model: 'claude-sonnet-4', req, usage: { totalTokens: 400 } })
+      expect(await budget.check({ req })).toBe(300)
     })
   })
 })
