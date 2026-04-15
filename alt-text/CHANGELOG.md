@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- fix: do not fail alt text validation for unfilled locales on updates (fixes folder moves in localized setups with `fallback: false`, [#95](https://github.com/jhb-software/payload-plugins/issues/95))
+  - **BREAKING**: alt text validation now only runs when the `alt` field is present in the request body. Updates that do not include `alt` (folder moves, partial API updates) no longer trigger the required-alt-text check. Admin UI saves and API calls that explicitly include `alt` still require a non-empty value.
+
 ## 0.4.4
 
 - style: standardize icons to use Geist icon set (16x16 filled)

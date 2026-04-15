@@ -4,13 +4,7 @@
   "description": "A Payload CMS plugin that adds AI-powered alt text generation for images.",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
-  "keywords": [
-    "payload",
-    "plugin",
-    "alt-text",
-    "accessibility",
-    "ai"
-  ],
+  "keywords": ["payload", "plugin", "alt-text", "accessibility", "ai"],
   "author": "JHB Software",
   "license": "MIT",
   "type": "module",
@@ -26,6 +20,7 @@
     "format": "prettier --write src",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
     "test:health": "node --experimental-strip-types --test test/altTextHealth.test.ts",
     "prepublishOnly": "pnpm clean && pnpm build"
   },
@@ -55,9 +50,7 @@
     "rimraf": "6.1.3",
     "typescript": "5.9.3"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "publishConfig": {
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
