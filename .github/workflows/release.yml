@@ -122,3 +122,7 @@ jobs:
           tag_name: ${{ inputs.plugin }}@${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.package_name }}@${{ steps.version.outputs.version }}
           body: ${{ steps.changelog.outputs.body }}
+          # Mark prerelease versions (0.1.0-beta.0, 1.2.3-rc.1, etc.) as such
+          # on GitHub. Detected via the `-` separator in SemVer prerelease
+          # tags; stable versions never contain `-`.
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
