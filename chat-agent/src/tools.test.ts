@@ -825,6 +825,42 @@ describe('schema inspection tools', () => {
     expect(result.fields).toEqual([{ name: 'siteName', type: 'text' }])
   })
 
+  it('getCollectionSchema normalizes all shapes of select option labels', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [
+        {
+          slug: 'places',
+          fields: [
+            {
+              name: 'type',
+              type: 'select',
+              options: [
+                'plainString',
+                { label: 'Hotel', value: 'hotel' },
+                { label: { de: 'Sonstige', en: 'Other' }, value: 'other' },
+                { label: ({ t }: { t: (k: string) => string }) => t('hostel'), value: 'hostel' },
+                { label: false, value: 'camping' },
+              ],
+            },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'places' }, ctx)) as {
+      fields: { options?: { label?: unknown; value: string }[] }[]
+    }
+    const typeField = result.fields.find((f) => (f as { name: string }).name === 'type')!
+    expect(typeField.options).toEqual([
+      { label: 'plainString', value: 'plainString' },
+      { label: 'Hotel', value: 'hotel' },
+      { label: { de: 'Sonstige', en: 'Other' }, value: 'other' },
+      { value: 'hostel' },
+      { value: 'camping' },
+    ])
+  })
+
   it('getGlobalSchema returns error for unknown slug', async () => {
     const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
       collections: [],

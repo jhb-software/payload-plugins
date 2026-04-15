@@ -5,13 +5,40 @@
  * shape suitable for inclusion in the agent's system prompt.
  */
 
+/**
+ * A label value that the agent can consume without an i18n runtime.
+ *
+ * Payload's raw `Label` type is `string | Record<string, string> | LabelFunction | false`.
+ * Functions require `{ t, i18n }` which we don't have here, and `false` means
+ * "no label" — both collapse to `undefined`.
+ */
+export type StaticLabel = Record<string, string> | string
+
+/**
+ * Normalize any Payload label value into a JSON-serializable static label.
+ *
+ * Accepts `string`, `Record<string, string>` (localized), `LabelFunction`, or
+ * `false`. Functions and `false` return `undefined` since the agent-facing
+ * schema has no i18n runtime to resolve them. Use this anywhere a Payload
+ * label surfaces in the schema so all label shapes are handled consistently.
+ */
+export function normalizeLabel(raw: unknown): StaticLabel | undefined {
+  if (typeof raw === 'string') {
+    return raw
+  }
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw as Record<string, string>
+  }
+  return undefined
+}
+
 interface FieldSchema {
   blocks?: { fields: FieldSchema[]; slug: string }[]
   fields?: FieldSchema[]
   hasMany?: boolean
   localized?: boolean
   name: string
-  options?: { label: string; value: string }[]
+  options?: { label?: StaticLabel; value: string }[]
   relationTo?: string | string[]
   required?: boolean
   type: string
@@ -128,14 +155,14 @@ export function extractFields(
     }
 
     if (field.options && Array.isArray(field.options)) {
-      schema.options = (field.options as unknown[]).map((option) =>
-        typeof option === 'string'
-          ? { label: option, value: option }
-          : {
-              label: String((option as { label: unknown }).label),
-              value: String((option as { value: unknown }).value),
-            },
-      )
+      schema.options = (field.options as unknown[]).map((option) => {
+        if (typeof option === 'string') {
+          return { label: option, value: option }
+        }
+        const value = String((option as { value: unknown }).value)
+        const label = normalizeLabel((option as { label: unknown }).label)
+        return label === undefined ? { value } : { label, value }
+      })
     }
 
     result.push(schema)
