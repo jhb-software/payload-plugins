@@ -300,10 +300,6 @@ The agent reads arbitrary CMS content via its tools — including user-submitted
 
 Any endpoint in your Payload config with a `custom.description` becomes invocable by the agent through the `callEndpoint` tool. This is an intentional opt-in, but an easy one to trip over — a plugin that adds a `custom.description` to an endpoint will automatically expose that endpoint to the chat agent. Audit your config before publishing, and prefer endpoints that re-check access inside their own handler instead of relying on the caller.
 
-### No built-in rate limiting
-
-The `/api/chat-agent/chat` endpoint accepts any request size and does not rate-limit by user. An authenticated user could spam requests or submit large message arrays, running up your LLM bill. Put a rate limiter (e.g. Vercel's `@vercel/edge-config`, Cloudflare rate rules, or your own middleware) in front of `/api/chat-agent/*` before shipping.
-
 ### No server-authoritative usage tracking
 
 `totalTokens` persisted on a conversation is computed server-side by summing `metadata.totalTokens` from the messages the client sends back with each save. The source values come from the server-streamed metadata, so the metric is accurate under normal use — but the messages round-trip through the client, so it is not a trustworthy audit signal. Don't use it for billing.
