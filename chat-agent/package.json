@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-chat-agent",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "description": "A Payload CMS plugin that adds an AI chat agent for reading, creating, and updating content",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
