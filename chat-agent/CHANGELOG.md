@@ -3,6 +3,8 @@
 ## Unreleased
 
 - feat: surface tool-call status in the chat UI (running / failed / denied) and show failed tool error text in a collapsible panel instead of only a colored dot.
+- fix: keep streamed messages visible after the first save of a new conversation
+- fix: retarget saves to the new conversation id after switching conversations from the sidebar (previous behaviour PATCHed the prior conversation)
 
 ## 0.1.0-beta.2
 
