@@ -56,7 +56,7 @@ Every test must justify its existence by verifying meaningful behavior. A test e
 
 Default to integration tests against real Payload / real React rendering. Reach for unit tests only for pure logic with non-trivial branches. Only stub external boundaries: network, filesystem, time, randomness, LLM providers, third-party SDKs. If a test requires mocking the module under test's close collaborators, test at a higher level instead.
 
-Name each test by the behavior it protects in one sentence (*"rejects a confirmation when the tool call id is unknown"*), not by the method it calls (*"calls handleConfirm with false"*).
+Name each test by the behavior it protects in one sentence (_"rejects a confirmation when the tool call id is unknown"_), not by the method it calls (_"calls handleConfirm with false"_).
 
 ## Changelog
 

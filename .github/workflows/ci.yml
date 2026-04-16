@@ -120,6 +120,9 @@ jobs:
       - name: Run tests (content-translator)
         run: cd content-translator && pnpm test
 
+      - name: Run tests (pages)
+        run: cd pages && pnpm test:unit
+
       - name: Run tests (vercel-deployments)
         run: cd vercel-deployments && pnpm test
 

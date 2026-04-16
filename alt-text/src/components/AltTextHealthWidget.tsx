@@ -2,6 +2,7 @@ import type { TFunction } from '@payloadcms/translations'
 import type { WidgetServerProps } from 'payload'
 
 import { Pill } from '@payloadcms/ui/elements/Pill'
+import { formatAdminURL } from 'payload/shared'
 
 import type { PluginAltTextTranslationKeys } from '../translations/index.js'
 
@@ -16,6 +17,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
   const t = req.t as TFunction<PluginAltTextTranslationKeys>
   const { collections, errors, isLocalized, localeCount, totalDocs } =
     await getAltTextHealthWidgetData(req)
+  const adminRoute = req.payload.config.routes.admin
 
   return (
     <div
@@ -73,7 +75,10 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                 <a
-                  href={`${req.payload.config.routes.admin}/collections/${collection.collection}`}
+                  href={formatAdminURL({
+                    adminRoute,
+                    path: `/collections/${collection.collection}`,
+                  })}
                   style={{
                     color: 'var(--theme-text)',
                     fontSize: '14px',
@@ -119,7 +124,10 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                 <Pill
                   pillStyle="error"
                   size="small"
-                  to={`${req.payload.config.routes.admin}/collections/${collection.collection}?where[id][in]=${collection.invalidDocIds.join(',')}`}
+                  to={`${formatAdminURL({
+                    adminRoute,
+                    path: `/collections/${collection.collection}`,
+                  })}?where[id][in]=${collection.invalidDocIds.join(',')}`}
                 >
                   <div style={{ alignItems: 'center', display: 'flex', gap: '0.25rem' }}>
                     {t('@jhb.software/payload-alt-text-plugin:statusUnhealthy', {
