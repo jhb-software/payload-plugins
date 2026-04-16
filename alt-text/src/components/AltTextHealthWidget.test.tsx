@@ -36,7 +36,7 @@ vi.mock('@payloadcms/ui/elements/Pill', () => ({
 
 const { AltTextHealthWidget } = await import('./AltTextHealthWidget.js')
 
-function createReq(adminRoute: string): WidgetServerProps['req'] {
+function createReq({ adminRoute }: { adminRoute: string }): WidgetServerProps['req'] {
   return {
     i18n: { language: 'en' },
     locale: undefined,
@@ -60,7 +60,9 @@ describe('AltTextHealthWidget', () => {
   })
 
   it('links to /admin when the default admin route is configured', async () => {
-    const element = await AltTextHealthWidget({ req: createReq('/admin') } as WidgetServerProps)
+    const element = await AltTextHealthWidget({
+      req: createReq({ adminRoute: '/admin' }),
+    } as WidgetServerProps)
     const { container } = render(element)
 
     const anchors = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))
@@ -73,7 +75,9 @@ describe('AltTextHealthWidget', () => {
   })
 
   it('links to the custom admin route when one is configured', async () => {
-    const element = await AltTextHealthWidget({ req: createReq('/cms') } as WidgetServerProps)
+    const element = await AltTextHealthWidget({
+      req: createReq({ adminRoute: '/cms' }),
+    } as WidgetServerProps)
     const { container } = render(element)
 
     const anchors = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))
