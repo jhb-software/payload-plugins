@@ -1,39 +1,51 @@
 'use client'
 
+import { FieldLabel, type ReactSelectOption as Option, ReactSelect } from '@payloadcms/ui'
+import { useId } from 'react'
+
 import type { ModelOption } from '../types.js'
 
 export function ModelSelector({
   available,
+  disabled,
   onChange,
   value,
 }: {
   available: ModelOption[]
+  disabled?: boolean
   onChange: (modelId: string) => void
   value: string
 }) {
+  const inputId = useId()
+
   if (available.length <= 1) {
     return null
   }
 
+  const options: Option[] = available.map((m) => ({
+    label: m.label,
+    value: m.id,
+  }))
+  const selected = options.find((o) => o.value === value)
+
   return (
-    <select
-      onChange={(e) => onChange(e.target.value)}
-      style={{
-        background: 'var(--theme-input-bg, var(--theme-bg))',
-        border: '1px solid var(--theme-elevation-150)',
-        borderRadius: 'var(--style-radius-m, 6px)',
-        color: 'var(--theme-text)',
-        cursor: 'pointer',
-        fontSize: '13px',
-        padding: '4px 8px',
-      }}
-      value={value}
-    >
-      {available.map((m) => (
-        <option key={m.id} value={m.id}>
-          {m.label}
-        </option>
-      ))}
-    </select>
+    <div style={{ display: 'flex', flexDirection: 'column', minWidth: '180px' }}>
+      <FieldLabel htmlFor={inputId} label="Model" />
+      <ReactSelect
+        className="chat-agent-select chat-agent-select--slim"
+        disabled={disabled}
+        inputId={inputId}
+        isClearable={false}
+        isSearchable={false}
+        onChange={(next) => {
+          const picked = Array.isArray(next) ? next[0] : next
+          if (picked && typeof picked.value === 'string') {
+            onChange(picked.value)
+          }
+        }}
+        options={options}
+        value={selected}
+      />
+    </div>
   )
 }

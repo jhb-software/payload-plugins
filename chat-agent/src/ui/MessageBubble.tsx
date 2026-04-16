@@ -44,30 +44,76 @@ function ActionButton({
 }
 
 // ---------------------------------------------------------------------------
-// Tool call indicator (expandable with output copy)
+// Tool call indicator (expandable with output/error copy)
 // ---------------------------------------------------------------------------
+
+type ToolStatus = 'completed' | 'denied' | 'failed' | 'running'
+
+/**
+ * Maps a tool-UI-part `state` (AI SDK v6) onto a coarse visual status we can
+ * surface in the indicator. `approval-requested` is handled upstream by
+ * `ToolConfirmation`, so we never see it here.
+ */
+function toolStatusFromState(state: string): ToolStatus {
+  if (state === 'output-available') {
+    return 'completed'
+  }
+  if (state === 'output-error') {
+    return 'failed'
+  }
+  if (state === 'output-denied') {
+    return 'denied'
+  }
+  return 'running'
+}
+
+const STATUS_COLORS: Record<ToolStatus, string> = {
+  completed: 'var(--theme-success-500, #34c759)',
+  denied: 'var(--theme-elevation-400)',
+  failed: 'var(--theme-error-500, #e53935)',
+  running: 'var(--theme-warning-500, #f5a623)',
+}
+
+const STATUS_LABELS: Record<ToolStatus, null | string> = {
+  completed: null,
+  denied: 'Denied',
+  failed: 'Failed',
+  running: 'Running\u2026',
+}
 
 function ToolCallIndicator({
   part,
 }: {
-  part: { input: unknown; output?: unknown; state: string }
+  part: { errorText?: string; input: unknown; output?: unknown; state: string }
 }) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
-  const hasOutput = part.state === 'output-available' && part.output !== undefined
 
-  const outputText = hasOutput
-    ? typeof part.output === 'string'
-      ? part.output
-      : JSON.stringify(part.output, null, 2)
-    : ''
+  const status = toolStatusFromState(part.state)
+  const statusLabel = STATUS_LABELS[status]
+  const statusColor = STATUS_COLORS[status]
+
+  const hasOutput = status === 'completed' && part.output !== undefined
+  const hasErrorText =
+    status === 'failed' && typeof part.errorText === 'string' && part.errorText.length > 0
+  const expandable = hasOutput || hasErrorText
+
+  const detailText = hasErrorText
+    ? (part.errorText as string)
+    : hasOutput
+      ? typeof part.output === 'string'
+        ? part.output
+        : JSON.stringify(part.output, null, 2)
+      : ''
+
+  const copyLabel = hasErrorText ? 'Copy error' : 'Copy JSON'
 
   const handleCopy = useCallback(() => {
-    void navigator.clipboard.writeText(outputText).then(() => {
+    void navigator.clipboard.writeText(detailText).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
-  }, [outputText])
+  }, [detailText])
 
   return (
     <div
@@ -78,7 +124,7 @@ function ToolCallIndicator({
       }}
     >
       <div
-        {...(hasOutput
+        {...(expandable
           ? {
               'aria-expanded': expanded,
               onClick: () => setExpanded((v) => !v),
@@ -95,7 +141,7 @@ function ToolCallIndicator({
         style={{
           alignItems: 'center',
           color: 'var(--theme-elevation-500)',
-          cursor: hasOutput ? 'pointer' : 'default',
+          cursor: expandable ? 'pointer' : 'default',
           display: 'flex',
           fontFamily: 'monospace',
           fontSize: '12px',
@@ -105,10 +151,7 @@ function ToolCallIndicator({
       >
         <span
           style={{
-            background:
-              part.state === 'output-available'
-                ? 'var(--theme-success-500, #34c759)'
-                : 'var(--theme-warning-500, #f5a623)',
+            background: statusColor,
             borderRadius: '50%',
             flexShrink: 0,
             height: '6px',
@@ -128,7 +171,21 @@ function ToolCallIndicator({
         >
           {`${getToolName(part as Parameters<typeof getToolName>[0])}(${part.state !== 'input-streaming' ? JSON.stringify(part.input) : '...'})`}
         </span>
-        {hasOutput ? (
+        {statusLabel ? (
+          <span
+            style={{
+              color: status === 'failed' ? 'var(--theme-error-500, #e53935)' : undefined,
+              flexShrink: 0,
+              fontSize: '11px',
+              fontStyle: status === 'running' ? 'italic' : undefined,
+              fontWeight: status === 'failed' ? 600 : 400,
+              opacity: status === 'running' ? 0.7 : 1,
+            }}
+          >
+            {statusLabel}
+          </span>
+        ) : null}
+        {expandable ? (
           <span
             aria-hidden
             style={{
@@ -144,16 +201,16 @@ function ToolCallIndicator({
           </span>
         ) : null}
       </div>
-      {expanded && hasOutput ? (
+      {expanded && expandable ? (
         <div style={{ borderTop: '1px solid var(--theme-elevation-150)', position: 'relative' }}>
           <div style={{ position: 'absolute', right: '6px', top: '6px' }}>
             <Button
-              aria-label={copied ? 'Copied' : 'Copy JSON'}
+              aria-label={copied ? 'Copied' : copyLabel}
               buttonStyle="subtle"
               margin={false}
               onClick={handleCopy}
               size="xsmall"
-              tooltip={copied ? 'Copied' : 'Copy JSON'}
+              tooltip={copied ? 'Copied' : copyLabel}
             >
               {copied ? (
                 <CheckIcon height={14} width={14} />
@@ -165,6 +222,7 @@ function ToolCallIndicator({
           <pre
             style={{
               background: 'var(--theme-elevation-100)',
+              color: hasErrorText ? 'var(--theme-error-500, #e53935)' : undefined,
               fontSize: '11px',
               margin: 0,
               maxHeight: '300px',
@@ -176,7 +234,7 @@ function ToolCallIndicator({
               wordBreak: 'break-word',
             }}
           >
-            {outputText}
+            {detailText}
           </pre>
         </div>
       ) : null}

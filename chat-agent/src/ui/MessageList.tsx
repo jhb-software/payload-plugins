@@ -183,6 +183,7 @@ export function MessageList({
           overflowY: 'auto',
           paddingBottom: '8px',
           paddingRight: '4px',
+          paddingTop: '16px',
           visibility: isInitialPinned ? 'visible' : 'hidden',
         }}
       >

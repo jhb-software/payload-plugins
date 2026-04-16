@@ -89,7 +89,13 @@ export function useChat(options?: string | UseChatOptions) {
   const onSave = typeof options === 'object' ? options?.onSave : undefined
 
   const conversationsUrl = `${endpointUrl}/conversations`
+  // Tracks the persistence id across saves so subsequent saves PATCH instead
+  // of POSTing a duplicate. Re-synced to `chatId` on every render so a
+  // sidebar switch retargets saves to the new conversation, and overridden
+  // by `persistMessages` after a POST so the tool-approval auto-send (which
+  // can fire before React re-renders) also PATCHes the new id.
   const conversationIdRef = useRef<string | undefined>(chatId)
+  conversationIdRef.current = chatId
 
   // Keep a live view of messages so the error handler can read the latest
   // state without re-memoizing (AI SDK's `onError` signature only receives the
@@ -181,9 +187,9 @@ export function useChat(options?: string | UseChatOptions) {
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport,
   }
-  if (chatId) {
-    chatOptions.id = chatId
-  }
+  // Don't pass `chatId` as the AI SDK's `id`: the SDK recreates its Chat
+  // (and drops messages) whenever `id` changes. Our `chatId` is the
+  // persistence id only; the SDK's internal id can stay opaque.
   if (initialMessages) {
     chatOptions.messages = initialMessages
   }

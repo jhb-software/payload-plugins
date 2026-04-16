@@ -1,0 +1,68 @@
+.chat-agent-header {
+  align-items: center;
+  border-bottom: 1px solid var(--theme-elevation-150);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 0 12px;
+}
+
+.chat-agent-header__title-group {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chat-agent-header__title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-agent-header__rename-input {
+  background: var(--theme-input-bg, var(--theme-bg));
+  border: 1px solid var(--theme-elevation-300);
+  border-radius: 4px;
+  color: var(--theme-text);
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 0;
+  outline: none;
+  padding: 2px 6px;
+}
+
+.chat-agent-header__actions {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Slim variant used in the chat header. Payload's ReactSelect renders with
+ * `classNamePrefix="rs"` and `unstyled` so we override its layered defaults
+ * (padding + line-height) with a higher specificity rule. */
+.chat-agent-select--slim .rs__control {
+  min-height: 28px;
+  padding: 0 6px;
+}
+
+.chat-agent-select--slim .rs__value-container {
+  padding: 0;
+}
+
+.chat-agent-select--slim .rs__single-value,
+.chat-agent-select--slim .rs__input {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.chat-agent-select--slim .rs__indicator {
+  padding: 0 2px;
+}

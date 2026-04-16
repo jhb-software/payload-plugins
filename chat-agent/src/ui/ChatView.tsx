@@ -8,14 +8,12 @@ import { useCallback, useEffect, useState } from 'react'
 
 import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
 
+import { ChatHeader } from './ChatHeader.js'
 import { ChatInput } from './ChatInput.js'
 import './ChatView.css'
 import { MenuIcon } from './icons/MenuIcon.js'
 import { MessageList } from './MessageList.js'
-import { ModelSelector } from './ModelSelector.js'
-import { ModeSelector } from './ModeSelector.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
-import { TokenBadge } from './TokenBadge.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
 import { useConversations } from './useConversations.js'
 
@@ -237,6 +235,17 @@ export default function ChatView({
     [rename],
   )
 
+  const handleRenameCurrent = useCallback(
+    (title: string) => {
+      if (chatId) {
+        void rename(chatId, title)
+      }
+    },
+    [chatId, rename],
+  )
+
+  const currentTitle = conversations.find((c) => c.id === chatId)?.title ?? 'New conversation'
+
   // --- Ask mode: tool approval handlers ------------------------------------
 
   const handleToolApprove = useCallback(
@@ -298,22 +307,6 @@ export default function ChatView({
               </Button>
             </div>
           </div>
-          <div className="list-header__actions">
-            <ModeSelector
-              availableModes={availableModes}
-              disabled={isLoading}
-              mode={mode}
-              onModeChange={setMode}
-            />
-            {availableModels.length > 1 && (
-              <ModelSelector
-                available={availableModels}
-                onChange={setSelectedModel}
-                value={selectedModel ?? defaultModel ?? ''}
-              />
-            )}
-            <TokenBadge messages={messages as UIMessage<MessageMetadata>[]} />
-          </div>
         </div>
       </header>
       <div
@@ -333,6 +326,20 @@ export default function ChatView({
           <div aria-hidden="true" className="chat-agent-backdrop" onClick={closeSidebar} />
         ) : null}
         <div className="chat-agent-view__column">
+          <ChatHeader
+            availableModels={availableModels}
+            availableModes={availableModes}
+            canRename={Boolean(chatId)}
+            defaultModel={defaultModel}
+            disabled={isLoading}
+            messages={messages as UIMessage<MessageMetadata>[]}
+            mode={mode}
+            onModeChange={setMode}
+            onModelChange={setSelectedModel}
+            onRename={handleRenameCurrent}
+            selectedModel={selectedModel}
+            title={currentTitle}
+          />
           <MessageList
             isLoading={isLoading}
             // Keying by conversation id makes switching conversations a fresh
