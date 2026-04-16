@@ -74,11 +74,6 @@ export function ChatInput({
         e.preventDefault()
         handleSend()
       }}
-      style={{
-        borderTop: '1px solid var(--theme-elevation-150)',
-        marginTop: '16px',
-        paddingTop: '12px',
-      }}
     >
       <div
         style={{

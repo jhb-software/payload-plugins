@@ -70,6 +70,8 @@ export interface Config {
     users: User;
     posts: Post;
     categories: Category;
+    media: Media;
+    'chat-token-usage': ChatTokenUsage;
     'chat-conversations': ChatConversation;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -81,6 +83,8 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    media: MediaSelect<false> | MediaSelect<true>;
+    'chat-token-usage': ChatTokenUsageSelect<false> | ChatTokenUsageSelect<true>;
     'chat-conversations': ChatConversationsSelect<false> | ChatConversationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -176,8 +180,28 @@ export interface Post {
     [k: string]: unknown;
   } | null;
   author?: (string | null) | User;
+  featuredImage?: (string | null) | Media;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: string;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -187,6 +211,21 @@ export interface Category {
   id: string;
   name: string;
   description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-token-usage".
+ */
+export interface ChatTokenUsage {
+  id: string;
+  scope: string;
+  period: string;
+  model: string;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  totalTokens?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -208,6 +247,7 @@ export interface ChatConversation {
     | null;
   user: string | User;
   model?: string | null;
+  mode?: ('read' | 'ask' | 'read-write' | 'superuser') | null;
   totalTokens?: number | null;
   updatedAt: string;
   createdAt: string;
@@ -247,6 +287,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'categories';
         value: string | Category;
+      } | null)
+    | ({
+        relationTo: 'media';
+        value: string | Media;
+      } | null)
+    | ({
+        relationTo: 'chat-token-usage';
+        value: string | ChatTokenUsage;
       } | null)
     | ({
         relationTo: 'chat-conversations';
@@ -327,6 +375,7 @@ export interface PostsSelect<T extends boolean = true> {
   status?: T;
   content?: T;
   author?: T;
+  featuredImage?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -342,6 +391,38 @@ export interface CategoriesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-token-usage_select".
+ */
+export interface ChatTokenUsageSelect<T extends boolean = true> {
+  scope?: T;
+  period?: T;
+  model?: T;
+  inputTokens?: T;
+  outputTokens?: T;
+  totalTokens?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "chat-conversations_select".
  */
 export interface ChatConversationsSelect<T extends boolean = true> {
@@ -349,6 +430,7 @@ export interface ChatConversationsSelect<T extends boolean = true> {
   messages?: T;
   user?: T;
   model?: T;
+  mode?: T;
   totalTokens?: T;
   updatedAt?: T;
   createdAt?: T;
