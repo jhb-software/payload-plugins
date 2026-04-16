@@ -5,6 +5,7 @@ import { PathField as PathField_e6458422044c3374e7ca411c92428566 } from '@jhb.so
 import { BreadcrumbsField as BreadcrumbsField_e6458422044c3374e7ca411c92428566 } from '@jhb.software/payload-pages-plugin/client'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
+/** @type import('payload').ImportMap */
 export const importMap = {
   "@jhb.software/payload-pages-plugin/server#IsRootPageField": IsRootPageField_817212d6f65b4eb37176541413db3f8c,
   "@jhb.software/payload-pages-plugin/server#SlugField": SlugField_817212d6f65b4eb37176541413db3f8c,
