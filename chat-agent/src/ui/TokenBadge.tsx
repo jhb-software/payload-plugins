@@ -6,21 +6,15 @@ import { FieldLabel } from '@payloadcms/ui'
 
 import type { MessageMetadata } from '../types.js'
 
-import { formatTokens } from './format-tokens.js'
+import { formatTokens, sumTokens } from './format-tokens.js'
 
 export function TokenBadge({ messages }: { messages: UIMessage<MessageMetadata>[] }) {
-  let total = 0
-  for (const msg of messages) {
-    const meta = msg.metadata
-    if (meta?.totalTokens) {
-      total += meta.totalTokens
-    }
-  }
+  const total = sumTokens(messages)
   if (total === 0) {
     return null
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className="chat-agent-token-badge">
       <FieldLabel label="Tokens spent" />
       <span style={{ color: 'var(--theme-text)', fontSize: '13px', lineHeight: '28px' }}>
         {formatTokens(total)}

@@ -10,6 +10,8 @@ import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
 
 import { ChatHeader } from './ChatHeader.js'
 import { ChatInput } from './ChatInput.js'
+import './ChatView.css'
+import { SidebarIcon } from './icons/SidebarIcon.js'
 import { MessageList } from './MessageList.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
@@ -82,6 +84,11 @@ export default function ChatView({
   const [selectedModel, setSelectedModel] = useState<string | undefined>(
     initialModel ?? defaultModel,
   )
+  // `sidebarOpen` only drives the mobile drawer. On desktop the sidebar is
+  // always visible via CSS (see `Sidebar.css`), so we start closed and let
+  // CSS take over above the breakpoint. Keeping the default stable avoids a
+  // hydration mismatch (we can't know the viewport server-side).
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const setActiveChatId = useCallback((id: string | undefined) => {
     setChatId(id)
@@ -150,6 +157,23 @@ export default function ChatView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Close the mobile drawer on Escape.
+  useEffect(() => {
+    if (!sidebarOpen) {
+      return
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSidebarOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sidebarOpen])
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
+  const toggleSidebar = useCallback(() => setSidebarOpen((open) => !open), [])
 
   const newConversation = useCallback(() => {
     setActiveChatId(undefined)
@@ -245,20 +269,23 @@ export default function ChatView({
   )
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-        height: 'calc(100vh - var(--app-header-height))',
-        padding: '0 var(--gutter-h) 24px',
-      }}
-    >
+    <div className="chat-agent-view">
       <SetStepNav nav={[{ label: 'Chat' }]} />
       <header className="list-header">
         <div className="list-header__content">
           <div className="list-header__title-and-actions">
-            <h1 className="list-header__title">Content Assistant</h1>
+            <div className="chat-agent-view__title-group">
+              <button
+                aria-expanded={sidebarOpen}
+                aria-label={sidebarOpen ? 'Hide conversations' : 'Show conversations'}
+                className="chat-agent-view__sidebar-toggle"
+                onClick={toggleSidebar}
+                type="button"
+              >
+                <SidebarIcon height={16} width={16} />
+              </button>
+              <h1 className="list-header__title">Content Assistant</h1>
+            </div>
             <div className="list-header__title-actions">
               <Button
                 buttonStyle="pill"
@@ -274,23 +301,23 @@ export default function ChatView({
           </div>
         </div>
       </header>
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div
+        className="chat-agent-view__body"
+        style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}
+      >
         <Sidebar
           chatId={chatId}
+          className={sidebarOpen ? 'chat-agent-sidebar--open' : undefined}
           conversations={conversations}
+          onClose={closeSidebar}
           onDelete={handleDelete}
           onLoad={handleLoad}
           onRename={handleRename}
         />
-        <div
-          style={{
-            display: 'flex',
-            flex: 1,
-            flexDirection: 'column',
-            minWidth: 0,
-            paddingLeft: 'var(--gutter-h)',
-          }}
-        >
+        {sidebarOpen ? (
+          <div aria-hidden="true" className="chat-agent-backdrop" onClick={closeSidebar} />
+        ) : null}
+        <div className="chat-agent-view__column">
           <ChatHeader
             availableModels={availableModels}
             availableModes={availableModes}

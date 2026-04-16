@@ -114,4 +114,49 @@ describe('Sidebar', () => {
     fireEvent.change(searchInput, { target: { value: 'zzzzzzz' } })
     expect(screen.getByText(/no conversations found/i)).toBeDefined()
   })
+
+  it('calls onClose when a conversation is loaded (so the mobile drawer can close)', () => {
+    const onClose = vi.fn()
+    const onLoad = vi.fn()
+    render(
+      <Sidebar
+        chatId={undefined}
+        conversations={conversations}
+        onClose={onClose}
+        onDelete={vi.fn()}
+        onLoad={onLoad}
+      />,
+    )
+    fireEvent.click(screen.getByText('First chat'))
+    expect(onLoad).toHaveBeenCalledWith('c1')
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not throw when a conversation is loaded without an onClose handler', () => {
+    const onLoad = vi.fn()
+    render(
+      <Sidebar
+        chatId={undefined}
+        conversations={conversations}
+        onDelete={vi.fn()}
+        onLoad={onLoad}
+      />,
+    )
+    expect(() => fireEvent.click(screen.getByText('First chat'))).not.toThrow()
+    expect(onLoad).toHaveBeenCalledWith('c1')
+  })
+
+  it('applies the className prop on the root element (so ChatView can toggle the drawer open state)', () => {
+    const { container } = render(
+      <Sidebar
+        chatId={undefined}
+        className="chat-agent-sidebar--open"
+        conversations={conversations}
+        onDelete={vi.fn()}
+        onLoad={vi.fn()}
+      />,
+    )
+    const root = container.querySelector('.chat-agent-sidebar')!
+    expect(root.className).toContain('chat-agent-sidebar--open')
+  })
 })
