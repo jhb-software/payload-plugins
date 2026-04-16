@@ -15,6 +15,14 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    dashboard: {
+      // Show the Vercel deployments widget by default on the dashboard so it is
+      // visible without requiring users to add it manually via the admin UI.
+      defaultLayout: [
+        { widgetSlug: 'collections', width: 'full' },
+        { widgetSlug: 'vercel-deployments', width: 'full' },
+      ],
+    },
     meta: { titleSuffix: '- Vercel Deployments Dev' },
     user: 'users',
   },
