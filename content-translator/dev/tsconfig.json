@@ -8,15 +8,15 @@
     "skipLibCheck": true,
     "outDir": "./dist",
     "rootDir": ".",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "paths": {
       "@payload-config": ["./src/payload.config.ts"],
       "payload/generated-types": ["./src/payload-types.ts"]
     },
     "noEmit": true,
     "incremental": true,
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "plugins": [
@@ -25,6 +25,12 @@
       }
     ]
   },
-  "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "vite.config.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "vite.config.ts",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist", "build"]
 }
