@@ -24,7 +24,7 @@
     "@payloadcms/richtext-lexical": "^3.83.0",
     "@payloadcms/ui": "^3.83.0",
     "ai": "^6.0.164",
-    "next": "15.4.11",
+    "next": "16.2.4",
     "payload": "^3.83.0",
     "react": "19.2.5",
     "react-dom": "19.2.5"

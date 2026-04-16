@@ -37,13 +37,14 @@ update_dependencies() {
 
     log_info "Updating dependencies in $dir"
 
-    # Update all dependencies to latest, excluding next, eslint-config-next, typescript, eslint, and @eslint/js
-    # Next.js 16 has breaking changes with @payloadcms/next peer dependency
+    # Update all dependencies to latest, excluding typescript, eslint, and @eslint/js
     # TypeScript 6 and ESLint 10 upgrades are handled separately
-    pnpm up --latest '!next' '!eslint-config-next' '!typescript' '!eslint' '!@eslint/js' || return 1
+    pnpm up --latest '!typescript' '!eslint' '!@eslint/js' || return 1
 
     # Update peerDependencies (pnpm up doesn't handle these)
-    npx npm-check-updates -u --target latest --dep peer --reject next,eslint-config-next,typescript,eslint,@eslint/js || return 1
+    # next, react, react-dom are kept as broad ranges (e.g. "^15.0.0 || ^16.0.0") so plugins
+    # support multiple majors; ncu would otherwise rewrite them to a single pinned version.
+    npx npm-check-updates -u --target latest --dep peer --reject typescript,eslint,@eslint/js,next,react,react-dom || return 1
 
     # Reinstall to update lockfile after peerDependencies change
     pnpm install || return 1
