@@ -11,6 +11,7 @@ on:
           - admin-search
           - alt-text
           - astro-payload-richtext-lexical
+          - chat-agent
           - cloudinary
           - content-translator
           - geocoding
@@ -24,6 +25,7 @@ on:
           - patch
           - minor
           - major
+          - beta
           - none
 
 # Prevent concurrent releases to avoid race conditions when pushing to main
@@ -59,7 +61,9 @@ jobs:
         id: version
         run: |
           cd ${{ inputs.plugin }}
-          if [ "${{ inputs.bump }}" != "none" ]; then
+          if [ "${{ inputs.bump }}" = "beta" ]; then
+            npm version prerelease --preid=beta --no-git-tag-version
+          elif [ "${{ inputs.bump }}" != "none" ]; then
             npm version ${{ inputs.bump }} --no-git-tag-version
           fi
           NEW_VERSION=$(node -p "require('./package.json').version")
@@ -118,3 +122,7 @@ jobs:
           tag_name: ${{ inputs.plugin }}@${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.package_name }}@${{ steps.version.outputs.version }}
           body: ${{ steps.changelog.outputs.body }}
+          # Mark prerelease versions (0.1.0-beta.0, 1.2.3-rc.1, etc.) as such
+          # on GitHub. Detected via the `-` separator in SemVer prerelease
+          # tags; stable versions never contain `-`.
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
