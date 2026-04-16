@@ -41,7 +41,7 @@
     "ts:check": "tsc"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.18.0",
     "astro": "^6.1.7",
     "eslint": "^9.18.0",
     "eslint-plugin-astro": "^1.7.0",
@@ -53,7 +53,7 @@
     "vite-plugin-dts": "^4.5.4"
   },
   "peerDependencies": {
-    "astro": ">=6.x"
+    "astro": ">=5.x"
   },
   "publishConfig": {},
   "engines": {
