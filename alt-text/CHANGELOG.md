@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+
+Alt text is now scoped to image MIME types by default. Documents whose MIME type is not tracked no longer render the alt text field, are not validated for a required alt text, and are excluded from the alt text health widget.
+
+This aligns the plugin with how other CMSs (WordPress, Drupal) handle alt text — as an image-only concept — and fixes mixed-media collections (e.g. videos alongside images) being counted as broken in the health widget. Projects whose configured upload collections only accept images see no behavior change.
+
+The `collections` option now also accepts per-collection entries with a `mimeTypes` override. Bare slug strings continue to work as a shorthand for `['image/*']`:
+
+**Before (v0.4.x):**
+
+```typescript
+payloadAltTextPlugin({
+  collections: ['media'],
+})
+```
+
+**After (v0.5.0):**
+
+```typescript
+payloadAltTextPlugin({
+  // Bare slug — defaults to ['image/*']
+  collections: ['media'],
+
+  // Or restrict / extend MIME types per collection
+  collections: [
+    { slug: 'media', mimeTypes: ['image/*'] },
+    { slug: 'documents', mimeTypes: ['application/pdf'] },
+  ],
+})
+```
+
+- feat: scope alt text tracking, validation, and health to configurable per-collection MIME types (default `['image/*']`)
+
 ## 0.4.4
 
 - style: standardize icons to use Geist icon set (16x16 filled)

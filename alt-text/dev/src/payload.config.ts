@@ -46,7 +46,12 @@ export default buildConfig({
   },
   plugins: [
     payloadAltTextPlugin({
-      collections: ['media', 'images'], // Specify which upload collections should have alt text fields
+      collections: [
+        // `media` accepts both images and videos — restrict alt text tracking to images only.
+        { slug: 'media', mimeTypes: ['image/*'] },
+        // Bare slug defaults to `['image/*']`.
+        'images',
+      ],
       resolver: openAIResolver({
         apiKey: process.env.OPENAI_API_KEY!,
         model: 'gpt-4.1-mini',

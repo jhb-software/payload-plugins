@@ -6,6 +6,7 @@ import { z, ZodError } from 'zod'
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { localesFromConfig } from '../utilities/localesFromConfig.js'
+import { matchesMimeType } from '../utilities/mimeTypes.js'
 
 /**
  * Generates and updates alt text for multiple images in all locales.
@@ -141,6 +142,14 @@ async function generateAndUpdateAltText({
 
   const mimeType =
     'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string' ? imageDoc.mimeType : undefined
+
+  const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
+
+  if (mimeType && collectionConfig && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
+    throw new Error(
+      `Alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection. Tracked types: ${collectionConfig.mimeTypes.join(', ')}.`,
+    )
+  }
 
   if (
     mimeType &&
