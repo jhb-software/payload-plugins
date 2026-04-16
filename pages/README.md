@@ -6,7 +6,7 @@ The Payload Pages plugin simplifies website building by adding essential fields 
 
 ## Setup
 
-First, add the plugin to your payload config. The `generatePageURL` function is required and must provide a function that returns the full URL to the frontend page. 
+First, add the plugin to your payload config. The `generatePageURL` function is required and must provide a function that returns the full URL to the frontend page.
 
 ```ts
 import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
@@ -14,12 +14,12 @@ import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 // Add to plugins array
 plugins: [
   payloadPagesPlugin({
-      // Example generatePageURL function:
-      generatePageURL: ({ path, preview }) =>
-        path && process.env.NEXT_PUBLIC_FRONTEND_URL
-          ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
-          : null,
-    }),
+    // Example generatePageURL function:
+    generatePageURL: ({ path, preview }) =>
+      path && process.env.NEXT_PUBLIC_FRONTEND_URL
+        ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
+        : null,
+  }),
 ]
 ```
 
@@ -100,7 +100,7 @@ const Redirects: RedirectsCollectionConfig = {
 
 ### SEO Plugin Integration
 
-To integrate with the official Payload SEO plugin, store the `generatePageURL` function you defined for the pages plugin in a variable outside of the Payload config and pass it to the `generateURL` option of the SEO plugin. 
+To integrate with the official Payload SEO plugin, store the `generatePageURL` function you defined for the pages plugin in a variable outside of the Payload config and pass it to the `generateURL` option of the SEO plugin.
 If your collections are localized, also add the `alternatePathsField` which is exported by the plugin to the fields option of the SEO plugin.
 
 ```ts
@@ -108,7 +108,10 @@ import { alternatePathsField, payloadPagesPlugin } from '@jhb.software/payload-p
 import { seoPlugin } from '@payloadcms/plugin-seo'
 
 // Example generatePageURL function:
-const generatePageURL = ({ path, preview }: {
+const generatePageURL = ({
+  path,
+  preview,
+}: {
   path: string | null
   preview: boolean
 }): string | null => {
@@ -140,7 +143,7 @@ The plugin supports multi-tenant setups via the official [Multi-tenant plugin](h
 
 By default the plugin adds a unique constraint to the slug field of all page collections. In a multi-tenant setup you can disable this constraint by setting the `unique` field to `false` in the page collection config. To ensure uniqueness for a tenant to now have pages with multiple slugs, you can create a compound unique index.
 
-Example:    
+Example:
 
 ```ts
 export const Pages: PageCollectionConfig = {
@@ -157,8 +160,10 @@ export const Pages: PageCollectionConfig = {
       unique: true,
     },
   ],
-  fields: [ /* your fields */],
-} 
+  fields: [
+    /* your fields */
+  ],
+}
 ```
 
 Some features (e.g. the parent and isRootPage fields) internally fetch documents from the database. To ensure only documents from the current tenant are fetched, you need to pass the `baseFilter` function to the plugin config. It receives the current request object and should return a `Where` object which will be added to the query.
@@ -171,7 +176,6 @@ Example:
 ```ts
 import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
-
 
 export default buildConfig({
   // ...
@@ -219,10 +223,9 @@ To delete a parent document that has child references, you have two options:
 1. **Reassign child documents**: Update the child documents to reference a different parent
 2. **Remove child documents**: Delete the child documents first, then delete the parent
 
-
 ### Payload Select API
 
-When using the [Payload Select API](https://payloadcms.com/docs/queries/select), the plugin automatically extends the selection to include all virtual fields if any of them are selected. This ensures that virtual fields can be generated correctly. 
+When using the [Payload Select API](https://payloadcms.com/docs/queries/select), the plugin automatically extends the selection to include all virtual fields if any of them are selected. This ensures that virtual fields can be generated correctly.
 For example, when querying for a page and selecting only the `path` field, the plugin will also select the `slug`, `parent` and `title` fields as theses fields are required to generate the virtual `path` field.
 
 Therefore it is highly recommended to specify the [defaultPopulate](https://payloadcms.com/docs/queries/select#defaultpopulate-collection-config-property) property on all of your page collections.

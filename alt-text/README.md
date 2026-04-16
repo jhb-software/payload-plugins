@@ -12,18 +12,17 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 - Full localization support
 - Dashboard health widget with cached coverage insights across all configured upload collections
 
-
 When the plugin is enabled for an upload collection, it will:
 
 1. Add an alt text field to the collection
    - A button to AI-generate the alt text
    - This field will include a description of what the alt text should be
 2. Add a keywords fields to the collection
-   - This field will be automatically filled when generating the alt text 
+   - This field will be automatically filled when generating the alt text
    - It will be used for improving the search of images in the admin panel
-2. Add a bulk generate button to the collection list view
+3. Add a bulk generate button to the collection list view
    - This button will allow you to generate alt text for multiple images at once
-3. Register an `Alt text health` dashboard widget
+4. Register an `Alt text health` dashboard widget
    - The widget is available in Payload's dashboard editor
    - It is added to the default dashboard layout for first-time and reset layouts
    - Results are cached and revalidated when documents in the configured upload collections change
@@ -39,10 +38,7 @@ pnpm add @jhb.software/payload-alt-text-plugin
 Install the plugin and add it to your Payload config:
 
 ```ts
-import {
-  payloadAltTextPlugin,
-  openAIResolver,
-} from '@jhb.software/payload-alt-text-plugin'
+import { payloadAltTextPlugin, openAIResolver } from '@jhb.software/payload-alt-text-plugin'
 
 export default buildConfig({
   plugins: [
@@ -60,19 +56,36 @@ export default buildConfig({
 
 Note: When localization is disabled in your Payload config (default), you need to specify the locale to generate the alt texts in via the `locale` plugin option.
 
+### Admin list search
+
+By default, the plugin sets `admin.listSearchableFields` on the configured upload collections to `['filename', 'keywords', 'alt']` so the admin list-view search matches against these fields. To opt out, set `admin.listSearchableFields` on the collection yourself — any explicit value is preserved as-is:
+
+```ts
+{
+  slug: 'media',
+  upload: true,
+  admin: {
+    listSearchableFields: ['filename', 'alt'],
+  },
+  // ...
+}
+```
+
+This is also the recommended escape hatch if you hit Payload's Postgres SQL-builder bug for `hasMany` localized text fields in `listSearchableFields` (see [#92](https://github.com/jhb-software/payload-plugins/issues/92)).
+
 ## Configuration
 
 ### Plugin Options
 
-| Option                       | Type               | Required | Description                                                              |
-| ---------------------------- | ------------------ | -------- | ------------------------------------------------------------------------ |
-| `collections`                | `CollectionSlug[]` | Yes      | Collections to enable alt text generation for                            |
-| `resolver`                   | `AltTextResolver`  | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                        |
-| `getImageThumbnail`          | `Function`         | Yes      | Function to get the thumbnail URL from an image document                 |
-| `enabled`                    | `boolean`          | No       | Whether to enable the plugin                                             |
-| `locale`                     | `string`           | No       | Locale for alt text generation (required when localization is disabled)  |
-| `maxBulkGenerateConcurrency` | `number`           | No       | Maximum concurrent API requests for bulk operations (default: 16)        |
-| `fieldsOverride`             | `Function`         | No       | Override the default fields inserted by the plugin                       |
+| Option                       | Type               | Required | Description                                                                                                      |
+| ---------------------------- | ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `collections`                | `CollectionSlug[]` | Yes      | Collections to enable alt text generation for                                                                    |
+| `resolver`                   | `AltTextResolver`  | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                |
+| `getImageThumbnail`          | `Function`         | Yes      | Function to get the thumbnail URL from an image document                                                         |
+| `enabled`                    | `boolean`          | No       | Whether to enable the plugin                                                                                     |
+| `locale`                     | `string`           | No       | Locale for alt text generation (required when localization is disabled)                                          |
+| `maxBulkGenerateConcurrency` | `number`           | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                |
+| `fieldsOverride`             | `Function`         | No       | Override the default fields inserted by the plugin                                                               |
 | `healthCheck`                | `boolean`          | No       | Enable alt text health tracking: REST endpoint, cache revalidation hooks, and dashboard widget (default: `true`) |
 
 ## Dashboard Widget
@@ -80,7 +93,6 @@ Note: When localization is disabled in your Payload config (default), you need t
 The plugin registers an `Alt text health` dashboard widget that shows alt text coverage across all configured upload collections, with cached queries that revalidate on document changes. Collections with missing alt text show a clickable badge linking to the affected images.
 
 <img width="696" height="246" alt="image" src="https://github.com/user-attachments/assets/75df7349-0307-4047-b1ac-6b2ee0814464" />
-
 
 Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 
@@ -120,12 +132,12 @@ export const customResolver = (): AltTextResolver => ({
     }
   },
   resolveBulk: async ({ imageThumbnailUrl, filename, locales, req }) => {
-     // Your custom alt text generation logic here
+    // Your custom alt text generation logic here
     const altTexts = await generateAltTextBulk(imageThumbnailUrl, filename, locales, req)
 
-    return { 
-      success: true, 
-      results: altTexts 
+    return {
+      success: true,
+      results: altTexts,
     }
   },
 })
@@ -141,12 +153,12 @@ Generates alt text for a single image. By default, returns the result without sa
 
 **Request body:**
 
-| Field        | Type               | Required | Description                                                              |
-| ------------ | ------------------ | -------- | ------------------------------------------------------------------------ |
-| `id`         | `string \| number` | Yes      | The document ID                                                          |
-| `collection` | `string`           | Yes      | The collection slug                                                      |
-| `locale`     | `string \| null`   | Yes      | Target locale (use `null` for non-localized setups)                      |
-| `update`     | `boolean`          | No       | When `true`, persists the result to the document (default: `false`)      |
+| Field        | Type               | Required | Description                                                         |
+| ------------ | ------------------ | -------- | ------------------------------------------------------------------- |
+| `id`         | `string \| number` | Yes      | The document ID                                                     |
+| `collection` | `string`           | Yes      | The collection slug                                                 |
+| `locale`     | `string \| null`   | Yes      | Target locale (use `null` for non-localized setups)                 |
+| `update`     | `boolean`          | No       | When `true`, persists the result to the document (default: `false`) |
 
 **Response:**
 
@@ -165,10 +177,10 @@ Generates and persists alt text for multiple images across all configured locale
 
 **Request body:**
 
-| Field        | Type                 | Required | Description                                                         |
-| ------------ | -------------------- | -------- | ------------------------------------------------------------------- |
-| `collection` | `string`             | Yes      | The collection slug                                                 |
-| `ids`        | `(string \| number)[]` | Yes    | Array of document IDs to process                                    |
+| Field        | Type                   | Required | Description                      |
+| ------------ | ---------------------- | -------- | -------------------------------- |
+| `collection` | `string`               | Yes      | The collection slug              |
+| `ids`        | `(string \| number)[]` | Yes      | Array of document IDs to process |
 
 **Response:**
 

@@ -3,3 +3,11 @@ payload-types.ts
 .vscode
 .d.ts
 .spec.ts
+
+# Build output
+dist/
+.next/
+.astro/
+coverage/
+
+pnpm-lock.yaml

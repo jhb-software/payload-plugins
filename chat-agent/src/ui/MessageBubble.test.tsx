@@ -221,4 +221,71 @@ describe('MessageBubble', () => {
     // No expandable button (only the hover copy action may exist)
     expect(screen.queryByRole('button', { expanded: false })).toBeNull()
   })
+
+  it('labels an in-progress tool call as running', () => {
+    const message = {
+      id: '1',
+      parts: [
+        {
+          type: 'dynamic-tool',
+          input: { collection: 'posts' },
+          state: 'input-available',
+          toolCallId: 'tc1',
+          toolName: 'find',
+        },
+      ],
+      role: 'assistant',
+    } as unknown as UIMessage<MessageMetadata>
+
+    render(<MessageBubble message={message} />)
+    expect(screen.getByText(/running/i)).toBeDefined()
+  })
+
+  it('labels a failed tool call and hides the error text until expanded', () => {
+    const message = {
+      id: '1',
+      parts: [
+        {
+          type: 'dynamic-tool',
+          errorText: 'TypeError: cannot read property id of undefined',
+          input: { collection: 'posts' },
+          state: 'output-error',
+          toolCallId: 'tc1',
+          toolName: 'find',
+        },
+      ],
+      role: 'assistant',
+    } as unknown as UIMessage<MessageMetadata>
+
+    render(<MessageBubble message={message} />)
+
+    // Status label is visible
+    expect(screen.getByText(/failed/i)).toBeDefined()
+
+    // Error text hidden by default
+    expect(screen.queryByText(/cannot read property id/)).toBeNull()
+
+    // Expand and the error text appears
+    fireEvent.click(screen.getByRole('button', { expanded: false }))
+    expect(screen.getByText(/cannot read property id/)).toBeDefined()
+  })
+
+  it('labels a denied tool call', () => {
+    const message = {
+      id: '1',
+      parts: [
+        {
+          type: 'dynamic-tool',
+          input: { collection: 'posts' },
+          state: 'output-denied',
+          toolCallId: 'tc1',
+          toolName: 'update',
+        },
+      ],
+      role: 'assistant',
+    } as unknown as UIMessage<MessageMetadata>
+
+    render(<MessageBubble message={message} />)
+    expect(screen.getByText(/denied/i)).toBeDefined()
+  })
 })

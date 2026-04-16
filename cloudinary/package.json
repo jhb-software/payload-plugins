@@ -23,7 +23,7 @@
     "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
     "clean": "rimraf --glob {dist,*.tsbuildinfo}",
     "dev": "tsc -w",
-    "format": "prettier --write src",
+    "format": "prettier --write src \"*.{json,md,js,mjs,cjs}\"",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "prepublishOnly": "pnpm clean && pnpm build"

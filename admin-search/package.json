@@ -2,7 +2,12 @@
   "name": "@jhb.software/payload-admin-search",
   "version": "0.2.1",
   "description": "A global search plugin for the Payload CMS admin panel.",
-  "keywords": ["payload", "plugin", "search", "admin"],
+  "keywords": [
+    "payload",
+    "plugin",
+    "search",
+    "admin"
+  ],
   "author": "JHB Software",
   "license": "MIT",
   "type": "module",
@@ -15,7 +20,7 @@
     "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
     "clean": "rimraf --glob {dist,*.tsbuildinfo}",
     "dev": "tsc -w",
-    "format": "prettier --write src",
+    "format": "prettier --write src \"*.{json,md,js,mjs,cjs}\"",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "prepublishOnly": "pnpm clean && pnpm build",
@@ -43,7 +48,9 @@
     "rimraf": "^6.1.3",
     "typescript": "^5.9.3"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",

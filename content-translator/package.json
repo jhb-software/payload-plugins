@@ -2,7 +2,14 @@
   "name": "@jhb.software/payload-content-translator-plugin",
   "version": "0.1.2",
   "description": "A Payload CMS plugin that adds a content translation feature to the admin UI.",
-  "keywords": ["payload", "plugin", "translator", "i18n", "localization", "openai"],
+  "keywords": [
+    "payload",
+    "plugin",
+    "translator",
+    "i18n",
+    "localization",
+    "openai"
+  ],
   "author": "JHB Software",
   "license": "MIT",
   "type": "module",
@@ -15,7 +22,7 @@
     "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
     "clean": "rimraf --glob {dist,*.tsbuildinfo}",
     "dev": "tsc -w",
-    "format": "prettier --write src",
+    "format": "prettier --write src \"*.{json,md,js,mjs,cjs}\"",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "prepublishOnly": "pnpm clean && pnpm build",
@@ -46,7 +53,9 @@
     "rimraf": "^6.1.3",
     "typescript": "^5.9.3"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
