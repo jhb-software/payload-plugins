@@ -11,7 +11,7 @@ import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
 import { ChatHeader } from './ChatHeader.js'
 import { ChatInput } from './ChatInput.js'
 import './ChatView.css'
-import { MenuIcon } from './icons/MenuIcon.js'
+import { SidebarIcon } from './icons/SidebarIcon.js'
 import { MessageList } from './MessageList.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
@@ -269,15 +269,7 @@ export default function ChatView({
   )
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-        height: 'calc(100vh - var(--app-header-height))',
-        padding: '0 var(--gutter-h) 24px',
-      }}
-    >
+    <div className="chat-agent-view">
       <SetStepNav nav={[{ label: 'Chat' }]} />
       <header className="list-header">
         <div className="list-header__content">
@@ -290,7 +282,7 @@ export default function ChatView({
                 onClick={toggleSidebar}
                 type="button"
               >
-                <MenuIcon height={16} width={16} />
+                <SidebarIcon height={16} width={16} />
               </button>
               <h1 className="list-header__title">Content Assistant</h1>
             </div>

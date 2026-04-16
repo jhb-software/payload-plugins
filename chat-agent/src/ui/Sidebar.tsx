@@ -93,6 +93,7 @@ export function Sidebar({
 
   return (
     <div className={rootClassName}>
+      <div className="chat-agent-sidebar__heading">Conversations</div>
       <div className="chat-agent-sidebar__search">
         <SearchIcon className="chat-agent-sidebar__search-icon" height={14} width={14} />
         <input

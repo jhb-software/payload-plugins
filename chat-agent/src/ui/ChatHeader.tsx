@@ -3,14 +3,16 @@
 import type { UIMessage } from 'ai'
 
 import { Button } from '@payloadcms/ui'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 
 import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
 
 import './ChatHeader.css'
+import { formatTokens, sumTokens } from './format-tokens.js'
+import { ChevronDownIcon } from './icons/ChevronDownIcon.js'
 import { PencilIcon } from './icons/PencilIcon.js'
 import { ModelSelector } from './ModelSelector.js'
-import { ModeSelector } from './ModeSelector.js'
+import { MODE_LABELS, ModeSelector } from './ModeSelector.js'
 import { TokenBadge } from './TokenBadge.js'
 
 const FALLBACK_TITLE = 'New conversation'
@@ -45,8 +47,24 @@ export function ChatHeader({
   title,
 }: ChatHeaderProps) {
   const [isEditing, setIsEditing] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const settingsPanelId = useId()
+
+  // Compact summary values: shown as label/value text on mobile so users can
+  // see the current mode/model/tokens without the selectors taking 3 rows of
+  // vertical space. Tapping the summary expands the same panel that always
+  // renders on desktop.
+  const modeLabel = MODE_LABELS[mode]
+  const modelLabel =
+    availableModels.find((m) => m.id === (selectedModel ?? defaultModel))?.label ??
+    selectedModel ??
+    defaultModel ??
+    null
+  const tokenTotal = sumTokens(messages)
+  const showModeInSummary = availableModes.length > 1
+  const showModelInSummary = availableModels.length > 1
 
   useEffect(() => {
     if (isEditing) {
@@ -112,22 +130,50 @@ export function ChatHeader({
           </>
         )}
       </div>
-      <div className="chat-agent-header__actions">
-        <ModeSelector
-          availableModes={availableModes}
-          disabled={disabled}
-          mode={mode}
-          onModeChange={onModeChange}
-        />
-        {availableModels.length > 1 && (
-          <ModelSelector
-            available={availableModels}
+      <div className="chat-agent-header__settings">
+        <button
+          aria-controls={settingsPanelId}
+          aria-expanded={settingsOpen}
+          aria-label={settingsOpen ? 'Hide settings' : 'Show settings'}
+          className="chat-agent-header__summary"
+          onClick={() => setSettingsOpen((v) => !v)}
+          type="button"
+        >
+          {showModeInSummary && (
+            <span className="chat-agent-header__summary-item">
+              <span className="chat-agent-header__summary-label">Mode:</span> {modeLabel}
+            </span>
+          )}
+          {showModelInSummary && modelLabel && (
+            <span className="chat-agent-header__summary-item">
+              <span className="chat-agent-header__summary-label">Model:</span> {modelLabel}
+            </span>
+          )}
+          {tokenTotal > 0 && (
+            <span className="chat-agent-header__summary-item">
+              <span className="chat-agent-header__summary-label">Tokens:</span>{' '}
+              {formatTokens(tokenTotal)}
+            </span>
+          )}
+          <ChevronDownIcon className="chat-agent-header__summary-chevron" height={14} width={14} />
+        </button>
+        <div className="chat-agent-header__actions" id={settingsPanelId}>
+          <ModeSelector
+            availableModes={availableModes}
             disabled={disabled}
-            onChange={onModelChange}
-            value={selectedModel ?? defaultModel ?? ''}
+            mode={mode}
+            onModeChange={onModeChange}
           />
-        )}
-        <TokenBadge messages={messages} />
+          {availableModels.length > 1 && (
+            <ModelSelector
+              available={availableModels}
+              disabled={disabled}
+              onChange={onModelChange}
+              value={selectedModel ?? defaultModel ?? ''}
+            />
+          )}
+          <TokenBadge messages={messages} />
+        </div>
       </div>
     </div>
   )

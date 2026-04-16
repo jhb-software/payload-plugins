@@ -5,7 +5,7 @@ import { useId } from 'react'
 
 import type { AgentMode } from '../types.js'
 
-const MODE_LABELS: Record<AgentMode, string> = {
+export const MODE_LABELS: Record<AgentMode, string> = {
   ask: 'Confirm writes',
   read: 'Read only',
   'read-write': 'Read & write',

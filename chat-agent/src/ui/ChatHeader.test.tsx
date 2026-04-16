@@ -103,4 +103,46 @@ describe('ChatHeader', () => {
     fireEvent.click(renameButton)
     expect(screen.queryByRole('textbox', { name: /rename/i })).toBeNull()
   })
+
+  it('renders a compact summary listing mode, model, and tokens — collapsed by default', () => {
+    render(
+      <ChatHeader
+        {...baseProps}
+        availableModels={[
+          { id: 'gpt-4', label: 'GPT-4' },
+          { id: 'gpt-5', label: 'GPT-5' },
+        ]}
+        availableModes={['ask', 'read']}
+        messages={
+          [{ id: 'm1', metadata: { totalTokens: 1500 }, parts: [], role: 'assistant' }] as never
+        }
+        mode="ask"
+        selectedModel="gpt-4"
+      />,
+    )
+    const summary = screen.getByRole('button', { name: /settings/i })
+    expect(summary.getAttribute('aria-expanded')).toBe('false')
+    expect(summary.textContent).toMatch(/confirm writes/i)
+    expect(summary.textContent).toMatch(/gpt-4/i)
+    expect(summary.textContent).toMatch(/1\.5k/)
+  })
+
+  it('toggles aria-expanded on the settings summary when clicked', () => {
+    render(
+      <ChatHeader
+        {...baseProps}
+        availableModels={[
+          { id: 'gpt-4', label: 'GPT-4' },
+          { id: 'gpt-5', label: 'GPT-5' },
+        ]}
+        availableModes={['ask', 'read']}
+      />,
+    )
+    const summary = screen.getByRole('button', { name: /settings/i })
+    expect(summary.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(summary)
+    expect(summary.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(summary)
+    expect(summary.getAttribute('aria-expanded')).toBe('false')
+  })
 })
