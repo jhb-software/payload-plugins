@@ -25,6 +25,7 @@ import { ChatNavLinkServer as ChatNavLinkServer_48b989653b39a67494f0d80b0f9fbeb0
 import { ChatViewServer as ChatViewServer_48b989653b39a67494f0d80b0f9fbeb0 } from '@jhb.software/payload-chat-agent/server'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
+/** @type import('payload').ImportMap */
 export const importMap = {
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
