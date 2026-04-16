@@ -12,7 +12,7 @@ importers:
         specifier: ^3.83.0
         version: 3.83.0(@types/react@19.2.14)(monaco-editor@0.52.0)(next@16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4))(payload@3.83.0(graphql@16.9.0)(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
       next:
-        specifier: 16.2.4
+        specifier: ^15.0.0 || ^16.0.0
         version: 16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4)
       payload:
         specifier: ^3.83.0
