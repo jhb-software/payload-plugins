@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.3
 
 - feat: surface tool-call status in the chat UI (running / failed / denied) and show failed tool error text in a collapsible panel instead of only a colored dot.
 - feat: add an in-chat header showing the conversation title with inline rename, and move the mode / model selectors and token counter into it
