@@ -5,8 +5,8 @@ import { en } from '@payloadcms/translations/languages/en'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
-import { Media } from './collections/Media'
-import { Images } from './collections/Images'
+import { Media } from './collections/Media.js'
+import { Images } from './collections/Images.js'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)

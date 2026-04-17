@@ -1,6 +1,6 @@
 import payload, { CollectionSlug } from 'payload'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import config from './src/payload.config'
+import config from './src/payload.config.js'
 import type { Page, Tenant, Config } from 'payload/generated-types'
 
 // NOTE: this file only contains test that are specific to the multi-tenant setup. The main plugin tests are located in the /dev project.

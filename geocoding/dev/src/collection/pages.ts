@@ -1,4 +1,4 @@
-import { geocodingField } from '../../../src/fields/geocodingField'
+import { geocodingField } from '../../../src/fields/geocodingField.js'
 
 import { CollectionConfig } from 'payload'
 

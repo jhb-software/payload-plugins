@@ -1,27 +1,25 @@
 {
+  "extends": "../tsconfig.json",
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../src/**/*.ts",
+    "../src/**/*.tsx",
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "build"],
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": false,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "baseUrl": "./",
     "paths": {
-      "@payload-config": ["./src/payload.config.ts"]
-    }
-  },
-  "include": ["**/*.ts", "**/*.tsx", "next-env.d.ts", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+      "@payload-config": ["./src/payload.config.ts"],
+      "payload/generated-types": ["./src/payload-types.ts"],
+      "@jhb.software/payload-chat-agent": ["../src/index.ts"],
+      "@jhb.software/payload-chat-agent/client": ["../src/exports/client.ts"],
+      "@jhb.software/payload-chat-agent/server": ["../src/exports/server.ts"]
+    },
+    "noEmit": true,
+    "emitDeclarationOnly": false
+  }
 }

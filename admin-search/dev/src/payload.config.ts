@@ -8,11 +8,11 @@ import { de } from 'payload/i18n/de'
 import { en } from 'payload/i18n/en'
 import { fileURLToPath } from 'url'
 
-import { authorsSchema } from './collections/authors'
-import { mediaSchema } from './collections/media'
-import { pagesSchema } from './collections/pages'
-import { postsSchema } from './collections/posts'
-import { seed } from './seed'
+import { authorsSchema } from './collections/authors.js'
+import { mediaSchema } from './collections/media.js'
+import { pagesSchema } from './collections/pages.js'
+import { postsSchema } from './collections/posts.js'
+import { seed } from './seed.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 

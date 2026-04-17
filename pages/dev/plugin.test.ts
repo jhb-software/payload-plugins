@@ -1,11 +1,11 @@
 import payload, { CollectionSlug, SanitizedConfig, ValidationError } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import config from './src/payload.config'
+import config from './src/payload.config.js'
 import type { Config } from 'payload/generated-types'
 import {
   clearCapturedAfterChanges,
   getLastAfterChangeHookArgs,
-} from './src/test/afterChangeCapture'
+} from './src/test/afterChangeCapture.js'
 
 type DefaultIDType = Config['db']['defaultIDType']
 

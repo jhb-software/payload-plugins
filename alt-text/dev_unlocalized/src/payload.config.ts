@@ -3,7 +3,7 @@ import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
-import { Media } from './collections/Media'
+import { Media } from './collections/Media.js'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)

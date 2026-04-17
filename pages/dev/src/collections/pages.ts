@@ -1,5 +1,5 @@
 import { alternatePathsField, PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
-import { captureAfterChangeDoc } from '../test/afterChangeCapture'
+import { captureAfterChangeDoc } from '../test/afterChangeCapture.js'
 
 export const Pages: PageCollectionConfig = {
   slug: 'pages',

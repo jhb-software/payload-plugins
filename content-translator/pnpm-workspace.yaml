@@ -1,6 +1,5 @@
 packages:
   - '.'
-  - 'dev'
 
 onlyBuiltDependencies:
   - '@swc/core'
