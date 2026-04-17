@@ -1,6 +1,6 @@
 ---
 title: Headless agent runner
-description: Extract the chat endpoint's orchestration into a reusable `runAgent` function so background jobs (cron, Payload jobs queue, webhooks) can invoke the agent off-HTTP — e.g. a weekly content audit — without holding an open connection to a human client.
+description: Extract the chat endpoint's orchestration into a reusable `runAgent` function so background jobs (cron, Payload jobs queue, webhooks) can invoke the agent off-HTTP — e.g. a weekly content audit — without holding an open connection to a browser client.
 type: feature
 readiness: draft
 ---
