@@ -190,7 +190,7 @@ Test-driven per CLAUDE.md — start with failing tests.
 
 ## Open questions / decisions
 
-- **Mode name.** Considered `draft-only`, `safe-write`, `review-mode`, `draft-write`. Picked `draft-write` because it mirrors `read-write` (operation pair) and the key/label read naturally in the selector. Happy to reconsider.
+- **Naming convention.** Considered renaming `ask` → `ask-write` for suffix consistency with `draft-write` / `read-write`, but decided against it: `ask` describes a **behavior** (confirm before mutating), not an operation type, and it governs `callEndpoint` too — not just writes. The `-write` suffix on `draft-write` / `read-write` correctly describes what gets persisted, while `ask` correctly describes how the agent behaves.
 - **Ordering in the selector.** Placed between `ask` and `read-write` on the reading "increasing trust" axis. Alternative: group the two no-confirmation modes (`draft-write`, `read-write`) together after `ask`. Both defensible; current choice is the one that reads most intuitively as a progression.
 - **Should `draft-write` also force `draft: true` on `find` / `findByID`?** No. Reads are reads — in this mode the agent should see the current (published) state unless the user asks for drafts. The force applies only to writes.
 - **`listEndpoints` visibility.** Keep it visible (agent still wants to know what's there even if `callEndpoint` gates on approval). Mirrors current `ask`-mode behavior.
