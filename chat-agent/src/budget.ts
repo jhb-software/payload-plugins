@@ -12,7 +12,7 @@ import type { CollectionConfig, DefaultDocumentIDType, PayloadRequest } from 'pa
 
 import type { BudgetConfig, BudgetUsage } from './types.js'
 
-export const DEFAULT_USAGE_COLLECTION_SLUG = 'chat-token-usage'
+export const DEFAULT_USAGE_COLLECTION_SLUG = 'agent-token-usage'
 
 /**
  * Resolves a `BudgetConfig`-compatible "period key" from a request. Built-in
@@ -52,7 +52,7 @@ export interface CreatePayloadBudgetOptions {
   /**
    * Collection slug used for the usage store. Override when you need more
    * than one independent budget in the same project, or to avoid a naming
-   * clash. Default: `'chat-token-usage'`.
+   * clash. Default: `'agent-token-usage'`.
    */
   slug?: string
 }

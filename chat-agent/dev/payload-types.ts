@@ -71,8 +71,8 @@ export interface Config {
     posts: Post;
     categories: Category;
     media: Media;
-    'chat-token-usage': ChatTokenUsage;
-    'chat-conversations': ChatConversation;
+    'agent-token-usage': AgentTokenUsage;
+    'agent-conversations': AgentConversation;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -84,8 +84,8 @@ export interface Config {
     posts: PostsSelect<false> | PostsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
-    'chat-token-usage': ChatTokenUsageSelect<false> | ChatTokenUsageSelect<true>;
-    'chat-conversations': ChatConversationsSelect<false> | ChatConversationsSelect<true>;
+    'agent-token-usage': AgentTokenUsageSelect<false> | AgentTokenUsageSelect<true>;
+    'agent-conversations': AgentConversationsSelect<false> | AgentConversationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -216,9 +216,9 @@ export interface Category {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-token-usage".
+ * via the `definition` "agent-token-usage".
  */
-export interface ChatTokenUsage {
+export interface AgentTokenUsage {
   id: string;
   scope: string;
   period: string;
@@ -231,9 +231,9 @@ export interface ChatTokenUsage {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-conversations".
+ * via the `definition` "agent-conversations".
  */
-export interface ChatConversation {
+export interface AgentConversation {
   id: string;
   title: string;
   messages:
@@ -293,12 +293,12 @@ export interface PayloadLockedDocument {
         value: string | Media;
       } | null)
     | ({
-        relationTo: 'chat-token-usage';
-        value: string | ChatTokenUsage;
+        relationTo: 'agent-token-usage';
+        value: string | AgentTokenUsage;
       } | null)
     | ({
-        relationTo: 'chat-conversations';
-        value: string | ChatConversation;
+        relationTo: 'agent-conversations';
+        value: string | AgentConversation;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -409,9 +409,9 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-token-usage_select".
+ * via the `definition` "agent-token-usage_select".
  */
-export interface ChatTokenUsageSelect<T extends boolean = true> {
+export interface AgentTokenUsageSelect<T extends boolean = true> {
   scope?: T;
   period?: T;
   model?: T;
@@ -423,9 +423,9 @@ export interface ChatTokenUsageSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-conversations_select".
+ * via the `definition` "agent-conversations_select".
  */
-export interface ChatConversationsSelect<T extends boolean = true> {
+export interface AgentConversationsSelect<T extends boolean = true> {
   title?: T;
   messages?: T;
   user?: T;

@@ -12,7 +12,7 @@ import type { AccessArgs, CollectionConfig, Endpoint, PayloadRequest } from 'pay
 import { isPluginAccessAllowed } from './access.js'
 import { AGENT_MODES, type AgentMode } from './types.js'
 
-export const CONVERSATIONS_SLUG = 'chat-conversations'
+export const CONVERSATIONS_SLUG = 'agent-conversations'
 
 // ---------------------------------------------------------------------------
 // Collection definition
@@ -86,7 +86,7 @@ export const conversationsCollection: CollectionConfig = {
   hooks: {
     // Force the `user` field to the authenticated user, regardless of what the
     // client sent. Without this, a user hitting Payload's default REST
-    // (`POST /api/chat-conversations`) could create a record with
+    // (`POST /api/agent-conversations`) could create a record with
     // `data.user` set to someone else's id — they still can't read/update/
     // delete it thanks to the access filters, but they'd pollute the
     // collection. The `update` guard also protects against a client trying to
