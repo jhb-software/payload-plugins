@@ -74,6 +74,13 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('getGlobalSchema')
   })
 
+  it('notes that Payload uses Lexical for rich text', () => {
+    // The agent needs to know rich-text field values are Lexical editor state
+    // (JSON tree), not HTML or Markdown, so it writes/reads them correctly.
+    const prompt = buildSystemPrompt({ collections: [], globals: [] })
+    expect(prompt).toContain('Lexical')
+  })
+
   it('mentions listEndpoints only when custom endpoints exist', () => {
     const withEndpoints = buildSystemPrompt({ collections: [], globals: [] }, undefined, true)
     expect(withEndpoints).toContain('listEndpoints')
