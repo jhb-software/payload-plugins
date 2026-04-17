@@ -23,7 +23,6 @@ When the plugin is enabled for an upload collection, it will:
 3. Add a bulk generate button to the collection list view
    - This button will allow you to generate alt text for multiple images at once
 4. Register an `Alt text health` dashboard widget
-   - The widget is available in Payload's dashboard editor and can be added via `admin.dashboard.defaultLayout` (see below)
    - Results are cached and revalidated when documents in the configured upload collections change
 
 ## Installation
@@ -100,7 +99,7 @@ buildConfig({
   admin: {
     dashboard: {
       defaultLayout: [
-        { widgetSlug: 'collections', width: 'full' },
+        // ...other default widgets
         { widgetSlug: 'alt-text-health', width: 'full' },
       ],
     },

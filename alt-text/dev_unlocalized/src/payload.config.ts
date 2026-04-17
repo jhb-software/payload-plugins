@@ -15,10 +15,7 @@ export default buildConfig({
       password: 'test',
     },
     dashboard: {
-      defaultLayout: [
-        { widgetSlug: 'collections', width: 'full' },
-        { widgetSlug: 'alt-text-health', width: 'full' },
-      ],
+      defaultLayout: [{ widgetSlug: 'alt-text-health', width: 'full' }],
     },
     meta: { titleSuffix: '- Alt Text Unlocalized Dev' },
     user: 'users',
