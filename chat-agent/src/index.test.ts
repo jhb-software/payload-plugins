@@ -313,10 +313,10 @@ describe('chatAgentPlugin tool-call sanitization', () => {
               id: 'a1',
               parts: [
                 {
+                  type: 'tool-search',
                   input: '"part',
                   state: 'input-available',
                   toolCallId: 'call_1',
-                  type: 'tool-search',
                 },
               ],
               role: 'assistant',
