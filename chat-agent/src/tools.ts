@@ -27,15 +27,7 @@ import { extractFields } from './schema.js'
 // Tool classification
 // ---------------------------------------------------------------------------
 
-/**
- * Fixed keys for provider-native tools (`webSearch`, `webFetch`) wired via
- * plugin options. Server-executed by the provider, so treated as reads and
- * not gated by `needsApproval` — the client can't approve a tool call the
- * provider already ran.
- */
-export const PROVIDER_TOOL_NAMES = ['webSearch', 'webFetch'] as const
-
-/** Tools that only read data (safe in all modes). */
+/** Built-in tools that only read data (safe in all modes). */
 export const READ_TOOL_NAMES = [
   'find',
   'findByID',
@@ -44,11 +36,32 @@ export const READ_TOOL_NAMES = [
   'getCollectionSchema',
   'getGlobalSchema',
   'listEndpoints',
-  ...PROVIDER_TOOL_NAMES,
 ] as const
 
-/** Tools that modify data (restricted in read/ask modes). */
+/** Built-in tools that modify data (restricted in read/ask modes). */
 export const WRITE_TOOL_NAMES = ['create', 'update', 'delete', 'updateGlobal'] as const
+
+const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
+
+/**
+ * Classify a tool as safe for `read` mode.
+ *
+ * A tool is a read if either:
+ * - It's a built-in read tool (by name), or
+ * - It has no `execute` function, i.e. it's a provider-native server-executed
+ *   tool (e.g. `anthropic.tools.webSearch_*`). The provider runs it and the
+ *   client can't approve after the fact, so gating it with `needsApproval`
+ *   would invent a gate the plugin can't enforce.
+ *
+ * Everything else — built-in writes, `callEndpoint`, and user-defined tools
+ * with an `execute` function — is treated as a write.
+ */
+function isReadTool(name: string, tool: Tool): boolean {
+  if (readToolSet.has(name)) {
+    return true
+  }
+  return typeof (tool as { execute?: unknown }).execute !== 'function'
+}
 
 // ---------------------------------------------------------------------------
 // Shared Zod schemas (reused across tools)
@@ -569,18 +582,14 @@ export function buildTools(
 // Tool filtering by agent mode
 // ---------------------------------------------------------------------------
 
-const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
-
 /**
  * Filter tools based on the active agent mode.
  *
- * - `read`:       Only read tools — write tools, callEndpoint, and any
- *                 user-supplied custom tools are removed.
- * - `ask`:        All tools, but anything not classified as read gains
+ * - `read`:       Only read tools. Provider-native tools (no `execute`) are
+ *                 kept; everything else with an `execute` function is dropped.
+ * - `ask`:        All tools, but anything classified as a write gains
  *                 `needsApproval: true` so the AI SDK pauses on it and waits
- *                 for a client approval response before executing server-side.
- *                 User-supplied custom tools default to this treatment since
- *                 the plugin can't know their side effects.
+ *                 for a client approval response before executing.
  * - `read-write`: All tools unchanged.
  * - `superuser`:  All tools unchanged (overrideAccess is handled at build time).
  */
@@ -591,7 +600,7 @@ export function filterToolsByMode<T extends Tool>(
   if (mode === 'read') {
     const filtered: Record<string, T> = {}
     for (const [name, tool] of Object.entries(tools)) {
-      if (readToolSet.has(name)) {
+      if (isReadTool(name, tool)) {
         filtered[name] = tool
       }
     }
@@ -601,17 +610,15 @@ export function filterToolsByMode<T extends Tool>(
   if (mode === 'ask') {
     const result: Record<string, T> = {}
     for (const [name, tool] of Object.entries(tools)) {
-      if (readToolSet.has(name)) {
+      if (isReadTool(name, tool)) {
         result[name] = tool
       } else {
-        // Anything not explicitly read-safe — built-in writes, `callEndpoint`,
-        // and user-supplied custom tools — is gated behind client approval.
         result[name] = { ...tool, needsApproval: true } as T
       }
     }
     return result
   }
 
-  // read-write and superuser: all tools with execute
+  // read-write and superuser: all tools unchanged
   return tools
 }

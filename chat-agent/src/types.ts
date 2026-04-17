@@ -176,27 +176,6 @@ export interface ChatAgentPluginOptions {
    * for a ready-made helper that persists usage to a Payload collection.
    */
   budget?: BudgetConfig
-  /**
-   * Register additional Vercel AI SDK tools alongside the built-in Payload
-   * tools. Called once per chat request with the authenticated request, so
-   * tools can close over `req.user`, `req.payload`, or any per-request state.
-   *
-   * Tool names must not collide with built-in names (`find`, `create`, ...).
-   * A collision fails the request with HTTP 500 rather than silently
-   * overriding a core tool.
-   *
-   * Since the plugin cannot know a custom tool's side effects, custom tools
-   * default to "write" classification for mode filtering:
-   * - `read` mode: excluded entirely.
-   * - `ask` mode: marked `needsApproval: true` so the client must confirm.
-   * - `read-write` / `superuser`: passed through unchanged.
-   *
-   * See the README and `chat-agent/dev/src/customTools.ts` for runnable
-   * examples (Slack webhook, Axiom / Vercel log queries).
-   */
-  customTools?: (args: {
-    req: PayloadRequest
-  }) => Promise<Record<string, Tool>> | Record<string, Tool>
   /** Model id used when no per-request override is provided. Passed to `model(id)`. */
   defaultModel: string
   /** Maximum tool-use loop steps per request. Default: 20 */
@@ -224,37 +203,38 @@ export interface ChatAgentPluginOptions {
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
   /**
-   * Provider-native URL fetch tool, registered under the fixed name `webFetch`
-   * and treated as a read. Pass the provider's tool directly — the plugin
-   * stays provider-agnostic and does not roll its own fetcher (SSRF risk).
+   * Customize the tools exposed to the agent. Called once per chat request
+   * with the authenticated request and the plugin's default tools (Payload
+   * Local API: `find`, `create`, `getCollectionSchema`, ...). Return the
+   * final `name -> Tool` map — the plugin does not merge; what you return is
+   * what the agent sees.
    *
-   * Make sure the configured model actually supports the tool you pass; the
-   * provider rejects unsupported combinations at call time.
+   * Modelled on Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`:
+   * spread `defaultTools` to keep them, omit/filter to drop, and add your
+   * own (user-defined or provider-native) under any name.
    *
-   * @example
-   * ```ts
-   * import { anthropic } from '@ai-sdk/anthropic'
-   * chatAgentPlugin({ webFetch: anthropic.tools.webFetch_20260209() })
-   * ```
-   */
-  webFetch?: Tool
-  /**
-   * Provider-native web search tool, registered under the fixed name
-   * `webSearch` and treated as a read (available in `read` mode, not gated by
-   * `needsApproval` in `ask` since the provider executes it server-side). Pass
-   * the provider's tool directly — the plugin stays provider-agnostic and
-   * does not bundle a third-party search backend.
-   *
-   * Make sure the configured model actually supports the tool you pass; the
-   * provider rejects unsupported combinations at call time.
+   * Tool classification for mode filtering (read / ask):
+   * - Provider-native tools (no `execute` — executed server-side by the
+   *   provider, e.g. `anthropic.tools.webSearch_*`) are treated as reads.
+   * - Everything else with an `execute` function is treated as a write:
+   *   excluded in `read`, gated behind `needsApproval` in `ask`.
    *
    * @example
    * ```ts
    * import { anthropic } from '@ai-sdk/anthropic'
-   * chatAgentPlugin({ webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }) })
+   * chatAgentPlugin({
+   *   tools: ({ req, defaultTools }) => ({
+   *     ...defaultTools,
+   *     webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+   *     queryAxiomLogs: myAxiomTool(req),
+   *   }),
+   * })
    * ```
    */
-  webSearch?: Tool
+  tools?: (args: {
+    defaultTools: Record<string, Tool>
+    req: PayloadRequest
+  }) => Promise<Record<string, Tool>> | Record<string, Tool>
 }
 
 // ---------------------------------------------------------------------------

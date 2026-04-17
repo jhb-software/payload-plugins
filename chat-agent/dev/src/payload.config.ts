@@ -199,18 +199,22 @@ export default buildConfig({
         { id: 'gpt-5-nano', label: 'GPT-5 nano' },
       ],
       budget: chatBudget.budget,
-      customTools,
       defaultModel: 'claude-haiku-4-5-20251001',
       model: resolveModel,
-      // Hand the plugin Anthropic's server-executed web tools. They're
-      // billed separately by Anthropic (~$10 / 1k searches), so opt out by
-      // removing these lines if cost matters for your dev loop.
+      // One `tools` factory composes the final toolset the agent sees.
+      // Spread `defaultTools` to keep the built-in Payload tools, then add
+      // user-defined tools and provider-native ones (executed server-side by
+      // the provider, billed separately ~$10 / 1k searches).
       //
       // Using `webFetch_20250910` (pre-dynamic-filtering) so this works with
       // all models. The newer `webFetch_20260209` adds code-execution-based
       // filtering but requires Opus 4.6+/Sonnet 4.6.
-      webFetch: anthropic.tools.webFetch_20250910(),
-      webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+      tools: ({ defaultTools, req }) => ({
+        ...defaultTools,
+        ...customTools({ req }),
+        webFetch: anthropic.tools.webFetch_20250910(),
+        webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+      }),
       modes: {
         default: 'ask',
         access: {

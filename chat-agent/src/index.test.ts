@@ -1310,10 +1310,10 @@ describe('chatAgentPlugin GET /chat-agent/budget', () => {
 })
 
 // ---------------------------------------------------------------------------
-// customTools extensibility
+// `tools` composition API
 // ---------------------------------------------------------------------------
 
-describe('chatAgentPlugin customTools', () => {
+describe('chatAgentPlugin tools', () => {
   /**
    * Minimal fake Vercel AI SDK `Tool`. The handler only inspects the shape
    * (keys, `needsApproval`, `execute`) to decide how to register and filter
@@ -1330,11 +1330,104 @@ describe('chatAgentPlugin customTools', () => {
     } as unknown as Tool
   }
 
-  it('makes user-registered custom tools callable by the agent', async () => {
+  /**
+   * Stand-in for a provider-defined tool like
+   * `anthropic.tools.webSearch_20250305(...)`. The real object has
+   * `type: 'provider'` and no `execute` — the provider runs the tool
+   * server-side — so we mirror that shape here.
+   */
+  function fakeProviderTool(id: `${string}.${string}`): Tool {
+    return {
+      id,
+      type: 'provider',
+      args: {},
+      inputSchema: { _def: { typeName: 'ZodObject' } },
+    } as unknown as Tool
+  }
+
+  it('makes user-registered tools callable by the agent', async () => {
     vi.mocked(streamText).mockClear()
     const salesTool = fakeTool({ description: 'Create a lead in the Sales API' })
     const plugin = chatAgentPlugin({
-      customTools: () => ({ createSalesLead: salesTool }),
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: ({ defaultTools }) => ({ ...defaultTools, createSalesLead: salesTool }),
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.createSalesLead).toBeDefined()
+    expect(_streamTextOpts.tools!.createSalesLead.execute).toBe(salesTool.execute)
+  })
+
+  it('passes the built-in default tools into the factory so the user can compose them', async () => {
+    vi.mocked(streamText).mockClear()
+    let receivedDefaults: Record<string, Tool> | undefined
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: ({ defaultTools }) => {
+        receivedDefaults = defaultTools
+        return { ...defaultTools, extra: fakeTool() }
+      },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(receivedDefaults).toBeDefined()
+    expect(receivedDefaults!.find).toBeDefined()
+    expect(receivedDefaults!.create).toBeDefined()
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.find).toBeDefined()
+    expect(_streamTextOpts.tools!.extra).toBeDefined()
+  })
+
+  it('lets the user omit a default tool by not including it in the returned map', async () => {
+    vi.mocked(streamText).mockClear()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: ({ defaultTools }) => {
+        const { delete: _, ...rest } = defaultTools
+        return rest
+      },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.delete).toBeUndefined()
+    expect(_streamTextOpts.tools!.find).toBeDefined()
+  })
+
+  it('exposes the built-in default tools to the agent when `tools` is not provided', async () => {
+    vi.mocked(streamText).mockClear()
+    const plugin = chatAgentPlugin({
       defaultModel: 'gpt-4o',
       model: makeModelFactory().factory,
       modes: { default: 'read-write' },
@@ -1350,22 +1443,21 @@ describe('chatAgentPlugin customTools', () => {
     })
 
     const { _streamTextOpts } = lastStreamTextHandle()
-    expect(_streamTextOpts.tools).toBeDefined()
-    expect(_streamTextOpts.tools!.createSalesLead).toBeDefined()
-    expect(_streamTextOpts.tools!.createSalesLead.execute).toBe(salesTool.execute)
+    expect(_streamTextOpts.tools!.find).toBeDefined()
+    expect(_streamTextOpts.tools!.create).toBeDefined()
   })
 
-  it('awaits async customTools resolvers and passes the request to them', async () => {
+  it('awaits async tools resolvers and passes the request to them', async () => {
     vi.mocked(streamText).mockClear()
     const receivedArgs: Array<{ req: unknown }> = []
     const plugin = chatAgentPlugin({
-      customTools: (args) => {
-        receivedArgs.push(args)
-        return Promise.resolve({ fetchWeather: fakeTool() })
-      },
       defaultModel: 'gpt-4o',
       model: makeModelFactory().factory,
       modes: { default: 'read-write' },
+      tools: (args) => {
+        receivedArgs.push(args)
+        return Promise.resolve({ ...args.defaultTools, fetchWeather: fakeTool() })
+      },
     })
     const handler = plugin({ endpoints: [] }).endpoints.find(
       (ep: Endpoint) => ep.path === '/chat-agent/chat',
@@ -1384,41 +1476,22 @@ describe('chatAgentPlugin customTools', () => {
     expect(_streamTextOpts.tools!.fetchWeather).toBeDefined()
   })
 
-  it('rejects a custom tool whose name collides with a built-in tool', async () => {
-    const plugin = chatAgentPlugin({
-      customTools: () => ({ find: fakeTool() }),
-      defaultModel: 'gpt-4o',
-      model: makeModelFactory().factory,
-      modes: { default: 'read-write' },
-    })
-    const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: Endpoint) => ep.path === '/chat-agent/chat',
-    ).handler
+  describe('mode filtering for user-defined tools', () => {
+    // The plugin can't know a user tool's side effects, so a tool with an
+    // `execute` function defaults to "write": excluded in read, gated behind
+    // needsApproval in ask. Provider-native tools (no `execute`) are treated
+    // as reads since the provider runs them server-side.
 
-    const res = await handler({
-      json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
-    })
-
-    expect(res.status).toBe(500)
-    const body = await res.json()
-    expect(body.error).toMatch(/customTools/i)
-    expect(body.error).toContain('find')
-  })
-
-  describe('mode filtering for custom tools', () => {
-    // The plugin can't know a custom tool's side effects, so the safe default
-    // is to treat it as a write: excluded in read, gated behind needsApproval
-    // in ask, and passed through in read-write.
-
-    async function runChatWithMode(mode: 'ask' | 'read' | 'read-write') {
+    async function runChatWithMode(
+      mode: 'ask' | 'read' | 'read-write',
+      extra: Record<string, Tool>,
+    ) {
       vi.mocked(streamText).mockClear()
       const plugin = chatAgentPlugin({
-        customTools: () => ({ createSalesLead: fakeTool() }),
         defaultModel: 'gpt-4o',
         model: makeModelFactory().factory,
         modes: { default: mode },
+        tools: ({ defaultTools }) => ({ ...defaultTools, ...extra }),
       })
       const handler = plugin({ endpoints: [] }).endpoints.find(
         (ep: Endpoint) => ep.path === '/chat-agent/chat',
@@ -1431,126 +1504,39 @@ describe('chatAgentPlugin customTools', () => {
       return lastStreamTextHandle()._streamTextOpts.tools
     }
 
-    it('excludes custom tools in read mode', async () => {
-      const tools = await runChatWithMode('read')
+    it('excludes user-defined executable tools in read mode', async () => {
+      const tools = await runChatWithMode('read', { createSalesLead: fakeTool() })
       expect(tools!.createSalesLead).toBeUndefined()
     })
 
-    it('marks custom tools with needsApproval: true in ask mode', async () => {
-      const tools = await runChatWithMode('ask')
+    it('marks user-defined executable tools with needsApproval: true in ask mode', async () => {
+      const tools = await runChatWithMode('ask', { createSalesLead: fakeTool() })
       expect(tools!.createSalesLead).toBeDefined()
       expect(tools!.createSalesLead.needsApproval).toBe(true)
     })
 
-    it('allows a custom tool without approval in read-write mode', async () => {
-      const tools = await runChatWithMode('read-write')
+    it('passes user-defined executable tools through unchanged in read-write mode', async () => {
+      const tools = await runChatWithMode('read-write', { createSalesLead: fakeTool() })
       expect(tools!.createSalesLead).toBeDefined()
       expect(tools!.createSalesLead.needsApproval).toBeUndefined()
     })
-  })
-})
 
-// ---------------------------------------------------------------------------
-// Provider-native webSearch / webFetch built-ins
-// ---------------------------------------------------------------------------
-
-describe('chatAgentPlugin webSearch / webFetch', () => {
-  /**
-   * Stand-in for a provider-defined tool like
-   * `anthropic.tools.webSearch_20250305(...)`. The real object has
-   * `type: 'provider'` and no `execute` — the provider runs the tool
-   * server-side — so we mirror that shape here.
-   */
-  function fakeProviderTool(id: `${string}.${string}`): Tool {
-    return {
-      id,
-      type: 'provider',
-      args: {},
-      inputSchema: { _def: { typeName: 'ZodObject' } },
-    } as unknown as Tool
-  }
-
-  async function runChatWith(opts: {
-    mode?: 'ask' | 'read' | 'read-write'
-    webFetch?: Tool
-    webSearch?: Tool
-  }) {
-    vi.mocked(streamText).mockClear()
-    const plugin = chatAgentPlugin({
-      defaultModel: 'claude-sonnet-4-20250514',
-      model: makeModelFactory().factory,
-      modes: { default: opts.mode ?? 'read-write' },
-      webFetch: opts.webFetch,
-      webSearch: opts.webSearch,
+    it('keeps provider-native tools available in read mode', async () => {
+      const tools = await runChatWithMode('read', {
+        webSearch: fakeProviderTool('anthropic.web_search_20250305'),
+      })
+      expect(tools!.webSearch).toBeDefined()
     })
-    const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: Endpoint) => ep.path === '/chat-agent/chat',
-    ).handler
-    const res = await handler({
-      json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+
+    it('does not mark provider-native tools with needsApproval in ask mode', async () => {
+      // They're server-executed by the provider — the client can't approve
+      // something the provider already ran. Leave the object untouched so
+      // `filterToolsByMode` doesn't invent an approval gate it can't enforce.
+      const tools = await runChatWithMode('ask', {
+        webSearch: fakeProviderTool('anthropic.web_search_20250305'),
+      })
+      expect(tools!.webSearch).toBeDefined()
+      expect((tools!.webSearch as { needsApproval?: boolean }).needsApproval).toBeUndefined()
     })
-    return { res, tools: lastStreamTextHandle()?._streamTextOpts.tools }
-  }
-
-  it('exposes the configured webSearch tool to the agent as `webSearch`', async () => {
-    const search = fakeProviderTool('anthropic.web_search_20250305')
-    const { tools } = await runChatWith({ webSearch: search })
-    expect(tools!.webSearch).toBe(search)
-  })
-
-  it('exposes the configured webFetch tool to the agent as `webFetch`', async () => {
-    const fetch = fakeProviderTool('anthropic.web_fetch_20260209')
-    const { tools } = await runChatWith({ webFetch: fetch })
-    expect(tools!.webFetch).toBe(fetch)
-  })
-
-  it('hides webSearch and webFetch from the agent when not configured', async () => {
-    const { tools } = await runChatWith({})
-    expect(tools!.webSearch).toBeUndefined()
-    expect(tools!.webFetch).toBeUndefined()
-  })
-
-  it('keeps webSearch and webFetch available to the agent in read mode', async () => {
-    const search = fakeProviderTool('anthropic.web_search_20250305')
-    const fetch = fakeProviderTool('anthropic.web_fetch_20260209')
-    const { tools } = await runChatWith({
-      mode: 'read',
-      webFetch: fetch,
-      webSearch: search,
-    })
-    expect(tools!.webSearch).toBe(search)
-    expect(tools!.webFetch).toBe(fetch)
-  })
-
-  it('lets the agent call webSearch without approval in ask mode', async () => {
-    // They're server-executed by the provider — the client can't approve
-    // something the provider already ran. Leave the object untouched so
-    // `filterToolsByMode` doesn't invent an approval gate it can't enforce.
-    const search = fakeProviderTool('anthropic.web_search_20250305')
-    const { tools } = await runChatWith({ mode: 'ask', webSearch: search })
-    expect(tools!.webSearch).toBeDefined()
-    expect((tools!.webSearch as { needsApproval?: boolean }).needsApproval).toBeUndefined()
-  })
-
-  it('rejects a customTool whose name collides with `webSearch`', async () => {
-    const plugin = chatAgentPlugin({
-      customTools: () => ({ webSearch: fakeProviderTool('someone-elses.webSearch') }),
-      defaultModel: 'gpt-4o',
-      model: makeModelFactory().factory,
-      webSearch: fakeProviderTool('anthropic.web_search_20250305'),
-    })
-    const handler = plugin({ endpoints: [] }).endpoints.find(
-      (ep: Endpoint) => ep.path === '/chat-agent/chat',
-    ).handler
-    const res = await handler({
-      json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
-    })
-    expect(res.status).toBe(500)
-    const body = await res.json()
-    expect(body.error).toMatch(/webSearch/i)
   })
 })
