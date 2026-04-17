@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: redirect unauthenticated visitors of `/admin/chat` to the login page instead of rendering the admin chrome around a "Not authorized" message
+
 ## 0.1.0-beta.3
 
 - feat: surface tool-call status in the chat UI (running / failed / denied) and show failed tool error text in a collapsible panel instead of only a colored dot.
