@@ -281,6 +281,73 @@ describe('chatAgentPlugin', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Tool-call sanitization before handing messages to the provider
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin tool-call sanitization', () => {
+  // Regression: when a previous assistant turn's tool call was interrupted
+  // (tab closed, network blip) the AI SDK leaves the tool part in a
+  // non-terminal state with whatever `parsePartialJson` last returned as
+  // `input` — often a string or `undefined`, not a dictionary. If those
+  // messages are forwarded verbatim, Anthropic rejects the request with:
+  //   messages.N.content.M.tool_use.input: Input should be a valid dictionary
+  // and orphan `tool_use` blocks (no matching `tool_result`) surface the
+  // same class of failure on other providers. The handler must drop these
+  // incomplete tool calls before calling the model.
+  it('drops interrupted tool calls so the provider never sees a non-dict tool_use input', async () => {
+    vi.mocked(streamText).mockClear()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [
+            { id: 'u1', parts: [{ type: 'text', text: 'find docs about X' }], role: 'user' },
+            {
+              id: 'a1',
+              parts: [
+                {
+                  input: '"part',
+                  state: 'input-available',
+                  toolCallId: 'call_1',
+                  type: 'tool-search',
+                },
+              ],
+              role: 'assistant',
+            },
+          ],
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    const sent = vi.mocked(streamText).mock.calls[0][0].messages as Array<{
+      content: unknown
+      role: string
+    }>
+    for (const msg of sent) {
+      if (!Array.isArray(msg.content)) {
+        continue
+      }
+      for (const part of msg.content as Array<{ input?: unknown; type: string }>) {
+        if (part.type !== 'tool-call') {
+          continue
+        }
+        expect(part.input).not.toBeNull()
+        expect(typeof part.input).toBe('object')
+        expect(Array.isArray(part.input)).toBe(false)
+      }
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Mode-related endpoint tests
 // ---------------------------------------------------------------------------
 
