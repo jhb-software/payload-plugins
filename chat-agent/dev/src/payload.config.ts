@@ -121,6 +121,14 @@ export default buildConfig({
       maxIdleTimeMS: 5_000,
       maxPoolSize: 10,
     },
+    // On Vercel Fluid Compute, hand the underlying MongoClient to
+    // @vercel/functions so idle connections are released when the function
+    // suspends. Guarded by VERCEL so local dev/tests aren't affected.
+    afterOpenConnection: (adapter) => {
+      if (process.env.VERCEL) {
+        attachDatabasePool(adapter.connection.getClient())
+      }
+    },
   }),
   editor: lexicalEditor(),
   endpoints: rootEndpoints,
@@ -129,20 +137,6 @@ export default buildConfig({
     outputFile: path.resolve(__dirname, '../payload-types.ts'),
   },
   async onInit(payload) {
-    // On Vercel Fluid Compute, hand the underlying MongoClient to
-    // @vercel/functions so idle connections are released when the function
-    // suspends. Guarded by VERCEL so local dev/tests aren't affected.
-    if (process.env.VERCEL) {
-      const client = (
-        payload.db as unknown as {
-          connection?: { getClient?: () => unknown }
-        }
-      ).connection?.getClient?.()
-      if (client) {
-        attachDatabasePool(client as Parameters<typeof attachDatabasePool>[0])
-      }
-    }
-
     const existingUsers = await payload.find({
       collection: 'users',
       limit: 1,
