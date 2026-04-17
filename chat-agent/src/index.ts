@@ -328,8 +328,12 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             // listening to.
             const result = streamText({
               abortSignal: req.signal,
+              // Drop tool parts from interrupted prior turns so the provider
+              // never sees a `tool_use` with a partial/non-dict input or an
+              // orphan `tool_use` missing its `tool_result`.
               messages: await convertToModelMessages(
                 body.messages as Parameters<typeof convertToModelMessages>[0],
+                { ignoreIncompleteToolCalls: true },
               ),
               model: resolvedModel,
               onFinish,
