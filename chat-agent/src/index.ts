@@ -328,13 +328,9 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             // listening to.
             const result = streamText({
               abortSignal: req.signal,
-              // `ignoreIncompleteToolCalls` drops tool parts that never reached
-              // a terminal state (stream aborted mid-input, pending approval
-              // that the UI never resolved, etc.). Without it, resumed
-              // conversations can forward a `tool_use` whose `input` is still
-              // the partial value `parsePartialJson` left behind — often a
-              // string or `undefined` — and Anthropic rejects with
-              // `tool_use.input: Input should be a valid dictionary`.
+              // Drop tool parts from interrupted prior turns so the provider
+              // never sees a `tool_use` with a partial/non-dict input or an
+              // orphan `tool_use` missing its `tool_result`.
               messages: await convertToModelMessages(
                 body.messages as Parameters<typeof convertToModelMessages>[0],
                 { ignoreIncompleteToolCalls: true },
