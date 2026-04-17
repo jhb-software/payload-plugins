@@ -15,6 +15,9 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    dashboard: {
+      defaultLayout: [{ widgetSlug: 'vercel-deployments', width: 'full' }],
+    },
     meta: { titleSuffix: '- Vercel Deployments Dev' },
     user: 'users',
   },
