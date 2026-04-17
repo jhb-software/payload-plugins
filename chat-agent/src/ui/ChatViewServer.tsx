@@ -82,12 +82,16 @@ export default async function ChatViewServer({
   const defaultModel = pluginConfig.defaultModel
   const suggestedPrompts = pluginConfig.suggestedPrompts
 
-  // Fetch the conversation list server-side so the sidebar renders immediately
+  // Fetch the conversation list server-side so the sidebar renders immediately.
+  // The sidebar only uses `id`, `title`, and `updatedAt`; selecting just
+  // those avoids sending the full `messages` JSON of every conversation on
+  // the first paint.
   const { docs: conversations } = user
     ? await payload.find({
         collection: CONVERSATIONS_SLUG,
         depth: 0,
         limit: 50,
+        select: { title: true, updatedAt: true },
         sort: '-updatedAt',
         where: { user: { equals: user.id } },
       })

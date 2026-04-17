@@ -136,6 +136,22 @@ describe('ChatViewServer', () => {
     ).rejects.toThrow(/NEXT_REDIRECT:\/admin\/login\?redirect=%2Fadmin%2Fchat/)
   })
 
+  it('fetches only the fields the sidebar renders (title + updatedAt) for the SSR conversation list', async () => {
+    // The SSR path seeds the sidebar via payload.find(). Without a `select`,
+    // Payload returns the full `messages` JSON on every doc, multiplying the
+    // first-paint payload by the conversation history. Lock in the narrow
+    // select shape so it stays aligned with what the sidebar actually
+    // renders (see `ChatViewServer.tsx` mapping to id/title/updatedAt).
+    const captured: { select?: Record<string, boolean> } = {}
+    const req = makeReq(() => true)
+    ;(req.payload as { find: (args: unknown) => Promise<unknown> }).find = (args: unknown) => {
+      Object.assign(captured, args as object)
+      return Promise.resolve({ docs: [] })
+    }
+    await ChatViewServer(asAdminViewProps({ initPageResult: { req } }))
+    expect(captured.select).toEqual({ title: true, updatedAt: true })
+  })
+
   it('preserves query params on the redirect target so the post-login URL keeps e.g. ?conversation=…', async () => {
     // Deep-links (e.g. /admin/chat?conversation=abc) should survive a login
     // round-trip. The chat view opens a specific conversation based on the

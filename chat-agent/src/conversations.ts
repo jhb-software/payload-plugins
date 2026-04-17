@@ -65,6 +65,11 @@ export const conversationsCollection: CollectionConfig = {
       name: 'user',
       type: 'relationship',
       admin: { readOnly: true },
+      // Every read goes through `access.read`, which filters by
+      // `user.equals = currentUser.id`, and the sidebar list query filters
+      // by the same field. Without an index, both degrade to a full scan
+      // once the collection grows beyond a trivial size.
+      index: true,
       relationTo: 'users',
       required: true,
     },
@@ -120,6 +125,10 @@ async function listConversations(req: PayloadRequest): Promise<Response> {
     collection: CONVERSATIONS_SLUG,
     depth: 0,
     limit: 50,
+    // The sidebar only renders `id`, `title`, and `updatedAt` — the full
+    // `messages` JSON on every doc would bloat the payload by the entire
+    // conversation history of every conversation for no reason.
+    select: { title: true, updatedAt: true },
     sort: '-updatedAt',
     where: { user: { equals: req.user.id } },
   })
