@@ -4,7 +4,7 @@
  * Thin wrapper around the Vercel AI SDK's useChat hook.
  *
  * Re-exports the hook with defaults configured for the chat agent endpoint,
- * plus conversation persistence via the chat-conversations collection.
+ * plus conversation persistence via the agent-conversations collection.
  */
 
 import type { UIMessage } from 'ai'
