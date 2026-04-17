@@ -2,8 +2,8 @@ import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
-import { Images } from './collections/images'
-import { Videos } from './collections/videos'
+import { Images } from './collections/images.js'
+import { Videos } from './collections/videos.js'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 
 const filename = fileURLToPath(import.meta.url)

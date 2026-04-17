@@ -3,8 +3,8 @@ import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
-import { Pages } from './collection/pages'
-import { testEmailAdapter } from './emailAdapter'
+import { Pages } from './collection/pages.js'
+import { testEmailAdapter } from './emailAdapter.js'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)

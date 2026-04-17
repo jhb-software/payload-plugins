@@ -1,6 +1,6 @@
 import type { CollectionSlug, Payload } from 'payload'
 
-import { devUser } from './helpers/credentials'
+import { devUser } from './helpers/credentials.js'
 
 interface AuthorSeedData {
   name: string

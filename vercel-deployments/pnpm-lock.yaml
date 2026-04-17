@@ -8,9 +8,15 @@ importers:
 
   .:
     devDependencies:
+      '@payloadcms/db-mongodb':
+        specifier: ^3.83.0
+        version: 3.83.0(payload@3.83.0(graphql@16.12.0)(typescript@5.9.3))
       '@payloadcms/eslint-config':
         specifier: ^3.28.0
         version: 3.28.0(@testing-library/dom@10.4.1)(@typescript-eslint/eslint-plugin@8.26.1(@typescript-eslint/parser@8.26.1(eslint@9.39.2)(typescript@5.9.3))(eslint@9.39.2)(typescript@5.9.3))(ts-api-utils@2.5.0(typescript@5.9.3))
+      '@payloadcms/next':
+        specifier: ^3.83.0
+        version: 3.83.0(@types/react@19.2.14)(graphql@16.12.0)(monaco-editor@0.55.1)(next@16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4))(payload@3.83.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
       '@payloadcms/translations':
         specifier: ^3.83.0
         version: 3.83.0
@@ -35,6 +41,12 @@ importers:
       copyfiles:
         specifier: 2.4.1
         version: 2.4.1
+      cross-env:
+        specifier: ^10.1.0
+        version: 10.1.0
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       eslint:
         specifier: ^9.39.1
         version: 9.39.2
@@ -65,49 +77,6 @@ importers:
       vitest:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@25.6.0)(jsdom@29.0.2)(vite@8.0.3(@emnapi/core@1.9.2)(@emnapi/runtime@1.7.1)(@types/node@25.6.0)(esbuild@0.27.7)(sass@1.77.4)(tsx@4.21.0))
-
-  dev:
-    dependencies:
-      '@jhb.software/payload-vercel-deployments':
-        specifier: workspace:*
-        version: link:..
-      '@payloadcms/db-mongodb':
-        specifier: ^3.83.0
-        version: 3.83.0(payload@3.83.0(graphql@16.12.0)(typescript@5.9.3))
-      '@payloadcms/next':
-        specifier: ^3.83.0
-        version: 3.83.0(@types/react@19.2.14)(graphql@16.12.0)(monaco-editor@0.55.1)(next@16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4))(payload@3.83.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
-      '@payloadcms/translations':
-        specifier: ^3.83.0
-        version: 3.83.0
-      '@payloadcms/ui':
-        specifier: ^3.83.0
-        version: 3.83.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4))(payload@3.83.0(graphql@16.12.0)(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
-      next:
-        specifier: 16.2.4
-        version: 16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4)
-      payload:
-        specifier: ^3.83.0
-        version: 3.83.0(graphql@16.12.0)(typescript@5.9.3)
-      react:
-        specifier: 19.2.5
-        version: 19.2.5
-      react-dom:
-        specifier: 19.2.5
-        version: 19.2.5(react@19.2.5)
-    devDependencies:
-      copyfiles:
-        specifier: ^2.4.1
-        version: 2.4.1
-      cross-env:
-        specifier: ^10.1.0
-        version: 10.1.0
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
 
 packages:
 

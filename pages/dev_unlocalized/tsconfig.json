@@ -1,36 +1,25 @@
 {
-  "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "outDir": "./dist",
-    "rootDir": ".",
-    "jsx": "react-jsx",
-    "paths": {
-      "@payload-config": ["./src/payload.config.ts"],
-      "payload/generated-types": ["./src/payload-types.ts"]
-    },
-    "noEmit": true,
-    "incremental": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
-  },
+  "extends": "../tsconfig.json",
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "../src/**/*.ts",
+    "../src/**/*.tsx",
+    "next-env.d.ts",
     ".next/types/**/*.ts",
-    "vite.config.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "dist", "build"]
+  "exclude": ["node_modules", "dist", "build"],
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@payload-config": ["./src/payload.config.ts"],
+      "payload/generated-types": ["./src/payload-types.ts"],
+      "@jhb.software/payload-pages-plugin": ["../src/index.ts"],
+      "@jhb.software/payload-pages-plugin/client": ["../src/exports/client.ts"],
+      "@jhb.software/payload-pages-plugin/server": ["../src/exports/server.ts"]
+    },
+    "noEmit": true,
+    "emitDeclarationOnly": false
+  }
 }

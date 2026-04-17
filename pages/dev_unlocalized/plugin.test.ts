@@ -1,6 +1,6 @@
 import payload, { CollectionSlug, ValidationError } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
-import config from './src/payload.config'
+import config from './src/payload.config.js'
 import type { Config } from 'payload/generated-types'
 
 type DefaultIDType = Config['db']['defaultIDType']
