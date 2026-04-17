@@ -8,7 +8,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { MessageMetadata } from '../types.js'
 
 // Reimplement Payload's `Button` as a plain `<button>` so tests don't depend
-// on the full @payloadcms/ui tooltip/observer machinery.
+// on the full @payloadcms/ui tooltip/observer machinery. Stub `ShimmerEffect`
+// with a data-testid so the skeleton state is easy to assert.
 vi.mock('@payloadcms/ui', () => ({
   Button: ({
     type = 'button',
@@ -31,6 +32,9 @@ vi.mock('@payloadcms/ui', () => ({
     <button {...rest} title={rest.title ?? tooltip} type={type}>
       {children}
     </button>
+  ),
+  ShimmerEffect: (props: { height?: number | string; width?: number | string }) => (
+    <div data-testid="shimmer" style={{ height: props.height, width: props.width }} />
   ),
 }))
 
@@ -68,7 +72,7 @@ describe('MessageList', () => {
     expect(screen.getByText('Hi')).toBeDefined()
   })
 
-  it('shows a thinking indicator while the agent is responding to the most recent user message', () => {
+  it('shows a response indicator while the agent is responding to the most recent user message', () => {
     const message = {
       id: '1',
       parts: [{ type: 'text' as const, text: 'Hi' }],
@@ -78,7 +82,7 @@ describe('MessageList', () => {
     expect(screen.getByRole('status', { name: /assistant is responding/i })).toBeDefined()
   })
 
-  it('hides the thinking indicator once an assistant message has started streaming', () => {
+  it('hides the response indicator once an assistant message has started streaming', () => {
     const messages = [
       {
         id: '1',
@@ -95,7 +99,7 @@ describe('MessageList', () => {
     expect(screen.queryByRole('status', { name: /assistant is responding/i })).toBeNull()
   })
 
-  it('does not show a thinking indicator when the chat is idle', () => {
+  it('does not show a response indicator when the chat is idle', () => {
     const message = {
       id: '1',
       parts: [{ type: 'text' as const, text: 'Hi' }],
@@ -103,6 +107,26 @@ describe('MessageList', () => {
     } as UIMessage<MessageMetadata>
     render(<MessageList messages={[message]} />)
     expect(screen.queryByRole('status', { name: /assistant is responding/i })).toBeNull()
+  })
+
+  it('renders a shimmer skeleton while the conversation history is loading, regardless of existing messages', () => {
+    const message = {
+      id: 'stale',
+      parts: [{ type: 'text' as const, text: 'old' }],
+      role: 'assistant',
+    } as UIMessage<MessageMetadata>
+    render(<MessageList isLoadingMessages messages={[message]} />)
+    expect(screen.getAllByTestId('shimmer').length).toBeGreaterThan(0)
+  })
+
+  it('does not render the shimmer skeleton once the conversation has loaded', () => {
+    const message = {
+      id: '1',
+      parts: [{ type: 'text' as const, text: 'Hi' }],
+      role: 'assistant',
+    } as UIMessage<MessageMetadata>
+    render(<MessageList messages={[message]} />)
+    expect(screen.queryAllByTestId('shimmer')).toHaveLength(0)
   })
 
   it('only exposes the edit action on the last user message', () => {

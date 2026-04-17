@@ -89,6 +89,7 @@ export default function ChatView({
   // CSS take over above the breakpoint. Keeping the default stable avoids a
   // hydration mismatch (we can't know the viewport server-side).
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
 
   const setActiveChatId = useCallback((id: string | undefined) => {
     setChatId(id)
@@ -127,6 +128,7 @@ export default function ChatView({
 
   const loadConversation = useCallback(
     async (id: string) => {
+      setIsLoadingMessages(true)
       try {
         const res = await fetch(`${endpointUrl}/conversations/${id}`, {
           credentials: 'include',
@@ -145,6 +147,8 @@ export default function ChatView({
         setMode(resolveMode(doc.mode))
       } catch {
         // silently ignore
+      } finally {
+        setIsLoadingMessages(false)
       }
     },
     [endpointUrl, resolveMode, setActiveChatId, setMessages],
@@ -334,6 +338,7 @@ export default function ChatView({
           />
           <MessageList
             isLoading={isLoading}
+            isLoadingMessages={isLoadingMessages}
             // Keying by conversation id makes switching conversations a fresh
             // mount, so `MessageList` re-runs its initial pre-paint scroll-to-
             // bottom for every conversation. Without this, navigating to (or
