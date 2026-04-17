@@ -3,6 +3,7 @@
 ## Unreleased
 
 - feat!: rename the `chat-conversations` collection to `agent-conversations` and the default `chat-token-usage` budget collection to `agent-token-usage`. Existing projects must migrate data or override `createPayloadBudget({ slug: 'chat-token-usage' })` to keep the previous slug.
+- feat: show a "Thinking…" indicator in the message list while the agent is working on a response but hasn't streamed any output yet, and a loader during the initial pin-to-bottom window on conversation reload instead of a blank area
 - fix: redirect unauthenticated visitors of `/admin/chat` to the login page instead of rendering the admin chrome around a "Not authorized" message
 
 ## 0.1.0-beta.3

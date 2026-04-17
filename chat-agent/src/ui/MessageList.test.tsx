@@ -68,6 +68,43 @@ describe('MessageList', () => {
     expect(screen.getByText('Hi')).toBeDefined()
   })
 
+  it('shows a thinking indicator while the agent is responding to the most recent user message', () => {
+    const message = {
+      id: '1',
+      parts: [{ type: 'text' as const, text: 'Hi' }],
+      role: 'user',
+    } as UIMessage<MessageMetadata>
+    render(<MessageList isLoading messages={[message]} />)
+    expect(screen.getByRole('status', { name: /assistant is responding/i })).toBeDefined()
+  })
+
+  it('hides the thinking indicator once an assistant message has started streaming', () => {
+    const messages = [
+      {
+        id: '1',
+        parts: [{ type: 'text' as const, text: 'Hi' }],
+        role: 'user',
+      },
+      {
+        id: '2',
+        parts: [{ type: 'text' as const, text: 'Streaming…' }],
+        role: 'assistant',
+      },
+    ] as UIMessage<MessageMetadata>[]
+    render(<MessageList isLoading messages={messages} />)
+    expect(screen.queryByRole('status', { name: /assistant is responding/i })).toBeNull()
+  })
+
+  it('does not show a thinking indicator when the chat is idle', () => {
+    const message = {
+      id: '1',
+      parts: [{ type: 'text' as const, text: 'Hi' }],
+      role: 'user',
+    } as UIMessage<MessageMetadata>
+    render(<MessageList messages={[message]} />)
+    expect(screen.queryByRole('status', { name: /assistant is responding/i })).toBeNull()
+  })
+
   it('only exposes the edit action on the last user message', () => {
     const messages = [
       {

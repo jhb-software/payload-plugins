@@ -9,6 +9,7 @@ import type { MessageMetadata } from '../types.js'
 
 import { useScrollToBottom } from './hooks/useScrollToBottom.js'
 import { ChevronDownIcon } from './icons/ChevronDownIcon.js'
+import { LoaderIcon } from './icons/LoaderIcon.js'
 import { MessageBubble } from './MessageBubble.js'
 
 // ---------------------------------------------------------------------------
@@ -69,6 +70,42 @@ function SuggestedPrompts({
             {suggestion}
           </Button>
         ))}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Thinking indicator
+// ---------------------------------------------------------------------------
+
+/**
+ * Bubble-shaped placeholder shown while the agent is working but hasn't yet
+ * produced visible output — i.e. between the user sending a message and the
+ * first streamed assistant chunk arriving, or between tool steps. Matches the
+ * assistant bubble styling so it reads as a pending response.
+ */
+function ThinkingIndicator() {
+  return (
+    <div
+      aria-label="Assistant is responding"
+      role="status"
+      style={{ display: 'flex', justifyContent: 'flex-start' }}
+    >
+      <div
+        style={{
+          alignItems: 'center',
+          background: 'var(--theme-elevation-50)',
+          borderRadius: '12px',
+          color: 'var(--theme-elevation-500)',
+          display: 'flex',
+          fontSize: '13px',
+          gap: '8px',
+          padding: '10px 14px',
+        }}
+      >
+        <LoaderIcon height={14} width={14} />
+        <span>Thinking…</span>
       </div>
     </div>
   )
@@ -164,6 +201,13 @@ export function MessageList({
     )
   }
 
+  // Show the thinking indicator only while the agent is working *and* the
+  // latest visible turn is the user's, i.e. no assistant chunk has streamed in
+  // yet. Once an assistant part arrives the message bubble itself (with its
+  // own streaming text / tool indicators) takes over.
+  const lastRole = messages[messages.length - 1]?.role
+  const showThinking = Boolean(isLoading) && lastRole === 'user'
+
   return (
     <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
       {/* Hover reveal style for message actions */}
@@ -203,7 +247,27 @@ export function MessageList({
             onToolDeny={onToolDeny}
           />
         ))}
+        {showThinking ? <ThinkingIndicator /> : null}
       </div>
+
+      {/* Loader overlay shown during the hidden window between first paint and
+       * React hydration's initial pin-to-bottom. Replaces what would otherwise
+       * be a blank area while the scroll container is `visibility: hidden`. */}
+      {!isInitialPinned ? (
+        <div
+          aria-hidden
+          style={{
+            alignItems: 'center',
+            color: 'var(--theme-elevation-500)',
+            display: 'flex',
+            inset: 0,
+            justifyContent: 'center',
+            position: 'absolute',
+          }}
+        >
+          <LoaderIcon height={24} width={24} />
+        </div>
+      ) : null}
 
       {/* Scroll-to-bottom FAB — centered pill above the input */}
       {!isAtBottom ? (
