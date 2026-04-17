@@ -1,6 +1,8 @@
 import type { AdminViewServerProps } from 'payload'
 
 import { DefaultTemplate } from '@payloadcms/next/templates'
+import { redirect } from 'next/navigation.js'
+import { formatAdminURL } from 'payload/shared'
 
 import type { AgentMode, ModelOption, ModesConfig } from '../types.js'
 
@@ -18,6 +20,25 @@ export default async function ChatViewServer({
   const { locale, permissions, req, visibleEntities } = initPageResult
   const conversationId = req.searchParams.get('conversation') ?? undefined
   const { i18n, payload, user } = req
+
+  // Custom admin views are not auto-gated by Payload's root router (see the
+  // `isCustomAdminView` skip in `@payloadcms/next`'s RootPage), so an
+  // unauthenticated visitor would otherwise see the nav chrome wrapped
+  // around a "Not authorized" message.
+  // Redirect to login ourselves and preserve the original path so
+  // the user lands back on the chat view after signing in.
+  if (!user) {
+    const adminRoute = payload.config.routes.admin
+    const loginRoute = payload.config.admin.routes.login
+    const segments = Array.isArray(params?.segments) ? params.segments : []
+    const currentPath: '' | `/${string}` | null = segments.length ? `/${segments.join('/')}` : null
+    const queryString = req.searchParams.toString()
+    const currentRoute =
+      formatAdminURL({ adminRoute, path: currentPath }) + (queryString ? `?${queryString}` : '')
+    const loginURL = formatAdminURL({ adminRoute, path: loginRoute })
+
+    redirect(currentRoute ? `${loginURL}?redirect=${encodeURIComponent(currentRoute)}` : loginURL)
+  }
 
   // Payload's route resolver does NOT auto-wrap custom admin views registered
   // via `admin.components.views` in DefaultTemplate — custom views get no

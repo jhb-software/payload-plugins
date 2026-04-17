@@ -88,7 +88,7 @@ describe('conversationsCollection', () => {
   })
 
   // Without this hook, a user who hits Payload's default collection REST
-  // (`POST /api/chat-conversations`) could send `data.user = '<other-id>'`.
+  // (`POST /api/agent-conversations`) could send `data.user = '<other-id>'`.
   // Access filters would still hide the record from them, but the
   // collection would end up with records owned by someone who never
   // created them. The hook forces `data.user` to the authenticated user
@@ -133,7 +133,7 @@ describe('conversationsCollection', () => {
 // ---------------------------------------------------------------------------
 
 describe('chatAgentPlugin conversations', () => {
-  it('registers the chat-conversations collection', () => {
+  it('registers the agent-conversations collection', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
       model: fakeModel,

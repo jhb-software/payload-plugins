@@ -34,6 +34,7 @@ payloadAltTextPlugin({
 ```
 
 - feat: scope alt text tracking, validation, and health to configurable per-collection MIME types (default `['image/*']`)
+- refactor: stop auto-injecting the alt text health widget into `admin.dashboard.defaultLayout`. The widget is still registered under `admin.dashboard.widgets`; add `{ widgetSlug: 'alt-text-health', width: 'full' }` to your `defaultLayout` to show it by default.
 
 ## 0.4.4
 
