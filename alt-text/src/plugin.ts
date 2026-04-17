@@ -1,4 +1,4 @@
-import type { Config, PayloadRequest, Widget, WidgetInstance } from 'payload'
+import type { Config, Widget } from 'payload'
 
 import type {
   AltTextPluginConfig,
@@ -29,46 +29,6 @@ const altTextHealthWidgetDefinition = {
   maxWidth: 'full',
   minWidth: 'medium',
 } satisfies { ComponentPath: string } & Widget
-
-type DashboardDefaultLayout = Config['admin'] extends infer TAdmin
-  ? TAdmin extends { dashboard?: infer TDashboard }
-    ? TDashboard extends { defaultLayout?: infer TDefaultLayout }
-      ? TDefaultLayout
-      : never
-    : never
-  : never
-
-const defaultAltTextHealthWidgetLayout: WidgetInstance = {
-  widgetSlug: 'alt-text-health',
-  width: 'full',
-}
-
-function appendAltTextHealthWidgetToLayout(layout: WidgetInstance[]): WidgetInstance[] {
-  if (layout.some((widget) => widget.widgetSlug === 'alt-text-health')) {
-    return layout
-  }
-
-  return [...layout, defaultAltTextHealthWidgetLayout]
-}
-
-function getDashboardDefaultLayout(defaultLayout: DashboardDefaultLayout | undefined) {
-  if (!defaultLayout) {
-    return [
-      {
-        widgetSlug: 'collections',
-        width: 'full',
-      },
-      defaultAltTextHealthWidgetLayout,
-    ] satisfies WidgetInstance[]
-  }
-
-  if (Array.isArray(defaultLayout)) {
-    return appendAltTextHealthWidgetToLayout(defaultLayout)
-  }
-
-  return async ({ req }: { req: PayloadRequest }) =>
-    appendAltTextHealthWidgetToLayout(await defaultLayout({ req }))
-}
 
 export const payloadAltTextPlugin =
   (incomingPluginConfig: IncomingAltTextPluginConfig) =>
@@ -194,9 +154,6 @@ export const payloadAltTextPlugin =
         ...config.admin,
         dashboard: {
           ...config.admin?.dashboard,
-          ...(enableHealthCheck && {
-            defaultLayout: getDashboardDefaultLayout(config.admin?.dashboard?.defaultLayout),
-          }),
           widgets,
         },
       },
