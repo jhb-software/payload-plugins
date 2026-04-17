@@ -133,8 +133,7 @@ describe('conversationsCollection', () => {
   // collection has more than a few hundred rows.
   it('indexes the user field so read-access and list queries hit an index', () => {
     const userField = conversationsCollection.fields.find(
-      (f): f is typeof f & { index?: boolean; name: string } =>
-        'name' in f && f.name === 'user',
+      (f): f is typeof f & { index?: boolean; name: string } => 'name' in f && f.name === 'user',
     )
     expect(userField?.index).toBe(true)
   })

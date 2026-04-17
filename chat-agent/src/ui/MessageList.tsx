@@ -283,10 +283,7 @@ export function MessageList({
        * conversation switch is fetching. Replaces what would otherwise be a
        * blank area (or a scroll-from-top jump). */}
       {showSkeleton ? (
-        <div
-          aria-hidden
-          style={{ inset: 0, position: 'absolute' }}
-        >
+        <div aria-hidden style={{ inset: 0, position: 'absolute' }}>
           <MessageSkeleton />
         </div>
       ) : null}
