@@ -81,15 +81,13 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Lexical')
   })
 
-  it('explains that draft status lives in `_status`, distinct from the `draft` query arg', () => {
-    // Without this, the agent confuses `draft: true` (return the latest
-    // version, which may be an unpublished draft) with filtering for docs
-    // currently in draft state — the latter requires
-    // `where: { _status: { equals: 'draft' } }`.
+  it('distinguishes the `draft` query flag from the `_status` field', () => {
+    // The agent was conflating the two: `draft` selects the versions vs main
+    // table (a "latest" flag); `_status` holds the actual draft/published
+    // state of the document.
     const prompt = buildSystemPrompt({ collections: [], globals: [] })
-    expect(prompt).toContain('_status')
-    expect(prompt).toContain("equals: 'draft'")
-    expect(prompt).toContain('draft: true')
+    expect(prompt).toContain('`draft`')
+    expect(prompt).toContain('`_status`')
   })
 
   it('mentions listEndpoints only when custom endpoints exist', () => {
