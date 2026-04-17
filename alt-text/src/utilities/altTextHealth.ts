@@ -131,42 +131,40 @@ async function computeAltTextHealthScan({
   payload,
 }: AltTextHealthComputationArgs): Promise<AltTextHealthScan> {
   const collectionSummaries = await Promise.all(
-    collections.map(
-      async ({ slug, mimeTypes }): Promise<AltTextHealthScanCollection> => {
-        try {
-          const docs = await fetchAllDocs(payload, slug, isLocalized)
-          const tracked = filterDocsByMimeType(docs, mimeTypes)
+    collections.map(async ({ slug, mimeTypes }): Promise<AltTextHealthScanCollection> => {
+      try {
+        const docs = await fetchAllDocs(payload, slug, isLocalized)
+        const tracked = filterDocsByMimeType(docs, mimeTypes)
 
-          return summarizeCollection({
-            collection: slug,
-            docs: tracked,
-            isLocalized,
-            localeCodes,
-          })
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error'
-          const collectionError = createCollectionReadError(slug, message)
+        return summarizeCollection({
+          collection: slug,
+          docs: tracked,
+          isLocalized,
+          localeCodes,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error'
+        const collectionError = createCollectionReadError(slug, message)
 
-          payload.logger.error({
-            collection: slug,
-            err: error,
-            msg: 'Alt text health check failed while reading a collection.',
-            operation: 'find',
-            plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
-          })
+        payload.logger.error({
+          collection: slug,
+          err: error,
+          msg: 'Alt text health check failed while reading a collection.',
+          operation: 'find',
+          plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
+        })
 
-          return {
-            collection: slug,
-            completeDocs: 0,
-            error: collectionError,
-            invalidDocIds: undefined,
-            missingDocs: 0,
-            partialDocs: 0,
-            totalDocs: 0,
-          }
+        return {
+          collection: slug,
+          completeDocs: 0,
+          error: collectionError,
+          invalidDocIds: undefined,
+          missingDocs: 0,
+          partialDocs: 0,
+          totalDocs: 0,
         }
-      },
-    ),
+      }
+    }),
   )
 
   const errors = collectionSummaries

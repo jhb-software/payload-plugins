@@ -70,11 +70,7 @@ export const generateAltTextEndpoint =
 
       const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
 
-      if (
-        mimeType &&
-        collectionConfig &&
-        !matchesMimeType(mimeType, collectionConfig.mimeTypes)
-      ) {
+      if (mimeType && collectionConfig && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
         return Response.json(
           {
             error: `Alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection. Tracked types: ${collectionConfig.mimeTypes.join(', ')}.`,
