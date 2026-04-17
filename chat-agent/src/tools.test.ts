@@ -722,7 +722,7 @@ describe('filterToolsByMode', () => {
       expect((filtered.shipPackage as { needsApproval?: boolean }).needsApproval).toBe(true)
     })
 
-    it('leaves unknown tools unchanged in read-write mode', () => {
+    it('allows an unknown tool without approval in read-write mode', () => {
       expect(filterWithCustom('read-write').shipPackage).toBe(customTool)
     })
   })

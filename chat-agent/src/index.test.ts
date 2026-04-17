@@ -1263,7 +1263,7 @@ describe('chatAgentPlugin customTools', () => {
     } as unknown as Tool
   }
 
-  it('merges custom tools into the toolset handed to streamText', async () => {
+  it('makes user-registered custom tools callable by the agent', async () => {
     vi.mocked(streamText).mockClear()
     const salesTool = fakeTool({ description: 'Create a lead in the Sales API' })
     const plugin = chatAgentPlugin({
@@ -1375,7 +1375,7 @@ describe('chatAgentPlugin customTools', () => {
       expect(tools!.createSalesLead.needsApproval).toBe(true)
     })
 
-    it('passes custom tools through unchanged in read-write mode', async () => {
+    it('allows a custom tool without approval in read-write mode', async () => {
       const tools = await runChatWithMode('read-write')
       expect(tools!.createSalesLead).toBeDefined()
       expect(tools!.createSalesLead.needsApproval).toBeUndefined()
@@ -1427,25 +1427,25 @@ describe('chatAgentPlugin webSearch / webFetch', () => {
     return { res, tools: lastStreamTextHandle()?._streamTextOpts.tools }
   }
 
-  it('registers webSearch under the key `webSearch` when configured', async () => {
+  it('exposes the configured webSearch tool to the agent as `webSearch`', async () => {
     const search = fakeProviderTool('anthropic.web_search_20250305')
     const { tools } = await runChatWith({ webSearch: search })
     expect(tools!.webSearch).toBe(search)
   })
 
-  it('registers webFetch under the key `webFetch` when configured', async () => {
+  it('exposes the configured webFetch tool to the agent as `webFetch`', async () => {
     const fetch = fakeProviderTool('anthropic.web_fetch_20260209')
     const { tools } = await runChatWith({ webFetch: fetch })
     expect(tools!.webFetch).toBe(fetch)
   })
 
-  it('omits webSearch / webFetch when not configured', async () => {
+  it('hides webSearch and webFetch from the agent when not configured', async () => {
     const { tools } = await runChatWith({})
     expect(tools!.webSearch).toBeUndefined()
     expect(tools!.webFetch).toBeUndefined()
   })
 
-  it('classifies webSearch / webFetch as reads (available in read mode)', async () => {
+  it('keeps webSearch and webFetch available to the agent in read mode', async () => {
     const search = fakeProviderTool('anthropic.web_search_20250305')
     const fetch = fakeProviderTool('anthropic.web_fetch_20260209')
     const { tools } = await runChatWith({
@@ -1457,7 +1457,7 @@ describe('chatAgentPlugin webSearch / webFetch', () => {
     expect(tools!.webFetch).toBe(fetch)
   })
 
-  it('does not mark webSearch / webFetch as needsApproval in ask mode', async () => {
+  it('lets the agent call webSearch without approval in ask mode', async () => {
     // They're server-executed by the provider — the client can't approve
     // something the provider already ran. Leave the object untouched so
     // `filterToolsByMode` doesn't invent an approval gate it can't enforce.
