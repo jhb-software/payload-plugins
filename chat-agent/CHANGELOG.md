@@ -4,6 +4,7 @@
 
 - feat!: rename the `chat-conversations` collection to `agent-conversations` and the default `chat-token-usage` budget collection to `agent-token-usage`. Existing projects must migrate data or override `createPayloadBudget({ slug: 'chat-token-usage' })` to keep the previous slug.
 - feat: note in the system prompt that Payload uses Lexical for rich text so the agent reads/writes rich-text field values as Lexical editor JSON state instead of HTML or Markdown
+- feat: explain Payload's draft / `_status` model in the system prompt so the agent stops confusing the `draft: true` query arg (returns the latest, possibly unpublished version) with filtering for documents currently in draft state (`where: { _status: { equals: 'draft' } }`)
 - fix: redirect unauthenticated visitors of `/admin/chat` to the login page instead of rendering the admin chrome around a "Not authorized" message
 
 ## 0.1.0-beta.3

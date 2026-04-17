@@ -73,6 +73,7 @@ export function buildSystemPrompt(
     "- Respect that your actions are limited by the current user's permissions.",
     '- If a tool call fails with a permission error, tell the user they lack access.',
     '- Payload uses [Lexical](https://lexical.dev) for rich text fields — their values are Lexical editor JSON state, not HTML or Markdown.',
+    "- Drafts: when a collection or global has drafts enabled, the status of its latest version lives in the `_status` field (note the leading underscore) with values `'draft'` or `'published'`. To list documents currently in draft state, filter `where: { _status: { equals: 'draft' } }`. The separate `draft: true` query argument tells Payload to return the latest version (which may be an unpublished draft) instead of the latest published version — it does **not** filter results to drafts only.",
     '',
     '## Token efficiency',
     '- Always use `select` to request only the fields you need. Never fetch all fields when you only need a few.',
