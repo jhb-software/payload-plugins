@@ -1382,3 +1382,108 @@ describe('chatAgentPlugin customTools', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// Provider-native webSearch / webFetch built-ins
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin webSearch / webFetch', () => {
+  /**
+   * Stand-in for a provider-defined tool like
+   * `anthropic.tools.webSearch_20250305(...)`. The real object has
+   * `type: 'provider'` and no `execute` — the provider runs the tool
+   * server-side — so we mirror that shape here.
+   */
+  function fakeProviderTool(id: `${string}.${string}`): Tool {
+    return {
+      id,
+      type: 'provider',
+      args: {},
+      inputSchema: { _def: { typeName: 'ZodObject' } },
+    } as unknown as Tool
+  }
+
+  async function runChatWith(opts: {
+    mode?: 'ask' | 'read' | 'read-write'
+    webFetch?: Tool
+    webSearch?: Tool
+  }) {
+    vi.mocked(streamText).mockClear()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      modes: { default: opts.mode ?? 'read-write' },
+      webFetch: opts.webFetch,
+      webSearch: opts.webSearch,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+    const res = await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+    return { res, tools: lastStreamTextHandle()?._streamTextOpts.tools }
+  }
+
+  it('registers webSearch under the key `webSearch` when configured', async () => {
+    const search = fakeProviderTool('anthropic.web_search_20250305')
+    const { tools } = await runChatWith({ webSearch: search })
+    expect(tools!.webSearch).toBe(search)
+  })
+
+  it('registers webFetch under the key `webFetch` when configured', async () => {
+    const fetch = fakeProviderTool('anthropic.web_fetch_20260209')
+    const { tools } = await runChatWith({ webFetch: fetch })
+    expect(tools!.webFetch).toBe(fetch)
+  })
+
+  it('omits webSearch / webFetch when not configured', async () => {
+    const { tools } = await runChatWith({})
+    expect(tools!.webSearch).toBeUndefined()
+    expect(tools!.webFetch).toBeUndefined()
+  })
+
+  it('classifies webSearch / webFetch as reads (available in read mode)', async () => {
+    const search = fakeProviderTool('anthropic.web_search_20250305')
+    const fetch = fakeProviderTool('anthropic.web_fetch_20260209')
+    const { tools } = await runChatWith({
+      mode: 'read',
+      webFetch: fetch,
+      webSearch: search,
+    })
+    expect(tools!.webSearch).toBe(search)
+    expect(tools!.webFetch).toBe(fetch)
+  })
+
+  it('does not mark webSearch / webFetch as needsApproval in ask mode', async () => {
+    // They're server-executed by the provider — the client can't approve
+    // something the provider already ran. Leave the object untouched so
+    // `filterToolsByMode` doesn't invent an approval gate it can't enforce.
+    const search = fakeProviderTool('anthropic.web_search_20250305')
+    const { tools } = await runChatWith({ mode: 'ask', webSearch: search })
+    expect(tools!.webSearch).toBeDefined()
+    expect((tools!.webSearch as { needsApproval?: boolean }).needsApproval).toBeUndefined()
+  })
+
+  it('rejects a customTool whose name collides with `webSearch`', async () => {
+    const plugin = chatAgentPlugin({
+      customTools: () => ({ webSearch: fakeProviderTool('someone-elses.webSearch') }),
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      webSearch: fakeProviderTool('anthropic.web_search_20250305'),
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+    const res = await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toMatch(/webSearch/i)
+  })
+})

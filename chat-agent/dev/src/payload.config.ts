@@ -200,6 +200,11 @@ export default buildConfig({
       customTools,
       defaultModel: 'claude-haiku-4-5-20251001',
       model: resolveModel,
+      // Hand the plugin Anthropic's server-executed web tools. They're
+      // billed separately by Anthropic (~$10 / 1k searches), so opt out by
+      // removing these lines if cost matters for your dev loop.
+      webFetch: anthropic.tools.webFetch_20260209(),
+      webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
       modes: {
         default: 'ask',
         access: {

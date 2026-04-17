@@ -27,6 +27,14 @@ import { extractFields } from './schema.js'
 // Tool classification
 // ---------------------------------------------------------------------------
 
+/**
+ * Fixed keys for provider-native tools (`webSearch`, `webFetch`) wired via
+ * plugin options. Server-executed by the provider, so treated as reads and
+ * not gated by `needsApproval` — the client can't approve a tool call the
+ * provider already ran.
+ */
+export const PROVIDER_TOOL_NAMES = ['webSearch', 'webFetch'] as const
+
 /** Tools that only read data (safe in all modes). */
 export const READ_TOOL_NAMES = [
   'find',
@@ -36,6 +44,7 @@ export const READ_TOOL_NAMES = [
   'getCollectionSchema',
   'getGlobalSchema',
   'listEndpoints',
+  ...PROVIDER_TOOL_NAMES,
 ] as const
 
 /** Tools that modify data (restricted in read/ask modes). */
@@ -575,12 +584,12 @@ const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
  * - `read-write`: All tools unchanged.
  * - `superuser`:  All tools unchanged (overrideAccess is handled at build time).
  */
-export function filterToolsByMode(
-  tools: Record<string, ExecutableTool>,
+export function filterToolsByMode<T extends Tool>(
+  tools: Record<string, T>,
   mode: AgentMode,
-): Record<string, ExecutableTool> {
+): Record<string, T> {
   if (mode === 'read') {
-    const filtered: Record<string, ExecutableTool> = {}
+    const filtered: Record<string, T> = {}
     for (const [name, tool] of Object.entries(tools)) {
       if (readToolSet.has(name)) {
         filtered[name] = tool
@@ -590,14 +599,14 @@ export function filterToolsByMode(
   }
 
   if (mode === 'ask') {
-    const result: Record<string, ExecutableTool> = {}
+    const result: Record<string, T> = {}
     for (const [name, tool] of Object.entries(tools)) {
       if (readToolSet.has(name)) {
         result[name] = tool
       } else {
         // Anything not explicitly read-safe — built-in writes, `callEndpoint`,
         // and user-supplied custom tools — is gated behind client approval.
-        result[name] = { ...tool, needsApproval: true } as ExecutableTool
+        result[name] = { ...tool, needsApproval: true } as T
       }
     }
     return result

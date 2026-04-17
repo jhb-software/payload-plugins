@@ -36,7 +36,7 @@ import {
   validateModeAccess,
 } from './modes.js'
 import { buildSystemPrompt } from './system-prompt.js'
-import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
+import { buildTools, discoverEndpoints, filterToolsByMode, PROVIDER_TOOL_NAMES } from './tools.js'
 
 export {
   createPayloadBudget,
@@ -279,10 +279,11 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             )
 
             // --- Resolve user-provided custom tools --------------------------
-            // Tool names must not collide with built-ins, otherwise a user
-            // could accidentally override `find`/`create`/etc. with a tool
-            // that has different semantics. Surface the misconfiguration as
-            // a 500 instead of silently overriding.
+            // Tool names must not collide with built-ins or the fixed slots
+            // for provider-native tools (`webSearch`, `webFetch`), otherwise
+            // a user could accidentally override a core tool with different
+            // semantics. Surface the misconfiguration as a 500 instead of
+            // silently overriding.
             let resolvedCustomTools: Record<string, Tool> = {}
             if (options.customTools) {
               try {
@@ -295,8 +296,9 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                   { status: 500 },
                 )
               }
+              const providerSlots: ReadonlySet<string> = new Set(PROVIDER_TOOL_NAMES)
               for (const name of Object.keys(resolvedCustomTools)) {
-                if (name in builtInTools) {
+                if (name in builtInTools || providerSlots.has(name)) {
                   return Response.json(
                     {
                       error: `customTools: "${name}" collides with a built-in tool. Pick a different name.`,
@@ -307,9 +309,16 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               }
             }
 
-            const allTools = {
+            // --- Assemble the final toolset ---------------------------------
+            // Payload built-ins + user customTools + provider-native
+            // web tools, merged in that order. Provider tools (type:
+            // 'provider', no `execute`) are handled server-side by the
+            // provider — no local execution path, no SSRF surface.
+            const allTools: Record<string, Tool> = {
               ...builtInTools,
-              ...(resolvedCustomTools as Record<string, (typeof builtInTools)[string]>),
+              ...resolvedCustomTools,
+              ...(options.webSearch ? { webSearch: options.webSearch } : {}),
+              ...(options.webFetch ? { webFetch: options.webFetch } : {}),
             }
             const tools = filterToolsByMode(allTools, mode)
             const systemPrompt = buildSystemPrompt(

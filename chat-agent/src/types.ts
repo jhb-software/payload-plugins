@@ -223,6 +223,38 @@ export interface ChatAgentPluginOptions {
   suggestedPrompts?: string[]
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
+  /**
+   * Provider-native URL fetch tool, registered under the fixed name `webFetch`
+   * and treated as a read. Pass the provider's tool directly — the plugin
+   * stays provider-agnostic and does not roll its own fetcher (SSRF risk).
+   *
+   * Make sure the configured model actually supports the tool you pass; the
+   * provider rejects unsupported combinations at call time.
+   *
+   * @example
+   * ```ts
+   * import { anthropic } from '@ai-sdk/anthropic'
+   * chatAgentPlugin({ webFetch: anthropic.tools.webFetch_20260209() })
+   * ```
+   */
+  webFetch?: Tool
+  /**
+   * Provider-native web search tool, registered under the fixed name
+   * `webSearch` and treated as a read (available in `read` mode, not gated by
+   * `needsApproval` in `ask` since the provider executes it server-side). Pass
+   * the provider's tool directly — the plugin stays provider-agnostic and
+   * does not bundle a third-party search backend.
+   *
+   * Make sure the configured model actually supports the tool you pass; the
+   * provider rejects unsupported combinations at call time.
+   *
+   * @example
+   * ```ts
+   * import { anthropic } from '@ai-sdk/anthropic'
+   * chatAgentPlugin({ webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }) })
+   * ```
+   */
+  webSearch?: Tool
 }
 
 // ---------------------------------------------------------------------------

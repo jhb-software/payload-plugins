@@ -4,6 +4,7 @@
 
 - feat!: rename the `chat-conversations` collection to `agent-conversations` and the default `chat-token-usage` budget collection to `agent-token-usage`. Existing projects must migrate data or override `createPayloadBudget({ slug: 'chat-token-usage' })` to keep the previous slug.
 - feat: add a `customTools` plugin option so consumers can register extra Vercel AI SDK tools (Slack webhooks, Axiom/Vercel log queries, their own APIs, ...) alongside the built-ins. Names must not collide with built-ins; custom tools default to write classification (excluded in `read`, `needsApproval: true` in `ask`).
+- feat: add `webSearch` and `webFetch` plugin options that accept the active provider's native server-executed tool (e.g. `anthropic.tools.webSearch_20250305(...)`). Registered under the fixed names `webSearch` / `webFetch` and classified as reads (available in `read` mode, not gated by `needsApproval` in `ask` since the provider runs them server-side). Off by default; the plugin stays provider-agnostic and does not ship a third-party search backend or a locally-rolled fetcher.
 - feat: note in the system prompt that Payload uses Lexical for rich text so the agent reads/writes rich-text field values as Lexical editor JSON state instead of HTML or Markdown
 - fix: redirect unauthenticated visitors of `/admin/chat` to the login page instead of rendering the admin chrome around a "Not authorized" message
 
