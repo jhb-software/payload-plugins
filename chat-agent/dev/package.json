@@ -23,6 +23,7 @@
     "@payloadcms/next": "^3.83.0",
     "@payloadcms/richtext-lexical": "^3.83.0",
     "@payloadcms/ui": "^3.83.0",
+    "@vercel/functions": "^3.1.5",
     "ai": "^6.0.164",
     "next": "15.4.11",
     "payload": "^3.83.0",

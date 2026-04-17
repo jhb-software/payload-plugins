@@ -3,6 +3,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { chatAgentPlugin, createPayloadBudget } from '@jhb.software/payload-chat-agent'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { attachDatabasePool } from '@vercel/functions'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -114,6 +115,12 @@ export default buildConfig({
   ],
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || 'mongodb://localhost:27017/chat-agent-dev',
+    connectOptions: {
+      // Close sockets quickly so Fluid Compute can drain the pool between
+      // invocations instead of keeping idle Atlas connections open.
+      maxIdleTimeMS: 5_000,
+      maxPoolSize: 10,
+    },
   }),
   editor: lexicalEditor(),
   endpoints: rootEndpoints,
@@ -122,6 +129,20 @@ export default buildConfig({
     outputFile: path.resolve(__dirname, '../payload-types.ts'),
   },
   async onInit(payload) {
+    // On Vercel Fluid Compute, hand the underlying MongoClient to
+    // @vercel/functions so idle connections are released when the function
+    // suspends. Guarded by VERCEL so local dev/tests aren't affected.
+    if (process.env.VERCEL) {
+      const client = (
+        payload.db as unknown as {
+          connection?: { getClient?: () => unknown }
+        }
+      ).connection?.getClient?.()
+      if (client) {
+        attachDatabasePool(client as Parameters<typeof attachDatabasePool>[0])
+      }
+    }
+
     const existingUsers = await payload.find({
       collection: 'users',
       limit: 1,
