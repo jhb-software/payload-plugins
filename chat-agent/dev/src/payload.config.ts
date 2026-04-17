@@ -7,6 +7,7 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
+import { customTools } from './customTools.js'
 import { postsEndpoints, rootEndpoints } from './endpoints.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -196,6 +197,7 @@ export default buildConfig({
         { id: 'gpt-5-nano', label: 'GPT-5 nano' },
       ],
       budget: chatBudget.budget,
+      customTools,
       defaultModel: 'claude-haiku-4-5-20251001',
       model: resolveModel,
       modes: {

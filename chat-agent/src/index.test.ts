@@ -1,4 +1,4 @@
-import type { LanguageModel } from 'ai'
+import type { LanguageModel, Tool } from 'ai'
 import type { Endpoint } from 'payload'
 
 import { streamText } from 'ai'
@@ -1028,7 +1028,10 @@ describe('chatAgentPlugin access()', () => {
 function lastStreamTextHandle() {
   const results = vi.mocked(streamText).mock.results
   return results[results.length - 1]?.value as {
-    _streamTextOpts: { onFinish?: (event: unknown) => Promise<void> | void }
+    _streamTextOpts: {
+      onFinish?: (event: unknown) => Promise<void> | void
+      tools?: Record<string, { execute?: unknown; needsApproval?: boolean }>
+    }
     _uiStreamOpts: { headers?: Record<string, string> }
   }
 }
@@ -1236,5 +1239,146 @@ describe('chatAgentPlugin GET /chat-agent/budget', () => {
       user: { id: 1 },
     })
     expect(res.status).toBe(401)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// customTools extensibility
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin customTools', () => {
+  /**
+   * Minimal fake Vercel AI SDK `Tool`. The handler only inspects the shape
+   * (keys, `needsApproval`, `execute`) to decide how to register and filter
+   * the tool, so we don't need real zod schemas here — the cast via
+   * `unknown` is the deliberate test-boundary bridge to the SDK's deep Tool
+   * type.
+   */
+  function fakeTool(overrides: Record<string, unknown> = {}): Tool {
+    return {
+      description: 'fake tool',
+      execute: vi.fn(() => Promise.resolve({ ok: true })),
+      inputSchema: { _def: { typeName: 'ZodObject' } },
+      ...overrides,
+    } as unknown as Tool
+  }
+
+  it('merges custom tools into the toolset handed to streamText', async () => {
+    vi.mocked(streamText).mockClear()
+    const salesTool = fakeTool({ description: 'Create a lead in the Sales API' })
+    const plugin = chatAgentPlugin({
+      customTools: () => ({ createSalesLead: salesTool }),
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools).toBeDefined()
+    expect(_streamTextOpts.tools!.createSalesLead).toBeDefined()
+    expect(_streamTextOpts.tools!.createSalesLead.execute).toBe(salesTool.execute)
+  })
+
+  it('awaits async customTools resolvers and passes the request to them', async () => {
+    vi.mocked(streamText).mockClear()
+    const receivedArgs: Array<{ req: unknown }> = []
+    const plugin = chatAgentPlugin({
+      customTools: (args) => {
+        receivedArgs.push(args)
+        return Promise.resolve({ fetchWeather: fakeTool() })
+      },
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    const fakeUser = { id: 7, email: 'user@test.com' }
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: fakeUser,
+    })
+
+    expect(receivedArgs).toHaveLength(1)
+    expect((receivedArgs[0].req as { user: unknown }).user).toBe(fakeUser)
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.fetchWeather).toBeDefined()
+  })
+
+  it('rejects a custom tool whose name collides with a built-in tool', async () => {
+    const plugin = chatAgentPlugin({
+      customTools: () => ({ find: fakeTool() }),
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    const res = await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toMatch(/customTools/i)
+    expect(body.error).toContain('find')
+  })
+
+  describe('mode filtering for custom tools', () => {
+    // The plugin can't know a custom tool's side effects, so the safe default
+    // is to treat it as a write: excluded in read, gated behind needsApproval
+    // in ask, and passed through in read-write.
+
+    async function runChatWithMode(mode: 'ask' | 'read' | 'read-write') {
+      vi.mocked(streamText).mockClear()
+      const plugin = chatAgentPlugin({
+        customTools: () => ({ createSalesLead: fakeTool() }),
+        defaultModel: 'gpt-4o',
+        model: makeModelFactory().factory,
+        modes: { default: mode },
+      })
+      const handler = plugin({ endpoints: [] }).endpoints.find(
+        (ep: Endpoint) => ep.path === '/chat-agent/chat',
+      ).handler
+      await handler({
+        json: () => Promise.resolve(validChatBody),
+        payload: { config: { collections: [], globals: [] } },
+        user: { id: 1 },
+      })
+      return lastStreamTextHandle()._streamTextOpts.tools
+    }
+
+    it('excludes custom tools in read mode', async () => {
+      const tools = await runChatWithMode('read')
+      expect(tools!.createSalesLead).toBeUndefined()
+    })
+
+    it('marks custom tools with needsApproval: true in ask mode', async () => {
+      const tools = await runChatWithMode('ask')
+      expect(tools!.createSalesLead).toBeDefined()
+      expect(tools!.createSalesLead.needsApproval).toBe(true)
+    })
+
+    it('passes custom tools through unchanged in read-write mode', async () => {
+      const tools = await runChatWithMode('read-write')
+      expect(tools!.createSalesLead).toBeDefined()
+      expect(tools!.createSalesLead.needsApproval).toBeUndefined()
+    })
   })
 })

@@ -2,7 +2,7 @@
  * Shared types for the chat agent plugin.
  */
 
-import type { LanguageModel } from 'ai'
+import type { LanguageModel, Tool } from 'ai'
 import type { PayloadRequest } from 'payload'
 
 import { z } from 'zod'
@@ -176,6 +176,27 @@ export interface ChatAgentPluginOptions {
    * for a ready-made helper that persists usage to a Payload collection.
    */
   budget?: BudgetConfig
+  /**
+   * Register additional Vercel AI SDK tools alongside the built-in Payload
+   * tools. Called once per chat request with the authenticated request, so
+   * tools can close over `req.user`, `req.payload`, or any per-request state.
+   *
+   * Tool names must not collide with built-in names (`find`, `create`, ...).
+   * A collision fails the request with HTTP 500 rather than silently
+   * overriding a core tool.
+   *
+   * Since the plugin cannot know a custom tool's side effects, custom tools
+   * default to "write" classification for mode filtering:
+   * - `read` mode: excluded entirely.
+   * - `ask` mode: marked `needsApproval: true` so the client must confirm.
+   * - `read-write` / `superuser`: passed through unchanged.
+   *
+   * See the README and `chat-agent/dev/src/customTools.ts` for runnable
+   * examples (Slack webhook, Axiom / Vercel log queries).
+   */
+  customTools?: (args: {
+    req: PayloadRequest
+  }) => Promise<Record<string, Tool>> | Record<string, Tool>
   /** Model id used when no per-request override is provided. Passed to `model(id)`. */
   defaultModel: string
   /** Maximum tool-use loop steps per request. Default: 20 */

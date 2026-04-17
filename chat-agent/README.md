@@ -46,6 +46,7 @@ Provider API keys are never read from `process.env` by the plugin — pass them 
 | `adminView`       | `{ path, Component }`                | No       | Customize the admin chat view route or component                                                        |
 | `navLink`         | `boolean`                            | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
 | `budget`          | `BudgetConfig`                       | No       | Optional token budget (see below)                                                                       |
+| `customTools`     | `({ req }) => Record<string, Tool>`  | No       | Register extra Vercel AI SDK tools alongside the built-ins (see below)                                  |
 
 ### Mixing providers
 
@@ -110,6 +111,40 @@ endpoints: [
 ]
 ```
 
+### Custom tools
+
+When you need the agent to call an external service (Slack webhook, Axiom, Vercel Logs, your own Sales API, …) without routing through a Payload endpoint, pass `customTools`. The function is called once per chat request with the authenticated `req` so tools can close over `req.user` / `req.payload`:
+
+```ts
+import { tool } from 'ai'
+import { z } from 'zod'
+
+chatAgentPlugin({
+  defaultModel: 'claude-sonnet-4-20250514',
+  model: (id) => anthropic(id),
+  customTools: ({ req }) => ({
+    sendSlackMessage: tool({
+      description: 'Post a message to the #ops channel via Slack webhook',
+      inputSchema: z.object({ text: z.string() }),
+      execute: async ({ text }) => {
+        const res = await fetch(process.env.SLACK_WEBHOOK_URL!, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: `${req.user?.email}: ${text}` }),
+        })
+        return { ok: res.ok, status: res.status }
+      },
+    }),
+  }),
+})
+```
+
+Safety:
+
+- Names must not collide with built-in tool names (`find`, `create`, `update`, …). A collision fails the request with HTTP 500 instead of silently overriding a core tool.
+- The plugin can't know a custom tool's side effects, so all custom tools are treated as writes for mode filtering: excluded in `read` mode, gated behind `needsApproval: true` in `ask` mode, and passed through in `read-write` / `superuser`.
+- Runnable examples (Axiom Logs, Vercel Logs, Slack webhook) live in `chat-agent/dev/src/customTools.ts`.
+
 ### Budget limiting
 
 Cap tokens per request with two functions — the plugin stays agnostic about whether you want per-user, per-day, global, or something else:
@@ -159,6 +194,8 @@ Errors from `check`/`record` are not swallowed — a broken usage store fails lo
 | `findGlobal`   | Get a global document                                 |
 | `updateGlobal` | Update a global document                              |
 | `callEndpoint` | Invoke a custom API endpoint                          |
+
+Additional tools registered via the `customTools` option appear alongside these and follow the same mode rules (see [Custom tools](#custom-tools)).
 
 ## Production considerations
 

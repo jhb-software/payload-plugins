@@ -20,7 +20,7 @@
  *   })
  */
 
-import type { TextStreamPart, ToolSet } from 'ai'
+import type { TextStreamPart, Tool, ToolSet } from 'ai'
 import type { PayloadRequest } from 'payload'
 
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
@@ -269,7 +269,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
             // --- Discover custom endpoints and build tools ------------------
             const customEndpoints = discoverEndpoints(req.payload.config)
-            const allTools = buildTools(
+            const builtInTools = buildTools(
               req.payload,
               req.user,
               overrideAccess,
@@ -277,6 +277,40 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               customEndpoints,
               req.payload.config,
             )
+
+            // --- Resolve user-provided custom tools --------------------------
+            // Tool names must not collide with built-ins, otherwise a user
+            // could accidentally override `find`/`create`/etc. with a tool
+            // that has different semantics. Surface the misconfiguration as
+            // a 500 instead of silently overriding.
+            let resolvedCustomTools: Record<string, Tool> = {}
+            if (options.customTools) {
+              try {
+                resolvedCustomTools = await options.customTools({ req })
+              } catch (err) {
+                return Response.json(
+                  {
+                    error: `customTools resolver failed: ${err instanceof Error ? err.message : String(err)}`,
+                  },
+                  { status: 500 },
+                )
+              }
+              for (const name of Object.keys(resolvedCustomTools)) {
+                if (name in builtInTools) {
+                  return Response.json(
+                    {
+                      error: `customTools: "${name}" collides with a built-in tool. Pick a different name.`,
+                    },
+                    { status: 500 },
+                  )
+                }
+              }
+            }
+
+            const allTools = {
+              ...builtInTools,
+              ...(resolvedCustomTools as Record<string, (typeof builtInTools)[string]>),
+            }
             const tools = filterToolsByMode(allTools, mode)
             const systemPrompt = buildSystemPrompt(
               req.payload.config,

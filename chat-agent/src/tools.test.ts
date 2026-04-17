@@ -695,6 +695,37 @@ describe('filterToolsByMode', () => {
       },
     )
   })
+
+  describe('user-defined tools (unknown names)', () => {
+    // Tools registered via `chatAgentPlugin({ customTools })` don't appear in
+    // the built-in read/write name lists. The filter treats unknown names as
+    // writes — the safe default, since we can't know their side effects.
+
+    const customTool = {
+      description: 'Ships packages',
+      execute: vi.fn(),
+      inputSchema: {},
+    } as unknown as Parameters<typeof filterToolsByMode>[0][string]
+
+    function filterWithCustom(mode: 'ask' | 'read' | 'read-write') {
+      const tools = { ...buildTools(mockPayload, mockUser), shipPackage: customTool }
+      return filterToolsByMode(tools, mode)
+    }
+
+    it('excludes unknown tools in read mode', () => {
+      expect(Object.keys(filterWithCustom('read'))).not.toContain('shipPackage')
+    })
+
+    it('marks unknown tools with needsApproval: true in ask mode', () => {
+      const filtered = filterWithCustom('ask')
+      expect(filtered.shipPackage).toBeDefined()
+      expect((filtered.shipPackage as { needsApproval?: boolean }).needsApproval).toBe(true)
+    })
+
+    it('leaves unknown tools unchanged in read-write mode', () => {
+      expect(filterWithCustom('read-write').shipPackage).toBe(customTool)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------

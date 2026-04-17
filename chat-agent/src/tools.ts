@@ -560,20 +560,18 @@ export function buildTools(
 // Tool filtering by agent mode
 // ---------------------------------------------------------------------------
 
-/** Tools treated as writes for `read`/`ask` mode filtering. */
-export const WRITE_TOOLS_WITH_ENDPOINT: ReadonlySet<string> = new Set([
-  'callEndpoint',
-  ...WRITE_TOOL_NAMES,
-])
 const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
 
 /**
  * Filter tools based on the active agent mode.
  *
- * - `read`:       Only read tools (write tools and callEndpoint removed).
- * - `ask`:        All tools, but write tools gain `needsApproval: true` so the
- *                 AI SDK pauses on them and waits for a client approval
- *                 response before executing server-side.
+ * - `read`:       Only read tools — write tools, callEndpoint, and any
+ *                 user-supplied custom tools are removed.
+ * - `ask`:        All tools, but anything not classified as read gains
+ *                 `needsApproval: true` so the AI SDK pauses on it and waits
+ *                 for a client approval response before executing server-side.
+ *                 User-supplied custom tools default to this treatment since
+ *                 the plugin can't know their side effects.
  * - `read-write`: All tools unchanged.
  * - `superuser`:  All tools unchanged (overrideAccess is handled at build time).
  */
@@ -594,12 +592,12 @@ export function filterToolsByMode(
   if (mode === 'ask') {
     const result: Record<string, ExecutableTool> = {}
     for (const [name, tool] of Object.entries(tools)) {
-      if (WRITE_TOOLS_WITH_ENDPOINT.has(name)) {
-        // Mark as requiring approval; the SDK pauses and waits for the client
-        // to respond via `addToolApprovalResponse` before executing.
-        result[name] = { ...tool, needsApproval: true } as ExecutableTool
-      } else {
+      if (readToolSet.has(name)) {
         result[name] = tool
+      } else {
+        // Anything not explicitly read-safe — built-in writes, `callEndpoint`,
+        // and user-supplied custom tools — is gated behind client approval.
+        result[name] = { ...tool, needsApproval: true } as ExecutableTool
       }
     }
     return result
