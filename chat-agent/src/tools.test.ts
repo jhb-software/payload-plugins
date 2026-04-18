@@ -55,6 +55,31 @@ describe('buildTools', () => {
     ])
   })
 
+  it('exposes listBlocks and getBlockSchema when config is passed', () => {
+    // Same contract-lock as the base set, but for the config-gated surface.
+    // The schema inspection tools register together; if any of them is
+    // dropped or renamed, lock it here so the agent doesn't silently lose a
+    // discovery path.
+    const tools = buildTools(createMockPayload(), mockUser, false, undefined, undefined, {
+      collections: [],
+      globals: [],
+    })
+    expect(Object.keys(tools).sort()).toEqual([
+      'count',
+      'create',
+      'delete',
+      'find',
+      'findByID',
+      'findGlobal',
+      'getBlockSchema',
+      'getCollectionSchema',
+      'getGlobalSchema',
+      'listBlocks',
+      'update',
+      'updateGlobal',
+    ])
+  })
+
   it('find calls payload.find with correct arguments', async () => {
     const payload = createMockPayload()
     const tools = buildTools(payload, mockUser)
@@ -813,8 +838,6 @@ describe('schema inspection tools', () => {
   })
 
   it('getCollectionSchema resolves blockReferences from config.blocks', async () => {
-    // Block field details come along when inspecting a collection, so a
-    // separate getBlockSchema tool isn't needed.
     const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
       blocks: [
         {
@@ -902,6 +925,212 @@ describe('schema inspection tools', () => {
       error: string
     }
     expect(result.error).toMatch(/unknown global slug/i)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Block schema tools (listBlocks, getBlockSchema)
+// ---------------------------------------------------------------------------
+
+describe('block schema tools', () => {
+  const mockPayload = {
+    count: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+    find: vi.fn(),
+    findByID: vi.fn(),
+    findGlobal: vi.fn(),
+    update: vi.fn(),
+    updateGlobal: vi.fn(),
+  }
+  const mockUser = { id: 'u1' }
+  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+
+  it('are not registered when config is not passed', () => {
+    const tools = buildTools(mockPayload, mockUser)
+    expect(tools.listBlocks).toBeUndefined()
+    expect(tools.getBlockSchema).toBeUndefined()
+  })
+
+  it('listBlocks returns slugs from config.blocks in declared order', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        { slug: 'hero', fields: [] },
+        { slug: 'callToAction', fields: [] },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.listBlocks.execute({}, ctx)) as {
+      blocks: { slug: string }[]
+    }
+    expect(result.blocks.map((b) => b.slug)).toEqual(['hero', 'callToAction'])
+  })
+
+  it('listBlocks surfaces normalized labels and interfaceName when set', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'hero',
+          fields: [],
+          interfaceName: 'HeroBlock',
+          labels: { plural: 'Heroes', singular: 'Hero' },
+        },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.listBlocks.execute({}, ctx)) as {
+      blocks: { interfaceName?: string; labels?: { plural?: unknown; singular?: unknown }; slug: string }[]
+    }
+    expect(result.blocks).toEqual([
+      {
+        slug: 'hero',
+        interfaceName: 'HeroBlock',
+        labels: { plural: 'Heroes', singular: 'Hero' },
+      },
+    ])
+  })
+
+  it('listBlocks omits labels when both leaves normalize to undefined', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [{ slug: 'hero', fields: [], labels: { singular: () => 'X' } }],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.listBlocks.execute({}, ctx)) as {
+      blocks: Record<string, unknown>[]
+    }
+    expect(result.blocks).toEqual([{ slug: 'hero' }])
+    expect(result.blocks[0]).not.toHaveProperty('labels')
+  })
+
+  it('listBlocks returns an empty array when config.blocks is absent or empty', async () => {
+    const noBlocks = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [],
+      globals: [],
+    })
+    expect(((await noBlocks.listBlocks.execute({}, ctx)) as { blocks: unknown[] }).blocks).toEqual(
+      [],
+    )
+
+    const emptyBlocks = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [],
+      collections: [],
+      globals: [],
+    })
+    expect(
+      ((await emptyBlocks.listBlocks.execute({}, ctx)) as { blocks: unknown[] }).blocks,
+    ).toEqual([])
+  })
+
+  it('getBlockSchema returns fields for a known slug', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'hero',
+          fields: [
+            { name: 'heading', type: 'text', required: true },
+            { name: 'subheading', type: 'text' },
+          ],
+        },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.getBlockSchema.execute({ slug: 'hero' }, ctx)) as {
+      fields: { name: string }[]
+      slug: string
+    }
+    expect(result.slug).toBe('hero')
+    expect(result.fields.map((f) => f.name)).toEqual(['heading', 'subheading'])
+  })
+
+  it('getBlockSchema returns { error } for an unknown slug', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [{ slug: 'hero', fields: [] }],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.getBlockSchema.execute({ slug: 'nope' }, ctx)) as {
+      error: string
+    }
+    expect(result.error).toBe('Unknown block slug "nope"')
+  })
+
+  it('getBlockSchema resolves nested blockReferences', async () => {
+    // Block A contains a `blocks` field that references block B by slug.
+    // The shared blocksBySlug map must let extractFields follow that ref
+    // transparently — same mechanism getCollectionSchema uses.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'parent',
+          fields: [
+            {
+              name: 'children',
+              type: 'blocks',
+              blockReferences: ['child'],
+              blocks: [],
+            },
+          ],
+        },
+        { slug: 'child', fields: [{ name: 'label', type: 'text' }] },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.getBlockSchema.execute({ slug: 'parent' }, ctx)) as {
+      fields: unknown[]
+    }
+    expect(JSON.stringify(result.fields)).toContain('label')
+  })
+
+  it('getBlockSchema surfaces labels and interfaceName when set', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'hero',
+          fields: [],
+          interfaceName: 'HeroBlock',
+          labels: { plural: 'Heroes', singular: 'Hero' },
+        },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.getBlockSchema.execute({ slug: 'hero' }, ctx)) as {
+      interfaceName?: string
+      labels?: { plural?: unknown; singular?: unknown }
+    }
+    expect(result.interfaceName).toBe('HeroBlock')
+    expect(result.labels).toEqual({ plural: 'Heroes', singular: 'Hero' })
+  })
+
+  it('read and ask mode filters keep both block tools', () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [{ slug: 'hero', fields: [] }],
+      collections: [],
+      globals: [],
+    })
+
+    const readTools = filterToolsByMode(tools, 'read')
+    expect(readTools).toHaveProperty('listBlocks')
+    expect(readTools).toHaveProperty('getBlockSchema')
+
+    const askTools = filterToolsByMode(tools, 'ask')
+    expect(askTools).toHaveProperty('listBlocks')
+    expect(askTools).toHaveProperty('getBlockSchema')
+    // Read tools stay plain in ask mode — no needsApproval gate.
+    expect(askTools.listBlocks).not.toHaveProperty('needsApproval')
+    expect(askTools.getBlockSchema).not.toHaveProperty('needsApproval')
   })
 })
 
