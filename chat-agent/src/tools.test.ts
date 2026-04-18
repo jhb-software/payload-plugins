@@ -963,6 +963,66 @@ describe('schema inspection tools', () => {
     }
     expect(result.error).toMatch(/unknown global slug/i)
   })
+
+  it('getCollectionSchema round-trips lexical feature summaries on richText fields', async () => {
+    // The lexical feature summary must make it through the tool output so the
+    // agent sees which nodes it may emit when authoring rich-text content.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [
+            {
+              name: 'body',
+              type: 'richText',
+              editor: {
+                features: [
+                  { key: 'bold' },
+                  {
+                    key: 'heading',
+                    serverFeatureProps: { enabledHeadingSizes: ['h2', 'h3'] },
+                  },
+                  {
+                    key: 'blocks',
+                    serverFeatureProps: {
+                      blocks: [{ slug: 'hero', fields: [{ name: 'headline', type: 'text' }] }],
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'posts' }, ctx)) as {
+      fields: {
+        lexical?: {
+          features: string[]
+          options?: {
+            blocks?: { slugs: string[] }
+            heading?: { enabledHeadingSizes?: string[] }
+          }
+        }
+        name: string
+      }[]
+    }
+
+    const body = result.fields.find((f) => f.name === 'body')!
+    expect(body.lexical?.features).toEqual(['blocks', 'bold', 'heading'])
+    expect(body.lexical?.options?.heading?.enabledHeadingSizes).toEqual(['h2', 'h3'])
+    expect(body.lexical?.options?.blocks?.slugs).toEqual(['hero'])
+
+    // The inline Block registered via BlocksFeature must be resolvable via
+    // getBlockSchema so the agent can drill into it without traversing back
+    // through the parent collection.
+    const heroSchema = (await tools.getBlockSchema.execute({ slug: 'hero' }, ctx)) as {
+      fields: { name: string }[]
+    }
+    expect(heroSchema.fields).toEqual([{ name: 'headline', type: 'text' }])
+  })
 })
 
 // ---------------------------------------------------------------------------

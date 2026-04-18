@@ -32,10 +32,41 @@ export function normalizeLabel(raw: unknown): StaticLabel | undefined {
   return undefined
 }
 
-interface FieldSchema {
+/**
+ * Per-`richText`-field summary of the lexical editor's enabled features.
+ *
+ * Surfaces what the agent may emit when authoring content for this field.
+ * Only feature keys actually present on the editor appear in `features`; the
+ * `options` map carries typed projections for a curated allow-list of known
+ * keys. Unknown keys appear in `features` without an `options` entry — the
+ * agent knows they exist without the schema pretending to understand them.
+ */
+export interface LexicalFeatureSummary {
+  /**
+   * Feature keys present on this field's editor, sorted and deduped
+   * (e.g. `['blocks', 'bold', 'heading', 'link']`).
+   */
+  features: string[]
+  /** Per-feature option projections. Keys match feature keys. */
+  options?: {
+    blocks?: { slugs: string[] }
+    heading?: { enabledHeadingSizes?: ('h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6')[] }
+    inlineBlocks?: { slugs: string[] }
+    link?: {
+      disabledCollections?: string[]
+      enabledCollections?: string[]
+      fields?: FieldSchema[]
+    }
+    relationship?: { disabledCollections?: string[]; enabledCollections?: string[] }
+    upload?: { collections: string[] }
+  }
+}
+
+export interface FieldSchema {
   blocks?: { fields: FieldSchema[]; slug: string }[]
   fields?: FieldSchema[]
   hasMany?: boolean
+  lexical?: LexicalFeatureSummary
   localized?: boolean
   name: string
   options?: { label?: StaticLabel; value: string }[]
@@ -167,8 +198,212 @@ export function extractFields(
       })
     }
 
+    if (field.type === 'richText') {
+      const lexical = extractLexicalSummary(field, blocksBySlug)
+      if (lexical) {
+        schema.lexical = lexical
+      }
+    }
+
     result.push(schema)
   }
 
   return result
+}
+
+/**
+ * Normalize a lexical editor's features into `{ key, props }[]`.
+ *
+ * Payload's sanitized config exposes features under one of two shapes:
+ *   1. `editor.features` — array of `{ key, serverFeatureProps?, clientFeatureProps?, props? }`
+ *   2. `editor.resolvedFeatureMap` — `Map<key, { serverFeatureProps?, ... }>`
+ *
+ * Detection is purely structural so the extractor has no hard dependency on
+ * `@payloadcms/richtext-lexical`. Returns `undefined` on unrecognised shapes
+ * (never throws) so the caller can omit the `lexical` key entirely.
+ */
+function normalizeLexicalFeatures(
+  editor: unknown,
+): { key: string; props: Record<string, unknown> }[] | undefined {
+  if (!editor || typeof editor !== 'object') {
+    return undefined
+  }
+  const e = editor as { features?: unknown; resolvedFeatureMap?: unknown }
+
+  const toProps = (entry: { props?: unknown; serverFeatureProps?: unknown }) => {
+    const candidate = entry.serverFeatureProps ?? entry.props ?? {}
+    return candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+      ? (candidate as Record<string, unknown>)
+      : {}
+  }
+
+  if (Array.isArray(e.features)) {
+    return (e.features as unknown[])
+      .filter((f): f is { key: string } => {
+        return Boolean(f && typeof f === 'object' && typeof (f as { key?: unknown }).key === 'string')
+      })
+      .map((f) => ({ key: f.key, props: toProps(f as Record<string, unknown>) }))
+  }
+
+  if (e.resolvedFeatureMap instanceof Map) {
+    const entries: { key: string; props: Record<string, unknown> }[] = []
+    for (const [key, value] of e.resolvedFeatureMap.entries()) {
+      if (typeof key !== 'string') {
+        continue
+      }
+      const props =
+        value && typeof value === 'object' ? toProps(value as Record<string, unknown>) : {}
+      entries.push({ key, props })
+    }
+    return entries
+  }
+
+  return undefined
+}
+
+/**
+ * Build a `LexicalFeatureSummary` for a richText field.
+ *
+ * Walks the editor's features, sorts + dedupes their keys, and projects a
+ * known allow-list of per-feature props into `options`. Unknown feature keys
+ * appear in `features` with no `options` entry. Inline `Block` objects
+ * declared on BlocksFeature / InlineBlocksFeature are registered into the
+ * shared `blocksBySlug` so `getBlockSchema` can resolve them later — mirrors
+ * how `extractFields` folds `blockReferences` into the same map.
+ */
+function extractLexicalSummary(
+  field: RawField,
+  blocksBySlug: Record<string, RawBlock>,
+): LexicalFeatureSummary | undefined {
+  const normalized = normalizeLexicalFeatures(field.editor)
+  if (!normalized || normalized.length === 0) {
+    return undefined
+  }
+
+  // Dedupe by key, keeping the first-seen props projection.
+  const propsByKey = new Map<string, Record<string, unknown>>()
+  for (const { key, props } of normalized) {
+    if (!propsByKey.has(key)) {
+      propsByKey.set(key, props)
+    }
+  }
+
+  const features = [...propsByKey.keys()].sort()
+  const options: NonNullable<LexicalFeatureSummary['options']> = {}
+
+  for (const key of features) {
+    const props = propsByKey.get(key) ?? {}
+    const projection = projectFeatureOptions(key, props, blocksBySlug)
+    if (projection !== undefined) {
+      ;(options as Record<string, unknown>)[key] = projection
+    }
+  }
+
+  const summary: LexicalFeatureSummary = { features }
+  if (Object.keys(options).length > 0) {
+    summary.options = options
+  }
+  return summary
+}
+
+/**
+ * Project the props of a single feature into its typed `options` entry.
+ *
+ * Returns `undefined` when no known props are projectable so the caller can
+ * skip adding an empty entry to `options`.
+ */
+function projectFeatureOptions(
+  key: string,
+  props: Record<string, unknown>,
+  blocksBySlug: Record<string, RawBlock>,
+): Record<string, unknown> | undefined {
+  switch (key) {
+    case 'blocks':
+    case 'inlineBlocks': {
+      const rawBlocks = props.blocks
+      if (!Array.isArray(rawBlocks)) {
+        return undefined
+      }
+      const slugs: string[] = []
+      for (const entry of rawBlocks) {
+        if (typeof entry === 'string') {
+          slugs.push(entry)
+        } else if (
+          entry &&
+          typeof entry === 'object' &&
+          typeof (entry as { slug?: unknown }).slug === 'string'
+        ) {
+          const block = entry as RawBlock
+          slugs.push(block.slug)
+          if (!(block.slug in blocksBySlug)) {
+            blocksBySlug[block.slug] = block
+          }
+        }
+      }
+      return slugs.length > 0 ? { slugs } : undefined
+    }
+
+    case 'heading': {
+      const sizes = props.enabledHeadingSizes
+      if (Array.isArray(sizes) && sizes.every((s) => typeof s === 'string')) {
+        return { enabledHeadingSizes: sizes }
+      }
+      return undefined
+    }
+
+    case 'link': {
+      const result: Record<string, unknown> = {}
+      const enabled = toStringArray(props.enabledCollections)
+      if (enabled) {
+        result.enabledCollections = enabled
+      }
+      const disabled = toStringArray(props.disabledCollections)
+      if (disabled) {
+        result.disabledCollections = disabled
+      }
+      if (Array.isArray(props.fields)) {
+        result.fields = extractFields(props.fields as RawField[], blocksBySlug)
+      }
+      return Object.keys(result).length > 0 ? result : undefined
+    }
+
+    case 'relationship': {
+      const result: Record<string, unknown> = {}
+      const enabled = toStringArray(props.enabledCollections)
+      if (enabled) {
+        result.enabledCollections = enabled
+      }
+      const disabled = toStringArray(props.disabledCollections)
+      if (disabled) {
+        result.disabledCollections = disabled
+      }
+      return Object.keys(result).length > 0 ? result : undefined
+    }
+
+    case 'upload': {
+      const collections = props.collections
+      if (!collections || typeof collections !== 'object' || Array.isArray(collections)) {
+        return undefined
+      }
+      return { collections: Object.keys(collections as Record<string, unknown>) }
+    }
+
+    default:
+      return undefined
+  }
+}
+
+/**
+ * Return the input when it is a `string[]`, otherwise `undefined`. Preserves
+ * empty arrays — an empty `enabledCollections` is meaningful ("disables every
+ * collection") and should surface as-is.
+ */
+function toStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+  if (value.every((v) => typeof v === 'string')) {
+    return value
+  }
+  return undefined
 }

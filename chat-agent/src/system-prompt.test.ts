@@ -322,3 +322,74 @@ describe('buildSystemPrompt with upload collections', () => {
     expect(prompt).not.toContain('/admin/collections/media')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Rich-text feature guidance (plan 013)
+// ---------------------------------------------------------------------------
+
+describe('buildSystemPrompt rich-text feature guidance', () => {
+  /** Build a minimal richText field with the given lexical feature keys. */
+  function richTextField(name: string, featureKeys: string[]) {
+    return {
+      name,
+      type: 'richText',
+      editor: { features: featureKeys.map((key) => ({ key })) },
+    }
+  }
+
+  it('includes the rich-text feature bullet when a richText field has non-empty lexical.features', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'heading', 'blocks'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('lexical.features')
+    expect(prompt).toContain('lexical.options')
+  })
+
+  it('omits the rich-text feature bullet when no schema has richText features', () => {
+    const prompt = buildSystemPrompt({
+      collections: [{ slug: 'posts', fields: [{ name: 'title', type: 'text' }] }],
+      globals: [],
+    })
+    expect(prompt).not.toContain('lexical.features')
+    expect(prompt).not.toContain('lexical.options')
+  })
+
+  it('omits the rich-text feature bullet when richText fields carry no detectable features', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [{ name: 'body', type: 'richText' }],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('lexical.features')
+  })
+
+  it('does not emit a narrower blocks-only bullet once the generalized bullet ships', () => {
+    // Plan 013 replaces any plan-012-style "BlocksFeature slugs" bullet with
+    // the generalized lexical bullet. The older narrower phrasing must not
+    // coexist alongside the new one.
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['blocks'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('BlocksFeature slugs')
+    expect(prompt).not.toContain('lexical fields configured with BlocksFeature')
+  })
+})

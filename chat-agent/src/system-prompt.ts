@@ -8,8 +8,42 @@
  * the prompt small even for configs with many collections.
  */
 
-import type { PayloadConfigForPrompt } from './schema.js'
+import type { FieldSchema, PayloadConfigForPrompt, RawBlock } from './schema.js'
 import type { AgentMode } from './types.js'
+
+import { extractFields } from './schema.js'
+
+/**
+ * Whether any `richText` field across the passed schemas carries at least one
+ * detectable lexical feature. Used to gate the rich-text feature-guidance
+ * bullet so the agent is not instructed to inspect `lexical.*` metadata that
+ * isn't there.
+ */
+function anyRichTextHasLexicalFeatures(fieldGroups: FieldSchema[][]): boolean {
+  const hasFeatures = (fields: FieldSchema[]): boolean => {
+    for (const field of fields) {
+      if (
+        field.type === 'richText' &&
+        field.lexical &&
+        field.lexical.features.length > 0
+      ) {
+        return true
+      }
+      if (field.fields && hasFeatures(field.fields)) {
+        return true
+      }
+      if (field.blocks) {
+        for (const block of field.blocks) {
+          if (hasFeatures(block.fields)) {
+            return true
+          }
+        }
+      }
+    }
+    return false
+  }
+  return fieldGroups.some(hasFeatures)
+}
 
 /**
  * Build the system prompt for the chat agent.
@@ -33,6 +67,24 @@ export function buildSystemPrompt(
   }
 
   const adminRoute = payloadConfig.routes?.admin ?? '/admin'
+
+  // Build a shared block registry so inline blocks surfaced through lexical
+  // features (BlocksFeature / InlineBlocksFeature) stay reachable when the
+  // rich-text feature-guidance bullet is gated.
+  const blocksBySlug: Record<string, RawBlock> = {}
+  for (const block of payloadConfig.blocks ?? []) {
+    blocksBySlug[block.slug] = block
+  }
+  const collectionSchemas = (payloadConfig.collections ?? []).map((c) =>
+    extractFields(c.fields ?? [], blocksBySlug),
+  )
+  const globalSchemas = (payloadConfig.globals ?? []).map((g) =>
+    extractFields(g.fields ?? [], blocksBySlug),
+  )
+  const hasLexicalFeatures = anyRichTextHasLexicalFeatures([
+    ...collectionSchemas,
+    ...globalSchemas,
+  ])
 
   sections.push(
     'You are a CMS content assistant with access to the Payload CMS database.',
@@ -66,6 +118,11 @@ export function buildSystemPrompt(
     ...((payloadConfig.blocks?.length ?? 0) > 0
       ? [
           "- Call `listBlocks` to see globally-declared blocks, and `getBlockSchema({ slug })` to inspect a block's fields before inserting it into a `blocks` field.",
+        ]
+      : []),
+    ...(hasLexicalFeatures
+      ? [
+          "- For every `richText` field in a schema, inspect `lexical.features` and `lexical.options` to see which node types you may emit. Only produce nodes whose feature key appears in `features`. For `blocks` / `inlineBlocks`, the slugs in `options.blocks.slugs` / `options.inlineBlocks.slugs` are exhaustive — call `getBlockSchema({ slug })` to inspect a block's fields before composing it.",
         ]
       : []),
     ...(hasCustomEndpoints
