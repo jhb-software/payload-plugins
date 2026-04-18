@@ -22,11 +22,7 @@ import { extractFields } from './schema.js'
 function anyRichTextHasLexicalFeatures(fieldGroups: FieldSchema[][]): boolean {
   const hasFeatures = (fields: FieldSchema[]): boolean => {
     for (const field of fields) {
-      if (
-        field.type === 'richText' &&
-        field.lexical &&
-        field.lexical.features.length > 0
-      ) {
+      if (field.type === 'richText' && field.lexical && field.lexical.features.length > 0) {
         return true
       }
       if (field.fields && hasFeatures(field.fields)) {
@@ -43,6 +39,37 @@ function anyRichTextHasLexicalFeatures(fieldGroups: FieldSchema[][]): boolean {
     return false
   }
   return fieldGroups.some(hasFeatures)
+}
+
+/**
+ * Whether any `richText` field carries the `blocks` or `inlineBlocks` lexical
+ * feature. Used to gate the canonical SerializedBlockNode example so agents
+ * are not shown the exact node shape for schemas that can't emit block nodes.
+ */
+function anyRichTextHasBlocksFeature(fieldGroups: FieldSchema[][]): boolean {
+  const hasBlocks = (fields: FieldSchema[]): boolean => {
+    for (const field of fields) {
+      if (field.type === 'richText' && field.lexical) {
+        for (const key of field.lexical.features) {
+          if (key === 'blocks' || key === 'inlineBlocks') {
+            return true
+          }
+        }
+      }
+      if (field.fields && hasBlocks(field.fields)) {
+        return true
+      }
+      if (field.blocks) {
+        for (const block of field.blocks) {
+          if (hasBlocks(block.fields)) {
+            return true
+          }
+        }
+      }
+    }
+    return false
+  }
+  return fieldGroups.some(hasBlocks)
 }
 
 /**
@@ -81,10 +108,8 @@ export function buildSystemPrompt(
   const globalSchemas = (payloadConfig.globals ?? []).map((g) =>
     extractFields(g.fields ?? [], blocksBySlug),
   )
-  const hasLexicalFeatures = anyRichTextHasLexicalFeatures([
-    ...collectionSchemas,
-    ...globalSchemas,
-  ])
+  const hasLexicalFeatures = anyRichTextHasLexicalFeatures([...collectionSchemas, ...globalSchemas])
+  const hasBlocksFeature = anyRichTextHasBlocksFeature([...collectionSchemas, ...globalSchemas])
 
   sections.push(
     'You are a CMS content assistant with access to the Payload CMS database.',
@@ -136,6 +161,28 @@ export function buildSystemPrompt(
     '- If a tool call fails with a permission error, tell the user they lack access.',
     '- Payload uses [Lexical](https://lexical.dev) for rich text fields — their values are Lexical editor JSON state, not HTML or Markdown.',
     "- Drafts: for versioned collections, the `draft` flag selects which table is read from or written to — the versions table (drafts) or the main collection table (published); it acts as a \"latest version\" flag and relaxes required-field validation on writes. The document's actual status lives in the `_status` field, with values `'draft'` or `'published'`.",
+    ...(hasBlocksFeature
+      ? [
+          '',
+          '## Lexical block nodes',
+          'When inserting a block into a richText field, emit a node of this exact shape:',
+          '',
+          '```json',
+          '{',
+          '  "type": "block",',
+          '  "version": 2,',
+          '  "format": "",',
+          '  "fields": {',
+          '    "blockType": "<slug>",',
+          '    "blockName": "",',
+          '    "<blockField1>": "..."',
+          '  }',
+          '}',
+          '```',
+          '',
+          'The `blockType` discriminator lives inside `fields`, not at the top level. `blockName` is an empty string unless the user named the block. `id` is optional on input — Payload generates an ObjectId automatically. Inline-block nodes use `"type": "inlineBlock"` and `"version": 1` instead.',
+        ]
+      : []),
     '',
     '## Token efficiency',
     '- Always use `select` to request only the fields you need. Never fetch all fields when you only need a few.',

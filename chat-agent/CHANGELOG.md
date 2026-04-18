@@ -9,6 +9,7 @@
 - feat: show a "Responding…" indicator in the message list while the agent is working on a response but hasn't streamed any output yet, and a shimmer skeleton while conversation history is loading (initial hydration and sidebar switches) instead of a blank area
 - feat: note in the system prompt that Payload uses Lexical for rich text so the agent reads/writes rich-text field values as Lexical editor JSON state instead of HTML or Markdown
 - feat: note in the system prompt how Payload's `draft` query flag (versions vs main table, a "latest" flag) differs from the `_status` field (the document's actual `'draft'` / `'published'` state) so the agent stops conflating the two
+- feat: include the canonical Lexical `SerializedBlockNode` shape in the system prompt when a richText field carries the `blocks` / `inlineBlocks` feature, so agents stop guessing the node structure and failing Lexical validation
 - perf: restrict the sidebar conversation list query to `title` + `updatedAt` via `select` so the full `messages` JSON is no longer fetched just to render the list
 - perf: index the `user` field on the `agent-conversations` collection so read-access filtering and the sidebar list query no longer require a full scan
 - fix: redirect unauthenticated visitors of `/admin/chat` to the login page instead of rendering the admin chrome around a "Not authorized" message

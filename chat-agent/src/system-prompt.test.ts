@@ -392,4 +392,40 @@ describe('buildSystemPrompt rich-text feature guidance', () => {
     expect(prompt).not.toContain('BlocksFeature slugs')
     expect(prompt).not.toContain('lexical fields configured with BlocksFeature')
   })
+
+  it('includes the canonical block-node shape when a richText field has the blocks feature', () => {
+    // Agents were guessing the SerializedBlockNode shape (wrong version,
+    // top-level `blockName`, missing `blockType` discriminator inside
+    // `fields`) and hitting Lexical validation. A concrete example in the
+    // prompt removes the guesswork.
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['blocks'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    // The shape must show that `blockType` lives inside `fields` and that
+    // block nodes are version 2 — the two mistakes agents were making.
+    expect(prompt).toContain('"type": "block"')
+    expect(prompt).toContain('"version": 2')
+    expect(prompt).toContain('"blockType"')
+  })
+
+  it('omits the block-node shape example when no richText field uses blocks', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'italic'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('"type": "block"')
+  })
 })
