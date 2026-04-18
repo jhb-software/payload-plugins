@@ -899,7 +899,7 @@ describe('schema inspection tools', () => {
     expect(layout.blocks).toEqual([
       {
         slug: 'inlineHero',
-        fields: [{ name: 'headline', required: true, type: 'text' }],
+        fields: [{ name: 'headline', type: 'text', required: true }],
       },
     ])
   })
@@ -1059,7 +1059,11 @@ describe('block schema tools', () => {
     })
 
     const result = (await tools.listBlocks.execute({}, ctx)) as {
-      blocks: { interfaceName?: string; labels?: { plural?: unknown; singular?: unknown }; slug: string }[]
+      blocks: {
+        interfaceName?: string
+        labels?: { plural?: unknown; singular?: unknown }
+        slug: string
+      }[]
     }
     expect(result.blocks).toEqual([
       {

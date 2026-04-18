@@ -65,7 +65,7 @@ export function buildSystemPrompt(
     '- Call `getCollectionSchema({ slug })` or `getGlobalSchema({ slug })` to inspect field details before querying, filtering, or writing. Only the slugs are listed below — field names and types are fetched on demand.',
     ...((payloadConfig.blocks?.length ?? 0) > 0
       ? [
-          '- Call `listBlocks` to see globally-declared blocks, and `getBlockSchema({ slug })` to inspect a block\'s fields before inserting it into a `blocks` field.',
+          "- Call `listBlocks` to see globally-declared blocks, and `getBlockSchema({ slug })` to inspect a block's fields before inserting it into a `blocks` field.",
         ]
       : []),
     ...(hasCustomEndpoints
