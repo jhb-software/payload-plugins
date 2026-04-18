@@ -2,7 +2,7 @@
 # Note: We'll control error handling per-function rather than globally
 
 # Configuration
-PLUGINS=("pages" "geocoding" "cloudinary" "admin-search" "alt-text" "content-translator" "astro-payload-richtext-lexical")
+PLUGINS=("pages" "geocoding" "cloudinary" "admin-search" "alt-text" "content-translator" "astro-payload-richtext-lexical" "chat-agent" "vercel-deployments")
 PAGES_DEV_FOLDERS=("dev" "dev_unlocalized" "dev_multi_tenant")
 ALT_TEXT_DEV_FOLDERS=("dev" "dev_unlocalized")
 CONTENT_TRANSLATOR_DEV_FOLDERS=("dev")
@@ -37,12 +37,13 @@ update_dependencies() {
 
     log_info "Updating dependencies in $dir"
 
-    # Update all dependencies to latest, excluding next and eslint-config-next
+    # Update all dependencies to latest, excluding next, eslint-config-next, typescript, eslint, and @eslint/js
     # Next.js 16 has breaking changes with @payloadcms/next peer dependency
-    pnpm up --latest '!next' '!eslint-config-next' || return 1
+    # TypeScript 6 and ESLint 10 upgrades are handled separately
+    pnpm up --latest '!next' '!eslint-config-next' '!typescript' '!eslint' '!@eslint/js' || return 1
 
     # Update peerDependencies (pnpm up doesn't handle these)
-    npx npm-check-updates -u --target latest --dep peer --reject next,eslint-config-next || return 1
+    npx npm-check-updates -u --target latest --dep peer --reject next,eslint-config-next,typescript,eslint,@eslint/js || return 1
 
     # Reinstall to update lockfile after peerDependencies change
     pnpm install || return 1

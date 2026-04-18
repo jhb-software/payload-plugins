@@ -32,6 +32,6 @@ describe('TokenBadge', () => {
       makeMessage({ totalTokens: 2500 }),
     ]
     render(<TokenBadge messages={messages} />)
-    expect(screen.getByText(/3\.5k tokens/)).toBeDefined()
+    expect(screen.getByText('3.5k')).toBeDefined()
   })
 })

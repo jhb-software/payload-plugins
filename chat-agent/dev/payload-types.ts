@@ -70,7 +70,9 @@ export interface Config {
     users: User;
     posts: Post;
     categories: Category;
-    'chat-conversations': ChatConversation;
+    media: Media;
+    'agent-token-usage': AgentTokenUsage;
+    'agent-conversations': AgentConversation;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -81,7 +83,9 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
-    'chat-conversations': ChatConversationsSelect<false> | ChatConversationsSelect<true>;
+    media: MediaSelect<false> | MediaSelect<true>;
+    'agent-token-usage': AgentTokenUsageSelect<false> | AgentTokenUsageSelect<true>;
+    'agent-conversations': AgentConversationsSelect<false> | AgentConversationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -176,8 +180,28 @@ export interface Post {
     [k: string]: unknown;
   } | null;
   author?: (string | null) | User;
+  featuredImage?: (string | null) | Media;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: string;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -192,9 +216,24 @@ export interface Category {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-conversations".
+ * via the `definition` "agent-token-usage".
  */
-export interface ChatConversation {
+export interface AgentTokenUsage {
+  id: string;
+  scope: string;
+  period: string;
+  model: string;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  totalTokens?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agent-conversations".
+ */
+export interface AgentConversation {
   id: string;
   title: string;
   messages:
@@ -208,6 +247,7 @@ export interface ChatConversation {
     | null;
   user: string | User;
   model?: string | null;
+  mode?: ('read' | 'ask' | 'read-write' | 'superuser') | null;
   totalTokens?: number | null;
   updatedAt: string;
   createdAt: string;
@@ -249,8 +289,16 @@ export interface PayloadLockedDocument {
         value: string | Category;
       } | null)
     | ({
-        relationTo: 'chat-conversations';
-        value: string | ChatConversation;
+        relationTo: 'media';
+        value: string | Media;
+      } | null)
+    | ({
+        relationTo: 'agent-token-usage';
+        value: string | AgentTokenUsage;
+      } | null)
+    | ({
+        relationTo: 'agent-conversations';
+        value: string | AgentConversation;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -327,6 +375,7 @@ export interface PostsSelect<T extends boolean = true> {
   status?: T;
   content?: T;
   author?: T;
+  featuredImage?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -342,13 +391,46 @@ export interface CategoriesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-conversations_select".
+ * via the `definition` "media_select".
  */
-export interface ChatConversationsSelect<T extends boolean = true> {
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agent-token-usage_select".
+ */
+export interface AgentTokenUsageSelect<T extends boolean = true> {
+  scope?: T;
+  period?: T;
+  model?: T;
+  inputTokens?: T;
+  outputTokens?: T;
+  totalTokens?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agent-conversations_select".
+ */
+export interface AgentConversationsSelect<T extends boolean = true> {
   title?: T;
   messages?: T;
   user?: T;
   model?: T;
+  mode?: T;
   totalTokens?: T;
   updatedAt?: T;
   createdAt?: T;

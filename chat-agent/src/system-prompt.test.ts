@@ -74,6 +74,22 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('getGlobalSchema')
   })
 
+  it('notes that Payload uses Lexical for rich text', () => {
+    // The agent needs to know rich-text field values are Lexical editor state
+    // (JSON tree), not HTML or Markdown, so it writes/reads them correctly.
+    const prompt = buildSystemPrompt({ collections: [], globals: [] })
+    expect(prompt).toContain('Lexical')
+  })
+
+  it('distinguishes the `draft` query flag from the `_status` field', () => {
+    // The agent was conflating the two: `draft` selects the versions vs main
+    // table (a "latest" flag); `_status` holds the actual draft/published
+    // state of the document.
+    const prompt = buildSystemPrompt({ collections: [], globals: [] })
+    expect(prompt).toContain('`draft`')
+    expect(prompt).toContain('`_status`')
+  })
+
   it('mentions listEndpoints only when custom endpoints exist', () => {
     const withEndpoints = buildSystemPrompt({ collections: [], globals: [] }, undefined, true)
     expect(withEndpoints).toContain('listEndpoints')

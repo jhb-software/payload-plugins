@@ -2,7 +2,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * Prop shape consumed by the `Button` mock below — we reimplement Payload's
@@ -33,7 +33,25 @@ vi.mock('@payloadcms/ui', () => ({
 
 const { ChatInput } = await import('./ChatInput.js')
 
+/** Stub `window.matchMedia` so the component can read pointer media queries. */
+const stubPointerMedia = (fine: boolean) => {
+  window.matchMedia = vi.fn((query: string) => ({
+    addEventListener: vi.fn(),
+    addListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    matches: query.includes('pointer: fine') ? fine : !fine,
+    media: query,
+    onchange: null,
+    removeEventListener: vi.fn(),
+    removeListener: vi.fn(),
+  })) as unknown as typeof window.matchMedia
+}
+
 describe('ChatInput', () => {
+  // jsdom doesn't ship `window.matchMedia`. Default to a coarse pointer so the
+  // post-load focus effect is a no-op for tests that don't care about it; the
+  // pointer-specific tests below override per-case.
+  beforeEach(() => stubPointerMedia(false))
   afterEach(cleanup)
 
   it('calls onSend with trimmed text and clears input on submit', () => {
@@ -65,13 +83,23 @@ describe('ChatInput', () => {
     expect(onSend).not.toHaveBeenCalled()
   })
 
-  it('auto-focuses textarea when loading completes', () => {
+  it('auto-focuses textarea when loading completes on devices with a fine pointer', () => {
+    stubPointerMedia(true)
     const { rerender } = render(<ChatInput isLoading={true} onSend={vi.fn()} />)
     const textarea = screen.getByPlaceholderText(/type a message/i)
     expect(document.activeElement).not.toBe(textarea)
 
     rerender(<ChatInput isLoading={false} onSend={vi.fn()} />)
     expect(document.activeElement).toBe(textarea)
+  })
+
+  it('does not auto-focus textarea on touch devices (would pop the on-screen keyboard)', () => {
+    stubPointerMedia(false)
+    const { rerender } = render(<ChatInput isLoading={true} onSend={vi.fn()} />)
+    const textarea = screen.getByPlaceholderText(/type a message/i)
+
+    rerender(<ChatInput isLoading={false} onSend={vi.fn()} />)
+    expect(document.activeElement).not.toBe(textarea)
   })
 
   it('sends on Enter', () => {

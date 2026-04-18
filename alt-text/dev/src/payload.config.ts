@@ -17,6 +17,9 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    dashboard: {
+      defaultLayout: [{ widgetSlug: 'alt-text-health', width: 'full' }],
+    },
     meta: { titleSuffix: '- Alt Text Dev' },
     user: 'users',
   },

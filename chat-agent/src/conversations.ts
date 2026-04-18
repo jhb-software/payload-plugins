@@ -12,7 +12,7 @@ import type { AccessArgs, CollectionConfig, Endpoint, PayloadRequest } from 'pay
 import { isPluginAccessAllowed } from './access.js'
 import { AGENT_MODES, type AgentMode } from './types.js'
 
-export const CONVERSATIONS_SLUG = 'chat-conversations'
+export const CONVERSATIONS_SLUG = 'agent-conversations'
 
 // ---------------------------------------------------------------------------
 // Collection definition
@@ -65,6 +65,11 @@ export const conversationsCollection: CollectionConfig = {
       name: 'user',
       type: 'relationship',
       admin: { readOnly: true },
+      // Every read goes through `access.read`, which filters by
+      // `user.equals = currentUser.id`, and the sidebar list query filters
+      // by the same field. Without an index, both degrade to a full scan
+      // once the collection grows beyond a trivial size.
+      index: true,
       relationTo: 'users',
       required: true,
     },
@@ -86,7 +91,7 @@ export const conversationsCollection: CollectionConfig = {
   hooks: {
     // Force the `user` field to the authenticated user, regardless of what the
     // client sent. Without this, a user hitting Payload's default REST
-    // (`POST /api/chat-conversations`) could create a record with
+    // (`POST /api/agent-conversations`) could create a record with
     // `data.user` set to someone else's id — they still can't read/update/
     // delete it thanks to the access filters, but they'd pollute the
     // collection. The `update` guard also protects against a client trying to
@@ -120,6 +125,10 @@ async function listConversations(req: PayloadRequest): Promise<Response> {
     collection: CONVERSATIONS_SLUG,
     depth: 0,
     limit: 50,
+    // The sidebar only renders `id`, `title`, and `updatedAt` — the full
+    // `messages` JSON on every doc would bloat the payload by the entire
+    // conversation history of every conversation for no reason.
+    select: { title: true, updatedAt: true },
     sort: '-updatedAt',
     where: { user: { equals: req.user.id } },
   })

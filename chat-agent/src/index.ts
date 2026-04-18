@@ -20,7 +20,7 @@
  *   })
  */
 
-import type { TextStreamPart, ToolSet } from 'ai'
+import type { TextStreamPart, Tool, ToolSet } from 'ai'
 import type { PayloadRequest } from 'payload'
 
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
@@ -269,7 +269,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
             // --- Discover custom endpoints and build tools ------------------
             const customEndpoints = discoverEndpoints(req.payload.config)
-            const allTools = buildTools(
+            const builtInTools = buildTools(
               req.payload,
               req.user,
               overrideAccess,
@@ -277,6 +277,28 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               customEndpoints,
               req.payload.config,
             )
+
+            // --- Resolve the final toolset ---------------------------------
+            // The `tools` factory receives the plugin's default tools and
+            // returns the full map the agent should see. Modeled on
+            // Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`:
+            // the user composes, the plugin does not merge. If omitted,
+            // default tools are used as-is.
+            let allTools: Record<string, Tool>
+            if (options.tools) {
+              try {
+                allTools = await options.tools({ defaultTools: builtInTools, req })
+              } catch (err) {
+                return Response.json(
+                  {
+                    error: `tools resolver failed: ${err instanceof Error ? err.message : String(err)}`,
+                  },
+                  { status: 500 },
+                )
+              }
+            } else {
+              allTools = builtInTools
+            }
             const tools = filterToolsByMode(allTools, mode)
             const systemPrompt = buildSystemPrompt(
               req.payload.config,
@@ -328,8 +350,12 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             // listening to.
             const result = streamText({
               abortSignal: req.signal,
+              // Drop tool parts from interrupted prior turns so the provider
+              // never sees a `tool_use` with a partial/non-dict input or an
+              // orphan `tool_use` missing its `tool_result`.
               messages: await convertToModelMessages(
                 body.messages as Parameters<typeof convertToModelMessages>[0],
+                { ignoreIncompleteToolCalls: true },
               ),
               model: resolvedModel,
               onFinish,
