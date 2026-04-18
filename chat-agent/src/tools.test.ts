@@ -867,6 +867,82 @@ describe('schema inspection tools', () => {
     expect(JSON.stringify(result.fields)).toContain('buttonText')
   })
 
+  it('getCollectionSchema surfaces inline blocks declared on the field', async () => {
+    // Inline blocks live on `field.blocks` — they never appear in
+    // config.blocks, so the only way the agent can learn their shape is
+    // through the parent collection's schema.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [
+        {
+          slug: 'pages',
+          fields: [
+            {
+              name: 'layout',
+              type: 'blocks',
+              blocks: [
+                {
+                  slug: 'inlineHero',
+                  fields: [{ name: 'headline', type: 'text', required: true }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'pages' }, ctx)) as {
+      fields: { blocks?: { fields: { name: string }[]; slug: string }[]; name: string }[]
+    }
+    const layout = result.fields.find((f) => f.name === 'layout')!
+    expect(layout.blocks).toEqual([
+      {
+        slug: 'inlineHero',
+        fields: [{ name: 'headline', required: true, type: 'text' }],
+      },
+    ])
+  })
+
+  it('getCollectionSchema merges inline blocks and blockReferences on the same field', async () => {
+    // Payload allows a single `blocks` field to declare inline blocks AND
+    // reference globally-registered blocks by slug. Both should appear in
+    // the extracted schema so the agent knows every block it may insert.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'globalCta',
+          fields: [{ name: 'buttonText', type: 'text' }],
+        },
+      ],
+      collections: [
+        {
+          slug: 'pages',
+          fields: [
+            {
+              name: 'layout',
+              type: 'blocks',
+              blockReferences: ['globalCta'],
+              blocks: [
+                {
+                  slug: 'inlineHero',
+                  fields: [{ name: 'headline', type: 'text' }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'pages' }, ctx)) as {
+      fields: { blocks?: { slug: string }[]; name: string }[]
+    }
+    const layout = result.fields.find((f) => f.name === 'layout')!
+    expect(layout.blocks?.map((b) => b.slug)).toEqual(['inlineHero', 'globalCta'])
+  })
+
   it('getGlobalSchema returns extracted fields for a known slug', async () => {
     const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
       collections: [],
