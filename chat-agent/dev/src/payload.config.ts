@@ -54,6 +54,27 @@ export default buildConfig({
     meta: { titleSuffix: '- Chat Agent Dev' },
     user: 'users',
   },
+  blocks: [
+    {
+      slug: 'cta',
+      interfaceName: 'CtaBlock',
+      labels: { singular: 'Call to Action', plural: 'Calls to Action' },
+      fields: [
+        { name: 'heading', type: 'text', required: true },
+        { name: 'buttonLabel', type: 'text', required: true },
+        { name: 'buttonHref', type: 'text', required: true },
+      ],
+    },
+    {
+      slug: 'hero',
+      labels: { singular: 'Hero', plural: 'Heroes' },
+      fields: [
+        { name: 'headline', type: 'text', required: true },
+        { name: 'subheadline', type: 'text' },
+        { name: 'image', type: 'relationship', relationTo: 'media' },
+      ],
+    },
+  ],
   collections: [
     {
       slug: 'users',
@@ -83,6 +104,38 @@ export default buildConfig({
         { name: 'content', type: 'richText' },
         { name: 'author', type: 'relationship', relationTo: 'users' },
         { name: 'featuredImage', type: 'relationship', relationTo: 'media' },
+        // Merged case: global `cta` + `hero` via blockReferences alongside an
+        // inline `pullQuote` block. `getCollectionSchema({ slug: 'posts' })`
+        // should surface all three in `layout.blocks`.
+        {
+          name: 'layout',
+          type: 'blocks',
+          blockReferences: ['cta', 'hero'],
+          blocks: [
+            {
+              slug: 'pullQuote',
+              fields: [
+                { name: 'quote', type: 'textarea', required: true },
+                { name: 'attribution', type: 'text' },
+              ],
+            },
+          ],
+        },
+        // Pure-inline case: `socialLinks` is not declared globally and never
+        // appears in `listBlocks`; it only shows up under `sidebar.blocks`.
+        {
+          name: 'sidebar',
+          type: 'blocks',
+          blocks: [
+            {
+              slug: 'socialLinks',
+              fields: [
+                { name: 'twitter', type: 'text' },
+                { name: 'github', type: 'text' },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
