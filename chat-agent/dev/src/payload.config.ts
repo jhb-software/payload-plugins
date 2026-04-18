@@ -104,13 +104,24 @@ export default buildConfig({
         { name: 'content', type: 'richText' },
         { name: 'author', type: 'relationship', relationTo: 'users' },
         { name: 'featuredImage', type: 'relationship', relationTo: 'media' },
-        // Merged case: global `cta` + `hero` via blockReferences alongside an
-        // inline `pullQuote` block. `getCollectionSchema({ slug: 'posts' })`
-        // should surface all three in `layout.blocks`.
+        // Reference case: `layout` uses globally-declared blocks by slug.
+        // `getCollectionSchema({ slug: 'posts' })` resolves each slug against
+        // `config.blocks` so the agent sees cta + hero fields inlined.
+        //
+        // Payload rejects mixing `blockReferences` and inline `blocks` on the
+        // same field ("You cannot have both blockReferences and blocks in the
+        // same blocks field"), so inline blocks live on `sidebar` below.
         {
           name: 'layout',
           type: 'blocks',
           blockReferences: ['cta', 'hero'],
+          blocks: [],
+        },
+        // Inline case: `pullQuote` and `socialLinks` are scoped to this field
+        // and do not appear in `listBlocks`.
+        {
+          name: 'sidebar',
+          type: 'blocks',
           blocks: [
             {
               slug: 'pullQuote',
@@ -119,14 +130,6 @@ export default buildConfig({
                 { name: 'attribution', type: 'text' },
               ],
             },
-          ],
-        },
-        // Pure-inline case: `socialLinks` is not declared globally and never
-        // appears in `listBlocks`; it only shows up under `sidebar.blocks`.
-        {
-          name: 'sidebar',
-          type: 'blocks',
-          blocks: [
             {
               slug: 'socialLinks',
               fields: [
