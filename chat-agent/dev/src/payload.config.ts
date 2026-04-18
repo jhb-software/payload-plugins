@@ -130,6 +130,14 @@ export default buildConfig({
       fields: [
         { name: 'title', type: 'text', required: true },
         { name: 'slug', type: 'text', required: true, unique: true },
+        {
+          name: 'url',
+          type: 'text',
+          virtual: true,
+          hooks: {
+            afterRead: [({ data }) => (data?.slug ? `/posts/${data.slug}` : undefined)],
+          },
+        },
         { name: 'content', type: 'richText' },
         { name: 'author', type: 'relationship', relationTo: 'users' },
         { name: 'featuredImage', type: 'relationship', relationTo: 'media' },
