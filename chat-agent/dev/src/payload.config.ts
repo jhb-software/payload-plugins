@@ -54,6 +54,27 @@ export default buildConfig({
     meta: { titleSuffix: '- Chat Agent Dev' },
     user: 'users',
   },
+  blocks: [
+    {
+      slug: 'cta',
+      interfaceName: 'CtaBlock',
+      labels: { singular: 'Call to Action', plural: 'Calls to Action' },
+      fields: [
+        { name: 'heading', type: 'text', required: true },
+        { name: 'buttonLabel', type: 'text', required: true },
+        { name: 'buttonHref', type: 'text', required: true },
+      ],
+    },
+    {
+      slug: 'hero',
+      labels: { singular: 'Hero', plural: 'Heroes' },
+      fields: [
+        { name: 'headline', type: 'text', required: true },
+        { name: 'subheadline', type: 'text' },
+        { name: 'image', type: 'relationship', relationTo: 'media' },
+      ],
+    },
+  ],
   collections: [
     {
       slug: 'users',
@@ -83,6 +104,41 @@ export default buildConfig({
         { name: 'content', type: 'richText' },
         { name: 'author', type: 'relationship', relationTo: 'users' },
         { name: 'featuredImage', type: 'relationship', relationTo: 'media' },
+        // Reference case: `layout` uses globally-declared blocks by slug.
+        // `getCollectionSchema({ slug: 'posts' })` resolves each slug against
+        // `config.blocks` so the agent sees cta + hero fields inlined.
+        //
+        // Payload rejects mixing `blockReferences` and inline `blocks` on the
+        // same field ("You cannot have both blockReferences and blocks in the
+        // same blocks field"), so inline blocks live on `sidebar` below.
+        {
+          name: 'layout',
+          type: 'blocks',
+          blockReferences: ['cta', 'hero'],
+          blocks: [],
+        },
+        // Inline case: `pullQuote` and `socialLinks` are scoped to this field
+        // and do not appear in `listBlocks`.
+        {
+          name: 'sidebar',
+          type: 'blocks',
+          blocks: [
+            {
+              slug: 'pullQuote',
+              fields: [
+                { name: 'quote', type: 'textarea', required: true },
+                { name: 'attribution', type: 'text' },
+              ],
+            },
+            {
+              slug: 'socialLinks',
+              fields: [
+                { name: 'twitter', type: 'text' },
+                { name: 'github', type: 'text' },
+              ],
+            },
+          ],
+        },
       ],
     },
     {

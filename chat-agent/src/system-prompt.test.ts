@@ -74,6 +74,24 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('getGlobalSchema')
   })
 
+  it('mentions listBlocks / getBlockSchema only when config.blocks is non-empty', () => {
+    const withBlocks = buildSystemPrompt({
+      blocks: [{ slug: 'hero', fields: [] }],
+      collections: [],
+      globals: [],
+    })
+    expect(withBlocks).toContain('listBlocks')
+    expect(withBlocks).toContain('getBlockSchema')
+
+    const emptyBlocks = buildSystemPrompt({ blocks: [], collections: [], globals: [] })
+    expect(emptyBlocks).not.toContain('listBlocks')
+    expect(emptyBlocks).not.toContain('getBlockSchema')
+
+    const noBlocks = buildSystemPrompt({ collections: [], globals: [] })
+    expect(noBlocks).not.toContain('listBlocks')
+    expect(noBlocks).not.toContain('getBlockSchema')
+  })
+
   it('notes that Payload uses Lexical for rich text', () => {
     // The agent needs to know rich-text field values are Lexical editor state
     // (JSON tree), not HTML or Markdown, so it writes/reads them correctly.

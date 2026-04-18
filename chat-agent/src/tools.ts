@@ -21,7 +21,7 @@ import { z } from 'zod'
 import type { PayloadConfigForPrompt, RawBlock } from './schema.js'
 import type { AgentMode } from './types.js'
 
-import { extractFields } from './schema.js'
+import { extractFields, normalizeLabel } from './schema.js'
 
 // ---------------------------------------------------------------------------
 // Tool classification
@@ -35,6 +35,8 @@ export const READ_TOOL_NAMES = [
   'findGlobal',
   'getCollectionSchema',
   'getGlobalSchema',
+  'listBlocks',
+  'getBlockSchema',
   'listEndpoints',
 ] as const
 
@@ -470,6 +472,64 @@ export function buildTools(
             },
             inputSchema: z.object({
               slug: z.string().describe('Global slug (see the slug catalog in the system prompt)'),
+            }),
+          } satisfies ExecutableTool,
+
+          listBlocks: {
+            description:
+              'List all globally-declared blocks (config.blocks). These blocks can be referenced from `blocks` fields and inserted into lexical fields configured with BlocksFeature.',
+            execute: () => ({
+              blocks: (config.blocks ?? []).map((block) => {
+                const singular = normalizeLabel(block.labels?.singular)
+                const plural = normalizeLabel(block.labels?.plural)
+                const labels =
+                  singular !== undefined || plural !== undefined
+                    ? {
+                        ...(singular !== undefined && { singular }),
+                        ...(plural !== undefined && { plural }),
+                      }
+                    : undefined
+                return {
+                  slug: block.slug,
+                  ...(labels && { labels }),
+                  ...(typeof block.interfaceName === 'string' && {
+                    interfaceName: block.interfaceName,
+                  }),
+                }
+              }),
+            }),
+            inputSchema: z.object({}),
+          } satisfies ExecutableTool,
+
+          getBlockSchema: {
+            description:
+              'Get the field schema for a globally-declared block by slug. Call listBlocks first to discover slugs. Returns { error } if the slug is unknown.',
+            execute: (input: Record<string, unknown>) => {
+              const slug = input.slug as string
+              const block = blocksBySlug[slug]
+              if (!block) {
+                return { error: `Unknown block slug "${slug}"` }
+              }
+              const singular = normalizeLabel(block.labels?.singular)
+              const plural = normalizeLabel(block.labels?.plural)
+              const labels =
+                singular !== undefined || plural !== undefined
+                  ? {
+                      ...(singular !== undefined && { singular }),
+                      ...(plural !== undefined && { plural }),
+                    }
+                  : undefined
+              return {
+                slug,
+                fields: extractFields(block.fields ?? [], blocksBySlug),
+                ...(labels && { labels }),
+                ...(typeof block.interfaceName === 'string' && {
+                  interfaceName: block.interfaceName,
+                }),
+              }
+            },
+            inputSchema: z.object({
+              slug: z.string().describe('Block slug from listBlocks'),
             }),
           } satisfies ExecutableTool,
         }

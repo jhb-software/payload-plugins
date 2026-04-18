@@ -51,6 +51,8 @@ type RawField = { [key: string]: unknown; type: string }
 /** Loose structural representation of a Payload block. */
 export interface RawBlock {
   fields?: readonly unknown[]
+  interfaceName?: string
+  labels?: { plural?: unknown; singular?: unknown }
   slug: string
 }
 
