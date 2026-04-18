@@ -209,7 +209,6 @@ export interface Post {
   id: string;
   title: string;
   slug: string;
-  status?: ('draft' | 'published' | 'archived') | null;
   content?: {
     root: {
       type: string;
@@ -248,6 +247,7 @@ export interface Post {
     | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -418,7 +418,6 @@ export interface UsersSelect<T extends boolean = true> {
 export interface PostsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
-  status?: T;
   content?: T;
   author?: T;
   featuredImage?: T;
@@ -445,6 +444,7 @@ export interface PostsSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
