@@ -7,6 +7,7 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
+import { customTools } from './customTools.js'
 import { postsEndpoints, rootEndpoints } from './endpoints.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -192,12 +193,28 @@ export default buildConfig({
       availableModels: [
         { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
         { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+        { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+        { id: 'claude-opus-4-7', label: 'Claude Opus 4.7' },
         { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
         { id: 'gpt-5-nano', label: 'GPT-5 nano' },
       ],
       budget: chatBudget.budget,
       defaultModel: 'claude-haiku-4-5-20251001',
       model: resolveModel,
+      // One `tools` factory composes the final toolset the agent sees.
+      // Spread `defaultTools` to keep the built-in Payload tools, then add
+      // user-defined tools and provider-native ones (executed server-side by
+      // the provider, billed separately ~$10 / 1k searches).
+      //
+      // Using `webFetch_20250910` (pre-dynamic-filtering) so this works with
+      // all models. The newer `webFetch_20260209` adds code-execution-based
+      // filtering but requires Opus 4.6+/Sonnet 4.6.
+      tools: ({ defaultTools, req }) => ({
+        ...defaultTools,
+        ...customTools({ req }),
+        webFetch: anthropic.tools.webFetch_20250910(),
+        webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+      }),
       modes: {
         default: 'ask',
         access: {

@@ -1,4 +1,4 @@
-import type { LanguageModel } from 'ai'
+import type { LanguageModel, Tool } from 'ai'
 import type { Endpoint } from 'payload'
 
 import { streamText } from 'ai'
@@ -1095,7 +1095,10 @@ describe('chatAgentPlugin access()', () => {
 function lastStreamTextHandle() {
   const results = vi.mocked(streamText).mock.results
   return results[results.length - 1]?.value as {
-    _streamTextOpts: { onFinish?: (event: unknown) => Promise<void> | void }
+    _streamTextOpts: {
+      onFinish?: (event: unknown) => Promise<void> | void
+      tools?: Record<string, { execute?: unknown; needsApproval?: boolean }>
+    }
     _uiStreamOpts: { headers?: Record<string, string> }
   }
 }
@@ -1303,5 +1306,237 @@ describe('chatAgentPlugin GET /chat-agent/budget', () => {
       user: { id: 1 },
     })
     expect(res.status).toBe(401)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// `tools` composition API
+// ---------------------------------------------------------------------------
+
+describe('chatAgentPlugin tools', () => {
+  /**
+   * Minimal fake Vercel AI SDK `Tool`. The handler only inspects the shape
+   * (keys, `needsApproval`, `execute`) to decide how to register and filter
+   * the tool, so we don't need real zod schemas here — the cast via
+   * `unknown` is the deliberate test-boundary bridge to the SDK's deep Tool
+   * type.
+   */
+  function fakeTool(overrides: Record<string, unknown> = {}): Tool {
+    return {
+      description: 'fake tool',
+      execute: vi.fn(() => Promise.resolve({ ok: true })),
+      inputSchema: { _def: { typeName: 'ZodObject' } },
+      ...overrides,
+    } as unknown as Tool
+  }
+
+  /**
+   * Stand-in for a provider-defined tool like
+   * `anthropic.tools.webSearch_20250305(...)`. The real object has
+   * `type: 'provider'` and no `execute` — the provider runs the tool
+   * server-side — so we mirror that shape here.
+   */
+  function fakeProviderTool(id: `${string}.${string}`): Tool {
+    return {
+      id,
+      type: 'provider',
+      args: {},
+      inputSchema: { _def: { typeName: 'ZodObject' } },
+    } as unknown as Tool
+  }
+
+  it('makes user-registered tools callable by the agent', async () => {
+    vi.mocked(streamText).mockClear()
+    const salesTool = fakeTool({ description: 'Create a lead in the Sales API' })
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: ({ defaultTools }) => ({ ...defaultTools, createSalesLead: salesTool }),
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.createSalesLead).toBeDefined()
+    expect(_streamTextOpts.tools!.createSalesLead.execute).toBe(salesTool.execute)
+  })
+
+  it('passes the built-in default tools into the factory so the user can compose them', async () => {
+    vi.mocked(streamText).mockClear()
+    let receivedDefaults: Record<string, Tool> | undefined
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: ({ defaultTools }) => {
+        receivedDefaults = defaultTools
+        return { ...defaultTools, extra: fakeTool() }
+      },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(receivedDefaults).toBeDefined()
+    expect(receivedDefaults!.find).toBeDefined()
+    expect(receivedDefaults!.create).toBeDefined()
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.find).toBeDefined()
+    expect(_streamTextOpts.tools!.extra).toBeDefined()
+  })
+
+  it('lets the user omit a default tool by not including it in the returned map', async () => {
+    vi.mocked(streamText).mockClear()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: ({ defaultTools }) => {
+        const { delete: _, ...rest } = defaultTools
+        return rest
+      },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.delete).toBeUndefined()
+    expect(_streamTextOpts.tools!.find).toBeDefined()
+  })
+
+  it('exposes the built-in default tools to the agent when `tools` is not provided', async () => {
+    vi.mocked(streamText).mockClear()
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.find).toBeDefined()
+    expect(_streamTextOpts.tools!.create).toBeDefined()
+  })
+
+  it('awaits async tools resolvers and passes the request to them', async () => {
+    vi.mocked(streamText).mockClear()
+    const receivedArgs: Array<{ req: unknown }> = []
+    const plugin = chatAgentPlugin({
+      defaultModel: 'gpt-4o',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: (args) => {
+        receivedArgs.push(args)
+        return Promise.resolve({ ...args.defaultTools, fetchWeather: fakeTool() })
+      },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    const fakeUser = { id: 7, email: 'user@test.com' }
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: fakeUser,
+    })
+
+    expect(receivedArgs).toHaveLength(1)
+    expect((receivedArgs[0].req as { user: unknown }).user).toBe(fakeUser)
+    const { _streamTextOpts } = lastStreamTextHandle()
+    expect(_streamTextOpts.tools!.fetchWeather).toBeDefined()
+  })
+
+  describe('mode filtering for user-defined tools', () => {
+    // The plugin can't know a user tool's side effects, so a tool with an
+    // `execute` function defaults to "write": excluded in read, gated behind
+    // needsApproval in ask. Provider-native tools (no `execute`) are treated
+    // as reads since the provider runs them server-side.
+
+    async function runChatWithMode(
+      mode: 'ask' | 'read' | 'read-write',
+      extra: Record<string, Tool>,
+    ) {
+      vi.mocked(streamText).mockClear()
+      const plugin = chatAgentPlugin({
+        defaultModel: 'gpt-4o',
+        model: makeModelFactory().factory,
+        modes: { default: mode },
+        tools: ({ defaultTools }) => ({ ...defaultTools, ...extra }),
+      })
+      const handler = plugin({ endpoints: [] }).endpoints.find(
+        (ep: Endpoint) => ep.path === '/chat-agent/chat',
+      ).handler
+      await handler({
+        json: () => Promise.resolve(validChatBody),
+        payload: { config: { collections: [], globals: [] } },
+        user: { id: 1 },
+      })
+      return lastStreamTextHandle()._streamTextOpts.tools
+    }
+
+    it('excludes user-defined executable tools in read mode', async () => {
+      const tools = await runChatWithMode('read', { createSalesLead: fakeTool() })
+      expect(tools!.createSalesLead).toBeUndefined()
+    })
+
+    it('marks user-defined executable tools with needsApproval: true in ask mode', async () => {
+      const tools = await runChatWithMode('ask', { createSalesLead: fakeTool() })
+      expect(tools!.createSalesLead).toBeDefined()
+      expect(tools!.createSalesLead.needsApproval).toBe(true)
+    })
+
+    it('passes user-defined executable tools through unchanged in read-write mode', async () => {
+      const tools = await runChatWithMode('read-write', { createSalesLead: fakeTool() })
+      expect(tools!.createSalesLead).toBeDefined()
+      expect(tools!.createSalesLead.needsApproval).toBeUndefined()
+    })
+
+    it('keeps provider-native tools available in read mode', async () => {
+      const tools = await runChatWithMode('read', {
+        webSearch: fakeProviderTool('anthropic.web_search_20250305'),
+      })
+      expect(tools!.webSearch).toBeDefined()
+    })
+
+    it('does not mark provider-native tools with needsApproval in ask mode', async () => {
+      // They're server-executed by the provider — the client can't approve
+      // something the provider already ran. Leave the object untouched so
+      // `filterToolsByMode` doesn't invent an approval gate it can't enforce.
+      const tools = await runChatWithMode('ask', {
+        webSearch: fakeProviderTool('anthropic.web_search_20250305'),
+      })
+      expect(tools!.webSearch).toBeDefined()
+      expect((tools!.webSearch as { needsApproval?: boolean }).needsApproval).toBeUndefined()
+    })
   })
 })

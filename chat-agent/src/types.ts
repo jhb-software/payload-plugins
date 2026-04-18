@@ -2,7 +2,7 @@
  * Shared types for the chat agent plugin.
  */
 
-import type { LanguageModel } from 'ai'
+import type { LanguageModel, Tool } from 'ai'
 import type { PayloadRequest } from 'payload'
 
 import { z } from 'zod'
@@ -202,6 +202,39 @@ export interface ChatAgentPluginOptions {
   suggestedPrompts?: string[]
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
+  /**
+   * Customize the tools exposed to the agent. Called once per chat request
+   * with the authenticated request and the plugin's default tools (Payload
+   * Local API: `find`, `create`, `getCollectionSchema`, ...). Return the
+   * final `name -> Tool` map — the plugin does not merge; what you return is
+   * what the agent sees.
+   *
+   * Modelled on Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`:
+   * spread `defaultTools` to keep them, omit/filter to drop, and add your
+   * own (user-defined or provider-native) under any name.
+   *
+   * Tool classification for mode filtering (read / ask):
+   * - Provider-native tools (no `execute` — executed server-side by the
+   *   provider, e.g. `anthropic.tools.webSearch_*`) are treated as reads.
+   * - Everything else with an `execute` function is treated as a write:
+   *   excluded in `read`, gated behind `needsApproval` in `ask`.
+   *
+   * @example
+   * ```ts
+   * import { anthropic } from '@ai-sdk/anthropic'
+   * chatAgentPlugin({
+   *   tools: ({ req, defaultTools }) => ({
+   *     ...defaultTools,
+   *     webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+   *     queryAxiomLogs: myAxiomTool(req),
+   *   }),
+   * })
+   * ```
+   */
+  tools?: (args: {
+    defaultTools: Record<string, Tool>
+    req: PayloadRequest
+  }) => Promise<Record<string, Tool>> | Record<string, Tool>
 }
 
 // ---------------------------------------------------------------------------
