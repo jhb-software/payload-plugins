@@ -16,6 +16,24 @@ What users actually want for iterative content work: **instant writes with a saf
 
 Payload already has this primitive: collections (and globals) configured with `versions.drafts` accept `draft: true` on `create` / `update`, which saves a new draft version without publishing. This plan surfaces that primitive as a first-class mode.
 
+## Payload draft semantics
+
+Understanding Payload's draft model is essential for this plan. There are **two separate concepts** that are easy to conflate (and the system prompt already warns the agent about this, see `system-prompt.ts:76`):
+
+1. **The `draft` flag** (tool parameter) — selects which table is read from or written to: the **versions table** (drafts) or the **main collection table** (published). It acts as a "latest version" flag and **relaxes required-field validation** on writes, allowing partial/incomplete documents to be saved.
+
+2. **The `_status` field** (document field) — holds the actual status of the document: `'draft'` or `'published'`. This is a regular field on the document, not a query flag.
+
+What `draft: true` does on a write:
+- Writes to the **versions table**, not the main table — so the published version is untouched.
+- Relaxes required-field validation, allowing the agent to save work-in-progress content.
+- Sets `_status: 'draft'` on the new version.
+
+What this means for `draft-write` mode:
+- Forcing `draft: true` on every create/update ensures the agent's changes land in the versions table and never overwrite the published document.
+- The user reviews the draft in the admin panel's version history and publishes when ready.
+- Collections/globals without `versions.drafts` don't have a versions table, so `draft: true` is a no-op — this is why we must refuse writes to non-drafts-enabled targets (see below).
+
 ## Proposal
 
 ### New mode: `draft-write`
@@ -70,10 +88,10 @@ Add a per-mode access function slot for `draft-write` (already falls out of the 
 
 Add a mode-specific block to `buildSystemPrompt` mirroring the existing per-mode branches (`system-prompt.ts:44-64`):
 
-> - You are in **draft-write mode**. Write operations execute immediately without confirmation, and every create/update is saved as a draft version — nothing is published until the user publishes it in the admin panel.
+> - You are in **draft-write mode**. Write operations execute immediately without confirmation. Every create/update is written to the versions table with `draft: true` and `_status: 'draft'` — the published document is never overwritten. The user reviews and publishes drafts in the admin panel.
 > - `delete` is not available in this mode. If the user asks you to delete something, tell them to switch to "Confirm writes" or "Read & write" mode first.
 > - Some collections/globals may not have drafts enabled; writes to those will fail with a clear error. Relay the error and suggest switching modes.
-> - You do not need to set `draft: true` yourself — it is forced on every write.
+> - You do not need to set `draft: true` yourself — it is forced on every write. Required-field validation is relaxed, so partial saves are fine.
 
 Also skip the line *"Always confirm with the user before creating, updating, or deleting documents"* in this mode, since the whole point is that the user has _already_ opted in to instant writes.
 
