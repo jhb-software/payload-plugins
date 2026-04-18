@@ -79,7 +79,7 @@ export const postsEndpoints: Endpoint[] = [
     method: 'post',
     custom: {
       description:
-        "Publish a post by id. Sets its `status` to `'published'` and returns the updated document. Route param `:id` is the post id.",
+        "Publish a post by id. Sets its `_status` to `'published'` and returns the updated document. Route param `:id` is the post id.",
     },
     handler: async (req: PayloadRequest) => {
       const id = req.routeParams?.id as string | undefined
@@ -89,7 +89,8 @@ export const postsEndpoints: Endpoint[] = [
       const updated = await req.payload.update({
         collection: 'posts',
         id,
-        data: { status: 'published' },
+        data: { _status: 'published' },
+        select: {},
       })
       return Response.json(updated)
     },

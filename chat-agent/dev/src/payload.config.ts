@@ -25,6 +25,40 @@ const chatBudget = createPayloadBudget({
   scope: 'user',
 })
 
+// Build a minimal valid Lexical `SerializedEditorState` from an array of
+// plain-text paragraphs. Matches the shape Payload's lexical editor produces
+// for a paragraphs-only document, so the seeded posts round-trip through the
+// admin panel without triggering the "Slate → Lexical" migration error.
+const lexicalFromParagraphs = (paragraphs: string[]) => ({
+  root: {
+    type: 'root',
+    format: '' as const,
+    indent: 0,
+    version: 1,
+    direction: 'ltr' as const,
+    children: paragraphs.map((text) => ({
+      type: 'paragraph',
+      format: '' as const,
+      indent: 0,
+      version: 1,
+      direction: 'ltr' as const,
+      textFormat: 0,
+      textStyle: '',
+      children: [
+        {
+          type: 'text',
+          detail: 0,
+          format: 0,
+          mode: 'normal',
+          style: '',
+          text,
+          version: 1,
+        },
+      ],
+    })),
+  },
+})
+
 const resolveModel = (id: string) => {
   if (id.startsWith('claude-')) {
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -92,15 +126,10 @@ export default buildConfig({
       slug: 'posts',
       admin: { useAsTitle: 'title' },
       endpoints: postsEndpoints,
+      versions: { drafts: true },
       fields: [
         { name: 'title', type: 'text', required: true },
         { name: 'slug', type: 'text', required: true, unique: true },
-        {
-          name: 'status',
-          type: 'select',
-          options: ['draft', 'published', 'archived'],
-          defaultValue: 'draft',
-        },
         { name: 'content', type: 'richText' },
         { name: 'author', type: 'relationship', relationTo: 'users' },
         { name: 'featuredImage', type: 'relationship', relationTo: 'media' },
@@ -179,12 +208,11 @@ export default buildConfig({
     outputFile: path.resolve(__dirname, '../payload-types.ts'),
   },
   async onInit(payload) {
-    const existingUsers = await payload.find({
+    const existingUsers = await payload.count({
       collection: 'users',
-      limit: 1,
     })
 
-    if (existingUsers.docs.length === 0) {
+    if (existingUsers.totalDocs === 0) {
       await payload.create({
         collection: 'users',
         data: {
@@ -196,30 +224,57 @@ export default buildConfig({
     }
 
     // Seed some posts if none exist
-    const existingPosts = await payload.find({
+    const existingPosts = await payload.count({
       collection: 'posts',
-      limit: 1,
     })
 
-    if (existingPosts.docs.length === 0) {
+    if (existingPosts.totalDocs === 0) {
       const posts = [
         {
           title: 'Getting Started with Payload CMS',
           slug: 'getting-started',
-          status: 'published' as const,
+          _status: 'published' as const,
+          content: lexicalFromParagraphs([
+            'Payload is a headless CMS and application framework built with TypeScript, Next.js, and React.',
+            'This guide walks you through installing the CLI, scaffolding a project, and running the admin panel locally.',
+          ]),
         },
         {
           title: 'Advanced Field Configuration',
           slug: 'advanced-fields',
-          status: 'published' as const,
+          _status: 'published' as const,
+          content: lexicalFromParagraphs([
+            'Beyond the basic text and number fields, Payload ships with arrays, blocks, relationships, and richText.',
+            'Each field supports access control, hooks, and validation — compose them to model any domain.',
+          ]),
         },
-        { title: 'Building Custom Endpoints', slug: 'custom-endpoints', status: 'draft' as const },
+        {
+          title: 'Building Custom Endpoints',
+          slug: 'custom-endpoints',
+          _status: 'draft' as const,
+          content: lexicalFromParagraphs([
+            'Custom endpoints let you expose REST routes alongside the generated collection API.',
+            'Use `req.payload` inside a handler to run Local API calls with full access and hook context.',
+          ]),
+        },
         {
           title: 'Authentication & Access Control',
           slug: 'auth-access',
-          status: 'published' as const,
+          _status: 'published' as const,
+          content: lexicalFromParagraphs([
+            'Payload ships with a pluggable auth strategy and a fine-grained access control system.',
+            'Access functions run per operation and can return booleans or query constraints to scope results.',
+          ]),
         },
-        { title: 'Plugin Development Guide', slug: 'plugin-dev', status: 'draft' as const },
+        {
+          title: 'Plugin Development Guide',
+          slug: 'plugin-dev',
+          _status: 'draft' as const,
+          content: lexicalFromParagraphs([
+            'A Payload plugin is a function that receives the incoming config and returns a modified one.',
+            'Plugins can add collections, fields, endpoints, hooks, and admin UI overrides in a single package.',
+          ]),
+        },
       ]
       for (const post of posts) {
         await payload.create({ collection: 'posts', data: post })
@@ -227,12 +282,11 @@ export default buildConfig({
     }
 
     // Seed categories if none exist
-    const existingCategories = await payload.find({
+    const existingCategories = await payload.count({
       collection: 'categories',
-      limit: 1,
     })
 
-    if (existingCategories.docs.length === 0) {
+    if (existingCategories.totalDocs === 0) {
       const categories = [
         { name: 'Tutorials', description: 'Step-by-step guides' },
         { name: 'Reference', description: 'API documentation and reference material' },
