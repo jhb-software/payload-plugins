@@ -131,7 +131,7 @@ export default buildConfig({
         { name: 'title', type: 'text', required: true },
         { name: 'slug', type: 'text', required: true, unique: true },
         {
-          name: 'url',
+          name: 'path',
           type: 'text',
           virtual: true,
           hooks: {

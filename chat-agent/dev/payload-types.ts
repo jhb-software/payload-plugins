@@ -209,7 +209,7 @@ export interface Post {
   id: string;
   title: string;
   slug: string;
-  url?: string | null;
+  path?: string | null;
   content?: {
     root: {
       type: string;
@@ -419,7 +419,7 @@ export interface UsersSelect<T extends boolean = true> {
 export interface PostsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
-  url?: T;
+  path?: T;
   content?: T;
   author?: T;
   featuredImage?: T;
