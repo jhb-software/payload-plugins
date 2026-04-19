@@ -35,6 +35,7 @@ import {
   resolveModeConfig,
   validateModeAccess,
 } from './modes.js'
+import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
 import { buildSystemPrompt } from './system-prompt.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
@@ -348,15 +349,23 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             // close, navigation, server timeout) aborts the in-flight LLM
             // call instead of racking up tokens on a stream nobody is
             // listening to.
+            //
+            // `ignoreIncompleteToolCalls` strips tool parts whose state is
+            // `input-streaming` / `input-available`, which covers tool calls
+            // aborted before the provider finished emitting their input.
+            // `sanitizeOrphanToolCalls` is a defence-in-depth pass that
+            // also drops `tool_use` blocks whose `tool_result` never
+            // materialised (e.g. a usage-limit error hit mid tool-run and
+            // the partial message got persisted). Without it, Anthropic
+            // rejects the next request with `tool_use ids were found
+            // without tool_result blocks immediately after`.
+            const converted = await convertToModelMessages(
+              body.messages as Parameters<typeof convertToModelMessages>[0],
+              { ignoreIncompleteToolCalls: true },
+            )
             const result = streamText({
               abortSignal: req.signal,
-              // Drop tool parts from interrupted prior turns so the provider
-              // never sees a `tool_use` with a partial/non-dict input or an
-              // orphan `tool_use` missing its `tool_result`.
-              messages: await convertToModelMessages(
-                body.messages as Parameters<typeof convertToModelMessages>[0],
-                { ignoreIncompleteToolCalls: true },
-              ),
+              messages: sanitizeOrphanToolCalls(converted),
               model: resolvedModel,
               onFinish,
               stopWhen: stepCountIs(maxSteps),

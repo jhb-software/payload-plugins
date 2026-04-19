@@ -12,6 +12,7 @@
 - perf: index the `user` field on the `agent-conversations` collection so read-access filtering and the sidebar list query no longer require a full scan
 - fix: redirect unauthenticated visitors of `/admin/chat` to the login page instead of rendering the admin chrome around a "Not authorized" message
 - fix: drop tool calls that never reached a terminal state before forwarding messages to the provider, so resumed conversations with an interrupted tool call no longer fail with `tool_use.input: Input should be a valid dictionary` (or analogous orphan-tool-use errors on other providers)
+- fix: scrub orphan `tool_use` / `tool_result` pairs from the converted `ModelMessage[]` after `convertToModelMessages`, so a conversation whose previous turn was interrupted mid tool-run (usage-limit, tab close) can be resumed instead of failing every subsequent request with Anthropic's `tool_use ids were found without tool_result blocks immediately after`. `ignoreIncompleteToolCalls` only covers `input-streaming` / `input-available` parts; this is a defence-in-depth pass for stored conversations that slipped past it.
 
 ## 0.1.0-beta.3
 
