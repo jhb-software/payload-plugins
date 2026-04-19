@@ -142,8 +142,8 @@ type ExecutableTool = Required<Pick<Tool<Record<string, unknown>, unknown>, 'exe
   Tool<Record<string, unknown>, unknown>
 
 /**
- * Request/response contract for a custom endpoint, mirrored from the CLI
- * plugin's `EndpointCustom` type. Each leaf is intentionally `unknown` — it's
+ * Request/response contract for a custom endpoint, read from
+ * `endpoint.custom.schema`. Each leaf is intentionally `unknown` — it's
  * surfaced to the agent verbatim, not validated here.
  */
 export interface EndpointSchema {

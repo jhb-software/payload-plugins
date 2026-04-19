@@ -432,7 +432,7 @@ describe('discoverEndpoints', () => {
   })
 
   it('surfaces custom.schema (query/body/response) when declared', () => {
-    // The CLI plugin's `EndpointCustom` type exposes a schema contract alongside
+    // `endpoint.custom.schema` exposes a request/response contract alongside
     // the description; if an endpoint declares it, the agent should see it so
     // it can construct valid calls without trial-and-error.
     const schema = {
