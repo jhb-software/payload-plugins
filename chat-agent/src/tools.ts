@@ -141,12 +141,28 @@ interface PayloadLocalAPI {
 type ExecutableTool = Required<Pick<Tool<Record<string, unknown>, unknown>, 'execute'>> &
   Tool<Record<string, unknown>, unknown>
 
+/**
+ * Request/response contract for a custom endpoint, mirrored from the CLI
+ * plugin's `EndpointCustom` type. Each leaf is intentionally `unknown` — it's
+ * surfaced to the agent verbatim, not validated here.
+ */
+export interface EndpointSchema {
+  /** Request body shape */
+  body?: Record<string, unknown>
+  /** Query string parameters */
+  query?: Record<string, unknown>
+  /** Response shape */
+  response?: Record<string, unknown>
+}
+
 /** Minimal representation of a custom endpoint for the agent. */
 export interface DiscoverableEndpoint {
   description?: string
   handler: (req: PayloadRequest) => Promise<Response> | Response
   method: string
   path: string
+  /** Optional request/response contract declared via `endpoint.custom.schema`. */
+  schema?: EndpointSchema
 }
 
 /**
@@ -167,6 +183,7 @@ export function discoverEndpoints(config: SanitizedConfig): DiscoverableEndpoint
         handler: ep.handler,
         method: ep.method,
         path: `/api${ep.path}`,
+        ...(ep.custom.schema && { schema: ep.custom.schema as EndpointSchema }),
       })
     }
   }
@@ -182,6 +199,7 @@ export function discoverEndpoints(config: SanitizedConfig): DiscoverableEndpoint
           handler: ep.handler,
           method: ep.method,
           path: `/api/${col.slug}${ep.path}`,
+          ...(ep.custom.schema && { schema: ep.custom.schema as EndpointSchema }),
         })
       }
     }
@@ -198,6 +216,7 @@ export function discoverEndpoints(config: SanitizedConfig): DiscoverableEndpoint
           handler: ep.handler,
           method: ep.method,
           path: `/api/globals/${global.slug}${ep.path}`,
+          ...(ep.custom.schema && { schema: ep.custom.schema as EndpointSchema }),
         })
       }
     }
@@ -540,13 +559,14 @@ export function buildTools(
       ? {
           listEndpoints: {
             description:
-              'List plugin-provided custom API endpoints that can be invoked via `callEndpoint`. Returns method, path, and description for each.',
+              'List plugin-provided custom API endpoints that can be invoked via `callEndpoint`. Returns method, path, and description for each, plus an optional `schema` describing the request/response contract (query/body/response shapes) when the endpoint declares one.',
             execute: () => {
               return {
                 endpoints: customEndpoints.map((ep) => ({
                   description: ep.description,
                   method: ep.method.toUpperCase(),
                   path: ep.path,
+                  ...(ep.schema && { schema: ep.schema }),
                 })),
               }
             },

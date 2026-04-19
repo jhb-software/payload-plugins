@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: surface `endpoint.custom.schema` (query / body / response shapes, as declared by the CLI plugin's `EndpointCustom` type) through `listEndpoints` so the agent sees each custom endpoint's request/response contract and can construct valid `callEndpoint` calls without trial-and-error.
 - feat: add `listBlocks` and `getBlockSchema` tools so the agent can enumerate and inspect globally-declared blocks (`config.blocks`) on demand instead of only seeing them through the collections/globals that reference them.
 - feat!: rename the `chat-conversations` collection to `agent-conversations` and the default `chat-token-usage` budget collection to `agent-token-usage`. Existing projects must migrate data or override `createPayloadBudget({ slug: 'chat-token-usage' })` to keep the previous slug.
 - feat: add a `tools` plugin option that composes the final toolset the agent sees. The factory receives `{ defaultTools, req }` and returns the full `name -> Tool` map — modeled on Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`. Supports user-defined tools (Slack webhooks, Axiom/Vercel log queries, ...) and provider-native ones (`anthropic.tools.webSearch_*`, `openai.tools.webSearch`, `google.tools.googleSearch`, ...) under the same surface. Classification: tools without an `execute` function (provider-native, server-executed) are treated as reads; everything else defaults to write (excluded in `read`, `needsApproval: true` in `ask`).
