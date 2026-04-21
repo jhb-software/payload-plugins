@@ -46,7 +46,7 @@ Provider API keys are never read from `process.env` by the plugin — pass them 
 | `adminView`       | `{ path, Component }`                | No       | Customize the admin chat view route or component                                                        |
 | `navLink`         | `boolean`                            | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
 | `budget`          | `BudgetConfig`                       | No       | Optional token budget (see below)                                                                       |
-| `tools`           | `({ req, defaultTools }) => ToolMap` | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)          |
+| `tools`           | `({ req, defaultTools, modelId }) => ToolMap` | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)          |
 
 ### Mixing providers
 
@@ -121,7 +121,7 @@ endpoints: [
 
 ### Extending or customizing tools
 
-One `tools` factory composes the full toolset the agent sees. It receives the plugin's default tools (the Payload Local API bindings below) and the authenticated `req`, and returns the final `name -> Tool` map. Modeled on Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`: spread `defaultTools` to keep them, omit to drop, and add your own under any name.
+One `tools` factory composes the full toolset the agent sees. It receives the plugin's default tools (the Payload Local API bindings below), the authenticated `req`, and the selected `modelId` for this request, and returns the final `name -> Tool` map. Modeled on Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`: spread `defaultTools` to keep them, omit to drop, and add your own under any name.
 
 ```ts
 import { anthropic } from '@ai-sdk/anthropic'
@@ -152,6 +152,28 @@ chatAgentPlugin({
         return { ok: res.ok, status: res.status }
       },
     }),
+  }),
+})
+```
+
+In a multi-provider setup, gate provider-native tools on `modelId` so they're only sent to a compatible provider — otherwise e.g. OpenAI will reject an Anthropic-native `webSearch_*` tool the moment someone picks `gpt-5-mini`:
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic'
+import { openai } from '@ai-sdk/openai'
+
+chatAgentPlugin({
+  defaultModel: 'claude-sonnet-4-20250514',
+  availableModels: [
+    { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+    { id: 'gpt-5-mini', label: 'GPT-5 mini' },
+  ],
+  model: (id) => (id.startsWith('claude-') ? anthropic(id) : openai(id)),
+  tools: ({ defaultTools, modelId }) => ({
+    ...defaultTools,
+    ...(modelId.startsWith('claude-')
+      ? { webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }) }
+      : { webSearch: openai.tools.webSearch() }),
   }),
 })
 ```
