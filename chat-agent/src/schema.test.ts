@@ -170,10 +170,7 @@ describe('extractFields — lexical feature summary', () => {
           {
             key: 'inlineBlocks',
             serverFeatureProps: {
-              blocks: [
-                { slug: 'mention', fields: [{ name: 'user', type: 'text' }] },
-                'emoji',
-              ],
+              blocks: [{ slug: 'mention', fields: [{ name: 'user', type: 'text' }] }, 'emoji'],
             },
           },
         ]),
@@ -208,9 +205,7 @@ describe('extractFields — lexical feature summary', () => {
       ]),
     ])
     expect(field.lexical?.features).toContain('myThing')
-    expect(
-      (field.lexical?.options as Record<string, unknown> | undefined)?.myThing,
-    ).toBeUndefined()
+    expect((field.lexical?.options as Record<string, unknown> | undefined)?.myThing).toBeUndefined()
   })
 
   it('omits the lexical key when the richText editor is absent', () => {
