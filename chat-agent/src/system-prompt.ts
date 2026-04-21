@@ -11,6 +11,8 @@
 import type { PayloadConfigForPrompt } from './schema.js'
 import type { AgentMode } from './types.js'
 
+import { scanRichTextFeatures } from './schema.js'
+
 /**
  * Build the system prompt for the chat agent.
  *
@@ -33,6 +35,12 @@ export function buildSystemPrompt(
   }
 
   const adminRoute = payloadConfig.routes?.admin ?? '/admin'
+
+  const fieldGroups = [
+    ...(payloadConfig.collections ?? []).map((c) => c.fields ?? []),
+    ...(payloadConfig.globals ?? []).map((g) => g.fields ?? []),
+  ]
+  const { hasBlocksFeature, hasLexicalFeatures } = scanRichTextFeatures(fieldGroups)
 
   sections.push(
     'You are a CMS content assistant with access to the Payload CMS database.',
@@ -68,6 +76,11 @@ export function buildSystemPrompt(
           "- Call `listBlocks` to see globally-declared blocks, and `getBlockSchema({ slug })` to inspect a block's fields before inserting it into a `blocks` field.",
         ]
       : []),
+    ...(hasLexicalFeatures
+      ? [
+          "- For every `richText` field in a schema, inspect `lexical.features` and `lexical.options` to see which node types you may emit. Only produce nodes whose feature key appears in `features`. For `blocks` / `inlineBlocks`, the slugs in `options.blocks.slugs` / `options.inlineBlocks.slugs` are exhaustive — call `getBlockSchema({ slug })` to inspect a block's fields before composing it.",
+        ]
+      : []),
     ...(hasCustomEndpoints
       ? [
           '- Call `listEndpoints` to see plugin-provided custom endpoints that can be invoked via `callEndpoint`.',
@@ -79,6 +92,28 @@ export function buildSystemPrompt(
     '- If a tool call fails with a permission error, tell the user they lack access.',
     '- Payload uses [Lexical](https://lexical.dev) for rich text fields — their values are Lexical editor JSON state, not HTML or Markdown.',
     "- Drafts: for versioned collections, the `draft` flag selects which table is read from or written to — the versions table (drafts) or the main collection table (published); it acts as a \"latest version\" flag and relaxes required-field validation on writes. The document's actual status lives in the `_status` field, with values `'draft'` or `'published'`.",
+    ...(hasBlocksFeature
+      ? [
+          '',
+          '## Lexical block nodes',
+          'When inserting a block into a richText field, emit a node of this exact shape:',
+          '',
+          '```json',
+          '{',
+          '  "type": "block",',
+          '  "version": 2,',
+          '  "format": "",',
+          '  "fields": {',
+          '    "blockType": "<slug>",',
+          '    "blockName": "",',
+          '    "<blockField1>": "..."',
+          '  }',
+          '}',
+          '```',
+          '',
+          'The `blockType` discriminator lives inside `fields`, not at the top level. `blockName` is an empty string unless the user named the block. `id` is optional on input — Payload generates an ObjectId automatically. Inline-block nodes use `"type": "inlineBlock"` and `"version": 1` instead.',
+        ]
+      : []),
     '',
     '## Token efficiency',
     '- Always use `select` to request only the fields you need. Never fetch all fields when you only need a few.',

@@ -430,6 +430,49 @@ describe('discoverEndpoints', () => {
     const eps = discoverEndpoints(asConfig(config))
     expect(eps).toHaveLength(0)
   })
+
+  it('surfaces custom.schema (query/body/response) when declared', () => {
+    // `endpoint.custom.schema` exposes a request/response contract alongside
+    // the description; if an endpoint declares it, the agent should see it so
+    // it can construct valid calls without trial-and-error.
+    const schema = {
+      body: { draft: { type: 'boolean' } },
+      query: { locale: { type: 'string' } },
+      response: { id: { type: 'string' }, published: { type: 'boolean' } },
+    }
+    const config = {
+      collections: [],
+      endpoints: [
+        {
+          custom: { description: 'Publish content', schema },
+          handler: () => {},
+          method: 'post',
+          path: '/publish',
+        },
+      ],
+      globals: [],
+    }
+    const eps = discoverEndpoints(asConfig(config))
+    expect(eps).toHaveLength(1)
+    expect(eps[0].schema).toEqual(schema)
+  })
+
+  it('leaves schema undefined when custom.schema is absent', () => {
+    const config = {
+      collections: [],
+      endpoints: [
+        {
+          custom: { description: 'Publish content' },
+          handler: () => {},
+          method: 'post',
+          path: '/publish',
+        },
+      ],
+      globals: [],
+    }
+    const eps = discoverEndpoints(asConfig(config))
+    expect(eps[0].schema).toBeUndefined()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -963,6 +1006,66 @@ describe('schema inspection tools', () => {
     }
     expect(result.error).toMatch(/unknown global slug/i)
   })
+
+  it('getCollectionSchema round-trips lexical feature summaries on richText fields', async () => {
+    // The lexical feature summary must make it through the tool output so the
+    // agent sees which nodes it may emit when authoring rich-text content.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [
+            {
+              name: 'body',
+              type: 'richText',
+              editor: {
+                features: [
+                  { key: 'bold' },
+                  {
+                    key: 'heading',
+                    serverFeatureProps: { enabledHeadingSizes: ['h2', 'h3'] },
+                  },
+                  {
+                    key: 'blocks',
+                    serverFeatureProps: {
+                      blocks: [{ slug: 'hero', fields: [{ name: 'headline', type: 'text' }] }],
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'posts' }, ctx)) as {
+      fields: {
+        lexical?: {
+          features: string[]
+          options?: {
+            blocks?: { slugs: string[] }
+            heading?: { enabledHeadingSizes?: string[] }
+          }
+        }
+        name: string
+      }[]
+    }
+
+    const body = result.fields.find((f) => f.name === 'body')!
+    expect(body.lexical?.features).toEqual(['blocks', 'bold', 'heading'])
+    expect(body.lexical?.options?.heading?.enabledHeadingSizes).toEqual(['h2', 'h3'])
+    expect(body.lexical?.options?.blocks?.slugs).toEqual(['hero'])
+
+    // The inline Block registered via BlocksFeature must be resolvable via
+    // getBlockSchema so the agent can drill into it without traversing back
+    // through the parent collection.
+    const heroSchema = (await tools.getBlockSchema.execute({ slug: 'hero' }, ctx)) as {
+      fields: { name: string }[]
+    }
+    expect(heroSchema.fields).toEqual([{ name: 'headline', type: 'text' }])
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -1222,5 +1325,36 @@ describe('listEndpoints', () => {
       { description: 'Publish a post', method: 'POST', path: '/api/posts/publish/:id' },
       { description: 'Archive a post', method: 'DELETE', path: '/api/posts/archive/:id' },
     ])
+  })
+
+  it("includes each endpoint's schema when present so the agent knows the contract", async () => {
+    const schema = {
+      body: { draft: { type: 'boolean' } },
+      query: { locale: { type: 'string' } },
+      response: { id: { type: 'string' } },
+    }
+    const endpoints = [
+      {
+        description: 'Publish a post',
+        handler: () => Response.json({}),
+        method: 'post',
+        path: '/api/posts/publish/:id',
+        schema,
+      },
+      {
+        description: 'Archive a post',
+        handler: () => Response.json({}),
+        method: 'delete',
+        path: '/api/posts/archive/:id',
+      },
+    ]
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
+
+    const result = (await tools.listEndpoints.execute({}, ctx)) as {
+      endpoints: { schema?: unknown }[]
+    }
+    expect(result.endpoints[0].schema).toEqual(schema)
+    // Endpoints without a declared schema stay lean — no empty schema key.
+    expect(result.endpoints[1]).not.toHaveProperty('schema')
   })
 })
