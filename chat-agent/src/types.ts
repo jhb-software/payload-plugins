@@ -204,14 +204,20 @@ export interface ChatAgentPluginOptions {
   systemPrompt?: string
   /**
    * Customize the tools exposed to the agent. Called once per chat request
-   * with the authenticated request and the plugin's default tools (Payload
-   * Local API: `find`, `create`, `getCollectionSchema`, ...). Return the
-   * final `name -> Tool` map — the plugin does not merge; what you return is
-   * what the agent sees.
+   * with the authenticated request, the selected model id, and the plugin's
+   * default tools (Payload Local API: `find`, `create`,
+   * `getCollectionSchema`, ...). Return the final `name -> Tool` map — the
+   * plugin does not merge; what you return is what the agent sees.
    *
    * Modelled on Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`:
    * spread `defaultTools` to keep them, omit/filter to drop, and add your
    * own (user-defined or provider-native) under any name.
+   *
+   * `modelId` is the model the agent will use for this request — either the
+   * value from the request body or `defaultModel`. Use it to skip
+   * provider-native tools that the selected provider wouldn't accept (e.g.
+   * drop Anthropic's `webSearch_*` when the user picked an OpenAI model, or
+   * swap in `openai.tools.webSearch` instead).
    *
    * Tool classification for mode filtering (read / ask):
    * - Provider-native tools (no `execute` — executed server-side by the
@@ -230,9 +236,27 @@ export interface ChatAgentPluginOptions {
    *   }),
    * })
    * ```
+   *
+   * @example Conditional provider-native tools in a multi-provider setup
+   * ```ts
+   * import { anthropic } from '@ai-sdk/anthropic'
+   * chatAgentPlugin({
+   *   tools: ({ defaultTools, modelId }) => {
+   *     if (modelId.startsWith('claude-')) {
+   *       return {
+   *         ...defaultTools,
+   *         webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+   *       }
+   *     }
+   *     return defaultTools
+   *   },
+   * })
+   * ```
    */
   tools?: (args: {
     defaultTools: Record<string, Tool>
+    /** The model id resolved for this request (body.model or `defaultModel`). */
+    modelId: string
     req: PayloadRequest
   }) => Promise<Record<string, Tool>> | Record<string, Tool>
 }

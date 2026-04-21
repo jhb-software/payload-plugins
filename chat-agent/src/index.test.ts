@@ -1550,6 +1550,76 @@ describe('chatAgentPlugin tools', () => {
     expect(_streamTextOpts.tools!.fetchWeather).toBeDefined()
   })
 
+  it('passes the selected modelId to the tools resolver so it can skip provider-incompatible tools', async () => {
+    // Regression guard for the multi-provider setup: if the resolver only
+    // sees `defaultTools` and `req`, an Anthropic-native server tool like
+    // `anthropic.tools.webSearch_20250305` gets sent to OpenAI the moment a
+    // user picks `gpt-5-mini`, and OpenAI rejects the unknown tool shape at
+    // runtime. Surfacing the selected modelId to the resolver is what makes
+    // conditional registration possible.
+    vi.mocked(streamText).mockClear()
+    const plugin = chatAgentPlugin({
+      availableModels: [
+        { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet' },
+        { id: 'gpt-5-mini', label: 'GPT-5 mini' },
+      ],
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: ({ defaultTools, modelId }) => {
+        if (modelId.startsWith('claude-')) {
+          return {
+            ...defaultTools,
+            webSearch: fakeProviderTool('anthropic.web_search_20250305'),
+          }
+        }
+        return defaultTools
+      },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve({ ...validChatBody, model: 'gpt-5-mini' }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+    expect(lastStreamTextHandle()._streamTextOpts.tools!.webSearch).toBeUndefined()
+
+    await handler({
+      json: () => Promise.resolve({ ...validChatBody, model: 'claude-sonnet-4-20250514' }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+    expect(lastStreamTextHandle()._streamTextOpts.tools!.webSearch).toBeDefined()
+  })
+
+  it('falls back to defaultModel when the request omits `model` before calling the tools resolver', async () => {
+    vi.mocked(streamText).mockClear()
+    const receivedModelIds: string[] = []
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+      modes: { default: 'read-write' },
+      tools: ({ defaultTools, modelId }) => {
+        receivedModelIds.push(modelId)
+        return defaultTools
+      },
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () => Promise.resolve(validChatBody),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    expect(receivedModelIds).toEqual(['claude-sonnet-4-20250514'])
+  })
+
   describe('mode filtering for user-defined tools', () => {
     // The plugin can't know a user tool's side effects, so a tool with an
     // `execute` function defaults to "write": excluded in read, gated behind

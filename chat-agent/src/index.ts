@@ -285,10 +285,16 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             // Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`:
             // the user composes, the plugin does not merge. If omitted,
             // default tools are used as-is.
+            //
+            // `modelId` is passed in so a multi-provider setup can skip
+            // provider-native tools that the selected provider wouldn't
+            // accept (e.g. Anthropic's `webSearch_*` when the user picked
+            // an OpenAI model).
+            const modelId = body.model ?? options.defaultModel
             let allTools: Record<string, Tool>
             if (options.tools) {
               try {
-                allTools = await options.tools({ defaultTools: builtInTools, req })
+                allTools = await options.tools({ defaultTools: builtInTools, modelId, req })
               } catch (err) {
                 return Response.json(
                   {
@@ -307,7 +313,6 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               customEndpoints.length > 0,
               mode,
             )
-            const modelId = body.model ?? options.defaultModel
             const maxSteps = options.maxSteps ?? 20
 
             // --- Resolve model from user-provided factory ------------------
