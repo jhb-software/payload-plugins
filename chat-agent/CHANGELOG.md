@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: pass the resolved `modelId` to the `tools` plugin option so a multi-provider setup can conditionally include provider-native tools (e.g. drop `anthropic.tools.webSearch_*` when the user selects an OpenAI model) instead of sending a tool shape the selected provider would reject at runtime.
+
 ## 0.1.0-beta.4
 
 BREAKING CHANGES:
