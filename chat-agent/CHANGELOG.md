@@ -1,15 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.4
+
+BREAKING CHANGES:
+
+- feat!: rename the `chat-conversations` collection to `agent-conversations` and the default `chat-token-usage` budget collection to `agent-token-usage`. Existing projects must migrate data or override `createPayloadBudget({ slug: 'chat-token-usage' })` to keep the previous slug.
+
+OTHER CHANGES:
 
 - feat: surface a per-field `lexical` summary on `FieldSchema` (returned by `getCollectionSchema` / `getGlobalSchema`) that lists each `richText` field's enabled lexical features (`bold`, `heading`, `link`, `blocks`, ...) along with typed option projections (heading sizes, link fields, upload collections, block/inlineBlock slugs, relationship collections), so the agent can emit only the node types the editor actually allows.
-- feat: surface `endpoint.custom.schema` (query / body / response shapes) through `listEndpoints` so the agent sees each custom endpoint's request/response contract and can construct valid `callEndpoint` calls without trial-and-error.
 - feat: add `listBlocks` and `getBlockSchema` tools so the agent can enumerate and inspect globally-declared blocks (`config.blocks`) on demand instead of only seeing them through the collections/globals that reference them.
-- feat!: rename the `chat-conversations` collection to `agent-conversations` and the default `chat-token-usage` budget collection to `agent-token-usage`. Existing projects must migrate data or override `createPayloadBudget({ slug: 'chat-token-usage' })` to keep the previous slug.
-- feat: add a `tools` plugin option that composes the final toolset the agent sees. The factory receives `{ defaultTools, req }` and returns the full `name -> Tool` map — modeled on Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`. Supports user-defined tools (Slack webhooks, Axiom/Vercel log queries, ...) and provider-native ones (`anthropic.tools.webSearch_*`, `openai.tools.webSearch`, `google.tools.googleSearch`, ...) under the same surface. Classification: tools without an `execute` function (provider-native, server-executed) are treated as reads; everything else defaults to write (excluded in `read`, `needsApproval: true` in `ask`).
-- feat: show a "Responding…" indicator in the message list while the agent is working on a response but hasn't streamed any output yet, and a shimmer skeleton while conversation history is loading (initial hydration and sidebar switches) instead of a blank area
+- feat: surface `endpoint.custom.schema` (query / body / response shapes) through `listEndpoints` so the agent sees each custom endpoint's request/response contract and can construct valid `callEndpoint` calls without trial-and-error.
+- feat: add a `tools` plugin option that composes the final toolset the agent sees. Supports user-defined tools (Slack webhooks, Axiom/Vercel log queries, ...) and provider-native ones (`anthropic.tools.webSearch_*`, `openai.tools.webSearch`, `google.tools.googleSearch`, ...) under the same surface.
+- feat: show a "Responding…" indicator in the message list while the agent is working on a response but hasn't streamed any output yet, and a shimmer skeleton while conversation history is loading instead of a blank area
 - feat: note in the system prompt that Payload uses Lexical for rich text so the agent reads/writes rich-text field values as Lexical editor JSON state instead of HTML or Markdown
-- feat: note in the system prompt how Payload's `draft` query flag (versions vs main table, a "latest" flag) differs from the `_status` field (the document's actual `'draft'` / `'published'` state) so the agent stops conflating the two
+- feat: note in the system prompt how Payload's `draft` query flag differs from the `_status` field (the document's actual `'draft'` / `'published'` state) so the agent stops conflating the two
 - feat: include the canonical Lexical `SerializedBlockNode` shape in the system prompt when a richText field carries the `blocks` / `inlineBlocks` feature, so agents stop guessing the node structure and failing Lexical validation
 - perf: restrict the sidebar conversation list query to `title` + `updatedAt` via `select` so the full `messages` JSON is no longer fetched just to render the list
 - perf: index the `user` field on the `agent-conversations` collection so read-access filtering and the sidebar list query no longer require a full scan
