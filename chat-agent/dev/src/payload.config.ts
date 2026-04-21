@@ -2,7 +2,20 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { chatAgentPlugin, createPayloadBudget } from '@jhb.software/payload-chat-agent'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import {
+  BlocksFeature,
+  BoldFeature,
+  HeadingFeature,
+  InlineCodeFeature,
+  ItalicFeature,
+  lexicalEditor,
+  LinkFeature,
+  OrderedListFeature,
+  RelationshipFeature,
+  UnderlineFeature,
+  UnorderedListFeature,
+  UploadFeature,
+} from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -184,6 +197,106 @@ export default buildConfig({
       fields: [
         { name: 'name', type: 'text', required: true },
         { name: 'description', type: 'textarea' },
+      ],
+    },
+    // Demo collection for plan 013: each richText field is configured with a
+    // different lexical feature set so `getCollectionSchema({ slug:
+    // 'rich-text-demo' })` surfaces a distinct `lexical.features` /
+    // `lexical.options` shape per field — useful for eyeballing the feature
+    // summary end-to-end in the admin panel + chat agent.
+    {
+      slug: 'rich-text-demo',
+      admin: { useAsTitle: 'title' },
+      fields: [
+        { name: 'title', type: 'text', required: true },
+        // 1. Marks-only: no structural features (no headings, no lists, no
+        //    blocks). The summary should list inline marks and nothing else.
+        {
+          name: 'inlineOnly',
+          type: 'richText',
+          editor: lexicalEditor({
+            features: () => [
+              BoldFeature(),
+              ItalicFeature(),
+              UnderlineFeature(),
+              InlineCodeFeature(),
+            ],
+          }),
+        },
+        // 2. Structural body with headings restricted to h2/h3 — the summary
+        //    should surface `options.heading.enabledHeadingSizes: ['h2','h3']`
+        //    so the agent knows not to emit h1/h4+.
+        {
+          name: 'structuredBody',
+          type: 'richText',
+          editor: lexicalEditor({
+            features: ({ defaultFeatures }) => [
+              ...defaultFeatures,
+              HeadingFeature({ enabledHeadingSizes: ['h2', 'h3'] }),
+              UnorderedListFeature(),
+              OrderedListFeature(),
+            ],
+          }),
+        },
+        // 3. Blocks showcase: global blocks (`cta`, `hero`) + a block declared
+        //    inline here, plus an inline block. `options.blocks.slugs` should
+        //    include all three block slugs; the inline `calloutBox` should
+        //    round-trip through the shared `blocksBySlug` so `getBlockSchema({
+        //    slug: 'calloutBox' })` resolves without appearing in
+        //    `listBlocks`.
+        {
+          name: 'contentWithBlocks',
+          type: 'richText',
+          editor: lexicalEditor({
+            features: ({ defaultFeatures }) => [
+              ...defaultFeatures,
+              BlocksFeature({
+                blocks: [
+                  'cta',
+                  'hero',
+                  {
+                    slug: 'calloutBox',
+                    fields: [
+                      {
+                        name: 'tone',
+                        type: 'select',
+                        options: ['info', 'warning', 'danger'],
+                        required: true,
+                      },
+                      { name: 'body', type: 'textarea', required: true },
+                    ],
+                  },
+                ],
+                inlineBlocks: [
+                  {
+                    slug: 'emoji',
+                    fields: [{ name: 'shortcode', type: 'text', required: true }],
+                  },
+                ],
+              }),
+            ],
+          }),
+        },
+        // 4. Full-featured — headings, link (with custom `rel` field +
+        //    enabledCollections), upload, relationship, blocks. Exercises
+        //    every typed projection in `LexicalFeatureSummary.options`.
+        {
+          name: 'everything',
+          type: 'richText',
+          editor: lexicalEditor({
+            features: ({ defaultFeatures }) => [
+              ...defaultFeatures,
+              HeadingFeature({ enabledHeadingSizes: ['h1', 'h2', 'h3'] }),
+              LinkFeature({
+                enabledCollections: ['posts', 'categories'],
+                fields: ({ defaultFields }) => [...defaultFields, { name: 'rel', type: 'text' }],
+              }),
+              UploadFeature({ collections: { media: { fields: [] } } }),
+              RelationshipFeature({ enabledCollections: ['posts', 'categories'] }),
+              BlocksFeature({ blocks: ['cta', 'hero'] }),
+            ],
+          }),
+        },
       ],
     },
     {
