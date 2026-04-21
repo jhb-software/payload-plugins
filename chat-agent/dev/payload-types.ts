@@ -65,11 +65,15 @@ export interface Config {
   auth: {
     users: UserAuthOperations;
   };
-  blocks: {};
+  blocks: {
+    cta: CtaBlock;
+    hero: Hero;
+  };
   collections: {
     users: User;
     posts: Post;
     categories: Category;
+    'rich-text-demo': RichTextDemo;
     media: Media;
     'agent-token-usage': AgentTokenUsage;
     'agent-conversations': AgentConversation;
@@ -83,6 +87,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    'rich-text-demo': RichTextDemoSelect<false> | RichTextDemoSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'agent-token-usage': AgentTokenUsageSelect<false> | AgentTokenUsageSelect<true>;
     'agent-conversations': AgentConversationsSelect<false> | AgentConversationsSelect<true>;
@@ -131,6 +136,49 @@ export interface UserAuthOperations {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CtaBlock".
+ */
+export interface CtaBlock {
+  heading: string;
+  buttonLabel: string;
+  buttonHref: string;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'cta';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hero".
+ */
+export interface Hero {
+  headline: string;
+  subheadline?: string | null;
+  image?: (string | null) | Media;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'hero';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: string;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -163,7 +211,7 @@ export interface Post {
   id: string;
   title: string;
   slug: string;
-  status?: ('draft' | 'published' | 'archived') | null;
+  path?: string | null;
   content?: {
     root: {
       type: string;
@@ -181,27 +229,28 @@ export interface Post {
   } | null;
   author?: (string | null) | User;
   featuredImage?: (string | null) | Media;
+  layout?: (CtaBlock | Hero)[] | null;
+  sidebar?:
+    | (
+        | {
+            quote: string;
+            attribution?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'pullQuote';
+          }
+        | {
+            twitter?: string | null;
+            github?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'socialLinks';
+          }
+      )[]
+    | null;
   updatedAt: string;
   createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: string;
-  alt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -211,6 +260,76 @@ export interface Category {
   id: string;
   name: string;
   description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rich-text-demo".
+ */
+export interface RichTextDemo {
+  id: string;
+  title: string;
+  inlineOnly?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  structuredBody?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  contentWithBlocks?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  everything?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -287,6 +406,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'categories';
         value: string | Category;
+      } | null)
+    | ({
+        relationTo: 'rich-text-demo';
+        value: string | RichTextDemo;
       } | null)
     | ({
         relationTo: 'media';
@@ -372,12 +495,34 @@ export interface UsersSelect<T extends boolean = true> {
 export interface PostsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
-  status?: T;
+  path?: T;
   content?: T;
   author?: T;
   featuredImage?: T;
+  layout?: T | {};
+  sidebar?:
+    | T
+    | {
+        pullQuote?:
+          | T
+          | {
+              quote?: T;
+              attribution?: T;
+              id?: T;
+              blockName?: T;
+            };
+        socialLinks?:
+          | T
+          | {
+              twitter?: T;
+              github?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -386,6 +531,19 @@ export interface PostsSelect<T extends boolean = true> {
 export interface CategoriesSelect<T extends boolean = true> {
   name?: T;
   description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rich-text-demo_select".
+ */
+export interface RichTextDemoSelect<T extends boolean = true> {
+  title?: T;
+  inlineOnly?: T;
+  structuredBody?: T;
+  contentWithBlocks?: T;
+  everything?: T;
   updatedAt?: T;
   createdAt?: T;
 }

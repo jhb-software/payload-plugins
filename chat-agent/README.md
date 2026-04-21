@@ -46,6 +46,7 @@ Provider API keys are never read from `process.env` by the plugin — pass them 
 | `adminView`       | `{ path, Component }`                | No       | Customize the admin chat view route or component                                                        |
 | `navLink`         | `boolean`                            | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
 | `budget`          | `BudgetConfig`                       | No       | Optional token budget (see below)                                                                       |
+| `tools`           | `({ req, defaultTools }) => ToolMap` | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)          |
 
 ### Mixing providers
 
@@ -95,20 +96,72 @@ chatAgentPlugin({
 
 ### Custom endpoints
 
-Any endpoint with a `custom.description` is discoverable by the agent via the `callEndpoint` tool:
+Any endpoint with a `custom.description` is discoverable by the agent via the `callEndpoint` tool. Optionally attach a `custom.schema` describing the request/response contract (`query`, `body`, `response`) — when present, it's handed to the agent alongside the description so it can construct valid calls without trial-and-error:
 
 ```ts
 endpoints: [
   {
     path: '/publish/:id',
     method: 'post',
-    custom: { description: 'Publish a document by ID' },
+    custom: {
+      description: 'Publish a document by ID',
+      schema: {
+        body: { notify: { type: 'boolean' } },
+        response: { id: { type: 'string' }, status: { type: 'string' } },
+      },
+    },
     handler: async (req) => {
       /* ... */
     },
   },
 ]
 ```
+
+`custom.schema` leaves are passed through verbatim — use whatever shape your team already documents endpoints with (plain descriptors, JSON Schema, etc.). Route params like `:id` belong in the path, not the schema.
+
+### Extending or customizing tools
+
+One `tools` factory composes the full toolset the agent sees. It receives the plugin's default tools (the Payload Local API bindings below) and the authenticated `req`, and returns the final `name -> Tool` map. Modeled on Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`: spread `defaultTools` to keep them, omit to drop, and add your own under any name.
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic'
+import { tool } from 'ai'
+import { z } from 'zod'
+
+chatAgentPlugin({
+  defaultModel: 'claude-sonnet-4-20250514',
+  model: (id) => anthropic(id),
+  tools: ({ defaultTools, req }) => ({
+    // Keep all the built-ins (`find`, `create`, `getCollectionSchema`, ...)
+    ...defaultTools,
+
+    // Provider-native web tools (executed server-side by Anthropic):
+    webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+    webFetch: anthropic.tools.webFetch_20250910(),
+
+    // A custom tool that calls an external service, closing over `req.user`:
+    sendSlackMessage: tool({
+      description: 'Post a message to the #ops channel via Slack webhook',
+      inputSchema: z.object({ text: z.string() }),
+      execute: async ({ text }) => {
+        const res = await fetch(process.env.SLACK_WEBHOOK_URL!, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: `${req.user?.email}: ${text}` }),
+        })
+        return { ok: res.ok, status: res.status }
+      },
+    }),
+  }),
+})
+```
+
+Classification for mode filtering:
+
+- **Provider-native tools** (no `execute` — the provider runs them, e.g. `anthropic.tools.webSearch_*`, `openai.tools.webSearch`, `google.tools.googleSearch` / `google.tools.urlContext`) are treated as reads: available in `read` mode, not gated by `needsApproval` in `ask`. Make sure the configured model actually supports the tool you pass — the provider rejects unsupported combinations at call time, and some tools (e.g. Anthropic's `webFetch_20260209` with dynamic filtering) require specific models. Each provider typically bills web search per call (~$10 / 1k searches) in addition to tokens.
+- **User-defined executable tools** (anything with an `execute` function) default to the safe "write" classification: excluded in `read`, gated behind `needsApproval: true` in `ask`, passed through in `read-write` / `superuser`. The plugin can't know the tool's side effects.
+
+The plugin does not merge — what the factory returns is what the agent sees. Omit `tools` entirely to use the defaults. Runnable examples of custom tools (Axiom Logs, Vercel Logs, Slack webhook) live in `chat-agent/dev/src/customTools.ts`.
 
 ### Budget limiting
 
@@ -159,6 +212,8 @@ Errors from `check`/`record` are not swallowed — a broken usage store fails lo
 | `findGlobal`   | Get a global document                                 |
 | `updateGlobal` | Update a global document                              |
 | `callEndpoint` | Invoke a custom API endpoint                          |
+
+Additional tools registered via the `tools` option — including provider-native web tools like `webSearch` / `webFetch` — appear alongside these. See [Extending or customizing tools](#extending-or-customizing-tools).
 
 ## Production considerations
 

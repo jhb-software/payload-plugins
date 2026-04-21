@@ -74,6 +74,24 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('getGlobalSchema')
   })
 
+  it('mentions listBlocks / getBlockSchema only when config.blocks is non-empty', () => {
+    const withBlocks = buildSystemPrompt({
+      blocks: [{ slug: 'hero', fields: [] }],
+      collections: [],
+      globals: [],
+    })
+    expect(withBlocks).toContain('listBlocks')
+    expect(withBlocks).toContain('getBlockSchema')
+
+    const emptyBlocks = buildSystemPrompt({ blocks: [], collections: [], globals: [] })
+    expect(emptyBlocks).not.toContain('listBlocks')
+    expect(emptyBlocks).not.toContain('getBlockSchema')
+
+    const noBlocks = buildSystemPrompt({ collections: [], globals: [] })
+    expect(noBlocks).not.toContain('listBlocks')
+    expect(noBlocks).not.toContain('getBlockSchema')
+  })
+
   it('notes that Payload uses Lexical for rich text', () => {
     // The agent needs to know rich-text field values are Lexical editor state
     // (JSON tree), not HTML or Markdown, so it writes/reads them correctly.
@@ -302,5 +320,112 @@ describe('buildSystemPrompt with upload collections', () => {
     const prompt = buildSystemPrompt(config)
     expect(prompt).toContain('/cms/collections/media')
     expect(prompt).not.toContain('/admin/collections/media')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Rich-text feature guidance (plan 013)
+// ---------------------------------------------------------------------------
+
+describe('buildSystemPrompt rich-text feature guidance', () => {
+  /** Build a minimal richText field with the given lexical feature keys. */
+  function richTextField(name: string, featureKeys: string[]) {
+    return {
+      name,
+      type: 'richText',
+      editor: { features: featureKeys.map((key) => ({ key })) },
+    }
+  }
+
+  it('includes the rich-text feature bullet when a richText field has non-empty lexical.features', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'heading', 'blocks'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('lexical.features')
+    expect(prompt).toContain('lexical.options')
+  })
+
+  it('omits the rich-text feature bullet when no schema has richText features', () => {
+    const prompt = buildSystemPrompt({
+      collections: [{ slug: 'posts', fields: [{ name: 'title', type: 'text' }] }],
+      globals: [],
+    })
+    expect(prompt).not.toContain('lexical.features')
+    expect(prompt).not.toContain('lexical.options')
+  })
+
+  it('omits the rich-text feature bullet when richText fields carry no detectable features', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [{ name: 'body', type: 'richText' }],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('lexical.features')
+  })
+
+  it('does not emit a narrower blocks-only bullet once the generalized bullet ships', () => {
+    // Plan 013 replaces any plan-012-style "BlocksFeature slugs" bullet with
+    // the generalized lexical bullet. The older narrower phrasing must not
+    // coexist alongside the new one.
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['blocks'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('BlocksFeature slugs')
+    expect(prompt).not.toContain('lexical fields configured with BlocksFeature')
+  })
+
+  it('includes the canonical block-node shape when a richText field has the blocks feature', () => {
+    // Agents were guessing the SerializedBlockNode shape (wrong version,
+    // top-level `blockName`, missing `blockType` discriminator inside
+    // `fields`) and hitting Lexical validation. A concrete example in the
+    // prompt removes the guesswork.
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['blocks'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    // The shape must show that `blockType` lives inside `fields` and that
+    // block nodes are version 2 — the two mistakes agents were making.
+    expect(prompt).toContain('"type": "block"')
+    expect(prompt).toContain('"version": 2')
+    expect(prompt).toContain('"blockType"')
+  })
+
+  it('omits the block-node shape example when no richText field uses blocks', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'italic'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('"type": "block"')
   })
 })
