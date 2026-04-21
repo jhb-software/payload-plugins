@@ -199,6 +199,92 @@ describe('sanitizeOrphanToolCalls', () => {
     const sanitized = sanitizeOrphanToolCalls(messages)
     expect(collectToolCallIds(sanitized).sort()).toEqual(['a', 'a', 'b', 'b'])
   })
+
+  // OpenAI reasoning models (o-series, gpt-5-thinking) emit `rs_...`
+  // reasoning items that must stay adjacent to the tool-call they were
+  // produced for. Dropping the tool-call while keeping the reasoning
+  // trips a different provider error — see vercel/ai#8321.
+  it('drops reasoning parts that immediately precede a stripped tool-call', () => {
+    const messages: ModelMessage[] = [
+      { content: 'do the thing', role: 'user' },
+      {
+        content: [
+          { type: 'reasoning', text: 'I should call find with q=X' },
+          {
+            type: 'tool-call',
+            input: { q: 'X' },
+            toolCallId: 'toolu_orphan',
+            toolName: 'find',
+          },
+        ],
+        role: 'assistant',
+      },
+      { content: 'never mind', role: 'user' },
+    ]
+
+    const sanitized = sanitizeOrphanToolCalls(messages)
+
+    // Both the orphan tool-call AND the reasoning paired with it are gone,
+    // so the assistant message has no surviving content and is dropped.
+    expect(sanitized).toEqual([
+      { content: 'do the thing', role: 'user' },
+      { content: 'never mind', role: 'user' },
+    ])
+  })
+
+  it('keeps reasoning that precedes a non-orphan tool-call in a mixed message', () => {
+    // Only the orphan tool-call's reasoning is stripped; reasoning paired
+    // with a kept tool-call stays so the provider still sees a valid
+    // reasoning → tool-call sequence.
+    const messages: ModelMessage[] = [
+      {
+        content: [
+          { type: 'reasoning', text: 'reasoning for A' },
+          { type: 'tool-call', input: { a: 1 }, toolCallId: 'a', toolName: 't' },
+          { type: 'reasoning', text: 'reasoning for orphan' },
+          { type: 'tool-call', input: { b: 2 }, toolCallId: 'b_orphan', toolName: 't' },
+        ],
+        role: 'assistant',
+      },
+      {
+        content: [
+          {
+            type: 'tool-result',
+            output: { type: 'text', value: 'A' },
+            toolCallId: 'a',
+            toolName: 't',
+          },
+        ],
+        role: 'tool',
+      },
+    ]
+
+    const sanitized = sanitizeOrphanToolCalls(messages)
+
+    expect(sanitized[0]).toEqual({
+      content: [
+        { type: 'reasoning', text: 'reasoning for A' },
+        { type: 'tool-call', input: { a: 1 }, toolCallId: 'a', toolName: 't' },
+      ],
+      role: 'assistant',
+    })
+  })
+
+  it('keeps trailing reasoning at the end of a message (paired with the final text, not a tool-call)', () => {
+    // Reasoning with no following tool-call in the same message is paired
+    // with the assistant's own text output; don't strip it.
+    const messages: ModelMessage[] = [
+      {
+        content: [
+          { type: 'reasoning', text: 'thinking out loud' },
+          { type: 'text', text: 'here is the answer' },
+        ],
+        role: 'assistant',
+      },
+    ]
+
+    expect(sanitizeOrphanToolCalls(messages)).toEqual(messages)
+  })
 })
 
 function collectToolCallIds(messages: ModelMessage[]): string[] {

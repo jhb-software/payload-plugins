@@ -351,12 +351,13 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             // listening to.
             //
             // `ignoreIncompleteToolCalls` strips tool parts whose state is
-            // `input-streaming` / `input-available`, which covers tool calls
-            // aborted before the provider finished emitting their input.
-            // `sanitizeOrphanToolCalls` is a defence-in-depth pass that
-            // also drops `tool_use` blocks whose `tool_result` never
-            // materialised (e.g. a usage-limit error hit mid tool-run and
-            // the partial message got persisted). Without it, Anthropic
+            // `input-streaming` / `input-available`, which covers tool
+            // calls aborted before the provider finished emitting their
+            // input. `sanitizeOrphanToolCalls` is a defence-in-depth pass
+            // that also drops `tool_use` blocks whose `tool_result` never
+            // materialised (and the inverse) — persistence round-trips
+            // and adapter-side bugs (vercel/ai#14259, vercel/ai#14379)
+            // can leak orphans past the SDK filter. Without it, Anthropic
             // rejects the next request with `tool_use ids were found
             // without tool_result blocks immediately after`.
             const converted = await convertToModelMessages(
