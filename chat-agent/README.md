@@ -34,18 +34,18 @@ Provider API keys are never read from `process.env` by the plugin — pass them 
 
 ## Configuration
 
-| Option            | Type                                 | Required | Description                                                                                             |
-| ----------------- | ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------- |
-| `model`           | `(modelId: string) => LanguageModel` | Yes      | Resolves a model id to a Vercel AI SDK `LanguageModel`. Called once per request with the selected model |
-| `defaultModel`    | `string`                             | Yes      | Model id used when no per-request override is provided                                                  |
-| `availableModels` | `ModelOption[]`                      | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries)                         |
-| `systemPrompt`    | `string`                             | No       | Custom text prepended to the auto-generated system prompt                                               |
-| `access`          | `(req) => boolean`                   | No       | Override the default auth check (default: requires authenticated user)                                  |
-| `maxSteps`        | `number`                             | No       | Maximum tool-use loop steps per request (default: 20)                                                   |
-| `modes`           | `ModesConfig`                        | No       | Agent modes configuration (see below)                                                                   |
-| `adminView`       | `{ path, Component }`                | No       | Customize the admin chat view route or component                                                        |
-| `navLink`         | `boolean`                            | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
-| `budget`          | `BudgetConfig`                       | No       | Optional token budget (see below)                                                                       |
+| Option            | Type                                          | Required | Description                                                                                             |
+| ----------------- | --------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| `model`           | `(modelId: string) => LanguageModel`          | Yes      | Resolves a model id to a Vercel AI SDK `LanguageModel`. Called once per request with the selected model |
+| `defaultModel`    | `string`                                      | Yes      | Model id used when no per-request override is provided                                                  |
+| `availableModels` | `ModelOption[]`                               | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries)                         |
+| `systemPrompt`    | `string`                                      | No       | Custom text prepended to the auto-generated system prompt                                               |
+| `access`          | `(req) => boolean`                            | No       | Override the default auth check (default: requires authenticated user)                                  |
+| `maxSteps`        | `number`                                      | No       | Maximum tool-use loop steps per request (default: 20)                                                   |
+| `modes`           | `ModesConfig`                                 | No       | Agent modes configuration (see below)                                                                   |
+| `adminView`       | `{ path, Component }`                         | No       | Customize the admin chat view route or component                                                        |
+| `navLink`         | `boolean`                                     | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
+| `budget`          | `BudgetConfig`                                | No       | Optional token budget (see below)                                                                       |
 | `tools`           | `({ req, defaultTools, modelId }) => ToolMap` | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)          |
 
 ### Mixing providers

@@ -1514,8 +1514,7 @@ describe('chatAgentPlugin tools', () => {
     expect(lastStreamTextHandle()._streamTextOpts.tools!.webSearch).toBeUndefined()
 
     await handler({
-      json: () =>
-        Promise.resolve({ ...validChatBody, model: 'claude-sonnet-4-20250514' }),
+      json: () => Promise.resolve({ ...validChatBody, model: 'claude-sonnet-4-20250514' }),
       payload: { config: { collections: [], globals: [] } },
       user: { id: 1 },
     })
