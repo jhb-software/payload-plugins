@@ -149,9 +149,7 @@ describe('sanitizeOrphanToolCalls', () => {
     // tool_use has its tool_result.
     const messages = [
       {
-        content: [
-          { type: 'tool-approval-request', approvalId: 'approve_1', toolCallId: 'call_1' },
-        ],
+        content: [{ type: 'tool-approval-request', approvalId: 'approve_1', toolCallId: 'call_1' }],
         role: 'assistant',
       },
       {
@@ -184,8 +182,18 @@ describe('sanitizeOrphanToolCalls', () => {
       },
       {
         content: [
-          { type: 'tool-result', output: { type: 'text', value: 'A' }, toolCallId: 'a', toolName: 't' },
-          { type: 'tool-result', output: { type: 'text', value: 'B' }, toolCallId: 'b', toolName: 't' },
+          {
+            type: 'tool-result',
+            output: { type: 'text', value: 'A' },
+            toolCallId: 'a',
+            toolName: 't',
+          },
+          {
+            type: 'tool-result',
+            output: { type: 'text', value: 'B' },
+            toolCallId: 'b',
+            toolName: 't',
+          },
         ],
         role: 'tool',
       },

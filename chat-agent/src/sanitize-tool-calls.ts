@@ -46,25 +46,19 @@ interface ToolCallLike {
 
 function isToolCallPart(part: unknown): part is ToolCallLike {
   return (
-    typeof part === 'object' &&
-    part !== null &&
-    (part as { type?: unknown }).type === 'tool-call'
+    typeof part === 'object' && part !== null && (part as { type?: unknown }).type === 'tool-call'
   )
 }
 
 function isToolResultPart(part: unknown): part is ToolCallLike {
   return (
-    typeof part === 'object' &&
-    part !== null &&
-    (part as { type?: unknown }).type === 'tool-result'
+    typeof part === 'object' && part !== null && (part as { type?: unknown }).type === 'tool-result'
   )
 }
 
 function isReasoningPart(part: unknown): boolean {
   return (
-    typeof part === 'object' &&
-    part !== null &&
-    (part as { type?: unknown }).type === 'reasoning'
+    typeof part === 'object' && part !== null && (part as { type?: unknown }).type === 'reasoning'
   )
 }
 
