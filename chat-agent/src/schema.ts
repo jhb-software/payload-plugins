@@ -212,6 +212,131 @@ export function extractFields(
 }
 
 /**
+ * Read-only visitor over a raw Payload field tree.
+ *
+ * `visit` is called once per field node, pre-order. The return value controls
+ * descent for that node:
+ *   - `undefined` / `void` — descend into children (tabs, group/array fields,
+ *     block variants) normally.
+ *   - `'skip'` — do not descend into this field's children; continue with the
+ *     next sibling.
+ *   - `'stop'` — halt the entire walk immediately; `walkRawFields` returns
+ *     `true` so outer loops can bail out.
+ *
+ * `extractFields` is *not* refactored onto this primitive — it is a
+ * transformer with node-specific semantics (hoisting unnamed tabs/rows,
+ * resolving `blockReferences` via `blocksBySlug`, synthesizing `tab` schemas)
+ * that don't fit a generic observer. Use `walkRawFields` for pure observation
+ * passes (feature detection, slug collection, validation) where the caller
+ * only needs to see each field without shaping a new tree.
+ */
+export type FieldVisitor = (field: {
+  [k: string]: unknown
+  type?: unknown
+}) => 'skip' | 'stop' | void
+
+export function walkRawFields(fields: readonly unknown[], visit: FieldVisitor): boolean {
+  for (const raw of fields) {
+    if (!raw || typeof raw !== 'object') {
+      continue
+    }
+    const field = raw as { [k: string]: unknown; type?: unknown }
+
+    const decision = visit(field)
+    if (decision === 'stop') {
+      return true
+    }
+    if (decision === 'skip') {
+      continue
+    }
+
+    if (field.type === 'tabs' && Array.isArray(field.tabs)) {
+      for (const tab of field.tabs as unknown[]) {
+        if (tab && typeof tab === 'object' && Array.isArray((tab as { fields?: unknown }).fields)) {
+          if (walkRawFields((tab as { fields: unknown[] }).fields, visit)) {
+            return true
+          }
+        }
+      }
+      continue
+    }
+
+    if (Array.isArray(field.fields)) {
+      if (walkRawFields(field.fields, visit)) {
+        return true
+      }
+    }
+
+    if (Array.isArray(field.blocks)) {
+      for (const block of field.blocks as unknown[]) {
+        if (
+          block &&
+          typeof block === 'object' &&
+          Array.isArray((block as { fields?: unknown }).fields)
+        ) {
+          if (walkRawFields((block as { fields: unknown[] }).fields, visit)) {
+            return true
+          }
+        }
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * Scan raw Payload field groups for the rich-text features that gate
+ * downstream behavior (currently the system-prompt bullets and block-node
+ * example). Runs as a single `walkRawFields` pass and short-circuits once
+ * both flags are set.
+ *
+ * - `hasLexicalFeatures`: any `richText` field has at least one lexical feature
+ * - `hasBlocksFeature`:   any `richText` field carries `blocks` / `inlineBlocks`
+ */
+export function scanRichTextFeatures(fieldGroups: readonly (readonly unknown[])[]): {
+  hasBlocksFeature: boolean
+  hasLexicalFeatures: boolean
+} {
+  let hasLexicalFeatures = false
+  let hasBlocksFeature = false
+
+  for (const group of fieldGroups) {
+    if (hasLexicalFeatures && hasBlocksFeature) {
+      break
+    }
+    walkRawFields(group, (field) => {
+      if (field.type !== 'richText') {
+        return
+      }
+      const keys = getLexicalFeatureKeys(field.editor)
+      if (keys.length === 0) {
+        return 'skip'
+      }
+      hasLexicalFeatures = true
+      if (keys.includes('blocks') || keys.includes('inlineBlocks')) {
+        hasBlocksFeature = true
+      }
+      return hasLexicalFeatures && hasBlocksFeature ? 'stop' : 'skip'
+    })
+  }
+
+  return { hasBlocksFeature, hasLexicalFeatures }
+}
+
+/**
+ * Enumerate the feature keys on a lexical editor without materializing props.
+ *
+ * Used by callers that need to gate behavior on which features are present
+ * (e.g. system-prompt bullets) but don't need the full
+ * `LexicalFeatureSummary`. Returns an empty array for non-lexical or
+ * unrecognised editor shapes so callers can scan without null-checking.
+ */
+export function getLexicalFeatureKeys(editor: unknown): string[] {
+  const normalized = normalizeLexicalFeatures(editor)
+  return normalized ? normalized.map((n) => n.key) : []
+}
+
+/**
  * Normalize a lexical editor's features into `{ key, props }[]`.
  *
  * Payload's sanitized config exposes features under one of two shapes:
@@ -240,7 +365,9 @@ function normalizeLexicalFeatures(
   if (Array.isArray(e.features)) {
     return (e.features as unknown[])
       .filter((f): f is { key: string } => {
-        return Boolean(f && typeof f === 'object' && typeof (f as { key?: unknown }).key === 'string')
+        return Boolean(
+          f && typeof f === 'object' && typeof (f as { key?: unknown }).key === 'string',
+        )
       })
       .map((f) => ({ key: f.key, props: toProps(f as Record<string, unknown>) }))
   }
