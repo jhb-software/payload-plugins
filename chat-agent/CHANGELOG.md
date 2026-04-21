@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: clear the chat error banner when starting a new chat or switching conversations via the sidebar, so an error surfaced on the previous chat no longer carries over to an unrelated one
+
 ## 0.1.0-beta.4
 
 BREAKING CHANGES:
