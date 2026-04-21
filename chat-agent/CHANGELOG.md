@@ -3,6 +3,7 @@
 ## Unreleased
 
 - feat: pass the resolved `modelId` to the `tools` plugin option so a multi-provider setup can conditionally include provider-native tools (e.g. drop `anthropic.tools.webSearch_*` when the user selects an OpenAI model) instead of sending a tool shape the selected provider would reject at runtime.
+- fix: clear the chat error banner when starting a new chat or switching conversations via the sidebar, so an error surfaced on the previous chat no longer carries over to an unrelated one
 
 ## 0.1.0-beta.4
 
