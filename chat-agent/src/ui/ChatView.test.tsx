@@ -168,9 +168,7 @@ describe('ChatView error banner', () => {
     // color — use that to locate it without depending on the exact error
     // message (which comes from the server / the SDK and would be brittle).
     const findBanner = () => {
-      const candidates = Array.from(
-        document.querySelectorAll<HTMLDivElement>('div[style]'),
-      )
+      const candidates = Array.from(document.querySelectorAll<HTMLDivElement>('div[style]'))
       return candidates.find((el) => el.style.background.includes('--theme-error')) ?? null
     }
 
@@ -203,7 +201,13 @@ describe('ChatView error banner', () => {
           headers: { 'Content-Type': 'application/json' },
           status: 500,
         }),
-      conversationDoc: (id) => ({ id, messages: [], mode: 'ask', model: undefined, title: 'Other chat' }),
+      conversationDoc: (id) => ({
+        id,
+        messages: [],
+        mode: 'ask',
+        model: undefined,
+        title: 'Other chat',
+      }),
       conversationList: [
         { id: 'other-convo', title: 'Other chat', updatedAt: new Date().toISOString() },
       ],
@@ -241,9 +245,9 @@ describe('ChatView error banner', () => {
 
     // Click the sidebar entry for the other conversation. The item renders
     // as a `role="button"` div containing the title.
-    const sidebarItem = Array.from(document.querySelectorAll<HTMLDivElement>('[role="button"]')).find(
-      (el) => el.textContent?.includes('Other chat'),
-    )
+    const sidebarItem = Array.from(
+      document.querySelectorAll<HTMLDivElement>('[role="button"]'),
+    ).find((el) => el.textContent?.includes('Other chat'))
     if (!sidebarItem) {
       throw new Error('sidebar entry not found')
     }
