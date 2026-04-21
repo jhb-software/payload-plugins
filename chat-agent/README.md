@@ -96,20 +96,28 @@ chatAgentPlugin({
 
 ### Custom endpoints
 
-Any endpoint with a `custom.description` is discoverable by the agent via the `callEndpoint` tool:
+Any endpoint with a `custom.description` is discoverable by the agent via the `callEndpoint` tool. Optionally attach a `custom.schema` describing the request/response contract (`query`, `body`, `response`) — when present, it's handed to the agent alongside the description so it can construct valid calls without trial-and-error:
 
 ```ts
 endpoints: [
   {
     path: '/publish/:id',
     method: 'post',
-    custom: { description: 'Publish a document by ID' },
+    custom: {
+      description: 'Publish a document by ID',
+      schema: {
+        body: { notify: { type: 'boolean' } },
+        response: { id: { type: 'string' }, status: { type: 'string' } },
+      },
+    },
     handler: async (req) => {
       /* ... */
     },
   },
 ]
 ```
+
+`custom.schema` leaves are passed through verbatim — use whatever shape your team already documents endpoints with (plain descriptors, JSON Schema, etc.). Route params like `:id` belong in the path, not the schema.
 
 ### Extending or customizing tools
 

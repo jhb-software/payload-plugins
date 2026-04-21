@@ -143,6 +143,14 @@ export default buildConfig({
       fields: [
         { name: 'title', type: 'text', required: true },
         { name: 'slug', type: 'text', required: true, unique: true },
+        {
+          name: 'path',
+          type: 'text',
+          virtual: true,
+          hooks: {
+            afterRead: [({ data }) => (data?.slug ? `/posts/${data.slug}` : undefined)],
+          },
+        },
         { name: 'content', type: 'richText' },
         { name: 'author', type: 'relationship', relationTo: 'users' },
         { name: 'featuredImage', type: 'relationship', relationTo: 'media' },
@@ -281,10 +289,7 @@ export default buildConfig({
               HeadingFeature({ enabledHeadingSizes: ['h1', 'h2', 'h3'] }),
               LinkFeature({
                 enabledCollections: ['posts', 'categories'],
-                fields: ({ defaultFields }) => [
-                  ...defaultFields,
-                  { name: 'rel', type: 'text' },
-                ],
+                fields: ({ defaultFields }) => [...defaultFields, { name: 'rel', type: 'text' }],
               }),
               UploadFeature({ collections: { media: { fields: [] } } }),
               RelationshipFeature({ enabledCollections: ['posts', 'categories'] }),

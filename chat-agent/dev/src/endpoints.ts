@@ -8,6 +8,12 @@ export const rootEndpoints: Endpoint[] = [
     custom: {
       description:
         'Health check. Returns `{ ok: true, time }` with the server timestamp. Takes no input.',
+      schema: {
+        response: {
+          ok: { type: 'boolean' },
+          time: { type: 'string', format: 'date-time' },
+        },
+      },
     },
     handler: () => {
       return Response.json({ ok: true, time: new Date().toISOString() })
@@ -19,6 +25,9 @@ export const rootEndpoints: Endpoint[] = [
     custom: {
       description:
         'Echo a message back from a URL path param. Route param `:message` is returned verbatim.',
+      schema: {
+        response: { message: { type: 'string', nullable: true } },
+      },
     },
     handler: (req: PayloadRequest) => {
       return Response.json({ message: req.routeParams?.message ?? null })
@@ -30,6 +39,10 @@ export const rootEndpoints: Endpoint[] = [
     custom: {
       description:
         'Echo a JSON body back. Accepts any object and returns `{ received: <body> }`. Useful for verifying body serialization.',
+      schema: {
+        body: { type: 'object', description: 'Arbitrary JSON object' },
+        response: { received: { type: 'object', nullable: true } },
+      },
     },
     handler: async (req: PayloadRequest) => {
       const body = await req.json?.()
@@ -42,6 +55,16 @@ export const rootEndpoints: Endpoint[] = [
     custom: {
       description:
         'Demonstrates query-string parsing. Accepts query params `q` (string) and `limit` (number), echoes both back.',
+      schema: {
+        query: {
+          q: { type: 'string', description: 'Search query' },
+          limit: { type: 'number', description: 'Max results to return' },
+        },
+        response: {
+          q: { type: 'string', nullable: true },
+          limit: { type: 'number', nullable: true },
+        },
+      },
     },
     handler: (req: PayloadRequest) => {
       const q = req.searchParams?.get('q') ?? null
@@ -56,6 +79,13 @@ export const rootEndpoints: Endpoint[] = [
     custom: {
       description:
         'Returns document counts across the seeded collections (`posts`, `categories`, `users`). No input.',
+      schema: {
+        response: {
+          posts: { type: 'number' },
+          categories: { type: 'number' },
+          users: { type: 'number' },
+        },
+      },
     },
     handler: async (req: PayloadRequest) => {
       const [posts, categories, users] = await Promise.all([
@@ -80,6 +110,12 @@ export const postsEndpoints: Endpoint[] = [
     custom: {
       description:
         "Publish a post by id. Sets its `_status` to `'published'` and returns the updated document. Route param `:id` is the post id.",
+      schema: {
+        response: {
+          id: { type: 'string' },
+          _status: { type: 'string', enum: ['draft', 'published'] },
+        },
+      },
     },
     handler: async (req: PayloadRequest) => {
       const id = req.routeParams?.id as string | undefined
