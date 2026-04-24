@@ -1,9 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- fix type issue in the `afterChange` virtual-fields hook
-
 ## 0.7.0
 
 - feat: add request-scoped ancestor caching to avoid redundant DB queries when computing virtual fields for sibling pages
@@ -16,6 +12,7 @@
 - fix: pass draft arg to parent document lookups in breadcrumb generation
 - style: standardize icons to use Geist icon set (16x16 filled)
 - refactor: use i18next interpolation for translations
+- fix type issue in the `afterChange` virtual-fields hook
 - chore: upgrade to Payload 3.84.1
 
 ## 0.6.0
