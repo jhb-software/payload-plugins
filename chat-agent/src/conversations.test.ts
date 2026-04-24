@@ -88,7 +88,7 @@ describe('conversationsCollection', () => {
   })
 
   // Without this hook, a user who hits Payload's default collection REST
-  // (`POST /api/chat-conversations`) could send `data.user = '<other-id>'`.
+  // (`POST /api/agent-conversations`) could send `data.user = '<other-id>'`.
   // Access filters would still hide the record from them, but the
   // collection would end up with records owned by someone who never
   // created them. The hook forces `data.user` to the authenticated user
@@ -126,6 +126,17 @@ describe('conversationsCollection', () => {
       expect(result).toEqual(data)
     })
   })
+
+  // The read access filter and the sidebar list query both filter by
+  // `user = currentUser.id`. Without a DB index on the `user` relationship,
+  // every list request degrades to a full scan + sort — noticeable once the
+  // collection has more than a few hundred rows.
+  it('indexes the user field so read-access and list queries hit an index', () => {
+    const userField = conversationsCollection.fields.find(
+      (f): f is { index?: boolean; name: string } & typeof f => 'name' in f && f.name === 'user',
+    )
+    expect(userField?.index).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -133,7 +144,7 @@ describe('conversationsCollection', () => {
 // ---------------------------------------------------------------------------
 
 describe('chatAgentPlugin conversations', () => {
-  it('registers the chat-conversations collection', () => {
+  it('registers the agent-conversations collection', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
       model: fakeModel,
@@ -233,6 +244,28 @@ describe('conversation endpoint handlers', () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.docs).toEqual(docs)
+    })
+
+    // The sidebar only renders `id`, `title`, and `updatedAt`. Without a
+    // `select`, Payload returns the full `messages` JSON on every doc — which
+    // for long-running users can be many MB on each page load. Lock in the
+    // select shape so a future refactor can't silently re-widen the query.
+    it('fetches only the fields the sidebar renders (title + updatedAt)', async () => {
+      let captured: MockApiArgs | undefined
+      const handler = findHandler(conversationEndpoints, 'get', '/chat-agent/chat/conversations')
+      await callHandler(handler, {
+        payload: {
+          find: (args: MockApiArgs) => {
+            captured = args
+            return { docs: [] }
+          },
+        },
+        user: { id: 'u1' },
+      })
+      expect((captured as unknown as { select?: Record<string, boolean> }).select).toEqual({
+        title: true,
+        updatedAt: true,
+      })
     })
   })
 

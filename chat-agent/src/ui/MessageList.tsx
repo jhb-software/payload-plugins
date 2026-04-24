@@ -2,7 +2,7 @@
 
 import type { UIMessage } from 'ai'
 
-import { Button } from '@payloadcms/ui'
+import { Button, ShimmerEffect } from '@payloadcms/ui'
 import { useLayoutEffect, useRef, useState } from 'react'
 
 import type { MessageMetadata } from '../types.js'
@@ -75,11 +75,70 @@ function SuggestedPrompts({
 }
 
 // ---------------------------------------------------------------------------
+// Response indicator + skeleton
+// ---------------------------------------------------------------------------
+
+/**
+ * Bubble-shaped placeholder shown while the agent is working but hasn't yet
+ * produced visible output — i.e. between the user sending a message and the
+ * first streamed assistant chunk arriving, or between tool steps. Matches the
+ * assistant bubble styling so it reads as a pending response.
+ *
+ * Deliberately labelled "Responding" (not "Thinking") to avoid conflating with
+ * the collapsible reasoning / thinking sections rendered in `MessageBubble`,
+ * which surface actual reasoning tokens from the model.
+ */
+function ResponseIndicator() {
+  return (
+    <div
+      aria-label="Assistant is responding"
+      role="status"
+      style={{ display: 'flex', justifyContent: 'flex-start' }}
+    >
+      <ShimmerEffect height="40px" width="200px" />
+    </div>
+  )
+}
+
+/**
+ * Skeleton shown while the conversation history is being fetched (initial
+ * hydration pin-to-bottom, or switching conversations from the sidebar).
+ * Renders a handful of shimmer bubbles alternating user/assistant so the
+ * layout matches what's about to appear.
+ */
+function MessageSkeleton() {
+  const rows: { align: 'flex-end' | 'flex-start'; width: string }[] = [
+    { align: 'flex-end', width: '55%' },
+    { align: 'flex-start', width: '80%' },
+    { align: 'flex-end', width: '40%' },
+    { align: 'flex-start', width: '70%' },
+  ]
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        height: '100%',
+        paddingTop: '16px',
+      }}
+    >
+      {rows.map((row, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: row.align }}>
+          <ShimmerEffect height={i % 2 === 0 ? '40px' : '72px'} width={row.width} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // MessageList
 // ---------------------------------------------------------------------------
 
 export function MessageList({
   isLoading,
+  isLoadingMessages,
   messages,
   onEditMessage,
   onRetry,
@@ -89,6 +148,8 @@ export function MessageList({
   suggestedPrompts,
 }: {
   isLoading?: boolean
+  /** Conversation messages are being fetched (initial load or sidebar switch). */
+  isLoadingMessages?: boolean
   messages: UIMessage<MessageMetadata>[]
   onEditMessage?: (messageId: string, newText: string) => void
   onRetry?: () => void
@@ -105,17 +166,14 @@ export function MessageList({
   // into the page, so the browser's *first paint* (~1.4s in on a cold admin
   // load) shows the full list — but scrolled to the top, because `scrollTop`
   // isn't something SSR can control. React doesn't hydrate and fire
-  // `useLayoutEffect` until hundreds of milliseconds later, so the user sees
-  // the top of the conversation briefly, then the pin-to-bottom happens and
-  // reads as a visible jump.
+  // `useLayoutEffect` until hundreds of milliseconds later, so without
+  // intervention the user sees the top of the conversation briefly, then the
+  // pin-to-bottom happens and reads as a visible jump.
   //
-  // To eliminate that, keep the scroll container `visibility: hidden` until
-  // the initial pin has happened. SSR renders hidden, the first paint shows
-  // blank space where messages will be, then hydration runs, this effect
-  // pins `scrollTop` to the bottom, and the re-render flips visibility on —
-  // so the user only ever sees the list already scrolled to the bottom. This
-  // is the ChatGPT/Claude.ai approach: brief blank area rather than a
-  // jarring top-to-bottom jump.
+  // To eliminate that, keep the scroll container hidden until the initial
+  // pin has happened; the `MessageSkeleton` shimmer is rendered on top in
+  // the meantime (see `showSkeleton` below) so the hidden window reads as
+  // "loading" rather than a blank area.
   //
   // We depend on `messages.length` (not `[]`) because on conversation reload
   // the component mounts with zero messages (the data is fetched async), then
@@ -155,7 +213,10 @@ export function MessageList({
     }
   }
 
-  if (messages.length === 0) {
+  // Only short-circuit to the empty state once we're sure there's nothing to
+  // load — otherwise the user would see "What can I help you with?" flash
+  // between clicking a conversation and its messages arriving.
+  if (messages.length === 0 && !isLoadingMessages) {
     return (
       <SuggestedPrompts
         onSelect={onSendSuggestion ?? (() => {})}
@@ -163,6 +224,17 @@ export function MessageList({
       />
     )
   }
+
+  // Show the response indicator only while the agent is working *and* the
+  // latest visible turn is the user's, i.e. no assistant chunk has streamed in
+  // yet. Once an assistant part arrives the message bubble itself (with its
+  // own streaming text / tool indicators) takes over.
+  const lastRole = messages[messages.length - 1]?.role
+  const showResponseIndicator = Boolean(isLoading) && lastRole === 'user'
+
+  // Skeleton covers both the async fetch for a selected conversation and the
+  // brief window between first paint and React hydration's pin-to-bottom.
+  const showSkeleton = Boolean(isLoadingMessages) || (!isInitialPinned && messages.length > 0)
 
   return (
     <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
@@ -183,7 +255,8 @@ export function MessageList({
           overflowY: 'auto',
           paddingBottom: '8px',
           paddingRight: '4px',
-          visibility: isInitialPinned ? 'visible' : 'hidden',
+          paddingTop: '16px',
+          visibility: showSkeleton ? 'hidden' : 'visible',
         }}
       >
         {messages.map((msg, i) => (
@@ -202,7 +275,18 @@ export function MessageList({
             onToolDeny={onToolDeny}
           />
         ))}
+        {showResponseIndicator ? <ResponseIndicator /> : null}
       </div>
+
+      {/* Skeleton shown during the hidden window between first paint and
+       * React hydration's initial pin-to-bottom, and while a sidebar
+       * conversation switch is fetching. Replaces what would otherwise be a
+       * blank area (or a scroll-from-top jump). */}
+      {showSkeleton ? (
+        <div aria-hidden style={{ inset: 0, position: 'absolute' }}>
+          <MessageSkeleton />
+        </div>
+      ) : null}
 
       {/* Scroll-to-bottom FAB — centered pill above the input */}
       {!isAtBottom ? (

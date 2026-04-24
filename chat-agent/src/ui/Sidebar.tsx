@@ -14,13 +14,22 @@ export interface ConversationSummary {
 
 export function Sidebar({
   chatId,
+  className,
   conversations,
+  onClose,
   onDelete,
   onLoad,
   onRename,
 }: {
   chatId: string | undefined
+  /** Additional class names merged onto the sidebar root (e.g. a drawer-open modifier from `ChatView`). */
+  className?: string
   conversations: ConversationSummary[]
+  /**
+   * Called after a conversation is loaded so the parent can dismiss the
+   * mobile drawer. No-op on desktop, where the sidebar is always visible.
+   */
+  onClose?: () => void
   onDelete: (id: string) => void
   onLoad: (id: string) => void
   onRename?: (id: string, title: string) => void
@@ -72,8 +81,19 @@ export function Sidebar({
     setRenamingId(null)
   }, [])
 
+  const handleLoad = useCallback(
+    (id: string) => {
+      onLoad(id)
+      onClose?.()
+    },
+    [onLoad, onClose],
+  )
+
+  const rootClassName = className ? `chat-agent-sidebar ${className}` : 'chat-agent-sidebar'
+
   return (
-    <div className="chat-agent-sidebar">
+    <div className={rootClassName}>
+      <div className="chat-agent-sidebar__heading">Conversations</div>
       <div className="chat-agent-sidebar__search">
         <SearchIcon className="chat-agent-sidebar__search-icon" height={14} width={14} />
         <input
@@ -117,13 +137,13 @@ export function Sidebar({
               key={conv.id}
               onClick={() => {
                 if (!isRenaming) {
-                  onLoad(conv.id)
+                  handleLoad(conv.id)
                 }
               }}
               onDoubleClick={(e) => startRename(e, conv)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !isRenaming) {
-                  onLoad(conv.id)
+                  handleLoad(conv.id)
                 }
               }}
               role="button"

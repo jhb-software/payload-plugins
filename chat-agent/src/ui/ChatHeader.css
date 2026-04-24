@@ -1,0 +1,144 @@
+.chat-agent-header {
+  align-items: center;
+  border-bottom: 1px solid var(--theme-elevation-150);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 0 12px;
+}
+
+.chat-agent-header__title-group {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chat-agent-header__title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-agent-header__rename-input {
+  background: var(--theme-input-bg, var(--theme-bg));
+  border: 1px solid var(--theme-elevation-300);
+  border-radius: 4px;
+  color: var(--theme-text);
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 0;
+  outline: none;
+  padding: 2px 6px;
+}
+
+.chat-agent-header__settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-agent-header__actions {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chat-agent-token-badge {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Compact summary line: hidden on desktop (the full selectors are always
+ * visible there). On narrow viewports it replaces the selectors as the
+ * default presentation, with a tap-to-expand chevron. */
+.chat-agent-header__summary {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--theme-text);
+  cursor: pointer;
+  display: none;
+  flex-wrap: wrap;
+  font-family: inherit;
+  font-size: 12px;
+  gap: 10px;
+  /* Right padding leaves room for the absolutely-positioned chevron so wrapped
+   * items don't slide under it. */
+  padding: 6px 24px 6px 0;
+  position: relative;
+  text-align: left;
+}
+
+.chat-agent-header__summary-item {
+  white-space: nowrap;
+}
+
+.chat-agent-header__summary-label {
+  color: var(--theme-elevation-500);
+}
+
+.chat-agent-header__summary-chevron {
+  position: absolute;
+  right: 0;
+  top: 8px;
+  transition: transform 150ms ease;
+}
+
+@media (max-width: 768px) {
+  /* Stack the settings cluster below the title row so it can use full width. */
+  .chat-agent-header__settings {
+    flex-basis: 100%;
+  }
+
+  .chat-agent-header__summary {
+    display: flex;
+  }
+
+  /* Sibling combinator: the summary's aria-expanded drives panel visibility,
+   * so React state alone toggles the layout — no media-query JS needed. */
+  .chat-agent-header__summary[aria-expanded='false'] + .chat-agent-header__actions {
+    display: none;
+  }
+
+  .chat-agent-header__summary[aria-expanded='true'] .chat-agent-header__summary-chevron {
+    transform: rotate(180deg);
+  }
+
+  /* The token count is already in the summary line, so hide the full badge
+   * inside the expanded panel on mobile to avoid duplication. Desktop keeps
+   * it because the summary is hidden there. */
+  .chat-agent-header__actions .chat-agent-token-badge {
+    display: none;
+  }
+}
+
+/* Slim variant used in the chat header. Payload's ReactSelect renders with
+ * `classNamePrefix="rs"` and `unstyled` so we override its layered defaults
+ * (padding + line-height) with a higher specificity rule. */
+.chat-agent-select--slim .rs__control {
+  min-height: 28px;
+  padding: 0 6px;
+}
+
+.chat-agent-select--slim .rs__value-container {
+  padding: 0;
+}
+
+.chat-agent-select--slim .rs__single-value,
+.chat-agent-select--slim .rs__input {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.chat-agent-select--slim .rs__indicator {
+  padding: 0 2px;
+}

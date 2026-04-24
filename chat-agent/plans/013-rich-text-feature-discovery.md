@@ -2,31 +2,31 @@
 title: Rich-text feature discovery in schema tools
 description: Surface the enabled lexical features of every `richText` field in the extracted schema so the agent knows which node types (headings, lists, links, blocks, …) it may emit when generating rich-text content.
 type: tool
-readiness: discussion
+readiness: ready
 ---
+
+> **Scope & sequencing.** Ships as a follow-up PR after [`012-block-schema-tools.md`](./012-block-schema-tools.md) lands. Depends on `getBlockSchema` existing (it resolves the block slugs this plan surfaces under `lexical.options.blocks.slugs`). This plan does **not** require any changes to plan 012's code — it only extends `FieldSchema` and updates `extractFields` + `system-prompt.ts`.
 
 ## Problem
 
-Lexical rich-text fields in Payload are configured per-field with a `features` array (`HeadingFeature`, `BoldFeature`, `LinkFeature`, `BlocksFeature`, `UploadFeature`, etc.). The set of allowed nodes/marks is **not** uniform across the project: one field may allow `h1`–`h6` + lists + links, another may only allow inline marks, a third may allow blocks of a specific subset of slugs.
+Lexical rich-text fields in Payload are configured per-field with a `features` array (`HeadingFeature`, `BoldFeature`, `LinkFeature`, `BlocksFeature`, `UploadFeature`, etc.). The allowed node/mark set is **not** uniform across a project: one field may allow `h1`–`h6` + lists + links, another may only allow inline marks, a third may allow blocks of a specific subset of slugs.
 
-Today `extractFields` (`schema.ts:44-145`) emits `{ name, type: 'richText' }` and stops. The agent therefore has no way to know:
+Today `extractFields` in `schema.ts` emits `{ name, type: 'richText' }` and stops. The agent therefore has no way to know:
 
 - whether headings are allowed, and which levels (`HeadingFeature({ enabledHeadingSizes })`)
 - whether lists, links, uploads, horizontal rules, indents, blockquotes, code, alignment, etc. are enabled
-- what the allowed `headingSizes`, `link.fields`, `upload.collections`, `blocks` / `inlineBlocks` slugs are
+- what the allowed `headingSizes`, `link.fields`, `upload.collections`, `blocks` / `inlineBlocks` slugs, `relationship` collections are
 
 Without this, the model is forced to guess. It will either:
 
-1. produce lexical JSON that contains nodes the editor's validators reject, or
-2. play it safe and only emit paragraphs + text, losing fidelity the schema actually permits.
-
-Plan **012** (`012-block-schema-tools.md`) addresses **only** the `BlocksFeature` slice of this problem (it surfaces `lexicalBlocks` / `lexicalInlineBlocks` slugs). This plan generalises that idea to _every_ lexical feature so the agent can compose any allowed node, not just blocks.
+1. produce lexical JSON that the editor's validators reject, or
+2. play it safe and emit only paragraphs + text, losing fidelity the schema actually permits.
 
 ## Proposal
 
 ### Per-field `lexical` summary on `FieldSchema`
 
-Extend `FieldSchema` with an optional `lexical` object emitted only for `field.type === 'richText'`:
+Extend `FieldSchema` in `schema.ts` with an optional `lexical` object emitted only for `field.type === 'richText'`:
 
 ```ts
 interface FieldSchema {
@@ -36,17 +36,17 @@ interface FieldSchema {
     features: string[]
     /** Per-feature constraints worth telling the agent about. Keys are feature keys. */
     options?: {
-      heading?: { enabledHeadingSizes: ('h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6')[] }
+      heading?: { enabledHeadingSizes?: ('h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6')[] }
       link?: {
         enabledCollections?: string[]
         disabledCollections?: string[]
-        fields?: FieldSchema[] // custom link fields, run through extractFields
+        fields?: FieldSchema[] // custom link fields, run through extractFields when the sanitized shape is an array
       }
       upload?: { collections: string[] }
-      blocks?: { slugs: string[] } // replaces lexicalBlocks from plan 012
-      inlineBlocks?: { slugs: string[] } // replaces lexicalInlineBlocks from plan 012
+      blocks?: { slugs: string[] }
+      inlineBlocks?: { slugs: string[] }
       relationship?: { enabledCollections?: string[]; disabledCollections?: string[] }
-      // …add others as we encounter them; keep the map open-ended
+      // open-ended — additional feature-specific options can be added in follow-ups
     }
   }
 }
@@ -54,45 +54,35 @@ interface FieldSchema {
 
 Design notes:
 
-- **One key per field, not many top-level keys.** Avoids polluting `FieldSchema` with a long list of `lexical*` siblings (cf. plan 012's `lexicalBlocks` / `lexicalInlineBlocks`).
-- **Slugs only, no nested field trees** for blocks/inlineBlocks — the agent calls `getBlockSchema` (plan 012) to drill in.
-- **Open-ended `options`** — we don't try to model every feature exhaustively up front. We surface what we know, ignore what we don't, and grow the map over time.
-- **Omit `lexical` entirely** if the field is not a lexical editor or the editor exposes no recognisable features (e.g. a custom editor). Do not emit `{ features: [] }`.
+- **One `lexical` key per field**, not several top-level `lexical*` siblings.
+- **Slugs only for blocks / inlineBlocks**, no nested field trees — the agent resolves slugs via `getBlockSchema` (from plan 012).
+- **Open-ended `options` map.** Only the allow-list of known keys gets a typed projection. Unknown keys still appear in `features` (so the agent knows they exist) but get no `options` entry.
+- **Omit `lexical` entirely** if the field is not a lexical editor or no feature keys are detected. Do not emit `{ features: [] }`.
 
 ### Detection strategy
 
-Lexical's sanitized config exposes features under several shapes depending on Payload version:
+Lexical's sanitized config exposes features under one of two shapes depending on Payload internals:
 
 1. `field.editor.features` — array of `{ key, serverFeatureProps?, clientFeatureProps? }`.
-2. `field.editor.resolvedFeatureMap` — `Map<key, ResolvedServerFeature>` with `.serverFeatureProps`.
-3. Older configs may put props directly on the feature entry.
+2. `field.editor.resolvedFeatureMap` — `Map<key, ResolvedServerFeature>` where each value carries `serverFeatureProps` / similar.
 
-The extractor should:
+The extractor normalizes these to a single iterable of `{ key, props }` entries:
 
-1. Build a normalized iterable of `{ key, props }` from whichever shape is present.
-2. Collect all keys → `features: string[]` (sorted, deduped).
-3. For a small allow-list of "interesting" keys, project `props` into the typed `options[key]` shape above.
-4. Unknown keys still appear in `features` (so the agent knows they exist) but get no `options` entry — that's fine.
+1. If `field.editor?.features` is an array → walk it, taking `serverFeatureProps ?? props ?? {}` as `props`.
+2. Else if `field.editor?.resolvedFeatureMap` is a `Map` → walk its entries, same projection.
+3. Else → return `undefined` (no `lexical` key).
 
-Keep the detection loose / structural to avoid a hard dependency on `@payloadcms/richtext-lexical`, mirroring the approach in plan 012.
+Detection is **structural** (duck-typed) to avoid a hard dependency on `@payloadcms/richtext-lexical`. Do not throw on unrecognised shapes — return `undefined` and let the caller omit the key.
 
-### Folding plan 012 into this plan
-
-Plan 012 introduces `lexicalBlocks` / `lexicalInlineBlocks` as siblings on `FieldSchema`. If both plans land, prefer this plan's nested shape:
-
-```ts
-lexical: { features: ['blocks'], options: { blocks: { slugs: [...] }, inlineBlocks: { slugs: [...] } } }
-```
-
-…and drop the flat `lexicalBlocks` keys before plan 012 ships. The block-registry tools (`listBlocks`, `getBlockSchema`) from plan 012 are unchanged — they're still how the agent resolves a block slug to its fields.
+Only emit feature keys that are **actually present** on the editor. Do not emit implicit/default keys like `paragraph` or `text`.
 
 ### System-prompt update
 
-Replace the existing/proposed line about lexical blocks with a more general one:
+Replace the existing lexical-blocks bullet (added by plan 012) with a more general one:
 
-> For every `richText` field in a schema, inspect `lexical.features` and `lexical.options` to see which node types you may emit. Only produce nodes whose feature key appears in `features`. For `blocks` / `inlineBlocks`, the slugs in `options.blocks.slugs` / `options.inlineBlocks.slugs` are exhaustive — call `getBlockSchema(slug)` to inspect a block's fields before composing it.
+> For every `richText` field in a schema, inspect `lexical.features` and `lexical.options` to see which node types you may emit. Only produce nodes whose feature key appears in `features`. For `blocks` / `inlineBlocks`, the slugs in `options.blocks.slugs` / `options.inlineBlocks.slugs` are exhaustive — call `getBlockSchema({ slug })` to inspect a block's fields before composing it.
 
-Gate this bullet on at least one collection/global having a `richText` field with a non-empty `features` list (avoid noise in configs without lexical).
+Gate on at least one schema already produced for the prompt having a `richText` field with a non-empty `lexical.features`. Compute from the generated schemas; don't re-traverse `config`.
 
 ## Implementation
 
@@ -100,67 +90,88 @@ Gate this bullet on at least one collection/global having a `richText` field wit
 
 - Extend `FieldSchema` with the `lexical` shape above.
 - Add a helper `extractLexicalSummary(field, blocksBySlug): FieldSchema['lexical'] | undefined`:
-  - Normalize `field.editor.features` / `resolvedFeatureMap` into `{ key, props }[]`.
-  - Build `features` (sorted unique keys).
-  - For each known key, project `props` into `options[key]`. Start with: `heading`, `link`, `upload`, `blocks`, `inlineBlocks`, `relationship`. Add others in follow-ups.
-  - For `blocks` / `inlineBlocks`, also fold any inline `Block` objects into `blocksBySlug` so `getBlockSchema` can resolve them (same trick plan 012 uses).
+  - Normalize `field.editor.features` / `resolvedFeatureMap` into `{ key, props }[]` (see Detection strategy).
+  - Build `features` = sorted, deduped list of keys.
+  - For each known key, project `props` into `options[key]` per the rules below. Unknown keys produce no `options` entry.
   - Return `undefined` if no features were detected.
-- In `extractFields`, when `field.type === 'richText'`, call the helper and assign to `schema.lexical`.
+- In `extractFields` (currently at `schema.ts:73` onward), when `field.type === 'richText'`, call the helper with the same `blocksBySlug` map and assign the result to `schema.lexical` (only if defined).
+
+Per-feature projection rules (locked):
+
+- **`heading`** → `{ enabledHeadingSizes }` copied from `props.enabledHeadingSizes` if it's an array of strings; omitted otherwise. Do not infer a default set.
+- **`link`** →
+  - `enabledCollections` / `disabledCollections`: copy through when each is `string[]`.
+  - `fields`: if the sanitized config exposes `props.fields` as a plain array of Payload fields, run it through `extractFields(props.fields, blocksBySlug)` and assign. If `fields` is still a callback or absent, omit the `fields` key. Trust the sanitized output; guard with `Array.isArray` before extracting.
+- **`upload`** → `{ collections: Object.keys(props.collections ?? {}) }`. Omit per-collection nested fields; the agent can call `getCollectionSchema(slug)` if it needs them. If `collections` is missing/non-object, omit `upload` entirely.
+- **`blocks`** / **`inlineBlocks`** →
+  - `{ slugs: string[] }` collected from `props.blocks` (an array where entries may be a `Block` object or a slug string).
+  - For each entry that is a `Block` object (has its own `fields`), register it into the caller-provided `blocksBySlug` map so `getBlockSchema` (plan 012) can resolve it later. Do not recurse into the block's fields here.
+  - String entries contribute their slug directly.
+- **`relationship`** → copy `enabledCollections` / `disabledCollections` through when each is `string[]`.
 
 ### 2. `tools.ts`
 
-- No new tools required — the data rides along on existing `getCollectionSchema` / `getGlobalSchema` payloads.
-- `getBlockSchema` (plan 012) remains the resolver for slugs surfaced in `lexical.options.blocks.slugs`.
+No new tools. The `lexical` summary rides along on existing `getCollectionSchema` / `getGlobalSchema` payloads. `getBlockSchema` (from plan 012) resolves the slugs surfaced under `lexical.options.blocks.slugs` / `lexical.options.inlineBlocks.slugs`.
 
 ### 3. `system-prompt.ts`
 
-- Update the rules block as described above.
-- Compute the gate by walking the schemas already produced for the prompt — no extra config traversal.
+- Replace the bullet added in plan 012 with the generalized bullet above.
+- Gate: walk the schemas already produced for the prompt and include the bullet if any `richText` field has `lexical.features.length > 0`. Do not re-traverse `config`.
+- If plan 012's narrower bullet is still present when this ships, it is removed in the same change — the generalized bullet subsumes it.
 
 ## Tests
 
-Test-driven per CLAUDE.md.
+Test-driven per `CLAUDE.md`.
 
 ### `schema.test.ts`
 
-- **Surfaces enabled feature keys**: a richText field configured with `[BoldFeature, ItalicFeature, HeadingFeature, LinkFeature]` produces `lexical.features` containing all four keys, sorted.
-- **Surfaces `heading` options**: `HeadingFeature({ enabledHeadingSizes: ['h2','h3'] })` → `lexical.options.heading.enabledHeadingSizes === ['h2','h3']`.
-- **Surfaces `link` options including custom fields**: `LinkFeature({ fields: [{ name: 'rel', type: 'text' }] })` → `lexical.options.link.fields` includes a `{ name: 'rel', type: 'text' }` entry produced by `extractFields`.
-- **Surfaces `upload.collections`**: `UploadFeature({ collections: { media: {...} } })` → `lexical.options.upload.collections === ['media']`.
-- **Surfaces `blocks` slugs and registers inline blocks**: `BlocksFeature({ blocks: [{ slug: 'hero', fields: [...] }] })` → `lexical.options.blocks.slugs` contains `'hero'`, and the block is reachable through the shared `blocksBySlug`.
-- **Unknown feature keys appear in `features` without `options`**: a custom feature with `key: 'myThing'` appears in `features` but no `options.myThing` is emitted.
-- **No lexical key when editor is absent**: a `richText` field with no recognisable editor produces no `lexical` key (not `{ features: [] }`).
-- **Non-richText fields are unchanged**: `text`, `array`, `blocks`, `tabs` produce no `lexical` key.
+- **Surfaces enabled feature keys (sorted, deduped).** A richText field configured with `[BoldFeature, ItalicFeature, HeadingFeature, LinkFeature]` produces `lexical.features` containing all four keys in sorted order.
+- **Surfaces `heading.enabledHeadingSizes`.** `HeadingFeature({ enabledHeadingSizes: ['h2','h3'] })` → `lexical.options.heading.enabledHeadingSizes` deep-equals `['h2','h3']`.
+- **Omits `heading.enabledHeadingSizes` when not provided.** `HeadingFeature()` with no props → `lexical.features` contains `'heading'`, `lexical.options.heading` is either absent or `{}`; test the user-visible contract (the key exists in `features`, no inferred default list).
+- **Surfaces `link.fields` when sanitized to an array.** `LinkFeature({ fields: [{ name: 'rel', type: 'text' }] })` after sanitization → `lexical.options.link.fields` contains a `{ name: 'rel', type: 'text' }` entry produced by `extractFields`.
+- **Omits `link.fields` when still a callback.** If `props.fields` is a function, `lexical.options.link` has no `fields` key (not a serialized function).
+- **Surfaces `link.enabledCollections` / `disabledCollections`** when the props carry them.
+- **Surfaces `upload.collections` as a slug array.** `UploadFeature({ collections: { media: {...}, docs: {...} } })` → `lexical.options.upload.collections` deep-equals `['media','docs']` (order by `Object.keys`).
+- **Surfaces `blocks.slugs` and registers inline `Block` objects into `blocksBySlug`.** `BlocksFeature({ blocks: [{ slug: 'hero', fields: [...] }, 'callToAction'] })` → `lexical.options.blocks.slugs` deep-equals `['hero','callToAction']`; calling `getBlockSchema({ slug: 'hero' })` afterwards resolves successfully via the shared `blocksBySlug`.
+- **Surfaces `inlineBlocks.slugs`.** Same behavior as `blocks` for the inline variant.
+- **Surfaces `relationship.enabledCollections` / `disabledCollections`** when present.
+- **Unknown feature keys appear in `features` without an `options` entry.** A custom feature with `key: 'myThing'` appears in `features` but `lexical.options` has no `myThing` key.
+- **No `lexical` key when `editor` is absent.** A `richText` field with no recognisable editor → `schema.lexical` is `undefined` (the key is not emitted).
+- **No `lexical` key when no features are detected.** Editor object present but neither `features` array nor `resolvedFeatureMap` Map → no `lexical` key (not `{ features: [] }`).
+- **Non-richText fields unchanged.** `text`, `array`, `blocks`, `tabs` produce no `lexical` key.
+- **`resolvedFeatureMap` fallback.** A richText field whose editor exposes features only through a `resolvedFeatureMap: Map<...>` (no `features` array) produces the same `lexical.features` list as the equivalent array-form editor.
 
 ### `system-prompt.test.ts`
 
-- The new bullet is included only when at least one schema in the prompt has a `richText` field with `lexical.features.length > 0`.
+- **New bullet appears when at least one schema has a richText field with `lexical.features.length > 0`.**
+- **New bullet is absent when no schema has a richText field, or all richText fields have `lexical === undefined`.**
+- **Narrower plan-012 bullet is no longer emitted** once this plan ships (the generalized bullet replaces it).
 
 ### `tools.test.ts`
 
-- `getCollectionSchema` for a collection containing a `richText` field returns the `lexical` summary on that field (round-trip integration test against a real Payload config used elsewhere in the suite).
-
-## Migration / sequencing vs. plan 012
-
-- Plan 012 and this plan touch the same code path (`schema.ts` lexical detection, `system-prompt.ts` rule bullet).
-- Recommendation: merge plan 012 into this plan and ship as a single change. The block-registry tools (`listBlocks`, `getBlockSchema`) from plan 012 stay; the per-field surfacing collapses into the `lexical.options.blocks` / `lexical.options.inlineBlocks` shape proposed here.
-- If 012 ships first, this plan becomes a follow-up that:
-  1. renames `lexicalBlocks` / `lexicalInlineBlocks` → `lexical.options.blocks.slugs` / `lexical.options.inlineBlocks.slugs`,
-  2. adds the other feature projections,
-  3. updates the system-prompt bullet.
-
-## Open questions / decisions to discuss
-
-- **How chatty should `features` be?** Do we emit _every_ key (including `paragraph`, `text`, structural defaults), or only the ones that gate optional node types? Suggest: only the feature keys actually present on the editor — let lexical's own defaults (paragraph, text) be implicit.
-- **`link.fields` shape.** Lexical link feature accepts a `fields` callback `({ defaultFields }) => Field[]`. Sanitization usually resolves it to the final array — confirm by reading a real config before relying on it.
-- **`upload.collections`.** In current Payload, the shape is `{ collections: { [slug]: { fields?: Field[] } } }`. Surface only the slugs; if the agent needs the per-collection extra fields it can call `getCollectionSchema(slug)`.
-- **Versions / stability.** Lexical's internal feature-prop shape has changed across Payload minors. Decide on a minimum supported Payload version and add a structural guard that no-ops on older shapes rather than throwing.
-- **Naming.** `lexical` (the key) is the most descriptive name but ties the schema to one editor. Alternative: `richText` (mirrors `field.type`). Decision: `lexical` — slate is gone, and any future editor would justify a new key anyway.
-- **Should we resolve `BlocksFeature.blocks` recursively here, or rely on `getBlockSchema`?** Recursively expanding risks blowing up the prompt for deeply-nested block trees. Decision: surface slugs only (consistent with plan 012), defer field resolution to `getBlockSchema`.
-- **Custom features written by users.** They appear in `features` but we have no schema for their props. That's the right outcome — agent at least knows the feature exists; we don't pretend to understand it.
+- **`getCollectionSchema` round-trip.** For a real Payload config with a collection containing a richText field, the tool's output surfaces `lexical` on that field with the expected `features` and `options`.
 
 ## Non-goals
 
-- Not a runtime validator. Payload's own validation is authoritative; the agent should not pre-check.
+- Not a runtime validator. Payload's own validation is authoritative; the agent must not pre-check.
 - Not a lexical-JSON builder/helper. The agent constructs lexical content from this schema knowledge plus its training.
 - Not editor-agnostic. Slate / custom editors are out of scope; the `lexical` key is omitted for them.
+- Not a recursive block expander. Block field trees are fetched via `getBlockSchema`.
+
+## Resolved decisions
+
+- **Key name.** `lexical` (not `richText`). The schema ties to one editor; a future non-lexical editor would justify its own key.
+- **Feature chattiness.** Emit only keys actually present on `editor.features` / `resolvedFeatureMap`. Do not emit implicit defaults like `paragraph` or `text`.
+- **`link.fields` shape.** Trust the sanitized config. If `props.fields` is an array, run it through `extractFields`; if it is a callback or absent, omit the `fields` key. Guard with `Array.isArray`.
+- **`upload.collections`.** Slug array only, via `Object.keys(props.collections ?? {})`. Nested per-collection fields belong to `getCollectionSchema`.
+- **Minimum Payload version.** `^3.83` (matches `chat-agent/package.json`). Detection walks `editor.features` (array) first, falls back to `editor.resolvedFeatureMap` (Map), returns `undefined` otherwise. Do not throw on unrecognised shapes.
+- **Recursive block resolution.** No. Surface slugs only; agent calls `getBlockSchema` to drill in.
+- **Custom / user-authored features.** Appear in `features[]` without an `options` entry. Correct outcome — agent knows the feature exists; we don't pretend to understand its props.
+- **Inline `Block` registration.** `extractLexicalSummary` mutates the caller-provided `blocksBySlug` to fold inline blocks into the shared map (same trick `extractFields` already uses for `blockReferences`). This lets `getBlockSchema` resolve inline-only slugs.
+- **Sequencing.** Ships after plan 012. Requires no changes to plan 012's tools; only extends `FieldSchema` and the extractor.
+
+## Changelog
+
+Add one `## Unreleased` → `### Added` (or `feat:` bullet) entry to `chat-agent/CHANGELOG.md`:
+
+> Per-field `lexical` summary on `FieldSchema` (returned by `getCollectionSchema` / `getGlobalSchema`) surfacing enabled rich-text features and their options (heading sizes, link fields, upload collections, block slugs, relationship collections).

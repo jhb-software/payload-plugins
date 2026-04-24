@@ -1,4 +1,5 @@
 .chat-agent-sidebar {
+  background: var(--theme-bg);
   border-right: 1px solid var(--theme-elevation-150);
   display: flex;
   flex-direction: column;
@@ -10,6 +11,17 @@
 .chat-agent-sidebar__new {
   border-bottom: 1px solid var(--theme-elevation-150);
   padding: 12px;
+}
+
+/* Drawer heading: makes it obvious this panel is the conversations list, not
+ * Payload's collection nav (which it would otherwise resemble on mobile). */
+.chat-agent-sidebar__heading {
+  color: var(--theme-elevation-500);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 12px 12px 4px;
+  text-transform: uppercase;
 }
 
 .chat-agent-sidebar__list {
@@ -143,4 +155,48 @@
   min-width: 0;
   outline: none;
   padding: 2px 6px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Mobile drawer
+ *
+ * Below Payload's `--breakpoint-s` (falls back to 768px) the sidebar collapses
+ * into a left-edge off-canvas drawer. The chat fills the viewport; opening
+ * the drawer slides the sidebar in over the chat with a dimmed backdrop.
+ * ------------------------------------------------------------------------ */
+
+.chat-agent-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .chat-agent-sidebar {
+    bottom: 0;
+    left: 0;
+    position: absolute;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    width: min(300px, 85vw);
+    z-index: 20;
+  }
+
+  /* Shadow only on the open drawer — when closed, the off-canvas shadow halo
+   * would otherwise bleed past the sidebar's right edge and show as a faint
+   * vertical line at viewport x=0. */
+  .chat-agent-sidebar--open {
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
+    transform: translateX(0);
+  }
+
+  .chat-agent-backdrop {
+    background: rgba(0, 0, 0, 0.3);
+    bottom: 0;
+    display: block;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 10;
+  }
 }

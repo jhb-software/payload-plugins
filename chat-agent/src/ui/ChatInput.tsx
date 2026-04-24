@@ -30,7 +30,14 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (!isLoading) {
+    if (isLoading) {
+      return
+    }
+    // Skip auto-focus on touch devices: programmatic focus pops the on-screen
+    // keyboard every time a response completes, which is intrusive. Mouse /
+    // trackpad users still get the convenience of immediately resuming typing.
+    const finePointer = window.matchMedia('(pointer: fine)').matches
+    if (finePointer) {
       textareaRef.current?.focus()
     }
   }, [isLoading])
@@ -73,11 +80,6 @@ export function ChatInput({
       onSubmit={(e) => {
         e.preventDefault()
         handleSend()
-      }}
-      style={{
-        borderTop: '1px solid var(--theme-elevation-150)',
-        marginTop: '16px',
-        paddingTop: '12px',
       }}
     >
       <div

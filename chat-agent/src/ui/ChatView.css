@@ -1,0 +1,106 @@
+/* ChatView layout styles, kept alongside the component file.
+ *
+ * The sidebar toggle is hidden on desktop and only appears below Payload's
+ * `--breakpoint-s` (falls back to 768px), where the sidebar collapses into a
+ * drawer. See `Sidebar.css` for the drawer itself.
+ */
+
+.chat-agent-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* `100vh` includes the area under mobile browser chrome (URL bar), which
+   * pushes the chat input below the visible viewport on physical devices.
+   * `100dvh` shrinks/grows with the browser UI so the input stays in view.
+   * Fall back to `100vh` for browsers without `dvh` support. */
+  height: calc(100vh - var(--app-header-height));
+  height: calc(100dvh - var(--app-header-height));
+  padding: 0 var(--gutter-h) 24px;
+}
+
+@media (max-width: 768px) {
+  .chat-agent-view {
+    gap: 0;
+  }
+}
+
+/* Payload's `.template-default` is `min-height: 100vh`, which on mobile
+ * extends below the visible viewport (the URL-bar area). Our chat view is
+ * sized to `100dvh`, so the leftover template height below it shows as a
+ * scrollable empty gap. Lock outer scrolling whenever the chat view is
+ * mounted — scrolling inside the chat view itself is unaffected because the
+ * MessageList has its own overflow:auto container. */
+:where(html, body):has(.chat-agent-view) {
+  overflow: hidden;
+}
+
+.chat-agent-view__title-group {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-agent-view__sidebar-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m, 4px);
+  color: var(--theme-text);
+  cursor: pointer;
+  display: none;
+  flex-shrink: 0;
+  height: 28px;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: 28px;
+}
+
+.chat-agent-view__sidebar-toggle:hover {
+  background: var(--theme-elevation-50);
+}
+
+.chat-agent-view__column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: var(--gutter-h);
+}
+
+@media (max-width: 768px) {
+  .chat-agent-view__sidebar-toggle {
+    display: inline-flex;
+  }
+
+  /* Stretch the wrapper to the viewport edges so the absolutely-positioned
+   * drawer (translated -100% off the body container's left edge) and the
+   * backdrop (right: 0) span the full width. Without this, the sidebar's
+   * gutter-wide right edge spills into the wrapper's left padding when
+   * "closed", and the backdrop leaves a strip uncovered on the right. */
+  .chat-agent-view {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Re-add the gutter to children that need it (the page header keeps its
+   * inset; the chat column gets the gutter on both sides since the body now
+   * sits flush against the viewport). */
+  .chat-agent-view > .list-header {
+    padding-left: var(--gutter-h);
+    padding-right: var(--gutter-h);
+  }
+
+  /* Payload's default aligns title-and-actions to flex-end, which leaves the
+   * small "+ New chat" pill stuck to the bottom of the row instead of
+   * centered against the title. Center it on mobile where the offset reads
+   * clearly off. */
+  .chat-agent-view > .list-header .list-header__title-and-actions {
+    align-items: center;
+  }
+
+  .chat-agent-view__column {
+    padding: 0 var(--gutter-h);
+  }
+}

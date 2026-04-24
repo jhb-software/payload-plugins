@@ -40,7 +40,7 @@ export default buildConfig({
       },
       widget: {
         minWidth: 'medium', // Optional, default: 'medium'
-        maxWidth: 'full',   // Optional, default: 'full'
+        maxWidth: 'full', // Optional, default: 'full'
       },
     }),
   ],
@@ -51,14 +51,14 @@ export default buildConfig({
 
 ### Plugin Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `vercel.apiToken` | `string` | Yes | Vercel API Bearer Token |
-| `vercel.projectId` | `string` | Yes | Vercel Project ID to monitor |
-| `vercel.teamId` | `string` | No | Vercel Team ID (required for team projects) |
-| `widget.minWidth` | `WidgetWidth` | No | Minimum widget width (default: 'medium') |
-| `widget.maxWidth` | `WidgetWidth` | No | Maximum widget width (default: 'full') |
-| `enabled` | `boolean` | No | Enable/disable the plugin (default: true) |
+| Option             | Type          | Required | Description                                 |
+| ------------------ | ------------- | -------- | ------------------------------------------- |
+| `vercel.apiToken`  | `string`      | Yes      | Vercel API Bearer Token                     |
+| `vercel.projectId` | `string`      | Yes      | Vercel Project ID to monitor                |
+| `vercel.teamId`    | `string`      | No       | Vercel Team ID (required for team projects) |
+| `widget.minWidth`  | `WidgetWidth` | No       | Minimum widget width (default: 'medium')    |
+| `widget.maxWidth`  | `WidgetWidth` | No       | Maximum widget width (default: 'full')      |
+| `enabled`          | `boolean`     | No       | Enable/disable the plugin (default: true)   |
 
 ### WidgetWidth Values
 
@@ -68,11 +68,11 @@ export default buildConfig({
 
 All endpoints require authentication (Payload admin user session or API key).
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/vercel-deployments` | Returns the active (latest READY) and latest production deployment |
-| `GET` | `/api/vercel-deployments?id=<id>` | Returns the status of a specific deployment |
-| `POST` | `/api/vercel-deployments` | Triggers a new production deployment by redeploying the latest READY build |
+| Method | Path                              | Description                                                                |
+| ------ | --------------------------------- | -------------------------------------------------------------------------- |
+| `GET`  | `/api/vercel-deployments`         | Returns the active (latest READY) and latest production deployment         |
+| `GET`  | `/api/vercel-deployments?id=<id>` | Returns the status of a specific deployment                                |
+| `POST` | `/api/vercel-deployments`         | Triggers a new production deployment by redeploying the latest READY build |
 
 ### Example: Trigger a deployment via API
 

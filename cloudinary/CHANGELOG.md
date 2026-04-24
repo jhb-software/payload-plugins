@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.3.3
+
 - fix: `getAdminThumbnail` now returns `undefined` instead of `false` if the `cloudinaryPublicId` or `mimeType` field is missing in the getAdminThumbnail function (e.g. during the upload process).
 
 ## 0.3.2
@@ -8,7 +9,7 @@
 - fix: `thumbnailURL` now correctly points to Cloudinary in Payload 3.7X
   - The `adminThumbnail` function now generates URLs directly from `cloudinaryPublicId` instead of relying on `doc.url`
   - This ensures the thumbnail URL is correct even when Payload's `thumbnailURL` hook runs before the `url` field is regenerated
-- fix: `generateURL` now does not throw an exception if the `cloudinaryPublicId` field is missing. 
+- fix: `generateURL` now does not throw an exception if the `cloudinaryPublicId` field is missing.
   - Instead, it returns `undefined` which is handled by Payload's default URL handling. This is necessary because in Payload 3.7X `generateURL` is called during upload, therefore its not possible to throw an exception, otherwise the upload would fail.
 
 ## 0.3.1
@@ -35,6 +36,7 @@
 Plugin config migration example:
 
 Before:
+
 ```ts
 payloadCloudinaryPlugin({
     uploadCollections: ['images', 'videos'],
@@ -53,6 +55,7 @@ payloadCloudinaryPlugin({
 ```
 
 After:
+
 ```ts
 payloadCloudinaryPlugin({
   collections: {
