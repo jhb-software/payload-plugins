@@ -452,14 +452,22 @@ export default buildConfig({
       // user-defined tools and provider-native ones (executed server-side by
       // the provider, billed separately ~$10 / 1k searches).
       //
+      // The Anthropic-native web tools are gated on `modelId` so we don't
+      // send Anthropic-shaped tools to OpenAI when the user picks a `gpt-*`
+      // model — OpenAI would reject the unknown tool shape at runtime.
+      //
       // Using `webFetch_20250910` (pre-dynamic-filtering) so this works with
-      // all models. The newer `webFetch_20260209` adds code-execution-based
-      // filtering but requires Opus 4.6+/Sonnet 4.6.
-      tools: ({ defaultTools, req }) => ({
+      // all Claude models. The newer `webFetch_20260209` adds
+      // code-execution-based filtering but requires Opus 4.6+/Sonnet 4.6.
+      tools: ({ defaultTools, modelId, req }) => ({
         ...defaultTools,
         ...customTools({ req }),
-        webFetch: anthropic.tools.webFetch_20250910(),
-        webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+        ...(modelId.startsWith('claude-')
+          ? {
+              webFetch: anthropic.tools.webFetch_20250910(),
+              webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+            }
+          : {}),
       }),
       modes: {
         default: 'ask',

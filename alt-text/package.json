@@ -28,6 +28,7 @@
     "lint:fix": "eslint src --fix",
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "test:health": "node --experimental-strip-types --test test/altTextHealth.test.ts",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {

@@ -103,6 +103,7 @@ export default function ChatView({
 
   const {
     addToolApprovalResponse,
+    clearError,
     error,
     messages,
     regenerate,
@@ -141,6 +142,10 @@ export default function ChatView({
         setActiveChatId(id)
         setInitialMessages(msgs)
         setMessages(msgs)
+        // The AI SDK's `error` state belongs to the chat that just failed;
+        // leaving it set would surface that chat's banner on top of the
+        // conversation the user just switched to.
+        clearError()
         if (doc.model) {
           setSelectedModel(doc.model)
         }
@@ -151,7 +156,7 @@ export default function ChatView({
         setIsLoadingMessages(false)
       }
     },
-    [endpointUrl, resolveMode, setActiveChatId, setMessages],
+    [clearError, endpointUrl, resolveMode, setActiveChatId, setMessages],
   )
 
   // Load conversation on mount only if server didn't provide messages
@@ -183,9 +188,13 @@ export default function ChatView({
     setActiveChatId(undefined)
     setInitialMessages(undefined)
     setMessages([])
+    // Drop the error surfaced on the prior conversation so it doesn't bleed
+    // into the fresh chat (where it would be misleading — the error had
+    // nothing to do with the new session).
+    clearError()
     setSelectedModel(defaultModel)
     setMode(defaultMode)
-  }, [setActiveChatId, setMessages, defaultModel, defaultMode])
+  }, [clearError, setActiveChatId, setMessages, defaultModel, defaultMode])
 
   const handleDelete = useCallback(
     (id: string) => {
