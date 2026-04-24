@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix type issue in the `afterChange` virtual-fields hook
+
 ## 0.7.0
 
 - feat: add request-scoped ancestor caching to avoid redundant DB queries when computing virtual fields for sibling pages

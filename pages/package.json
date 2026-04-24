@@ -35,6 +35,7 @@
     "test:watch": "cd dev && pnpm test:watch",
     "lint": "eslint ./src",
     "lint:fix": "eslint ./src --fix",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm clean && pnpm build && pnpm test"
   },
   "dependencies": {
