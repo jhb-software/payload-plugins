@@ -4,6 +4,7 @@
 
 - feat: pass the resolved `modelId` to the `tools` plugin option so a multi-provider setup can conditionally include provider-native tools (e.g. drop `anthropic.tools.webSearch_*` when the user selects an OpenAI model) instead of sending a tool shape the selected provider would reject at runtime.
 - fix: clear the chat error banner when starting a new chat or switching conversations via the sidebar, so an error surfaced on the previous chat no longer carries over to an unrelated one
+- fix: disable the chat composer (textarea + send button) while a tool-approval card is awaiting Allow / Deny, with an inline hint, so a user can't send a new message that poisons the transcript with an orphan `tool_use` (which the agent would then fail on every subsequent request with `Tool result is missing for tool call toolu_...`). The sanitizer on the server handles transcripts already corrupted by this path — the composer gate is the front-line prevention.
 
 ## 0.1.0-beta.4
 
