@@ -31,7 +31,7 @@
     "lint:fix": "eslint src --fix",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm prepublishOnly",
-    "prepublishOnly": "pnpm build && pnpm copyfiles"
+    "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
     "react-google-places-autocomplete": "^4.1.0"

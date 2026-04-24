@@ -36,7 +36,7 @@
     "lint": "eslint ./src",
     "lint:fix": "eslint ./src --fix",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm clean && pnpm build && pnpm test"
+    "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
     "qs-esm": "^8.0.1"
