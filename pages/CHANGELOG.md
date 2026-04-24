@@ -1,10 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- style: standardize icons to use Geist icon set (16x16 filled)
-- refactor: use i18next interpolation for translations
-
 ## 0.7.0
 
 - feat: add request-scoped ancestor caching to avoid redundant DB queries when computing virtual fields for sibling pages
@@ -15,7 +10,9 @@
 - fix: prevent circular parent references
 - fix: only set alternatePaths on previousDoc meta instead of copying entire meta
 - fix: pass draft arg to parent document lookups in breadcrumb generation
-- chore: upgrade to Payload 3.79.0
+- style: standardize icons to use Geist icon set (16x16 filled)
+- refactor: use i18next interpolation for translations
+- chore: upgrade to Payload 3.84.1
 
 ## 0.6.0
 
