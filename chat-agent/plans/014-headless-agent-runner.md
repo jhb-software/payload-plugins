@@ -237,13 +237,12 @@ We do **not** add a separate `systemBudget` option. If it becomes a real need we
 
 ### Persistence
 
-Out of scope. The chat endpoint persists via the client, and headless callers decide where results land — no two audit pipelines want the same schema. If demand appears we can add a thin helper:
+Out of scope for `runAgent` itself — it returns a `streamText` handle, the caller decides what to do with the result. Two ready-made paths:
 
-```ts
-await runAgent(payload, { …, persistAs: { collection: 'agent-conversations', title: 'Weekly audit 2026-W16' } })
-```
+- **Scheduled / detached runs** use plan 015's `agent-runs` collection. Plan 015's task handler writes `messages`, `usage`, `status`, etc. without the caller doing anything beyond declaring a `scheduledAgent`.
+- **Ad-hoc callers** drain `result.fullStream` (or `await result.text`) and persist the outcome with whatever schema they want — see consumption pattern #2 above (`payload.create({ collection: 'content-reports', data: { body: report } })`).
 
-but ship it in a follow-up.
+No `persistAs` / `saveTo` helper on `runAgent`. If a real consumer hits a wall here, revisit — but plan 015 covers the structured case and the local API covers the unstructured case.
 
 ### Messages normalisation
 
