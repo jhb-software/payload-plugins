@@ -239,30 +239,51 @@ Additional tools registered via the `tools` option — including provider-native
 
 ## Running the agent from a job
 
-The same orchestration that powers `POST /chat-agent/chat` is exported as a `runAgent(payload, opts)` function so you can invoke the agent off-HTTP — from a Payload task handler, a cron entry, a webhook, or a CLI script. No client connection, no SSE.
+The same orchestration that powers `POST /chat-agent/chat` is exported as a `runAgent(payload, opts)` function so you can invoke the agent off-HTTP — from a Payload task, a cron-triggered endpoint, a webhook, or a CLI script. No client connection, no SSE; you `await` the result and consume `result.text` / `result.totalUsage` / `result.fullStream`. Throws a clear error if `chatAgentPlugin()` is not installed in the given Payload config.
+
+The preferred way to wire this up is a dedicated **service-account collection with API-key auth**. The cron runner authenticates as a service-account document; Payload resolves `req.user` to that account; the endpoint handler hands `req.user` straight through to `runAgent` so tool calls inherit the service account's access — no `overrideAccess` needed.
 
 ```ts
-import { runAgent } from '@jhb.software/payload-chat-agent'
-
-// Inside a Payload task handler, cron, webhook, etc.
-const result = await runAgent(payload, {
-  user: null,
-  overrideAccess: true,
-  mode: 'read',
-  messages:
-    'Audit all pages in the `pages` collection published in the last 7 days. List ones with fewer than 200 words or without a hero image.',
-  maxSteps: 40,
-  skipBudget: true,
-})
-
-// Drain to completion and persist the result however you want.
-const report = await result.text
-await payload.create({ collection: 'content-reports', data: { body: report } })
+// payload.config.ts — add a service-account collection alongside your users.
+{
+  slug: 'service-accounts',
+  auth: { useAPIKey: true, disableLocalStrategy: true },
+  fields: [{ name: 'name', type: 'text', required: true }],
+}
 ```
 
-`runAgent` returns the raw `streamText` handle from the AI SDK — the same object the chat endpoint hands to `toUIMessageStreamResponse`. Background callers typically `await result.text` and `await result.totalUsage`; if you need partial deltas, drain `result.fullStream`. Throws a clear error if `chatAgentPlugin()` is not installed in the given Payload config.
+```ts
+// e.g. endpoints.ts — POST /api/audit-content, called on a schedule.
+import { runAgent } from '@jhb.software/payload-chat-agent'
 
-Key options:
+export const auditEndpoint = {
+  path: '/audit-content',
+  method: 'post',
+  handler: async (req) => {
+    // Pin the collection so a regular user session can't trigger audits.
+    if (!req.user || req.user.collection !== 'service-accounts') {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const result = await runAgent(req.payload, {
+      user: req.user, // tools inherit the service account's permissions
+      mode: 'read',
+      messages:
+        'Audit the posts collection: list every post with no featuredImage, by title and id.',
+      skipBudget: true, // automated runs don't charge a per-user cap
+    })
+    return Response.json({ text: await result.text })
+  },
+}
+```
+
+Trigger it from any cron source — Vercel Cron, GitHub Actions, Upstash, etc. — by sending the API key:
+
+```bash
+curl -X POST https://your-app.com/api/audit-content \
+  -H 'Authorization: service-accounts API-Key <your-key>'
+```
+
+Key `runAgent` options:
 
 | Option           | Default                 | Notes                                                                                         |
 | ---------------- | ----------------------- | --------------------------------------------------------------------------------------------- |
@@ -277,39 +298,6 @@ Key options:
 | `abortSignal`    | none                    | Recommended for runs that may exceed the host's idle timeout                                  |
 | `skipBudget`     | `false`                 | Skips both `check` and `record`. Most background jobs want `true`                             |
 | `req`            | synthetic minimal `req` | Pass a real `PayloadRequest` if you have one. When omitted, custom-endpoint tools are skipped |
-
-For the cron-style "trigger via HTTP" pattern, expose a Payload custom endpoint that calls `runAgent(req.payload, { ... })` and awaits the result. The cleanest way to authenticate the cron runner is a dedicated service-account collection with `auth.useAPIKey: true`:
-
-```ts
-// in your Payload config:
-{
-  slug: 'service-accounts',
-  auth: { useAPIKey: true, disableLocalStrategy: true },
-  fields: [{ name: 'name', type: 'text', required: true }],
-}
-```
-
-The cron runner sends `Authorization: service-accounts API-Key <key>`; Payload's built-in API-key strategy resolves `req.user` to the matching service account before the endpoint handler runs. Pass `req.user` straight through to `runAgent` so tool calls inherit the service account's access permissions:
-
-```ts
-{
-  path: '/audit-content',
-  method: 'post',
-  handler: async (req) => {
-    if (!req.user || req.user.collection !== 'service-accounts') {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const result = await runAgent(req.payload, {
-      user: req.user,
-      mode: 'read',
-      messages: 'Audit the posts collection…',
-      skipBudget: true,
-      req,
-    })
-    return Response.json({ text: await result.text })
-  },
-}
-```
 
 ## Production considerations
 
