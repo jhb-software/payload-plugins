@@ -4,7 +4,7 @@ export const RefreshIcon: React.FC<{
   readonly ariaLabel?: string
   readonly className?: string
   readonly size?: number
-}> = ({ ariaLabel, className, size = 16 }) => {
+}> = ({ ariaLabel, className, size = 20 }) => {
   return (
     <svg
       aria-label={ariaLabel}
@@ -12,8 +12,8 @@ export const RefreshIcon: React.FC<{
       data-testid="geist-icon"
       height={size}
       strokeLinejoin="round"
-      style={{ color: 'currentcolor' }}
-      viewBox="0 0 16 16"
+      style={{ color: 'var(--theme-elevation-800)' }}
+      viewBox="-4 -4 24 24"
       width={size}
     >
       <path

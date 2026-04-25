@@ -143,15 +143,16 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
       doc.isRootPage === previousDoc.isRootPage
 
     if (dependentFieldsUnchanged) {
+      const meta = docWithVirtualFields.meta as { alternatePaths?: unknown } | undefined
       // Reuse the already-computed virtual fields to avoid redundant DB queries
       Object.assign(previousDoc, {
         breadcrumbs: docWithVirtualFields.breadcrumbs,
         path: docWithVirtualFields.path,
-        ...(docWithVirtualFields.meta?.alternatePaths
+        ...(meta?.alternatePaths
           ? {
               meta: {
                 ...previousDoc.meta,
-                alternatePaths: docWithVirtualFields.meta.alternatePaths,
+                alternatePaths: meta.alternatePaths,
               },
             }
           : {}),
