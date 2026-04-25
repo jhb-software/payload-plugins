@@ -240,7 +240,7 @@ We do **not** add a separate `systemBudget` option. If it becomes a real need we
 Out of scope. The chat endpoint persists via the client, and headless callers decide where results land — no two audit pipelines want the same schema. If demand appears we can add a thin helper:
 
 ```ts
-await runAgent({ …, persistAs: { collection: 'agent-conversations', title: 'Weekly audit 2026-W16' } })
+await runAgent(payload, { …, persistAs: { collection: 'agent-conversations', title: 'Weekly audit 2026-W16' } })
 ```
 
 but ship it in a follow-up.
@@ -267,6 +267,8 @@ modeFilteredTools    = filterToolsByMode(finalTools, mode)
 ```
 
 The plugin's factory always runs first so headless callers inherit the consumer's user-defined tools (e.g. `customTools({ req })` from `dev/src/customTools.ts`). The per-call factory then refines or replaces — typical use is narrowing the surface for a specific job (`(base) => ({ find: base.find })`) without touching plugin config.
+
+When `runAgentOpts.tools` is a static `ToolSet` (not a function), it **replaces** `baseTools` outright — equivalent to `(_base) => staticToolSet`. The static form is a convenience for callers who know exactly which tools they want and don't care about the plugin-resolved base; if they want to compose, they pass the function form.
 
 When `req` is omitted, `runAgent` passes the synthetic shim documented above to `options.tools`. Tools that crash without a real HTTP `req` should either guard on `req.headers.get(...)` returning `null` or be omitted by the consumer's factory when `req.payloadAPI === 'local'`.
 
@@ -311,7 +313,8 @@ This gives reviewers a one-line way to confirm `runAgent` works end-to-end again
 
 - Unit: `runAgent` with `user: null` + `overrideAccess: false` rejects. `mode: 'superuser'` + `overrideAccess: false` rejects. `skipBudget: true` never calls `budget.check`. `messages: 'hi'` normalises to a single user ModelMessage.
 - Integration: wire a synthetic Payload + stubbed model factory; call `runAgent` with each of the three `messages` shapes and assert `streamText` receives an equivalent prompt.
-- Tool composition: when `options.tools` and `runAgentOpts.tools` are both supplied, assert the per-call factory receives the plugin-resolved base (not the raw defaults). When `req` is omitted, assert the consumer's `options.tools` factory is called with the synthetic minimal `req` (`{ payload, user, payloadAPI: 'local', headers: ... }`) and that custom-endpoint tools are absent from the final toolset.
+- Tool composition: when `options.tools` and `runAgentOpts.tools` are both supplied as functions, assert the per-call factory receives the plugin-resolved base (not the raw defaults). When `runAgentOpts.tools` is a static `ToolSet`, assert it replaces `baseTools` outright. When `req` is omitted, assert the consumer's `options.tools` factory is called with the synthetic minimal `req` (`{ payload, user, payloadAPI: 'local', headers: ... }`) and that custom-endpoint tools are absent from the final toolset.
+- Plugin-not-installed error: call `runAgent(payload, ...)` against a Payload whose config has no `chatAgentPlugin()` wired in. Assert it throws with a message that names the plugin package and points at the fix ("Did you install `chatAgentPlugin()` in your Payload config?").
 - Usage capture: drain `result.fullStream` against a stub provider, then `await result.totalUsage` and assert it returns the same totals `BudgetConfig.record` would have received from `streamText`'s `onFinish`. (Confirms the AI-SDK contract plan 015's handler relies on, without `runAgent` adding its own hook.)
 - Regression: the existing `index.test.ts` suite must pass unchanged — the HTTP handler keeps the same observable contract, including `BudgetConfig.record` firing exactly once via `streamText`'s native `onFinish`.
 - Docs: add a "Running the agent from a job" section to `chat-agent/README.md` with the audit example.
