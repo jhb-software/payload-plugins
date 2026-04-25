@@ -308,6 +308,26 @@ export default buildConfig({
       },
       fields: [{ name: 'alt', type: 'text' }],
     },
+    // Service-account collection for cron / scheduled `runAgent` callers.
+    // `useAPIKey: true` enables Payload's API-key auth strategy: the cron
+    // runner sends `Authorization: service-accounts API-Key <key>` and Payload
+    // resolves `req.user` to the matching service-account doc. The
+    // `disableLocalStrategy` flag turns off email/password — service accounts
+    // exist only to authenticate non-human callers.
+    //
+    // Wired into `/api/audit-content` (see `dev/src/endpoints.ts`) so the
+    // headless `runAgent` invocation runs as the service-account user
+    // instead of `null + overrideAccess`. That keeps the agent's tool calls
+    // subject to Payload access control as the service account.
+    {
+      slug: 'service-accounts',
+      admin: { useAsTitle: 'name' },
+      auth: { useAPIKey: true, disableLocalStrategy: true },
+      fields: [
+        { name: 'name', type: 'text', required: true },
+        { name: 'description', type: 'textarea' },
+      ],
+    },
     chatBudget.collection,
   ],
   globals: [
@@ -416,6 +436,25 @@ export default buildConfig({
       for (const cat of categories) {
         await payload.create({ collection: 'categories', data: cat })
       }
+    }
+
+    // Seed an audit-runner service account with a deterministic API key.
+    // The key is intentionally hardcoded to keep the dev demo runnable —
+    // never do this in a real deployment.
+    const existingServiceAccounts = await payload.count({
+      collection: 'service-accounts',
+    })
+
+    if (existingServiceAccounts.totalDocs === 0) {
+      await payload.create({
+        collection: 'service-accounts',
+        data: {
+          name: 'audit-runner',
+          description: 'Used by the daily content-audit cron to invoke `runAgent`.',
+          enableAPIKey: true,
+          apiKey: 'demo-audit-secret-key-change-me',
+        },
+      })
     }
   },
   plugins: [

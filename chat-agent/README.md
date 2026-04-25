@@ -237,6 +237,80 @@ Errors from `check`/`record` are not swallowed — a broken usage store fails lo
 
 Additional tools registered via the `tools` option — including provider-native web tools like `webSearch` / `webFetch` — appear alongside these. See [Extending or customizing tools](#extending-or-customizing-tools).
 
+## Running the agent from a job
+
+The same orchestration that powers `POST /chat-agent/chat` is exported as a `runAgent(payload, opts)` function so you can invoke the agent off-HTTP — from a Payload task handler, a cron entry, a webhook, or a CLI script. No client connection, no SSE.
+
+```ts
+import { runAgent } from '@jhb.software/payload-chat-agent'
+
+// Inside a Payload task handler, cron, webhook, etc.
+const result = await runAgent(payload, {
+  user: null,
+  overrideAccess: true,
+  mode: 'read',
+  messages:
+    'Audit all pages in the `pages` collection published in the last 7 days. List ones with fewer than 200 words or without a hero image.',
+  maxSteps: 40,
+  skipBudget: true,
+})
+
+// Drain to completion and persist the result however you want.
+const report = await result.text
+await payload.create({ collection: 'content-reports', data: { body: report } })
+```
+
+`runAgent` returns the raw `streamText` handle from the AI SDK — the same object the chat endpoint hands to `toUIMessageStreamResponse`. Background callers typically `await result.text` and `await result.totalUsage`; if you need partial deltas, drain `result.fullStream`. Throws a clear error if `chatAgentPlugin()` is not installed in the given Payload config.
+
+Key options:
+
+| Option           | Default                 | Notes                                                                                         |
+| ---------------- | ----------------------- | --------------------------------------------------------------------------------------------- |
+| `messages`       | (required)              | A single `string`, a `UIMessage[]`, or a `ModelMessage[]` — discriminated structurally        |
+| `user`           | (required)              | The user the agent acts as. `null` requires `overrideAccess: true`                            |
+| `overrideAccess` | `false`                 | Bypass Payload access control on tool calls. Required for `mode: 'superuser'` or `user: null` |
+| `mode`           | plugin default          | `read \| ask \| read-write \| superuser`                                                      |
+| `model`          | `defaultModel`          | Model id forwarded to the plugin's `model(id)` factory                                        |
+| `maxSteps`       | plugin's `maxSteps`     | Per-call tool-loop cap                                                                        |
+| `systemPrompt`   | derived                 | Replace (string) or extend (function) the auto-generated prompt                               |
+| `tools`          | plugin-resolved         | Narrow or replace the toolset for this call                                                   |
+| `abortSignal`    | none                    | Recommended for runs that may exceed the host's idle timeout                                  |
+| `skipBudget`     | `false`                 | Skips both `check` and `record`. Most background jobs want `true`                             |
+| `req`            | synthetic minimal `req` | Pass a real `PayloadRequest` if you have one. When omitted, custom-endpoint tools are skipped |
+
+For the cron-style "trigger via HTTP" pattern, expose a Payload custom endpoint that calls `runAgent(req.payload, { ... })` and awaits the result. The cleanest way to authenticate the cron runner is a dedicated service-account collection with `auth.useAPIKey: true`:
+
+```ts
+// in your Payload config:
+{
+  slug: 'service-accounts',
+  auth: { useAPIKey: true, disableLocalStrategy: true },
+  fields: [{ name: 'name', type: 'text', required: true }],
+}
+```
+
+The cron runner sends `Authorization: service-accounts API-Key <key>`; Payload's built-in API-key strategy resolves `req.user` to the matching service account before the endpoint handler runs. Pass `req.user` straight through to `runAgent` so tool calls inherit the service account's access permissions:
+
+```ts
+{
+  path: '/audit-content',
+  method: 'post',
+  handler: async (req) => {
+    if (!req.user || req.user.collection !== 'service-accounts') {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const result = await runAgent(req.payload, {
+      user: req.user,
+      mode: 'read',
+      messages: 'Audit the posts collection…',
+      skipBudget: true,
+      req,
+    })
+    return Response.json({ text: await result.text })
+  },
+}
+```
+
 ## Production considerations
 
 This plugin is published as a beta. Review these before enabling it in production.

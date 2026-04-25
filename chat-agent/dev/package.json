@@ -12,7 +12,8 @@
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "payload": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload",
     "generate:types": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload generate:types",
-    "generate:importmap": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload generate:importmap"
+    "generate:importmap": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload generate:importmap",
+    "run:agent": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts NODE_OPTIONS=\"--no-deprecation\" tsx ./src/scripts/run-agent.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.69",
@@ -34,6 +35,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "cross-env": "^10.1.0",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "tsx": "^4.20.6"
   }
 }

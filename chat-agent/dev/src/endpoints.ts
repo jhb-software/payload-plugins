@@ -1,7 +1,91 @@
 import type { Endpoint, PayloadRequest } from 'payload'
 
+import { runAgent } from '@jhb.software/payload-chat-agent'
+
 /** Root-level endpoints (mounted under `/api`). */
 export const rootEndpoints: Endpoint[] = [
+  // -------------------------------------------------------------------------
+  // POST /api/audit-content — headless agent run, the cron-friendly shape
+  // -------------------------------------------------------------------------
+  // Demonstrates how a scheduled job (Vercel Cron, GitHub Actions, a Payload
+  // task) would trigger the agent: hit this endpoint on a schedule, the
+  // handler awaits `runAgent` to completion, and replies with the result.
+  // No browser, no SSE, no user session.
+  //
+  // Auth: the cron runner authenticates as a `service-accounts` document via
+  // its API key — `Authorization: service-accounts API-Key <key>`. Payload's
+  // built-in API-key strategy resolves `req.user` to the matching service
+  // account before this handler runs, so the agent's tool calls inherit
+  // that account's permissions instead of running as `null + overrideAccess`.
+  //
+  // Try it locally:
+  //   curl -X POST http://localhost:3940/api/audit-content \
+  //     -H 'Content-Type: application/json' \
+  //     -H 'Authorization: service-accounts API-Key demo-audit-secret-key-change-me' \
+  //     -d '{}'
+  {
+    path: '/audit-content',
+    method: 'post',
+    custom: {
+      description:
+        'Run a one-shot content audit via the chat agent. Body: `{ prompt?: string }`. Authenticate with a `service-accounts` API key. Designed to be called from a cron / scheduled job.',
+      schema: {
+        body: {
+          prompt: {
+            type: 'string',
+            description: 'Optional prompt override. Defaults to the built-in stale-content audit.',
+          },
+        },
+        response: {
+          ok: { type: 'boolean' },
+          text: { type: 'string' },
+          totalTokens: { type: 'number', nullable: true },
+        },
+      },
+    },
+    handler: async (req: PayloadRequest) => {
+      // Reject anything that isn't a service-account caller. We pin the
+      // collection here so a regular `users` session can't accidentally
+      // trigger an audit through the same endpoint.
+      if (!req.user || req.user.collection !== 'service-accounts') {
+        return Response.json(
+          {
+            error:
+              'Unauthorized — provide a service-accounts API key in `Authorization: service-accounts API-Key <key>`',
+          },
+          { status: 401 },
+        )
+      }
+
+      const body = ((await req.json?.()) ?? {}) as { prompt?: string }
+      const prompt =
+        body.prompt ??
+        'Audit the `posts` collection: list every post with no `featuredImage`, by title and id, one per line. If they all have an image, say so.'
+
+      // Run as the service account: tool calls inherit its access
+      // permissions, no `overrideAccess` needed. `skipBudget: true` keeps
+      // automated runs from charging against any per-user cap.
+      const result = await runAgent(req.payload, {
+        abortSignal: req.signal,
+        maxSteps: 30,
+        messages: prompt,
+        mode: 'read',
+        req,
+        skipBudget: true,
+        user: req.user,
+      })
+
+      const text = await result.text
+      const usage = await result.totalUsage
+
+      return Response.json({
+        ok: true,
+        text,
+        totalTokens: usage.totalTokens ?? null,
+      })
+    },
+  },
+
   {
     path: '/ping',
     method: 'get',
