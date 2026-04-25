@@ -179,7 +179,6 @@ No client-supplied data lands here, so no `beforeValidate` hook to scrub user in
     })
 
     const messages: unknown[] = []
-    let usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number } = {}
 
     const result = await runAgent({
       payload: req.payload,
@@ -191,14 +190,17 @@ No client-supplied data lands here, so no `beforeValidate` hook to scrub user in
       maxSteps: agent.maxSteps ?? 50,
       messages: prompt,
       abortSignal: ac.signal,
-      onUsage: (u) => {
-        usage = u
-      },
     })
 
     for await (const chunk of result.fullStream) {
       messages.push(chunk) // appended verbatim; finalised on succeeded
     }
+
+    // `result.totalUsage` resolves once `fullStream` drains. Awaiting it inside
+    // the same try block means a mid-stream abort still surfaces (the promise
+    // rejects) and the catch records `aborted`/`failed` without overwriting
+    // partial usage with `{}`.
+    const usage = await result.totalUsage
 
     await req.payload.update({
       collection: 'agent-runs',

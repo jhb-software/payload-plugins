@@ -109,18 +109,6 @@ export interface RunAgentOptions {
    * preconditions.
    */
   req?: PayloadRequest
-
-  /**
-   * Called once when the model finishes, with the aggregated token usage.
-   * Plan 015 (`agent-runs`) uses this to write `usage` onto the run doc
-   * without subscribing to the stream itself; interactive callers can keep
-   * using `streamText`'s `onFinish` via the returned handle.
-   */
-  onUsage?: (usage: {
-    inputTokens?: number
-    outputTokens?: number
-    totalTokens?: number
-  }) => Promise<void> | void
 }
 
 /** Result mirrors `streamText`'s handle so callers choose how to consume it. */
@@ -295,8 +283,8 @@ This gives reviewers a one-line way to confirm `runAgent` works end-to-end again
 - Unit: `runAgent` with `user: null` + `overrideAccess: false` rejects. `mode: 'superuser'` + `overrideAccess: false` rejects. `skipBudget: true` never calls `budget.check`. `messages: 'hi'` normalises to a single user ModelMessage.
 - Integration: wire a synthetic Payload + stubbed model factory; call `runAgent` with each of the three `messages` shapes and assert `streamText` receives an equivalent prompt.
 - Tool composition: when `options.tools` and `runAgentOpts.tools` are both supplied, assert the per-call factory receives the plugin-resolved base (not the raw defaults). When `req` is omitted, assert the consumer's `options.tools` factory is called with the synthetic minimal `req` (`{ payload, user, payloadAPI: 'local', headers: ... }`) and that custom-endpoint tools are absent from the final toolset.
-- `onUsage`: assert it fires once with the same totals `streamText`'s `onFinish` receives, and that throwing inside `onUsage` surfaces as a stream error rather than being swallowed.
-- Regression: the existing `index.test.ts` suite must pass unchanged — the HTTP handler keeps the same observable contract.
+- Usage capture: drain `result.fullStream` against a stub provider, then `await result.totalUsage` and assert it returns the same totals `BudgetConfig.record` would have received from `streamText`'s `onFinish`. (Confirms the AI-SDK contract plan 015's handler relies on, without `runAgent` adding its own hook.)
+- Regression: the existing `index.test.ts` suite must pass unchanged — the HTTP handler keeps the same observable contract, including `BudgetConfig.record` firing exactly once via `streamText`'s native `onFinish`.
 - Docs: add a "Running the agent from a job" section to `chat-agent/README.md` with the audit example.
 
 ## Related work
