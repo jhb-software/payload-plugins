@@ -1,22 +1,7 @@
 /**
- * Headless agent runner.
- *
- * Extracts the orchestration that used to live inside the `POST
- * /chat-agent/chat` endpoint (mode resolution, budget check, tool discovery,
- * tool filtering, system-prompt build, model resolution, `streamText` call)
- * into a single function the HTTP handler and background jobs can both call.
- *
- * Public surface: a single `runAgent(req, opts)` named export. The plugin
- * stashes its options on `req.payload.config.custom.chatAgent.pluginOptions`
- * at config-build time; `runAgent` reads them back at call time so consumers
- * don't have to wire a factory through closures.
- *
- * `req` is required. Background callers that don't have one (a Payload task
- * handler, a webhook, a script) should construct one with Payload's
- * `createLocalReq({ user }, payload)` helper. Requiring `req` keeps the
- * runner's contract simple — `req.user` is the actor, `req.payload` is the
- * Local API, and the plugin's `options.tools({ req })` factory always
- * receives a real request rather than a stitched-together shim.
+ * Headless agent runner — the same orchestration the chat endpoint uses,
+ * exposed as a `runAgent(req, opts)` function so background jobs can invoke
+ * the agent off-HTTP. See the `runAgent` JSDoc below for the public contract.
  */
 
 import type { ModelMessage, StreamTextResult, Tool, ToolSet, UIMessage } from 'ai'
@@ -35,29 +20,17 @@ import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 // ---------------------------------------------------------------------------
 
 export interface RunAgentOptions {
-  /**
-   * Abort signal. Interactive callers pass `req.signal`; jobs may pass their
-   * own controller (recommended for any run that might exceed the host's
-   * idle timeout) or rely on `maxSteps` to terminate.
-   */
+  /** Abort signal. Interactive callers pass `req.signal`. */
   abortSignal?: AbortSignal
 
-  /**
-   * Per-call step cap. Defaults to the plugin's `maxSteps` (which itself
-   * defaults to 20). Background jobs generally want a tighter bound than
-   * interactive chat.
-   */
+  /** Per-call step cap. Defaults to the plugin's `maxSteps` (default 20). */
   maxSteps?: number
 
   /**
-   * The conversation so far. Accepts the same `UIMessage[]` shape the chat
-   * endpoint takes (from the AI SDK `useChat`), a provider-ready
-   * `ModelMessage[]`, or a single string prompt for the common one-shot case.
-   *
-   * Discrimination is structural: strings by `typeof`; otherwise an array of
-   * `UIMessage` (with `parts`) is converted via
-   * `convertToModelMessages(..., { ignoreIncompleteToolCalls: true })`; an
-   * array of `ModelMessage` (with `content`) is passed through verbatim.
+   * The conversation so far. A single `string` is wrapped as one user message;
+   * a `UIMessage[]` (from `useChat`) is converted via `convertToModelMessages`
+   * with `ignoreIncompleteToolCalls: true`; a `ModelMessage[]` is passed
+   * through verbatim.
    */
   messages: ModelMessage[] | string | UIMessage[]
 
@@ -67,44 +40,30 @@ export interface RunAgentOptions {
   /** Model id. Defaults to the plugin's `defaultModel`. */
   model?: string
 
-  /**
-   * Hook run after the underlying `streamText` call finishes (passed through
-   * to the AI SDK's `onFinish`). Headless callers usually prefer reading
-   * `await result.totalUsage` instead; this is here so the HTTP wrapper can
-   * inject its own budget-recording callback that composes with whatever the
-   * plugin's budget config wires up.
-   */
+  /** Forwarded to the AI SDK's `streamText({ onFinish })`. */
   onFinish?: (event: {
     totalUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
   }) => Promise<void> | void
 
   /**
-   * Bypass Payload access control when executing tools. Defaults to `false`.
-   * Background jobs that need to read or write across the whole dataset can
-   * opt in with `overrideAccess: true`. Required to run in mode `superuser`.
+   * Bypass Payload access control when executing tools. Required for
+   * `mode: 'superuser'` and for runs without `req.user`.
    */
   overrideAccess?: boolean
 
-  /**
-   * Skip the plugin's budget check/record hooks. Defaults to `false`. Set
-   * `true` for service-account / scheduled runs where per-user budgets don't
-   * apply.
-   */
+  /** Skip the plugin's budget check/record hooks. */
   skipBudget?: boolean
 
   /**
-   * Replace the derived system prompt entirely (string), or extend it (function).
-   * The function form may be sync or async — async lets jobs fetch
-   * task-specific context (config doc, last-week's report) before composing
-   * the final prompt.
+   * Replace the derived system prompt entirely (string), or transform it
+   * (function — `(base) => string`).
    */
   systemPrompt?: ((basePrompt: string) => Promise<string> | string) | string
 
   /**
-   * Filter or replace the tool set. `(base) => ToolSet` lets jobs run a
-   * narrow slice (e.g. read-only) without touching plugin config — `base` is
-   * the toolset after the plugin's `options.tools` factory has run. A static
-   * `ToolSet` replaces the base outright; pass the function form to compose.
+   * Replace or compose the toolset. A function receives the toolset after the
+   * plugin's `options.tools` factory has run; a static `ToolSet` replaces it
+   * outright.
    */
   tools?: ((baseTools: ToolSet) => ToolSet) | ToolSet
 }
@@ -166,13 +125,9 @@ export async function runAgentImpl(
   const mode: AgentMode = opts.mode ?? getDefaultMode(pluginOptions.modes ?? {})
 
   // --- Auth guard --------------------------------------------------------
-  // The runner needs an actor or an explicit "I know what I'm doing" flag.
-  // Without either, every Local-API tool call would hit Payload's access
-  // checks with no subject and silently return empty results / access
-  // errors — confusing the agent and the operator. Fail loudly here so
-  // the caller either guards `if (!req.user)` upstream (the recommended
-  // pattern for cron/webhook endpoints) or opts in to unauthenticated
-  // runs explicitly.
+  // Fail loudly if there's no actor and the caller hasn't opted in to
+  // running without one — otherwise tool calls would silently hit access
+  // checks with no subject.
   if (!req.user && !opts.overrideAccess) {
     throw new Error(
       'runAgent: req.user is missing. Either gate the call upstream (e.g. `if (!req.user) return Response.json({ error: "Unauthorized" }, { status: 401 })`) or pass `overrideAccess: true` to deliberately run without an actor.',
@@ -185,18 +140,15 @@ export async function runAgentImpl(
   const overrideAccess = opts.overrideAccess ?? mode === 'superuser'
 
   // --- Budget check ------------------------------------------------------
-  let remaining: null | number = null
   const budget = pluginOptions.budget
   if (budget && !opts.skipBudget) {
-    remaining = await budget.check({ req })
+    const remaining = await budget.check({ req })
     if (remaining !== null && remaining <= 0) {
       const err = new Error('Token budget exceeded') as { remaining?: number } & Error
       err.remaining = 0
       throw err
     }
   }
-  // Side-channel for the HTTP wrapper to read; otherwise unused at this layer.
-  void remaining
 
   // --- Discover custom endpoints + build tools ---------------------------
   const customEndpoints = discoverEndpoints(req.payload.config)
@@ -259,10 +211,8 @@ export async function runAgentImpl(
   const resolvedModel = pluginOptions.model(modelId)
 
   // --- Budget recording hook --------------------------------------------
-  // Compose the plugin's `budget.record` (when enabled) with any
-  // caller-supplied `onFinish` so both fire — the budget hook always runs
-  // first so the recorded spend is visible to a caller that might want to
-  // double-check it inside its own `onFinish`.
+  // Compose `budget.record` with any caller-supplied `onFinish` (record
+  // first so the caller's hook can read fresh spend).
   const record = budget?.record
   const onFinish =
     record && !opts.skipBudget

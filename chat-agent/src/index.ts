@@ -242,9 +242,8 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             // --- Resolve mode ----------------------------------------------
-            // Mode access is gated here at the HTTP boundary because it's a
-            // user-facing authorization decision; `runAgentImpl` only does
-            // the structural mode validation for headless callers.
+            // Per-mode access checks live at the HTTP boundary; `runAgentImpl`
+            // doesn't run them (background callers supply their own authority).
             const requestedMode = body.mode ?? getDefaultMode(modesConfig)
             const modeError = await validateModeAccess(requestedMode, modesConfig, req)
             if (modeError) {
@@ -254,16 +253,11 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             const overrideAccess = mode === 'superuser'
 
             // --- Budget pre-check ------------------------------------------
-            // We pre-check here (and pass `skipBudget: true` to
-            // `runAgentImpl`) for two reasons that don't fit into the
-            // headless contract:
-            //   1. An out-of-budget caller gets a 429 with a JSON body —
-            //      cleaner than a thrown 500 from inside `runAgentImpl`.
-            //   2. `X-Budget-Remaining` is set on the SSE response below
-            //      from the value we observed here so the client can render
-            //      soft warnings as the cap approaches.
-            // Recording still runs at end-of-stream via the `onFinish`
-            // option we hand to `runAgentImpl`.
+            // Pre-check here so an out-of-budget caller gets a 429 (instead
+            // of a thrown 500 from `runAgentImpl`) and so `X-Budget-Remaining`
+            // can be set on the SSE response. Recording runs end-of-stream
+            // via the `onFinish` option below; we pass `skipBudget: true` to
+            // `runAgentImpl` to avoid double-counting.
             let remaining: null | number = null
             if (options.budget) {
               try {
@@ -308,8 +302,6 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                     }
                   : undefined,
                 overrideAccess,
-                // Pre-check ran above and `onFinish` wires the recorder, so
-                // tell runAgentImpl not to wire its own budget hooks.
                 skipBudget: true,
               })
             } catch (err) {

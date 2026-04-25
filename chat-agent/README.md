@@ -241,9 +241,7 @@ Additional tools registered via the `tools` option — including provider-native
 
 The same orchestration that powers `POST /chat-agent/chat` is exported as a `runAgent(req, opts)` function so you can invoke the agent off-HTTP — from a Payload task, a cron-triggered endpoint, a webhook. No client connection, no SSE; you `await` the result and consume `result.text` / `result.totalUsage` / `result.fullStream`. Throws a clear error if `chatAgentPlugin()` is not installed in the given Payload config.
 
-`req` is the only required positional — it carries both the actor (`req.user`) and the Local API (`req.payload`). For background callers without an HTTP request (a Payload task handler, an internal worker), construct one with Payload's `createLocalReq({ user }, payload)` helper.
-
-`runAgent` throws if `req.user` is missing unless `overrideAccess: true` is passed — the recommended pattern is to gate the endpoint upstream (`if (!req.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })`) so a misconfigured cron without an API key can't accidentally invoke an unauthenticated agent.
+`req` carries both the actor (`req.user`) and the Local API (`req.payload`). For callers without an HTTP request (a Payload task handler, an internal worker), construct one with Payload's `createLocalReq({ user }, payload)` helper. `runAgent` throws if `req.user` is missing unless you pass `overrideAccess: true` — gate the endpoint upstream so a misconfigured cron can't accidentally invoke an unauthenticated agent.
 
 The preferred way to wire this up is a dedicated **service-account collection with API-key auth**. The cron runner authenticates as a service-account document; Payload resolves `req.user` to that account; the endpoint handler hands `req` straight through to `runAgent` so tool calls inherit the service account's access — no `overrideAccess` needed.
 

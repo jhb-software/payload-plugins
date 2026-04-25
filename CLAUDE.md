@@ -60,7 +60,9 @@ Name each test by the behavior it protects in one sentence (_"rejects a confirma
 
 ## Changelog
 
-For every `fix` or `feat` commit, add a new line to the `CHANGELOG.md` of the affected plugin. If there is no section for the upcoming version yet, add an `## Unreleased` heading at the top and list changes under it. When a version is released, the `## Unreleased` heading is replaced with the version number by the release workflow.
+Every shipped `fix` or `feat` gets **one** line in the affected plugin's `CHANGELOG.md` describing the user-visible change. The unit is "the change", not "the commit": if a PR makes multiple commits to ship the same thing, edit the existing line rather than adding a new one. Internal-only commits (`chore`, `refactor`, `test`, `docs` that don't change behavior) don't earn a changelog entry.
+
+If there is no section for the upcoming version yet, add an `## Unreleased` heading at the top and list changes under it. When a version is released, the `## Unreleased` heading is replaced with the version number by the release workflow.
 
 ## Dev App Demonstrations
 
@@ -76,9 +78,4 @@ Plans for new features must include a "Dev app demonstration" section that lists
 
 ## Removing Implemented Plans
 
-When a PR ships the feature described in a `plans/<NNN>-*.md` file, **delete that plan file in the same PR**. Plans are forward-looking design documents — once the feature exists, the README, CHANGELOG, and code itself are the canonical source of truth. Leaving the plan in place creates two problems:
-
-- **Drift:** the plan and the shipped behavior diverge as the implementation evolves; future readers can't tell which is authoritative.
-- **Redundancy:** the same shape is now described in two places, doubling the maintenance burden on every related change.
-
-Sweep cross-references too: any other plan or doc that mentions the deleted plan must be updated to point at the shipped artifact (the README section, the public API, or whatever now carries the contract). A grep for the deleted plan's number across `plans/`, `README.md`, and `CHANGELOG.md` should return nothing once the PR is ready.
+When a PR ships the feature described in a `plans/<NNN>-*.md` file, **delete that plan in the same PR** and update any cross-references in other plans / docs to point at the shipped artifact (README section, public API, etc.). A grep for the deleted plan's number across `plans/`, `README.md`, and `CHANGELOG.md` should return nothing. Plans are forward-looking design docs; once the feature exists the code, README, and CHANGELOG are authoritative, and leaving the plan around just invites drift.

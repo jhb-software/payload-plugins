@@ -57,15 +57,13 @@ export const rootEndpoints: Endpoint[] = [
         )
       }
 
-      const body = ((await req.json?.()) ?? {}) as { prompt?: string }
+      const body = (await req.json?.()) as { prompt?: string } | undefined
       const prompt =
-        body.prompt ??
+        body?.prompt ??
         'Audit the `posts` collection: list every post with no `featuredImage`, by title and id, one per line. If they all have an image, say so.'
 
-      // Run as the service account: tool calls inherit its access
-      // permissions, no `overrideAccess` needed. `skipBudget: true` keeps
-      // automated runs from charging against any per-user cap. The actor
-      // (`req.user`) and the Local API (`req.payload`) both ride on `req`.
+      // Run as the service account — tool calls inherit its permissions.
+      // `skipBudget: true` keeps automated runs off any per-user cap.
       const result = await runAgent(req, {
         abortSignal: req.signal,
         maxSteps: 30,
