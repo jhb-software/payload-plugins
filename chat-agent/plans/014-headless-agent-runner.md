@@ -28,6 +28,8 @@ Extract a single function — `runAgent` — that owns everything the chat endpo
 
 ### Public surface
 
+`runAgent` is a single named export. It takes a `Payload` instance plus a per-call options bag and returns the raw `streamText` handle. Internally it looks up the plugin options the chat-agent plugin stashed on `payload.config.custom.chatAgent.pluginOptions` at config-build time.
+
 ```ts
 // chat-agent/src/runAgent.ts
 import type { ModelMessage, StreamTextResult, ToolSet, UIMessage } from 'ai'
@@ -36,9 +38,6 @@ import type { Payload, PayloadRequest } from 'payload'
 import type { AgentMode, ChatAgentPluginOptions } from './types.js'
 
 export interface RunAgentOptions {
-  /** Payload Local API instance. */
-  payload: Payload
-
   /**
    * The conversation so far. Accepts the same `UIMessage[]` shape the chat
    * endpoint takes (from the AI SDK `useChat`), a provider-ready
@@ -114,17 +113,31 @@ export interface RunAgentOptions {
 /** Result mirrors `streamText`'s handle so callers choose how to consume it. */
 export type RunAgentResult = StreamTextResult<ToolSet, never>
 
-export function createAgentRunner(
+/**
+ * Public entry point. Looks up the plugin options the chat-agent plugin stashed
+ * on `payload.config.custom.chatAgent.pluginOptions` and runs the agent.
+ * Throws if the plugin is not installed in the given Payload config.
+ */
+export function runAgent(payload: Payload, opts: RunAgentOptions): Promise<RunAgentResult>
+
+/**
+ * Internal — the actual orchestration. Exported for tests; not part of the
+ * public package surface.
+ */
+export function runAgentImpl(
   pluginOptions: ChatAgentPluginOptions,
-): (opts: RunAgentOptions) => Promise<RunAgentResult>
+  payload: Payload,
+  opts: RunAgentOptions,
+): Promise<RunAgentResult>
 ```
 
 Consumption patterns:
 
 ```ts
+import { runAgent } from '@jhb.software/payload-chat-agent'
+
 // 1. HTTP handler — today's chat endpoint becomes a thin wrapper.
-const result = await runAgent({
-  payload: req.payload,
+const result = await runAgent(req.payload, {
   user: req.user,
   messages: body.messages,
   mode: body.mode,
@@ -135,8 +148,7 @@ const result = await runAgent({
 return result.toUIMessageStreamResponse({ headers, messageMetadata })
 
 // 2. Background job — await to completion, read the final text.
-const result = await runAgent({
-  payload,
+const result = await runAgent(payload, {
   user: { id: 'system', email: 'agent@internal' },
   overrideAccess: true,
   mode: 'read',
@@ -149,8 +161,7 @@ const report = await result.text
 await payload.create({ collection: 'content-reports', data: { body: report } })
 
 // 3. One-shot tool-call — narrow the tool set explicitly.
-const result = await runAgent({
-  payload,
+const result = await runAgent(payload, {
   user,
   messages: prompt,
   tools: (base) => ({ find: base.find, findByID: base.findByID }),
@@ -159,14 +170,32 @@ const result = await runAgent({
 
 ### Wiring from the plugin
 
-The plugin factory exposes `runAgent` on `config.custom.chatAgent` so consumers can reach it from their own tasks without importing the module directly:
+`runAgent` is the **only** public entry point. There is no `createAgentRunner` factory, no module augmentation, and no `config.custom`-based access path documented as public API.
+
+The plugin's config transform stashes the raw `ChatAgentPluginOptions` on `config.custom.chatAgent.pluginOptions` at config-build time. The exported `runAgent(payload, opts)` reads them back at call time and forwards to `runAgentImpl`:
 
 ```ts
-// Consumer code — e.g. a Payload task handler.
+// chat-agent/src/runAgent.ts (sketch)
+export async function runAgent(payload: Payload, opts: RunAgentOptions): Promise<RunAgentResult> {
+  const stash = payload.config.custom?.chatAgent?.pluginOptions
+  if (!stash) {
+    throw new Error(
+      '@jhb.software/payload-chat-agent: runAgent is not available. ' +
+        'Did you install `chatAgentPlugin()` in your Payload config?',
+    )
+  }
+  return runAgentImpl(stash, payload, opts)
+}
+```
+
+Consumer side — no factory, no closure wrangling, no cast:
+
+```ts
+// e.g. a Payload task handler.
+import { runAgent } from '@jhb.software/payload-chat-agent'
+
 export const weeklyAudit: TaskHandler = async ({ req }) => {
-  const { runAgent } = req.payload.config.custom.chatAgent
-  const result = await runAgent({
-    payload: req.payload,
+  const result = await runAgent(req.payload, {
     user: null,
     overrideAccess: true,
     mode: 'read',
@@ -176,19 +205,15 @@ export const weeklyAudit: TaskHandler = async ({ req }) => {
 }
 ```
 
-Also re-exported from the top-level entry point for callers that already have the plugin options in hand but not `payload.config.custom`:
-
-```ts
-import { createAgentRunner } from '@jhb.software/payload-chat-agent'
-const runAgent = createAgentRunner(pluginOptions)
-```
+The `pluginOptions` stash also unblocks plan 015's config-transform validation (it can read `pluginOptions.availableModels` to validate scheduled-agent `model` fields without a separate plumbing channel).
 
 ### What moves where
 
 `src/index.ts:186-362` splits into:
 
-1. `src/runAgent.ts` — owns mode resolution, budget check, tool discovery, tool filtering, system-prompt build, model resolution, `streamText` call. Pure — no `Response` / HTTP awareness.
-2. `src/index.ts` handler — parses/validates the body, calls `runAgent`, wraps the result with `toUIMessageStreamResponse` and the budget headers.
+1. `src/runAgent.ts` — exports `runAgent` (the public lookup wrapper) and `runAgentImpl` (mode resolution, budget check, tool discovery, tool filtering, system-prompt build, model resolution, `streamText` call). Pure — no `Response` / HTTP awareness.
+2. `src/index.ts` handler — parses/validates the body, calls `runAgent(req.payload, …)`, wraps the result with `toUIMessageStreamResponse` and the budget headers.
+3. `src/index.ts` config transform — adds `pluginOptions: options` to the existing `config.custom.chatAgent` block alongside `defaultModel`, `modesConfig`, etc.
 
 No consumer-visible change to the HTTP contract. Existing tests in `index.test.ts` keep passing unchanged.
 
@@ -272,7 +297,7 @@ The following questions were open in the draft and are locked here so plans 015 
 
 Add a minimal headless-run example to `chat-agent/dev/`:
 
-- A `dev/src/scripts/run-agent.ts` CLI that boots Payload's local API, calls `createAgentRunner(pluginOptions)`, runs a one-shot prompt against the dev DB (e.g. `"List the three most recently updated posts"`), and prints `result.text` to stdout. Wire it as a `pnpm script` (`pnpm --filter chat-agent-dev run:agent`).
+- A `dev/src/scripts/run-agent.ts` CLI that boots Payload's local API (`getPayload({ config })`), imports `runAgent` from `@jhb.software/payload-chat-agent`, runs a one-shot prompt against the dev DB (e.g. `"List the three most recently updated posts"`), and prints `result.text` to stdout. Wire it as a `pnpm script` (`pnpm --filter chat-agent-dev run:agent`).
 - A seeded `users` doc with a known id the script passes as `user` (or `user: null` + `overrideAccess: true` for the no-auth path). Document both paths in a comment at the top of the script.
 - A short README note in `dev/README.md` (or a new "Headless agent" section in the plugin README) showing the command and expected output.
 

@@ -180,8 +180,7 @@ No client-supplied data lands here, so no `beforeValidate` hook to scrub user in
 
     const messages: unknown[] = []
 
-    const result = await runAgent({
-      payload: req.payload,
+    const result = await runAgent(req.payload, {
       user: null,
       overrideAccess: true,
       skipBudget: true,
@@ -280,7 +279,7 @@ If a consumer needs a specific tool subset for a scheduled agent only (e.g. read
 
 - **Plugin config validation.** Duplicate slugs throw at construction; `mode: 'ask'` throws; unknown model throws; invalid cron throws with the offending entry's slug in the message.
 - **Config transform.** Plugin output's `jobs.tasks` contains one task per scheduled agent with the expected `slug`, `schedule`, and `queue`. Existing user-declared tasks in `config.jobs.tasks` are preserved (assert reference identity for an unrelated user task).
-- **Handler success path.** Stub `runAgent` to emit two text deltas and a tool call. Assert the `agent-runs` doc transitions `running` → `succeeded`, `messages` contains both deltas + the tool call, `usage` matches what the stub reported via `onUsage`, and `jobId` matches the synthetic job's id.
+- **Handler success path.** Stub `runAgent` to emit two text deltas and a tool call, with a known `totalUsage` Promise. Assert the `agent-runs` doc transitions `running` → `succeeded`, `messages` contains both deltas + the tool call, `usage` matches what `result.totalUsage` resolved to, and `jobId` matches the synthetic job's id.
 - **Handler failure path.** Stub `runAgent` to throw. Assert the doc is `failed` with `error` populated, `finishedAt` set, and the handler re-throws so payload-jobs records the failure (probe via the returned promise).
 - **Timeout path.** `runAgent` takes longer than `timeoutMs`. Assert the controller aborts, the doc is `aborted` (not `failed`), and the abort propagates through `runAgent`'s `abortSignal`.
 - **Auth invariant.** Even with `mode: 'read-write'`, the handler passes `overrideAccess: true` to `runAgent`. Spy on the call and assert.
