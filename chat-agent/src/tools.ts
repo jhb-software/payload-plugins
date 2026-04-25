@@ -249,7 +249,7 @@ function matchRoute(pattern: string, path: string): null | Record<string, string
 
 export function buildTools(
   payload: PayloadLocalAPI,
-  user: { id: number | string } | null | TypedUser,
+  user: null | TypedUser,
   overrideAccess = false,
   /** The original request, used for calling custom endpoint handlers. */
   req?: PayloadRequest,

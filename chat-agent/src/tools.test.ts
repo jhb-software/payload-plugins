@@ -1,4 +1,4 @@
-import type { PayloadRequest, SanitizedConfig } from 'payload'
+import type { PayloadRequest, SanitizedConfig, TypedUser } from 'payload'
 
 import { describe, expect, it, vi } from 'vitest'
 
@@ -23,7 +23,10 @@ const asConfig = (v: unknown) => v as SanitizedConfig
 const asReq = (v: unknown) => v as PayloadRequest
 
 describe('buildTools', () => {
-  const mockUser = { id: 'user-1', email: 'admin@test.com' }
+  // Cast to `TypedUser` — the parameter is typed against Payload's generated
+  // user shape, but inside this plugin's own tests there's no augmented
+  // `PayloadTypes` so any `id`-bearing object stands in.
+  const mockUser = { id: 'user-1', email: 'admin@test.com' } as unknown as TypedUser
 
   function createMockPayload() {
     return {
@@ -490,7 +493,7 @@ describe('callEndpoint tool', () => {
     update: vi.fn(),
     updateGlobal: vi.fn(),
   }
-  const mockUser = { id: 'u1' }
+  const mockUser = { id: 'u1' } as unknown as TypedUser
   const ctx = {
     abortSignal: undefined,
     messages: [],
@@ -657,7 +660,7 @@ describe('filterToolsByMode', () => {
     update: vi.fn(),
     updateGlobal: vi.fn(),
   }
-  const mockUser = { id: 'u1' }
+  const mockUser = { id: 'u1' } as unknown as TypedUser
 
   function getAllTools() {
     return buildTools(mockPayload, mockUser)
@@ -811,7 +814,7 @@ describe('schema inspection tools', () => {
     update: vi.fn(),
     updateGlobal: vi.fn(),
   }
-  const mockUser = { id: 'u1' }
+  const mockUser = { id: 'u1' } as unknown as TypedUser
   const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
 
   it('are not registered when config is not passed', () => {
@@ -1083,7 +1086,7 @@ describe('block schema tools', () => {
     update: vi.fn(),
     updateGlobal: vi.fn(),
   }
-  const mockUser = { id: 'u1' }
+  const mockUser = { id: 'u1' } as unknown as TypedUser
   const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
 
   it('are not registered when config is not passed', () => {
@@ -1293,7 +1296,7 @@ describe('listEndpoints', () => {
     update: vi.fn(),
     updateGlobal: vi.fn(),
   }
-  const mockUser = { id: 'u1' }
+  const mockUser = { id: 'u1' } as unknown as TypedUser
   const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
 
   it('is not registered when no custom endpoints exist', () => {
