@@ -73,3 +73,12 @@ Concretely:
 - A new plugin option → set it in the dev app's plugin invocation with a realistic example value.
 
 Plans for new features must include a "Dev app demonstration" section that lists what gets added under `dev/` so reviewers can verify the feature end-to-end without scaffolding the example themselves. PRs that add a feature without a corresponding dev-app touchpoint should be sent back for revision.
+
+## Removing Implemented Plans
+
+When a PR ships the feature described in a `plans/<NNN>-*.md` file, **delete that plan file in the same PR**. Plans are forward-looking design documents — once the feature exists, the README, CHANGELOG, and code itself are the canonical source of truth. Leaving the plan in place creates two problems:
+
+- **Drift:** the plan and the shipped behavior diverge as the implementation evolves; future readers can't tell which is authoritative.
+- **Redundancy:** the same shape is now described in two places, doubling the maintenance burden on every related change.
+
+Sweep cross-references too: any other plan or doc that mentions the deleted plan must be updated to point at the shipped artifact (the README section, the public API, or whatever now carries the contract). A grep for the deleted plan's number across `plans/`, `README.md`, and `CHANGELOG.md` should return nothing once the PR is ready.

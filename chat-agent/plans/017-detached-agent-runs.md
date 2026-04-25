@@ -1,11 +1,11 @@
 ---
 title: Detached agent runs (leave-and-come-back)
-description: Let users submit a prompt and walk away — the agent keeps running server-side, persists progress as it goes, and the browser picks the conversation back up on reopen. Builds on `runAgent` (plan 014).
+description: Let users submit a prompt and walk away — the agent keeps running server-side, persists progress as it goes, and the browser picks the conversation back up on reopen. Builds on the shipped `runAgent(req, opts)` primitive.
 type: feature
 readiness: idea
 ---
 
-> **Not scheduled.** This is a future direction, kept here so the shape is documented before anyone reaches for it. Plans [014](./014-headless-agent-runner.md) (`runAgent`) and [015](./015-periodic-background-agents.md) (`agent-runs` collection + `chat-agent:run:<slug>` task slug) ship first; this plan only becomes tractable once those exist and remove the "HTTP handler is the only entry point" constraint, and once a place to stream chunks into is established.
+> **Not scheduled.** This is a future direction, kept here so the shape is documented before anyone reaches for it. Plan [015](./015-periodic-background-agents.md) (`agent-runs` collection + `chat-agent:run:<slug>` task slug) needs to ship first; this plan piggybacks on its persistence + worker plumbing and would otherwise have to invent equivalents.
 
 ## Problem
 
@@ -18,7 +18,7 @@ For long-running turns — a site-wide audit, a multi-step refactor plan, a tran
 - There's no "submit and check back later" option.
 - Multi-device (start on desktop, finish reading on phone) is impossible.
 
-Background jobs via `runAgent` (plan 014) solve _scheduled_ and _non-interactive_ use cases but don't help an interactive user who wants to detach mid-run.
+Background jobs via `runAgent(req, opts)` solve _scheduled_ and _non-interactive_ use cases but don't help an interactive user who wants to detach mid-run.
 
 ## Proposal
 
@@ -39,7 +39,7 @@ Browser                         Chat endpoint                       Job worker  
    │ 202 Accepted ◀──────────────────┤                                   │                         │
    │   { runId }                      │                                   │                         │
    │                                  │                                   │                         │
-   │                                  │                                   │ runAgent(payload, …) ──▶│
+   │                                  │                                   │ runAgent(req, …) ──────▶│
    │ GET /chat-agent/chat/runs/:id   ─┼──────────▶ subscribe ─────────────▶│  (streaming)            │
    │   (SSE)                          │                                   │                         │
    │ ◀── text delta                   │                                   │  appends each           │
@@ -116,7 +116,7 @@ Explicitly **out of scope** for this plan:
 
 ## Prerequisites
 
-- **Plan 014 (`runAgent`).** Hard-blocked. Until the chat handler's orchestration is extracted, there's no clean way for a job task handler to invoke an agent turn with the same tools/prompt/model config.
+- **`runAgent(req, opts)` primitive.** Shipped in the plugin's main entry — gives the job task handler a clean way to invoke an agent turn with the same tools/prompt/model config the chat endpoint uses.
 - **Plan 015 (periodic background agents).** Soft-blocked. Plan 015 introduces the `agent-runs` collection, the `chat-agent:run:<slug>` task family, and the streaming-persist pattern this plan piggybacks on; without it this plan would have to invent equivalent persistence and worker plumbing from scratch.
 
 ## Dev app demonstration
@@ -139,6 +139,6 @@ Sketched only — actual tests get written alongside implementation.
 
 ## Related work
 
-- Plan [014](./014-headless-agent-runner.md) — `runAgent` primitive this depends on.
+- The `runAgent(req, opts)` primitive this plan depends on ships in the chat-agent plugin's main entry.
 - Plan [015](./015-periodic-background-agents.md) — supplies the `agent-runs` collection and `chat-agent:run:<slug>` task family this plan reuses; cron-triggered sibling of the user-initiated detached flow.
 - AI SDK resumable streams (`experimental_resume`, `UIMessageStream` resume primitives) — worth revisiting once this plan is picked up; may obviate part of the tail-endpoint design.

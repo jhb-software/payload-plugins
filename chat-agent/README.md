@@ -239,9 +239,13 @@ Additional tools registered via the `tools` option — including provider-native
 
 ## Running the agent from a job
 
-The same orchestration that powers `POST /chat-agent/chat` is exported as a `runAgent(payload, opts)` function so you can invoke the agent off-HTTP — from a Payload task, a cron-triggered endpoint, a webhook, or a CLI script. No client connection, no SSE; you `await` the result and consume `result.text` / `result.totalUsage` / `result.fullStream`. Throws a clear error if `chatAgentPlugin()` is not installed in the given Payload config.
+The same orchestration that powers `POST /chat-agent/chat` is exported as a `runAgent(req, opts)` function so you can invoke the agent off-HTTP — from a Payload task, a cron-triggered endpoint, a webhook. No client connection, no SSE; you `await` the result and consume `result.text` / `result.totalUsage` / `result.fullStream`. Throws a clear error if `chatAgentPlugin()` is not installed in the given Payload config.
 
-The preferred way to wire this up is a dedicated **service-account collection with API-key auth**. The cron runner authenticates as a service-account document; Payload resolves `req.user` to that account; the endpoint handler hands `req.user` straight through to `runAgent` so tool calls inherit the service account's access — no `overrideAccess` needed.
+`req` is the only required positional — it carries both the actor (`req.user`) and the Local API (`req.payload`). For background callers without an HTTP request (a Payload task handler, an internal worker), construct one with Payload's `createLocalReq({ user }, payload)` helper.
+
+`runAgent` throws if `req.user` is missing unless `overrideAccess: true` is passed — the recommended pattern is to gate the endpoint upstream (`if (!req.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })`) so a misconfigured cron without an API key can't accidentally invoke an unauthenticated agent.
+
+The preferred way to wire this up is a dedicated **service-account collection with API-key auth**. The cron runner authenticates as a service-account document; Payload resolves `req.user` to that account; the endpoint handler hands `req` straight through to `runAgent` so tool calls inherit the service account's access — no `overrideAccess` needed.
 
 ```ts
 // payload.config.ts — add a service-account collection alongside your users.
@@ -264,8 +268,7 @@ export const auditEndpoint = {
     if (!req.user || req.user.collection !== 'service-accounts') {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const result = await runAgent(req.payload, {
-      user: req.user, // tools inherit the service account's permissions
+    const result = await runAgent(req, {
       mode: 'read',
       messages:
         'Audit the posts collection: list every post with no featuredImage, by title and id.',
@@ -285,19 +288,17 @@ curl -X POST https://your-app.com/api/audit-content \
 
 Key `runAgent` options:
 
-| Option           | Default                 | Notes                                                                                         |
-| ---------------- | ----------------------- | --------------------------------------------------------------------------------------------- |
-| `messages`       | (required)              | A single `string`, a `UIMessage[]`, or a `ModelMessage[]` — discriminated structurally        |
-| `user`           | (required)              | The user the agent acts as. `null` requires `overrideAccess: true`                            |
-| `overrideAccess` | `false`                 | Bypass Payload access control on tool calls. Required for `mode: 'superuser'` or `user: null` |
-| `mode`           | plugin default          | `read \| ask \| read-write \| superuser`                                                      |
-| `model`          | `defaultModel`          | Model id forwarded to the plugin's `model(id)` factory                                        |
-| `maxSteps`       | plugin's `maxSteps`     | Per-call tool-loop cap                                                                        |
-| `systemPrompt`   | derived                 | Replace (string) or extend (function) the auto-generated prompt                               |
-| `tools`          | plugin-resolved         | Narrow or replace the toolset for this call                                                   |
-| `abortSignal`    | none                    | Recommended for runs that may exceed the host's idle timeout                                  |
-| `skipBudget`     | `false`                 | Skips both `check` and `record`. Most background jobs want `true`                             |
-| `req`            | synthetic minimal `req` | Pass a real `PayloadRequest` if you have one. When omitted, custom-endpoint tools are skipped |
+| Option           | Default             | Notes                                                                                  |
+| ---------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| `messages`       | (required)          | A single `string`, a `UIMessage[]`, or a `ModelMessage[]` — discriminated structurally |
+| `mode`           | plugin default      | `read \| ask \| read-write \| superuser`                                               |
+| `model`          | `defaultModel`      | Model id forwarded to the plugin's `model(id)` factory                                 |
+| `overrideAccess` | `false`             | Bypass Payload access control on tool calls. Required for `mode: 'superuser'`          |
+| `maxSteps`       | plugin's `maxSteps` | Per-call tool-loop cap                                                                 |
+| `systemPrompt`   | derived             | Replace (string) or extend (function) the auto-generated prompt                        |
+| `tools`          | plugin-resolved     | Narrow or replace the toolset for this call                                            |
+| `abortSignal`    | none                | Recommended for runs that may exceed the host's idle timeout                           |
+| `skipBudget`     | `false`             | Skips both `check` and `record`. Most background jobs want `true`                      |
 
 ## Production considerations
 

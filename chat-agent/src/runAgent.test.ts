@@ -43,25 +43,28 @@ function makeModelFactory() {
   return { calls, factory }
 }
 
+const baseUser = { id: 7 }
+
 /**
  * Build a fake `Payload` instance carrying the plugin's `config.custom.chatAgent`
- * stash, so `runAgent(payload, ...)` can pick the options up the same way it
- * would in production.
- *
- * The `payload` value is intentionally narrow — `runAgent` only reads `config`
- * and forwards the instance to tool builders, which we mock by supplying our
- * own `find/create/...` no-op implementations.
+ * stash, then a `PayloadRequest` shim that points at it. `runAgent(req, opts)`
+ * reads `req.payload.config.custom.chatAgent.pluginOptions` and `req.user`,
+ * forwards `req.payload` into the tool builders, and hands `req` straight
+ * through to the consumer's `options.tools({ req })` factory — the shim
+ * provides exactly those fields.
  */
-function makePayloadWithPlugin(options: ChatAgentPluginOptions): Payload {
+function makeReqWithPlugin(
+  options: ChatAgentPluginOptions,
+  user: { id: number | string } = baseUser,
+): PayloadRequest {
   const transformed = chatAgentPlugin(options)({ collections: [], endpoints: [], globals: [] })
-  return {
+  const payload = {
     config: {
       collections: [],
       custom: transformed.custom,
       endpoints: [],
       globals: [],
     },
-    // Local API stubs so tools that close over them don't crash if executed.
     count: vi.fn(),
     create: vi.fn(),
     delete: vi.fn(),
@@ -71,27 +74,28 @@ function makePayloadWithPlugin(options: ChatAgentPluginOptions): Payload {
     update: vi.fn(),
     updateGlobal: vi.fn(),
   } as unknown as Payload
+  return {
+    headers: new Headers(),
+    payload,
+    payloadAPI: 'local',
+    user,
+  } as unknown as PayloadRequest
 }
 
-function makeBarePayload(): Payload {
+function makeBareReq(user: { id: number | string } = baseUser): PayloadRequest {
   return {
-    config: { collections: [], custom: {}, endpoints: [], globals: [] },
-    count: vi.fn(),
-    create: vi.fn(),
-    delete: vi.fn(),
-    find: vi.fn(),
-    findByID: vi.fn(),
-    findGlobal: vi.fn(),
-    update: vi.fn(),
-    updateGlobal: vi.fn(),
-  } as unknown as Payload
+    headers: new Headers(),
+    payload: {
+      config: { collections: [], custom: {}, endpoints: [], globals: [] },
+    },
+    payloadAPI: 'local',
+    user,
+  } as unknown as PayloadRequest
 }
 
 function lastStreamTextCall() {
   return vi.mocked(streamText).mock.calls[vi.mocked(streamText).mock.calls.length - 1][0]
 }
-
-const baseUser = { id: 7 }
 
 // ---------------------------------------------------------------------------
 // Plugin lookup
@@ -99,9 +103,7 @@ const baseUser = { id: 7 }
 
 describe('runAgent plugin lookup', () => {
   it('throws a clear error when the plugin is not installed in the given Payload config', async () => {
-    await expect(runAgent(makeBarePayload(), { messages: 'hi', user: baseUser })).rejects.toThrow(
-      /chatAgentPlugin\(\)/,
-    )
+    await expect(runAgent(makeBareReq(), { messages: 'hi' })).rejects.toThrow(/chatAgentPlugin\(\)/)
   })
 })
 
@@ -110,37 +112,54 @@ describe('runAgent plugin lookup', () => {
 // ---------------------------------------------------------------------------
 
 describe('runAgent auth and mode guards', () => {
-  it('rejects when user is null and overrideAccess is false', async () => {
-    const payload = makePayloadWithPlugin({
-      defaultModel: 'gpt-4o-mini',
-      model: makeModelFactory().factory,
-    })
-
-    await expect(runAgent(payload, { messages: 'hi', user: null })).rejects.toThrow(
-      /overrideAccess/,
-    )
-  })
-
   it('rejects when mode is "superuser" without overrideAccess', async () => {
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
       modes: { access: { superuser: () => true } },
     })
 
-    await expect(
-      runAgent(payload, { messages: 'hi', mode: 'superuser', user: baseUser }),
-    ).rejects.toThrow(/superuser/)
+    await expect(runAgent(req, { messages: 'hi', mode: 'superuser' })).rejects.toThrow(/superuser/)
   })
 
-  it('allows user: null when overrideAccess is true', async () => {
+  it('runs in superuser mode when overrideAccess is true', async () => {
     vi.mocked(streamText).mockClear()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      modes: { access: { superuser: () => true } },
+    })
+
+    await runAgent(req, { messages: 'hi', mode: 'superuser', overrideAccess: true })
+    expect(vi.mocked(streamText)).toHaveBeenCalledTimes(1)
+  })
+
+  // Caller didn't gate `req.user` upstream and didn't opt in to running
+  // without an actor. Every tool call would otherwise hit Payload access
+  // checks with no subject and silently fail — surface the misconfiguration
+  // here instead, with a message that points at the two valid fixes.
+  it('rejects when req.user is missing and overrideAccess is not set', async () => {
+    const req = makeReqWithPlugin(
+      {
+        defaultModel: 'gpt-4o-mini',
+        model: makeModelFactory().factory,
+      },
+      undefined as unknown as { id: number | string },
+    )
+    ;(req as unknown as { user: unknown }).user = null
+
+    await expect(runAgent(req, { messages: 'hi' })).rejects.toThrow(/req\.user is missing/)
+  })
+
+  it('allows req.user to be missing when overrideAccess is true (explicit opt-in)', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
+    ;(req as unknown as { user: unknown }).user = null
 
-    await runAgent(payload, { messages: 'hi', overrideAccess: true, user: null })
+    await runAgent(req, { messages: 'hi', overrideAccess: true })
     expect(vi.mocked(streamText)).toHaveBeenCalledTimes(1)
   })
 })
@@ -152,12 +171,12 @@ describe('runAgent auth and mode guards', () => {
 describe('runAgent messages normalisation', () => {
   it('wraps a single string prompt as one user ModelMessage', async () => {
     vi.mocked(streamText).mockClear()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
 
-    await runAgent(payload, { messages: 'audit the pages', user: baseUser })
+    await runAgent(req, { messages: 'audit the pages' })
 
     const sent = lastStreamTextCall().messages as Array<{ content: unknown; role: string }>
     expect(sent).toHaveLength(1)
@@ -167,7 +186,7 @@ describe('runAgent messages normalisation', () => {
 
   it('passes ModelMessage[] through verbatim', async () => {
     vi.mocked(streamText).mockClear()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
@@ -176,7 +195,7 @@ describe('runAgent messages normalisation', () => {
       { content: 'one', role: 'user' as const },
       { content: 'two', role: 'assistant' as const },
     ]
-    await runAgent(payload, { messages: modelMessages, user: baseUser })
+    await runAgent(req, { messages: modelMessages })
 
     const sent = lastStreamTextCall().messages as typeof modelMessages
     expect(sent).toEqual(modelMessages)
@@ -184,7 +203,7 @@ describe('runAgent messages normalisation', () => {
 
   it('converts UIMessage[] via convertToModelMessages with ignoreIncompleteToolCalls', async () => {
     vi.mocked(streamText).mockClear()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
@@ -192,11 +211,9 @@ describe('runAgent messages normalisation', () => {
     const ui: UIMessage[] = [
       { id: 'u1', parts: [{ type: 'text', text: 'hello world' }], role: 'user' },
     ]
-    await runAgent(payload, { messages: ui, user: baseUser })
+    await runAgent(req, { messages: ui })
 
     const sent = lastStreamTextCall().messages as Array<{ content: unknown; role: string }>
-    // convertToModelMessages collapses parts back into a content array — it
-    // shouldn't be the raw UIMessage parts shape.
     expect(sent).toHaveLength(1)
     expect(sent[0].role).toBe('user')
     // The exact content shape is the AI SDK's responsibility; assert it
@@ -224,20 +241,19 @@ describe('runAgent tool composition', () => {
     vi.mocked(streamText).mockClear()
     const pluginAdded = fakeTool()
     let receivedBase: Record<string, Tool> | undefined
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
       modes: { default: 'read-write' },
       tools: ({ defaultTools }) => ({ ...defaultTools, pluginExtra: pluginAdded }),
     })
 
-    await runAgent(payload, {
+    await runAgent(req, {
       messages: 'hi',
       tools: (base) => {
         receivedBase = base
         return { find: base.find }
       },
-      user: baseUser,
     })
 
     expect(receivedBase).toBeDefined()
@@ -250,60 +266,47 @@ describe('runAgent tool composition', () => {
   it('replaces the base toolset entirely when `tools` is a static ToolSet', async () => {
     vi.mocked(streamText).mockClear()
     const onlyTool = fakeTool()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
       modes: { default: 'read-write' },
     })
 
-    await runAgent(payload, {
+    await runAgent(req, {
       messages: 'hi',
       tools: { onlyTool },
-      user: baseUser,
     })
 
     const finalTools = lastStreamTextCall().tools!
     expect(Object.keys(finalTools)).toEqual(['onlyTool'])
     expect(finalTools.onlyTool.execute).toBe(onlyTool.execute)
   })
-})
 
-// ---------------------------------------------------------------------------
-// Synthetic req shim
-// ---------------------------------------------------------------------------
-
-describe('runAgent synthetic req shim', () => {
-  it('passes a minimal synthetic req (`{ payload, user, payloadAPI: "local", headers }`) to options.tools when no req is provided', async () => {
+  it('hands the caller-supplied req straight through to the plugin tools factory', async () => {
     vi.mocked(streamText).mockClear()
     let receivedReq: PayloadRequest | undefined
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
-      tools: ({ defaultTools, req }) => {
-        receivedReq = req
+      tools: ({ defaultTools, req: r }) => {
+        receivedReq = r
         return defaultTools
       },
     })
 
-    await runAgent(payload, { messages: 'hi', user: baseUser })
+    await runAgent(req, { messages: 'hi' })
 
-    expect(receivedReq).toBeDefined()
-    expect(receivedReq!.payload).toBe(payload)
-    expect(receivedReq!.user).toBe(baseUser)
-    expect((receivedReq as unknown as { payloadAPI: string }).payloadAPI).toBe('local')
-    expect(receivedReq!.headers).toBeInstanceOf(Headers)
+    expect(receivedReq).toBe(req)
   })
 
-  it('omits custom-endpoint tools (callEndpoint) from the final toolset when req is absent', async () => {
+  it('registers callEndpoint when the config has a discoverable custom endpoint', async () => {
     vi.mocked(streamText).mockClear()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
       modes: { default: 'read-write' },
     })
-    // Inject a discoverable custom endpoint so `discoverEndpoints` would
-    // return one, then run without `req` — `callEndpoint` must not appear.
-    ;(payload.config as { endpoints: unknown[] }).endpoints = [
+    ;(req.payload.config as { endpoints: unknown[] }).endpoints = [
       {
         custom: { description: 'demo' },
         handler: () => new Response('ok'),
@@ -312,11 +315,10 @@ describe('runAgent synthetic req shim', () => {
       },
     ]
 
-    await runAgent(payload, { messages: 'hi', user: baseUser })
+    await runAgent(req, { messages: 'hi' })
 
     const finalTools = lastStreamTextCall().tools!
-    expect(finalTools.callEndpoint).toBeUndefined()
-    // listEndpoints is OK to keep — it doesn't need req.
+    expect(finalTools.callEndpoint).toBeDefined()
     expect(finalTools.listEndpoints).toBeDefined()
   })
 })
@@ -330,29 +332,29 @@ describe('runAgent skipBudget', () => {
     vi.mocked(streamText).mockClear()
     const check = vi.fn(() => 1000)
     const record = vi.fn()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       budget: { check, record },
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
 
-    await runAgent(payload, { messages: 'hi', skipBudget: true, user: baseUser })
+    await runAgent(req, { messages: 'hi', skipBudget: true })
 
     expect(check).not.toHaveBeenCalled()
-    // Onfinish hook should not have been wired either.
+    // onFinish hook should not have been wired either.
     expect(lastStreamTextCall().onFinish).toBeUndefined()
   })
 
   it('runs budget.check when skipBudget is false (or omitted)', async () => {
     vi.mocked(streamText).mockClear()
     const check = vi.fn(() => 1000)
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       budget: { check },
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
 
-    await runAgent(payload, { messages: 'hi', user: baseUser })
+    await runAgent(req, { messages: 'hi' })
 
     expect(check).toHaveBeenCalledTimes(1)
   })
@@ -365,15 +367,14 @@ describe('runAgent skipBudget', () => {
 describe('runAgent systemPrompt option', () => {
   it('replaces the derived prompt when systemPrompt is a string', async () => {
     vi.mocked(streamText).mockClear()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
 
-    await runAgent(payload, {
+    await runAgent(req, {
       messages: 'hi',
       systemPrompt: 'you are a custom audit agent',
-      user: baseUser,
     })
 
     expect(lastStreamTextCall().system).toBe('you are a custom audit agent')
@@ -381,15 +382,14 @@ describe('runAgent systemPrompt option', () => {
 
   it('lets a function transform the derived base prompt', async () => {
     vi.mocked(streamText).mockClear()
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
 
-    await runAgent(payload, {
+    await runAgent(req, {
       messages: 'hi',
       systemPrompt: (base) => `${base}\n\nExtra instruction.`,
-      user: baseUser,
     })
 
     const sent = lastStreamTextCall().system as string
@@ -404,14 +404,14 @@ describe('runAgent systemPrompt option', () => {
 
 describe('runAgent return shape', () => {
   it('returns the raw streamText handle so callers can read text/totalUsage/fullStream', async () => {
-    const payload = makePayloadWithPlugin({
+    const req = makeReqWithPlugin({
       defaultModel: 'gpt-4o-mini',
       model: makeModelFactory().factory,
     })
 
-    const result = await runAgent(payload, { messages: 'hi', user: baseUser })
-    // Mirrors the AI SDK's `streamText` handle — these are the fields plan
-    // 015's task handler relies on.
+    const result = await runAgent(req, { messages: 'hi' })
+    // Mirrors the AI SDK's `streamText` handle — these are the fields a job
+    // task handler relies on.
     expect(await result.text).toBe('OK')
     expect(await result.totalUsage).toEqual({ inputTokens: 1, outputTokens: 2, totalTokens: 3 })
   })

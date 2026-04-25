@@ -64,15 +64,14 @@ export const rootEndpoints: Endpoint[] = [
 
       // Run as the service account: tool calls inherit its access
       // permissions, no `overrideAccess` needed. `skipBudget: true` keeps
-      // automated runs from charging against any per-user cap.
-      const result = await runAgent(req.payload, {
+      // automated runs from charging against any per-user cap. The actor
+      // (`req.user`) and the Local API (`req.payload`) both ride on `req`.
+      const result = await runAgent(req, {
         abortSignal: req.signal,
         maxSteps: 30,
         messages: prompt,
         mode: 'read',
-        req,
         skipBudget: true,
-        user: req.user,
       })
 
       const text = await result.text

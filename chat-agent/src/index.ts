@@ -289,7 +289,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             const record = options.budget?.record
             let result
             try {
-              result = await runAgentImpl(options, req.payload, {
+              result = await runAgentImpl(options, req, {
                 abortSignal: req.signal,
                 messages: body.messages as Parameters<typeof runAgentImpl>[2]['messages'],
                 mode,
@@ -308,11 +308,9 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                     }
                   : undefined,
                 overrideAccess,
-                req,
                 // Pre-check ran above and `onFinish` wires the recorder, so
                 // tell runAgentImpl not to wire its own budget hooks.
                 skipBudget: true,
-                user: req.user,
               })
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err)

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- feat: extract the chat endpoint's orchestration into a reusable `runAgent(payload, opts)` function so background jobs (cron, Payload tasks, webhooks, CLI scripts) can invoke the agent off-HTTP — without a logged-in user, without holding a client connection, with the same tool/prompt/model machinery the chat endpoint uses
+- feat: extract the chat endpoint's orchestration into a reusable `runAgent(req, opts)` function so background jobs (cron-triggered endpoints, Payload tasks, webhooks) can invoke the agent off-HTTP with the same tool / prompt / model machinery the chat endpoint uses. `req` carries the actor (`req.user`) and the Local API (`req.payload`); background callers without an HTTP request construct one with Payload's `createLocalReq({ user }, payload)` helper. Throws if `req.user` is missing unless the caller passes `overrideAccess: true` so a misconfigured cron without an API key can't accidentally invoke an unauthenticated agent.
 - chore: tighten the `user` parameter on the internal `buildTools` from `unknown` to `TypedUser | { id }` so consumers' generated `User` types and ad-hoc service-account shapes both fit without a cast
 - feat: pass the resolved `modelId` to the `tools` plugin option so a multi-provider setup can conditionally include provider-native tools (e.g. drop `anthropic.tools.webSearch_*` when the user selects an OpenAI model) instead of sending a tool shape the selected provider would reject at runtime.
 - fix: clear the chat error banner when starting a new chat or switching conversations via the sidebar, so an error surfaced on the previous chat no longer carries over to an unrelated one
