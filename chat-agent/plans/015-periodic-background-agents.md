@@ -113,10 +113,10 @@ Admin-visible under the existing "Chat" group, read-only for non-admins. One doc
   slug: 'agent-runs',
   admin: { group: 'Chat', useAsTitle: 'label', defaultColumns: ['label', 'status', 'startedAt', 'finishedAt'] },
   access: {
-    read: ({ req }) => req.user?.role === 'admin', // tighten per consumer's auth model
-    create: () => false,
+    read:   ({ req }) => isPluginAccessAllowed(req),  // same gate as the chat endpoint; consumer's `options.access` flows through
+    create: () => false,                              // only the task handler writes (with overrideAccess: true)
     update: () => false,
-    delete: ({ req }) => req.user?.role === 'admin',
+    delete: ({ req }) => isPluginAccessAllowed(req),  // editors who can see runs can also clean them up
   },
   fields: [
     { name: 'slug',       type: 'text',     index: true, required: true },
@@ -140,6 +140,12 @@ Admin-visible under the existing "Chat" group, read-only for non-admins. One doc
 ```
 
 No client-supplied data lands here, so no `beforeValidate` hook to scrub user input. All writes happen via the task handler running with `overrideAccess: true`.
+
+**Access policy.** The collection reuses `isPluginAccessAllowed` from `src/access.ts:16` — the same gate the chat endpoint, the conversations collection, and the modes endpoint already use. One access concept across the plugin: anyone authorized to use the chat agent can also read the audit trail of what the agent did headlessly. Consumers configure access in **one** place (the existing `chatAgentPlugin({ access })` option); both interactive and scheduled surfaces inherit it.
+
+If a consumer needs different visibility for chat vs. audits — e.g. editors can chat but only admins should see scheduled-run history — the escape hatch is post-merge mutation of the collection's `access.read`. We do **not** add a separate `agentRunsAccess` plugin option for the MVP; revisit when a real consumer asks for it.
+
+When plan 017 lands and `agent-runs` docs gain a `triggeredBy.userId` (for user-initiated detached runs), the `read` callback gets refined to admit the run's submitter even if they wouldn't pass `isPluginAccessAllowed` — that's a plan-017 schema-additive change, not a plan-015 concern.
 
 ### 4. Task handler
 
@@ -293,6 +299,8 @@ If a consumer needs a specific tool subset for a scheduled agent only (e.g. read
 - **Handler failure path.** Stub `runAgent` to throw. Assert the doc is `failed` with `error` populated, `finishedAt` set, and the handler re-throws so payload-jobs records the failure (probe via the returned promise).
 - **Timeout path.** `runAgent` takes longer than `timeoutMs`. Assert the controller aborts, the doc is `aborted` (not `failed`), and the abort propagates through `runAgent`'s `abortSignal`.
 - **Auth invariant.** Even with `mode: 'read-write'`, the handler passes `overrideAccess: true` to `runAgent`. Spy on the call and assert.
+- **Access reuse — denied.** Configure `chatAgentPlugin({ access: () => false })`. Assert `payload.find({ collection: 'agent-runs' })` from a request that hits the gate returns no docs (and the REST endpoint returns 401). Confirms `isPluginAccessAllowed` flows through to the new collection.
+- **Access reuse — default.** With no `options.access` configured, an authenticated `req.user` can read; an anonymous request cannot. Confirms the helper's fallback applies.
 - **`onInit` warning.** Scheduled agents declared but no `jobs.autoRun` configured → `payload.logger.warn` is called with an actionable message naming the affected slugs.
 - **Manual queue.** `payload.jobs.queue({ task: 'chat-agent:run:<slug>' })` invokes the same handler with no input and creates an `agent-runs` doc just like a cron tick does.
 - **Prompt function form.** `prompt: ({ now }) => …` is awaited and the resolved string is what gets written to `agent-runs.prompt` (not the function source).
