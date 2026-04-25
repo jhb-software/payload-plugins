@@ -174,13 +174,12 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
                   onMouseEnter={(_) => setShowSyncButtonTooltip(true)}
                   onMouseLeave={(_) => setShowSyncButtonTooltip(false)}
                   style={{
+                    alignItems: 'center',
                     background: 'none',
                     border: 'none',
-                    color: 'var(--theme-elevation-500)',
                     cursor: 'pointer',
+                    display: 'flex',
                     padding: 0,
-                    transform: 'scale(0.5)',
-                    transition: 'color 0.2s',
                   }}
                   type="button"
                 >
@@ -252,11 +251,11 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
 const InfoIcon = () => (
   <svg
     data-testid="geist-icon"
-    height="16"
+    height="20"
     strokeLinejoin="round"
-    style={{ color: 'currentcolor' }}
-    viewBox="0 0 16 16"
-    width="16"
+    style={{ color: 'var(--theme-elevation-800)', flexShrink: 0 }}
+    viewBox="-4 -4 24 24"
+    width="20"
   >
     <path
       clipRule="evenodd"
