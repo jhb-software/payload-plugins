@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
-import { filterDocsByMimeType } from '../src/utilities/mimeTypes.ts'
 import { MAX_INVALID_DOC_IDS, summarizeCollection } from '../src/utilities/summarizeCollection.ts'
 
 describe('summarizeCollection (non-localized)', () => {
@@ -132,48 +131,5 @@ describe('summarizeCollection (localized)', () => {
 
     assert.equal(result.missingDocs, 3)
     assert.equal(result.partialDocs, 0)
-  })
-})
-
-describe('health scan excludes docs with unsupported mime types', () => {
-  test('videos in a mixed collection are not counted as missing alt text', () => {
-    const fetched = [
-      { alt: 'A photo', id: '1', mimeType: 'image/png' },
-      { alt: '', id: '2', mimeType: 'image/png' },
-      { alt: '', id: '3', mimeType: 'video/mp4' },
-      { alt: '', id: '4', mimeType: 'video/quicktime' },
-    ]
-
-    const tracked = filterDocsByMimeType(fetched, ['image/*'])
-    const result = summarizeCollection({
-      collection: 'media',
-      docs: tracked,
-      isLocalized: false,
-      localeCodes: [],
-    })
-
-    assert.equal(result.totalDocs, 2)
-    assert.equal(result.completeDocs, 1)
-    assert.equal(result.missingDocs, 1)
-    assert.deepEqual(result.invalidDocIds, ['2'])
-  })
-
-  test('SVGs are included when the tracked list has a wildcard image pattern', () => {
-    const fetched = [
-      { alt: 'An icon', id: '1', mimeType: 'image/svg+xml' },
-      { alt: '', id: '2', mimeType: 'image/svg+xml' },
-      { alt: '', id: '3', mimeType: 'application/pdf' },
-    ]
-
-    const tracked = filterDocsByMimeType(fetched, ['image/*'])
-    const result = summarizeCollection({
-      collection: 'media',
-      docs: tracked,
-      isLocalized: false,
-      localeCodes: [],
-    })
-
-    assert.equal(result.totalDocs, 2)
-    assert.equal(result.missingDocs, 1)
   })
 })

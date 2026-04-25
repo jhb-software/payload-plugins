@@ -9,7 +9,7 @@ import type {
 
 import { createCachedAltTextHealthScan } from './altTextHealthCache.js'
 import { localesFromConfig } from './localesFromConfig.js'
-import { filterDocsByMimeType } from './mimeTypes.js'
+import { buildMimeTypeWhere } from './mimeTypes.js'
 import { summarizeCollection } from './summarizeCollection.js'
 
 export const ALT_TEXT_HEALTH_PLUGIN_SLUG = 'alt-text'
@@ -89,8 +89,14 @@ async function fetchAllDocs(
   payload: Payload,
   collection: string,
   isLocalized: boolean,
-): Promise<{ alt: unknown; id: number | string; mimeType: unknown }[]> {
-  const docs: { alt: unknown; id: number | string; mimeType: unknown }[] = []
+  mimeTypes: readonly string[],
+): Promise<{ alt: unknown; id: number | string }[]> {
+  const where = buildMimeTypeWhere(mimeTypes)
+  if (!where) {
+    return []
+  }
+
+  const docs: { alt: unknown; id: number | string }[] = []
   let page = 1
   let hasMore = true
 
@@ -105,15 +111,14 @@ async function fetchAllDocs(
       page,
       select: {
         alt: true,
-        mimeType: true,
       },
+      where,
     })
 
     for (const doc of result.docs) {
       docs.push({
         id: doc.id,
         alt: 'alt' in doc ? doc.alt : undefined,
-        mimeType: 'mimeType' in doc ? doc.mimeType : undefined,
       })
     }
 
@@ -133,12 +138,11 @@ async function computeAltTextHealthScan({
   const collectionSummaries = await Promise.all(
     collections.map(async ({ slug, mimeTypes }): Promise<AltTextHealthScanCollection> => {
       try {
-        const docs = await fetchAllDocs(payload, slug, isLocalized)
-        const tracked = filterDocsByMimeType(docs, mimeTypes)
+        const docs = await fetchAllDocs(payload, slug, isLocalized, mimeTypes)
 
         return summarizeCollection({
           collection: slug,
-          docs: tracked,
+          docs,
           isLocalized,
           localeCodes,
         })

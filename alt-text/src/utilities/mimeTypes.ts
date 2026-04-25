@@ -1,4 +1,4 @@
-import type { CollectionSlug } from 'payload'
+import type { CollectionSlug, Where } from 'payload'
 
 export const DEFAULT_TRACKED_MIME_TYPES: readonly string[] = ['image/*']
 
@@ -39,6 +39,8 @@ export function normalizeCollectionsConfig(
   })
 }
 
+// Payload stores upload mimeType values as the lowercase MIME string (e.g. `image/png`).
+// Pattern comparisons here are case-sensitive; callers should pass lowercase patterns.
 export function matchesMimeType(mimeType: string, patterns: readonly string[]): boolean {
   return patterns.some((pattern) => {
     if (pattern === mimeType) {
@@ -52,17 +54,40 @@ export function matchesMimeType(mimeType: string, patterns: readonly string[]): 
   })
 }
 
-export function filterDocsByMimeType<T extends { mimeType?: unknown }>(
-  docs: T[],
-  patterns: readonly string[],
-): T[] {
-  return docs.filter((doc) => {
-    const mimeType = typeof doc.mimeType === 'string' ? doc.mimeType : undefined
-    if (!mimeType) {
-      return false
+/**
+ * Builds a Payload `where` clause that matches documents whose `mimeType`
+ * is in the given list of patterns. Returns `null` when nothing should match
+ * (empty patterns), so callers can short-circuit the query.
+ *
+ * Wildcards like `image/*` are translated to a `like` (case-insensitive
+ * substring) match on the prefix (`image/`). For valid MIME types this is
+ * equivalent to a prefix match.
+ */
+export function buildMimeTypeWhere(patterns: readonly string[]): null | Where {
+  if (patterns.length === 0) {
+    return null
+  }
+
+  const exacts: string[] = []
+  const wildcardPrefixes: string[] = []
+
+  for (const pattern of patterns) {
+    if (pattern.endsWith('/*')) {
+      wildcardPrefixes.push(pattern.slice(0, -1))
+    } else {
+      exacts.push(pattern)
     }
-    return matchesMimeType(mimeType, patterns)
-  })
+  }
+
+  const clauses: Where[] = []
+  if (exacts.length > 0) {
+    clauses.push({ mimeType: { in: exacts } })
+  }
+  for (const prefix of wildcardPrefixes) {
+    clauses.push({ mimeType: { like: prefix } })
+  }
+
+  return clauses.length === 1 ? clauses[0] : { or: clauses }
 }
 
 type TFunction = (key: string) => string

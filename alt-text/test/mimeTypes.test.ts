@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
 import {
+  buildMimeTypeWhere,
   DEFAULT_TRACKED_MIME_TYPES,
-  filterDocsByMimeType,
   matchesMimeType,
   normalizeCollectionsConfig,
 } from '../src/utilities/mimeTypes.ts'
@@ -69,41 +69,32 @@ describe('normalizeCollectionsConfig', () => {
   })
 })
 
-describe('filterDocsByMimeType', () => {
-  test('keeps only docs whose mime type matches a pattern', () => {
-    const docs = [
-      { id: '1', mimeType: 'image/jpeg' },
-      { id: '2', mimeType: 'video/mp4' },
-      { id: '3', mimeType: 'image/png' },
-      { id: '4', mimeType: 'application/pdf' },
-    ]
-
-    const result = filterDocsByMimeType(docs, ['image/*'])
-
-    assert.deepEqual(
-      result.map((doc) => doc.id),
-      ['1', '3'],
-    )
+describe('buildMimeTypeWhere', () => {
+  test('returns null for an empty pattern list so callers can skip the query', () => {
+    assert.equal(buildMimeTypeWhere([]), null)
   })
 
-  test('drops docs without a mime type', () => {
-    const docs = [
-      { id: '1', mimeType: 'image/jpeg' },
-      { id: '2', mimeType: undefined },
-      { id: '3', mimeType: null as unknown as string },
-    ]
-
-    const result = filterDocsByMimeType(docs, ['image/*'])
-
-    assert.deepEqual(
-      result.map((doc) => doc.id),
-      ['1'],
-    )
+  test('returns an `in` clause for a single exact pattern', () => {
+    assert.deepEqual(buildMimeTypeWhere(['image/png']), {
+      mimeType: { in: ['image/png'] },
+    })
   })
 
-  test('returns an empty list when no patterns are given', () => {
-    const docs = [{ id: '1', mimeType: 'image/jpeg' }]
+  test('groups multiple exact patterns into a single `in` clause', () => {
+    assert.deepEqual(buildMimeTypeWhere(['image/png', 'image/jpeg']), {
+      mimeType: { in: ['image/png', 'image/jpeg'] },
+    })
+  })
 
-    assert.deepEqual(filterDocsByMimeType(docs, []), [])
+  test('translates a single wildcard pattern into a `like` prefix match', () => {
+    assert.deepEqual(buildMimeTypeWhere(['image/*']), {
+      mimeType: { like: 'image/' },
+    })
+  })
+
+  test('combines exacts and wildcards with `or`', () => {
+    assert.deepEqual(buildMimeTypeWhere(['image/*', 'application/pdf']), {
+      or: [{ mimeType: { in: ['application/pdf'] } }, { mimeType: { like: 'image/' } }],
+    })
   })
 })
