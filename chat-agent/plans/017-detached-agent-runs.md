@@ -27,30 +27,32 @@ Decouple the chat turn's compute lifetime from any one HTTP connection. The user
 ### High-level flow
 
 ```
-Browser                         Chat endpoint                 Job worker                LLM provider
-   │                                  │                            │                         │
-   │ POST /chat-agent/chat  ─────────▶│                            │                         │
-   │  { messages, mode, …,            │                            │                         │
-   │    detached: true }              │ jobs.queue({               │                         │
-   │                                  │   task: 'agent-run',       │                         │
-   │                                  │   input: {conversationId,  │                         │
-   │                                  │     messages, mode, …}})   │                         │
-   │ 202 Accepted ◀──────────────────┤                            │                         │
-   │   { runId }                      │                            │                         │
-   │                                  │                            │                         │
-   │                                  │                            │ runAgent(...)  ────────▶│
-   │ GET /chat-agent/chat/runs/:id   ─┼──────────▶ subscribe ──────▶│  (streaming)            │
-   │   (SSE)                          │                            │                         │
-   │ ◀── text delta                   │                            │  persists each          │
-   │ ◀── tool-call                    │                            │  delta to               │
-   │ ◀── tool-result                  │                            │  agent-conversations    │
-   │ ◀── finish                       │                            │                         │
+Browser                         Chat endpoint                       Job worker                LLM provider
+   │                                  │                                   │                         │
+   │ POST /chat-agent/chat  ─────────▶│                                   │                         │
+   │  { messages, mode, …,            │                                   │                         │
+   │    detached: true }              │ jobs.queue({                      │                         │
+   │                                  │   task:                           │                         │
+   │                                  │     'chat-agent:run:detached',    │                         │
+   │                                  │   input: {conversationId,         │                         │
+   │                                  │     messages, mode, userId, …}})  │                         │
+   │ 202 Accepted ◀──────────────────┤                                   │                         │
+   │   { runId }                      │                                   │                         │
+   │                                  │                                   │                         │
+   │                                  │                                   │ runAgent(payload, …) ──▶│
+   │ GET /chat-agent/chat/runs/:id   ─┼──────────▶ subscribe ─────────────▶│  (streaming)            │
+   │   (SSE)                          │                                   │                         │
+   │ ◀── text delta                   │                                   │  appends each           │
+   │ ◀── tool-call                    │                                   │  delta to               │
+   │ ◀── tool-result                  │                                   │  agent-runs.chunks      │
+   │ ◀── finish                       │                                   │  (incremental writes;   │
+   │                                  │                                   │   plan-017 addition)    │
 ```
 
 Key properties:
 
-- The `POST /chat-agent/chat` endpoint is non-streaming when `detached: true` — it returns immediately after enqueueing.
-- The job worker is the sole consumer of the LLM stream. It persists every chunk into the conversation document (or a sibling `agent-runs` collection) as it arrives.
+- The `POST /chat-agent/chat` endpoint is non-streaming when `detached: true` — it returns immediately after enqueueing onto plan 015's task family.
+- The job worker is the sole consumer of the LLM stream. It persists every chunk into the `agent-runs` doc (the incremental field this plan adds; see "Persistence target" below) as it arrives.
 - The client reconnects via a _separate_ read-only SSE endpoint (`/chat-agent/chat/runs/:id`) that tails the persisted stream, so reopening the browser later just resumes the tail from whatever's stored.
 
 ### Payload jobs integration

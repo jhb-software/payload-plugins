@@ -7,7 +7,7 @@ readiness: ready
 
 ## Problem
 
-The chat agent today runs only inside the `POST /chat-agent/chat` endpoint. Everything — auth, mode resolution, budget check, tool building, system prompt, model resolution, `streamText` wiring — lives in one handler and hangs off `req` (`src/index.ts:186-362`). The moment the client disconnects, `req.signal` fires and `streamText` aborts, which is the right default for interactive chat (see plan `014-…`? no — see `index.test.ts` "cancels the provider call when the client disconnects mid-stream") but makes headless use impossible:
+The chat agent today runs only inside the `POST /chat-agent/chat` endpoint. Everything — auth, mode resolution, budget check, tool building, system prompt, model resolution, `streamText` wiring — lives in one handler and hangs off `req` (`src/index.ts:186-362`). The moment the client disconnects, `req.signal` fires and `streamText` aborts (verified by the `index.test.ts` case "cancels the provider call when the client disconnects mid-stream") — the right default for interactive chat, but it makes headless use impossible:
 
 - No way to trigger an agent run from a Payload task, cron, webhook, or CLI script.
 - No way to run an agent without a logged-in user (there is no client to authenticate).
@@ -73,11 +73,11 @@ export interface RunAgentOptions {
   maxSteps?: number
 
   /**
-   * Replace the derived system prompt entirely, or extend it. `(base) => string`
-   * lets jobs append task-specific instructions without re-deriving the
-   * collection/globals summary.
+   * Replace the derived system prompt entirely, or extend it. The function
+   * form may be sync or async — async lets jobs fetch task-specific context
+   * (config doc, last-week's report) before composing the final prompt.
    */
-  systemPrompt?: string | ((basePrompt: string) => string)
+  systemPrompt?: string | ((basePrompt: string) => string | Promise<string>)
 
   /**
    * Filter or replace the tool set. `(base) => ToolSet` lets jobs run a
@@ -269,6 +269,10 @@ modeFilteredTools    = filterToolsByMode(finalTools, mode)
 The plugin's factory always runs first so headless callers inherit the consumer's user-defined tools (e.g. `customTools({ req })` from `dev/src/customTools.ts`). The per-call factory then refines or replaces — typical use is narrowing the surface for a specific job (`(base) => ({ find: base.find })`) without touching plugin config.
 
 When `req` is omitted, `runAgent` passes the synthetic shim documented above to `options.tools`. Tools that crash without a real HTTP `req` should either guard on `req.headers.get(...)` returning `null` or be omitted by the consumer's factory when `req.payloadAPI === 'local'`.
+
+The shim is typed as `Pick<PayloadRequest, 'payload' | 'user' | 'payloadAPI' | 'headers'>` and cast at the boundary; locale, i18n, and middleware-attached fields are deliberately absent so a tool that reads them (instead of guarding) fails loudly at the consumer's factory boundary rather than silently producing wrong content. If the consumer's tool genuinely needs `locale` etc., they should construct their own minimal shape inside their `options.tools` factory using `req.payload.config.localization`.
+
+If the `options.tools` factory itself throws — same behaviour as today's HTTP handler (`src/index.ts:297-303`): `runAgent` re-throws the error wrapped with the message `"tools resolver failed: <original>"` so the caller can surface it. The HTTP wrapper continues to translate that into a 500; headless callers (plan 015's task handler) catch it and record `status: 'failed'` on the `agent-runs` doc.
 
 ### Custom endpoints tool
 

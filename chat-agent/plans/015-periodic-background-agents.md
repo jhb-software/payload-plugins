@@ -65,6 +65,25 @@ export interface ScheduledAgent {
 
   /** Hard wall-clock cap. Defaults to 10 minutes. The handler aborts via `AbortSignal`. */
   timeoutMs?: number
+
+  /**
+   * The user the agent acts as. The handler looks up this user via
+   * `payload.findByID` once per run and passes it to `runAgent`; the agent
+   * then operates with that user's standard Payload access — same gating
+   * as if the user were chatting interactively.
+   *
+   * If omitted, the run uses `user: null, overrideAccess: true` (full DB
+   * access — convenient but unbounded). Configure `actingAs` to a
+   * service-account user with the permissions the agent actually needs
+   * to bound the blast radius via Payload's existing access control,
+   * without any new allowlist mechanism in the plugin.
+   *
+   * Example: an SEO-audit agent acts as a `role: 'seo-bot'` user whose
+   * collection access permits `read` + `update` on `pages` only. The
+   * agent in `mode: 'read-write'` then literally cannot touch any other
+   * collection, regardless of what its prompt asks for.
+   */
+  actingAs?: { collection: string; id: number | string }
 }
 
 export interface ChatAgentPluginOptions {
@@ -79,7 +98,8 @@ export interface ChatAgentPluginOptions {
 - `slug` matches `/^[a-z0-9][a-z0-9-]*$/` (so the derived task slug stays URL-safe).
 - `mode !== 'ask'` (no confirmation channel for unattended runs).
 - `model`, when supplied, exists in `availableModels` (or is the configured `defaultModel` when `availableModels` is unset).
-- `schedule` cron strings parse cleanly (use the same parser Payload's jobs system uses; surface a clear error pointing at the offending entry).
+- `schedule` cron strings: pass them through to Payload's jobs system as-is (Payload accepts cron strings on `task.schedule` and validates them itself). The plugin does **not** bundle a separate cron parser; if Payload rejects the string at task-registration time, surface that error with the offending agent's slug for context. No new dependency.
+- `actingAs.collection`, when supplied, exists in `config.collections`. Validation happens at construction (so a typo in the collection slug fails at boot, not at the first cron tick). The user document itself is looked up at run time — if it has been deleted by then, the run fails with a clear `not found` error.
 
 ### 2. Config transform injects one task per agent
 
@@ -102,7 +122,11 @@ Properties:
 - **`retries: 0` is the deliberate default**: re-running an agent that wrote part of an audit doubles the token bill and risks duplicate edits in `read-write` mode. Consumers can override per-agent if their workload is genuinely idempotent.
 - **`queue: 'chat-agent'` keeps scheduled agents on a dedicated queue** so an operator can pause/drain just the agent traffic without affecting unrelated jobs.
 
-`onInit` warns when `scheduledAgents.length > 0` and neither `config.jobs.autoRun` nor a discoverable jobs run endpoint is configured — silent no-ops here are the worst possible UX. The warning includes a one-line fix hint pointing at Payload's autoRun docs.
+`onInit` warns when `scheduledAgents.length > 0` and neither `config.jobs.autoRun` nor a discoverable jobs run endpoint is configured — silent no-ops here are the worst possible UX. The warning includes a one-line fix hint pointing at Payload's autoRun docs, and lists the affected slugs.
+
+If any scheduled agent overrides `queue` to a non-default value, the warning also names that queue: per-queue worker configuration is the consumer's responsibility, and a missed queue config means agents on that queue silently never run.
+
+**Default concurrent-tick behaviour.** Two cron ticks for the same agent that overlap (e.g. a Monday 9:00 audit still running at 9:01 when a `* 9 * * 1` cadence fires again — pathological but possible) will create **two parallel `agent-runs` docs**. Whether they run in parallel or are serialized depends on the queue's worker concurrency, which is Payload's concern. The MVP does not add a per-slug "skip if already running" lock; that's a deferred decision (see "Deliberately deferred" below).
 
 ### 3. `agent-runs` collection
 
@@ -184,9 +208,21 @@ When plan 017 lands and `agent-runs` docs gain a `triggeredBy.userId` (for user-
       overrideAccess: true,
     })
 
+    // Resolve the acting user. With `actingAs` configured, the agent runs
+    // under that user's standard Payload access (no overrideAccess). Without
+    // it, the agent gets full DB access — convenient default, unbounded
+    // blast radius.
+    const actingUser = agent.actingAs
+      ? await req.payload.findByID({
+          collection: agent.actingAs.collection,
+          id: agent.actingAs.id,
+          overrideAccess: true,
+        })
+      : null
+
     const result = await runAgent(req.payload, {
-      user: null,
-      overrideAccess: true,
+      user: actingUser,
+      overrideAccess: actingUser == null,
       skipBudget: true,
       mode: agent.mode ?? 'read-write',
       model: agent.model,
@@ -241,7 +277,7 @@ When plan 017 lands and `agent-runs` docs gain a `triggeredBy.userId` (for user-
 }
 ```
 
-Auth invariant: the handler **always** passes `overrideAccess: true`, even for `mode: 'read-write'` runs. There is no logged-in user to attribute access checks to; the schedule itself is the authorisation.
+Auth model: when `agent.actingAs` is **omitted**, the handler passes `user: null, overrideAccess: true` — the agent has full DB access, the schedule itself is the authorisation. When `agent.actingAs` is **set**, the handler looks up that user and passes them through with `overrideAccess: false` — the agent's blast radius collapses to whatever the configured user can do via Payload's normal access rules. There is no separate per-collection allowlist in the plugin; you bound the agent by giving its `actingAs` user only the permissions it should have.
 
 `messages` shape: persisted as `ModelMessage[]` from `result.response.messages` — the AI SDK's canonical "what the LLM emitted" record. On failure or abort, `messages` is `[]` and the failure detail lives in the `error` field. Plan 017's tail/resume use case requires incremental writes (the worker writes mid-run; the browser tails them); when 017 lands it adds either a `chunks: json` field that's appended to during the run, or an incremental flush of `messages` every N steps. Either is a schema-additive change to this collection.
 
@@ -271,6 +307,13 @@ Each item below has a noted trigger event so we know when to revisit:
 - **Stop button.** Revisit when the first user wants to abort a runaway run. Implementation hangs off the `AbortController` already in the handler — the missing piece is a control-plane channel (DB flag polled by the handler, or a payload-jobs cancellation signal once that lands upstream).
 - **`createScheduledAgent({ … })` builder.** Revisit if validation gets gnarlier than what an inline Zod schema covers. Plain object literals work fine for the MVP.
 
+## Implementation notes
+
+- **File layout.** New files: `src/scheduled-agents.ts` (config validation + transform that injects tasks into `config.jobs.tasks`), `src/agent-runs.ts` (the collection definition), `src/scheduled-agent-handler.ts` (the `buildScheduledAgentHandler` factory). The plugin's existing `src/index.ts` imports and wires them.
+- **`label` is captured at run-creation time, not retroactively.** If a consumer renames `agent.label` in config, existing `agent-runs` docs keep their old label. This is intentional — the audit collection is a historical record, not a config mirror. Document this in the field's admin description.
+- **Prompt function-form context.** `ScheduledAgentContext = { payload, now }` is deliberately minimal. Not exposed: the full `pluginOptions` (consumers already know what they configured), `req` (no HTTP request exists), `pastRuns` (consumers can `payload.find({ collection: 'agent-runs', where: { slug: { equals: agent.slug } } })` themselves). Add to context only when a real consumer hits a wall.
+- **Prompt resolution order.** The function form runs **before** `agent-runs.prompt` is updated, so the persisted `prompt` is exactly what `runAgent` sees. If the resolver throws, the run transitions to `failed` with the resolver's error captured.
+
 ## Tool resolution and req
 
 Scheduled-agent runs invoke `runAgent` without an HTTP `req`. Per plan 014's "Tool resolution order", that means:
@@ -298,7 +341,9 @@ If a consumer needs a specific tool subset for a scheduled agent only (e.g. read
 - **Handler failure path: messages emptied.** On thrown / aborted runs, assert `messages` is persisted as `[]` (not `undefined`, not the in-flight chunks) and the `error` field carries the diagnostic.
 - **Handler failure path.** Stub `runAgent` to throw. Assert the doc is `failed` with `error` populated, `finishedAt` set, and the handler re-throws so payload-jobs records the failure (probe via the returned promise).
 - **Timeout path.** `runAgent` takes longer than `timeoutMs`. Assert the controller aborts, the doc is `aborted` (not `failed`), and the abort propagates through `runAgent`'s `abortSignal`.
-- **Auth invariant.** Even with `mode: 'read-write'`, the handler passes `overrideAccess: true` to `runAgent`. Spy on the call and assert.
+- **Auth — default (no `actingAs`).** Handler passes `user: null, overrideAccess: true` to `runAgent`. Spy and assert.
+- **Auth — with `actingAs`.** Configure `actingAs: { collection: 'users', id: <id> }` for a seeded user with limited access. Handler looks up that user, passes it through with `overrideAccess: false`. Spy on `runAgent` and assert; integration-test that a tool call attempting to read a collection the user can't see returns a Payload access error inside `messages` (not a successful read).
+- **Auth — `actingAs` user missing.** When `actingAs` references a deleted user, the handler surfaces a clear `not found` error and the run is `failed` with `error` populated.
 - **Access reuse — denied.** Configure `chatAgentPlugin({ access: () => false })`. Assert `payload.find({ collection: 'agent-runs' })` from a request that hits the gate returns no docs (and the REST endpoint returns 401). Confirms `isPluginAccessAllowed` flows through to the new collection.
 - **Access reuse — default.** With no `options.access` configured, an authenticated `req.user` can read; an anonymous request cannot. Confirms the helper's fallback applies.
 - **`onInit` warning.** Scheduled agents declared but no `jobs.autoRun` configured → `payload.logger.warn` is called with an actionable message naming the affected slugs.
