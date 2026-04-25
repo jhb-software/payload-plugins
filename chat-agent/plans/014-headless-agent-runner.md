@@ -2,7 +2,7 @@
 title: Headless agent runner
 description: Extract the chat endpoint's orchestration into a reusable `runAgent` function so background jobs (cron, Payload jobs queue, webhooks) can invoke the agent off-HTTP — e.g. a weekly content audit — without holding an open connection to a browser client.
 type: feature
-readiness: draft
+readiness: ready
 ---
 
 ## Problem
@@ -98,10 +98,29 @@ export interface RunAgentOptions {
 
   /**
    * Forwarded to `buildTools` when tools need to call custom endpoints. The
-   * HTTP handler passes `req`; background jobs can pass a minimal
-   * `{ payload, user }` shim or omit it (custom-endpoint tools are skipped).
+   * HTTP handler passes `req`; background jobs can omit it (custom-endpoint
+   * tools are skipped) or pass a real `req` if they have one. When omitted,
+   * `runAgent` synthesises a minimal `req` (`{ payload, user, payloadAPI:
+   * 'local', headers: new Headers() }`) and passes it to the plugin's
+   * `options.tools` factory so user-defined tools that only need
+   * `req.payload` keep working. Tools that genuinely need an HTTP `req`
+   * (cookies, custom-endpoint handlers, locale negotiation) are
+   * documented as "skipped on headless" and must guard their own
+   * preconditions.
    */
   req?: PayloadRequest
+
+  /**
+   * Called once when the model finishes, with the aggregated token usage.
+   * Plan-017 (`agent-runs`) uses this to write `usage` onto the run doc
+   * without subscribing to the stream itself; interactive callers can keep
+   * using `streamText`'s `onFinish` via the returned handle.
+   */
+  onUsage?: (usage: {
+    inputTokens?: number
+    outputTokens?: number
+    totalTokens?: number
+  }) => Promise<void> | void
 }
 
 /** Result mirrors `streamText`'s handle so callers choose how to consume it. */
@@ -133,7 +152,8 @@ const result = await runAgent({
   user: { id: 'system', email: 'agent@internal' },
   overrideAccess: true,
   mode: 'read',
-  messages: 'Audit all pages in the `pages` collection published in the last 7 days. List ones with fewer than 200 words or without a hero image.',
+  messages:
+    'Audit all pages in the `pages` collection published in the last 7 days. List ones with fewer than 200 words or without a hero image.',
   maxSteps: 40,
   skipBudget: true,
 })
@@ -222,34 +242,52 @@ but ship it in a follow-up.
 
 Discrimination is structural: strings by `typeof`, then `Array.isArray(messages[0]?.parts)` for `UIMessage` vs. `messages[0]?.content` for `ModelMessage`. Document the precedence in the JSDoc.
 
+### Tool resolution order
+
+Two factories can shape the toolset: the plugin's global `options.tools` (set once at plugin init) and the per-call `runAgentOpts.tools` (set per `runAgent` invocation). They compose in this fixed order:
+
+```
+defaultTools         = buildTools(payload, user, overrideAccess, req?, customEndpoints, config)
+baseTools            = options.tools?.({ defaultTools, modelId, req }) ?? defaultTools
+finalTools           = runAgentOpts.tools?.(baseTools) ?? baseTools
+modeFilteredTools    = filterToolsByMode(finalTools, mode)
+```
+
+The plugin's factory always runs first so headless callers inherit the consumer's user-defined tools (e.g. `customTools({ req })` from `dev/src/customTools.ts`). The per-call factory then refines or replaces — typical use is narrowing the surface for a specific job (`(base) => ({ find: base.find })`) without touching plugin config.
+
+When `req` is omitted, `runAgent` passes the synthetic shim documented above to `options.tools`. Tools that crash without a real HTTP `req` should either guard on `req.headers.get(...)` returning `null` or be omitted by the consumer's factory when `req.payloadAPI === 'local'`.
+
 ### Custom endpoints tool
 
-`buildTools`' custom-endpoint branch (`src/tools.ts:477-...`) needs `req` because it calls user-defined endpoint handlers. For headless callers we have two options:
+`buildTools`' custom-endpoint branch (`src/tools.ts:477-...`) needs `req` because it calls user-defined endpoint handlers. The headless contract:
 
-- **Skip custom-endpoint tools when `req` is absent** (simplest, documented). The agent loses those tools for background runs; most don't need them.
-- **Synthesize a minimal `req`** — `{ payload, user, i18n, locale, fallbackLocale, headers: new Headers(), …Object.create(null) }`. Works for well-behaved custom endpoints but leaks the fake-req abstraction into plugin territory.
+- **Custom-endpoint tools are skipped when `req` is absent.** `discoverEndpoints` runs the same way (it reads `payload.config`, not `req`), but `buildTools` only emits the `runEndpoint`-style entries when a real `req` is available. The agent's system prompt is built with `hasCustomEndpoints: false` so it doesn't advertise tools that aren't in the toolset.
+- **The synthetic minimal `req` (`{ payload, user, payloadAPI: 'local', headers: new Headers() }`) is for the consumer's `options.tools` factory only**, not for `buildTools`'s custom-endpoint branch. This keeps the fake-req surface narrow: user-defined tools that read `req.payload` work; custom Payload endpoints that expect cookies, locale negotiation, or middleware-attached state remain out of scope until a real consumer needs them.
 
-Ship with option 1. Upgrade to option 2 if a consumer hits the limit.
+## Resolved decisions
 
-## Open questions
+The following questions were open in the draft and are locked here so plan 017 can build on them without re-debating:
 
-1. **Return shape**: return the raw `streamText` handle, or a richer object (`{ text, toolCalls, usage, stream }`)? The raw handle gives callers maximum flexibility (stream vs. await) and matches the existing handler's call site — lean that way unless reviewers disagree.
+1. **Return shape: raw `streamText` handle.** `RunAgentResult = StreamTextResult<ToolSet, never>`. Plan 017's task handler needs `result.fullStream` to persist deltas into `agent-runs.messages`; a wrapped `{ text, toolCalls, usage }` would force re-streaming or duplicated state. Interactive callers keep `result.toUIMessageStreamResponse(...)`.
 
-2. **Abort default for headless**: today the HTTP path passes `req.signal`. Headless callers who forget to pass `abortSignal` can leak a long-running `streamText` on process exit. Consider defaulting to a signal tied to `process.on('SIGTERM')` when none is given, or clearly document that callers own lifetime.
+2. **Abort default: caller-owned, no implicit signal.** The HTTP path keeps passing `req.signal`. Headless callers either pass their own `abortSignal` (recommended for any run that might exceed the host's idle timeout) or rely on `maxSteps` to terminate. We do **not** install a `process.on('SIGTERM')` default — that surprises consumers who run `runAgent` inside a long-lived worker with its own shutdown protocol. Document the recommendation in JSDoc and the README.
 
-3. **Step cap default for headless**: interactive uses `maxSteps: 20`. For a weekly audit that reads the whole site, 20 is too low; 100+ may be appropriate. Revisit when the first real consumer ships — for now the option is a straight pass-through and the default matches the HTTP path.
+3. **Step cap default: 20 (same as HTTP path).** Headless callers who need more (audits over many pages) opt in via `maxSteps`. Plan 017 raises the per-scheduled-agent default to 50 in the periodic-agents config layer, not here.
 
-4. **Discoverability**: do we ship a thin `payloadTask` helper (`createAgentTask({ input, instruction, onResult })`) that wraps `runAgent` + `payload.jobs.queue` boilerplate, or leave orchestration to the consumer? Leaning toward "not yet" — the boilerplate is ~15 lines and a helper locks in opinions about where results go.
+4. **Helper API: `createAgentTasks({ scheduledAgents })` ships with plan 017, not as a standalone abstraction.** Plan 017 owns the "translate config into Payload jobs tasks" surface; `runAgent` stays the unopinionated primitive both interactive and scheduled callers use.
 
 ## Non-goals
-
-- **Resumable streams / long-running interactive sessions.** `experimental_resume` and stream continuation across multiple HTTP requests are a separate, bigger problem. The fix from commit `d067193` (`ignoreIncompleteToolCalls: true`) is the pragmatic patch until we tackle that deliberately.
-- **Scheduling primitives.** Payload has its `jobs` queue; teams use Vercel Cron, GitHub Actions, etc. The plugin provides the runner; the caller provides the trigger.
-- **Multi-agent orchestration.** One `runAgent` call = one agent. Fan-out/fan-in patterns live above this API.
 
 ## Test plan
 
 - Unit: `runAgent` with `user: null` + `overrideAccess: false` rejects. `mode: 'superuser'` + `overrideAccess: false` rejects. `skipBudget: true` never calls `budget.check`. `messages: 'hi'` normalises to a single user ModelMessage.
 - Integration: wire a synthetic Payload + stubbed model factory; call `runAgent` with each of the three `messages` shapes and assert `streamText` receives an equivalent prompt.
+- Tool composition: when `options.tools` and `runAgentOpts.tools` are both supplied, assert the per-call factory receives the plugin-resolved base (not the raw defaults). When `req` is omitted, assert the consumer's `options.tools` factory is called with the synthetic minimal `req` (`{ payload, user, payloadAPI: 'local', headers: ... }`) and that custom-endpoint tools are absent from the final toolset.
+- `onUsage`: assert it fires once with the same totals `streamText`'s `onFinish` receives, and that throwing inside `onUsage` surfaces as a stream error rather than being swallowed.
 - Regression: the existing `index.test.ts` suite must pass unchanged — the HTTP handler keeps the same observable contract.
 - Docs: add a "Running the agent from a job" section to `chat-agent/README.md` with the audit example.
+
+## Related work
+
+- Plan [015](./015-periodic-background-agents.md) — first concrete consumer; declares cron-scheduled agents that call `runAgent` from Payload-jobs task handlers.
+- Plan [017](./017-detached-agent-runs.md) — future direction; reuses `runAgent` + the `agent-runs` collection introduced in 015 for interactive leave-and-come-back chats.
