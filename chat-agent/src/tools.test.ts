@@ -55,6 +55,31 @@ describe('buildTools', () => {
     ])
   })
 
+  it('exposes listBlocks and getBlockSchema when config is passed', () => {
+    // Same contract-lock as the base set, but for the config-gated surface.
+    // The schema inspection tools register together; if any of them is
+    // dropped or renamed, lock it here so the agent doesn't silently lose a
+    // discovery path.
+    const tools = buildTools(createMockPayload(), mockUser, false, undefined, undefined, {
+      collections: [],
+      globals: [],
+    })
+    expect(Object.keys(tools).sort()).toEqual([
+      'count',
+      'create',
+      'delete',
+      'find',
+      'findByID',
+      'findGlobal',
+      'getBlockSchema',
+      'getCollectionSchema',
+      'getGlobalSchema',
+      'listBlocks',
+      'update',
+      'updateGlobal',
+    ])
+  })
+
   it('find calls payload.find with correct arguments', async () => {
     const payload = createMockPayload()
     const tools = buildTools(payload, mockUser)
@@ -405,6 +430,49 @@ describe('discoverEndpoints', () => {
     const eps = discoverEndpoints(asConfig(config))
     expect(eps).toHaveLength(0)
   })
+
+  it('surfaces custom.schema (query/body/response) when declared', () => {
+    // `endpoint.custom.schema` exposes a request/response contract alongside
+    // the description; if an endpoint declares it, the agent should see it so
+    // it can construct valid calls without trial-and-error.
+    const schema = {
+      body: { draft: { type: 'boolean' } },
+      query: { locale: { type: 'string' } },
+      response: { id: { type: 'string' }, published: { type: 'boolean' } },
+    }
+    const config = {
+      collections: [],
+      endpoints: [
+        {
+          custom: { description: 'Publish content', schema },
+          handler: () => {},
+          method: 'post',
+          path: '/publish',
+        },
+      ],
+      globals: [],
+    }
+    const eps = discoverEndpoints(asConfig(config))
+    expect(eps).toHaveLength(1)
+    expect(eps[0].schema).toEqual(schema)
+  })
+
+  it('leaves schema undefined when custom.schema is absent', () => {
+    const config = {
+      collections: [],
+      endpoints: [
+        {
+          custom: { description: 'Publish content' },
+          handler: () => {},
+          method: 'post',
+          path: '/publish',
+        },
+      ],
+      globals: [],
+    }
+    const eps = discoverEndpoints(asConfig(config))
+    expect(eps[0].schema).toBeUndefined()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -695,6 +763,37 @@ describe('filterToolsByMode', () => {
       },
     )
   })
+
+  describe('user-defined tools (unknown names)', () => {
+    // Tools registered via `chatAgentPlugin({ customTools })` don't appear in
+    // the built-in read/write name lists. The filter treats unknown names as
+    // writes — the safe default, since we can't know their side effects.
+
+    const customTool = {
+      description: 'Ships packages',
+      execute: vi.fn(),
+      inputSchema: {},
+    } as unknown as Parameters<typeof filterToolsByMode>[0][string]
+
+    function filterWithCustom(mode: 'ask' | 'read' | 'read-write') {
+      const tools = { ...buildTools(mockPayload, mockUser), shipPackage: customTool }
+      return filterToolsByMode(tools, mode)
+    }
+
+    it('excludes unknown tools in read mode', () => {
+      expect(Object.keys(filterWithCustom('read'))).not.toContain('shipPackage')
+    })
+
+    it('marks unknown tools with needsApproval: true in ask mode', () => {
+      const filtered = filterWithCustom('ask')
+      expect(filtered.shipPackage).toBeDefined()
+      expect((filtered.shipPackage as { needsApproval?: boolean }).needsApproval).toBe(true)
+    })
+
+    it('allows an unknown tool without approval in read-write mode', () => {
+      expect(filterWithCustom('read-write').shipPackage).toBe(customTool)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -782,8 +881,6 @@ describe('schema inspection tools', () => {
   })
 
   it('getCollectionSchema resolves blockReferences from config.blocks', async () => {
-    // Block field details come along when inspecting a collection, so a
-    // separate getBlockSchema tool isn't needed.
     const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
       blocks: [
         {
@@ -811,6 +908,43 @@ describe('schema inspection tools', () => {
       fields: unknown[]
     }
     expect(JSON.stringify(result.fields)).toContain('buttonText')
+  })
+
+  it('getCollectionSchema surfaces inline blocks declared on the field', async () => {
+    // Inline blocks live on `field.blocks` — they never appear in
+    // config.blocks, so the only way the agent can learn their shape is
+    // through the parent collection's schema.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [
+        {
+          slug: 'pages',
+          fields: [
+            {
+              name: 'layout',
+              type: 'blocks',
+              blocks: [
+                {
+                  slug: 'inlineHero',
+                  fields: [{ name: 'headline', type: 'text', required: true }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'pages' }, ctx)) as {
+      fields: { blocks?: { fields: { name: string }[]; slug: string }[]; name: string }[]
+    }
+    const layout = result.fields.find((f) => f.name === 'layout')!
+    expect(layout.blocks).toEqual([
+      {
+        slug: 'inlineHero',
+        fields: [{ name: 'headline', type: 'text', required: true }],
+      },
+    ])
   })
 
   it('getGlobalSchema returns extracted fields for a known slug', async () => {
@@ -872,6 +1006,276 @@ describe('schema inspection tools', () => {
     }
     expect(result.error).toMatch(/unknown global slug/i)
   })
+
+  it('getCollectionSchema round-trips lexical feature summaries on richText fields', async () => {
+    // The lexical feature summary must make it through the tool output so the
+    // agent sees which nodes it may emit when authoring rich-text content.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [
+            {
+              name: 'body',
+              type: 'richText',
+              editor: {
+                features: [
+                  { key: 'bold' },
+                  {
+                    key: 'heading',
+                    serverFeatureProps: { enabledHeadingSizes: ['h2', 'h3'] },
+                  },
+                  {
+                    key: 'blocks',
+                    serverFeatureProps: {
+                      blocks: [{ slug: 'hero', fields: [{ name: 'headline', type: 'text' }] }],
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+      globals: [],
+    })
+
+    const result = (await tools.getCollectionSchema.execute({ slug: 'posts' }, ctx)) as {
+      fields: {
+        lexical?: {
+          features: string[]
+          options?: {
+            blocks?: { slugs: string[] }
+            heading?: { enabledHeadingSizes?: string[] }
+          }
+        }
+        name: string
+      }[]
+    }
+
+    const body = result.fields.find((f) => f.name === 'body')!
+    expect(body.lexical?.features).toEqual(['blocks', 'bold', 'heading'])
+    expect(body.lexical?.options?.heading?.enabledHeadingSizes).toEqual(['h2', 'h3'])
+    expect(body.lexical?.options?.blocks?.slugs).toEqual(['hero'])
+
+    // The inline Block registered via BlocksFeature must be resolvable via
+    // getBlockSchema so the agent can drill into it without traversing back
+    // through the parent collection.
+    const heroSchema = (await tools.getBlockSchema.execute({ slug: 'hero' }, ctx)) as {
+      fields: { name: string }[]
+    }
+    expect(heroSchema.fields).toEqual([{ name: 'headline', type: 'text' }])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Block schema tools (listBlocks, getBlockSchema)
+// ---------------------------------------------------------------------------
+
+describe('block schema tools', () => {
+  const mockPayload = {
+    count: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+    find: vi.fn(),
+    findByID: vi.fn(),
+    findGlobal: vi.fn(),
+    update: vi.fn(),
+    updateGlobal: vi.fn(),
+  }
+  const mockUser = { id: 'u1' }
+  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+
+  it('are not registered when config is not passed', () => {
+    const tools = buildTools(mockPayload, mockUser)
+    expect(tools.listBlocks).toBeUndefined()
+    expect(tools.getBlockSchema).toBeUndefined()
+  })
+
+  it('listBlocks returns slugs from config.blocks in declared order', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        { slug: 'hero', fields: [] },
+        { slug: 'callToAction', fields: [] },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.listBlocks.execute({}, ctx)) as {
+      blocks: { slug: string }[]
+    }
+    expect(result.blocks.map((b) => b.slug)).toEqual(['hero', 'callToAction'])
+  })
+
+  it('listBlocks surfaces normalized labels and interfaceName when set', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'hero',
+          fields: [],
+          interfaceName: 'HeroBlock',
+          labels: { plural: 'Heroes', singular: 'Hero' },
+        },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.listBlocks.execute({}, ctx)) as {
+      blocks: {
+        interfaceName?: string
+        labels?: { plural?: unknown; singular?: unknown }
+        slug: string
+      }[]
+    }
+    expect(result.blocks).toEqual([
+      {
+        slug: 'hero',
+        interfaceName: 'HeroBlock',
+        labels: { plural: 'Heroes', singular: 'Hero' },
+      },
+    ])
+  })
+
+  it('listBlocks omits labels when both leaves normalize to undefined', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [{ slug: 'hero', fields: [], labels: { singular: () => 'X' } }],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.listBlocks.execute({}, ctx)) as {
+      blocks: Record<string, unknown>[]
+    }
+    expect(result.blocks).toEqual([{ slug: 'hero' }])
+    expect(result.blocks[0]).not.toHaveProperty('labels')
+  })
+
+  it('listBlocks returns an empty array when config.blocks is absent or empty', async () => {
+    const noBlocks = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      collections: [],
+      globals: [],
+    })
+    expect(((await noBlocks.listBlocks.execute({}, ctx)) as { blocks: unknown[] }).blocks).toEqual(
+      [],
+    )
+
+    const emptyBlocks = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [],
+      collections: [],
+      globals: [],
+    })
+    expect(
+      ((await emptyBlocks.listBlocks.execute({}, ctx)) as { blocks: unknown[] }).blocks,
+    ).toEqual([])
+  })
+
+  it('getBlockSchema returns fields for a known slug', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'hero',
+          fields: [
+            { name: 'heading', type: 'text', required: true },
+            { name: 'subheading', type: 'text' },
+          ],
+        },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.getBlockSchema.execute({ slug: 'hero' }, ctx)) as {
+      fields: { name: string }[]
+      slug: string
+    }
+    expect(result.slug).toBe('hero')
+    expect(result.fields.map((f) => f.name)).toEqual(['heading', 'subheading'])
+  })
+
+  it('getBlockSchema returns { error } for an unknown slug', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [{ slug: 'hero', fields: [] }],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.getBlockSchema.execute({ slug: 'nope' }, ctx)) as {
+      error: string
+    }
+    expect(result.error).toBe('Unknown block slug "nope"')
+  })
+
+  it('getBlockSchema resolves nested blockReferences', async () => {
+    // Block A contains a `blocks` field that references block B by slug.
+    // The shared blocksBySlug map must let extractFields follow that ref
+    // transparently — same mechanism getCollectionSchema uses.
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'parent',
+          fields: [
+            {
+              name: 'children',
+              type: 'blocks',
+              blockReferences: ['child'],
+              blocks: [],
+            },
+          ],
+        },
+        { slug: 'child', fields: [{ name: 'label', type: 'text' }] },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.getBlockSchema.execute({ slug: 'parent' }, ctx)) as {
+      fields: unknown[]
+    }
+    expect(JSON.stringify(result.fields)).toContain('label')
+  })
+
+  it('getBlockSchema surfaces labels and interfaceName when set', async () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [
+        {
+          slug: 'hero',
+          fields: [],
+          interfaceName: 'HeroBlock',
+          labels: { plural: 'Heroes', singular: 'Hero' },
+        },
+      ],
+      collections: [],
+      globals: [],
+    })
+
+    const result = (await tools.getBlockSchema.execute({ slug: 'hero' }, ctx)) as {
+      interfaceName?: string
+      labels?: { plural?: unknown; singular?: unknown }
+    }
+    expect(result.interfaceName).toBe('HeroBlock')
+    expect(result.labels).toEqual({ plural: 'Heroes', singular: 'Hero' })
+  })
+
+  it('read and ask mode filters keep both block tools', () => {
+    const tools = buildTools(mockPayload, mockUser, false, undefined, undefined, {
+      blocks: [{ slug: 'hero', fields: [] }],
+      collections: [],
+      globals: [],
+    })
+
+    const readTools = filterToolsByMode(tools, 'read')
+    expect(readTools).toHaveProperty('listBlocks')
+    expect(readTools).toHaveProperty('getBlockSchema')
+
+    const askTools = filterToolsByMode(tools, 'ask')
+    expect(askTools).toHaveProperty('listBlocks')
+    expect(askTools).toHaveProperty('getBlockSchema')
+    // Read tools stay plain in ask mode — no needsApproval gate.
+    expect(askTools.listBlocks).not.toHaveProperty('needsApproval')
+    expect(askTools.getBlockSchema).not.toHaveProperty('needsApproval')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -921,5 +1325,36 @@ describe('listEndpoints', () => {
       { description: 'Publish a post', method: 'POST', path: '/api/posts/publish/:id' },
       { description: 'Archive a post', method: 'DELETE', path: '/api/posts/archive/:id' },
     ])
+  })
+
+  it("includes each endpoint's schema when present so the agent knows the contract", async () => {
+    const schema = {
+      body: { draft: { type: 'boolean' } },
+      query: { locale: { type: 'string' } },
+      response: { id: { type: 'string' } },
+    }
+    const endpoints = [
+      {
+        description: 'Publish a post',
+        handler: () => Response.json({}),
+        method: 'post',
+        path: '/api/posts/publish/:id',
+        schema,
+      },
+      {
+        description: 'Archive a post',
+        handler: () => Response.json({}),
+        method: 'delete',
+        path: '/api/posts/archive/:id',
+      },
+    ]
+    const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
+
+    const result = (await tools.listEndpoints.execute({}, ctx)) as {
+      endpoints: { schema?: unknown }[]
+    }
+    expect(result.endpoints[0].schema).toEqual(schema)
+    // Endpoints without a declared schema stay lean — no empty schema key.
+    expect(result.endpoints[1]).not.toHaveProperty('schema')
   })
 })
