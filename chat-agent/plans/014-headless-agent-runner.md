@@ -280,6 +280,16 @@ The following questions were open in the draft and are locked here so plans 015 
 - **Scheduling primitives.** `runAgent` is the primitive; the `scheduledAgents` config layer that translates cron declarations into Payload-jobs tasks ships in plan 015.
 - **Persistence.** Where results land is a caller decision. Plan 015 introduces an `agent-runs` collection for scheduled and detached runs; ad-hoc callers persist however they want.
 
+## Dev app demonstration
+
+Add a minimal headless-run example to `chat-agent/dev/`:
+
+- A `dev/src/scripts/run-agent.ts` CLI that boots Payload's local API, calls `createAgentRunner(pluginOptions)`, runs a one-shot prompt against the dev DB (e.g. `"List the three most recently updated posts"`), and prints `result.text` to stdout. Wire it as a `pnpm script` (`pnpm --filter chat-agent-dev run:agent`).
+- A seeded `users` doc with a known id the script passes as `user` (or `user: null` + `overrideAccess: true` for the no-auth path). Document both paths in a comment at the top of the script.
+- A short README note in `dev/README.md` (or a new "Headless agent" section in the plugin README) showing the command and expected output.
+
+This gives reviewers a one-line way to confirm `runAgent` works end-to-end against real Payload before plan 015 starts wiring it into scheduled tasks.
+
 ## Test plan
 
 - Unit: `runAgent` with `user: null` + `overrideAccess: false` rejects. `mode: 'superuser'` + `overrideAccess: false` rejects. `skipBudget: true` never calls `budget.check`. `messages: 'hi'` normalises to a single user ModelMessage.

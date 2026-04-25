@@ -113,6 +113,14 @@ Explicitly **out of scope** for this plan:
 - **Plan 014 (`runAgent`).** Hard-blocked. Until the chat handler's orchestration is extracted, there's no clean way for a job task handler to invoke an agent turn with the same tools/prompt/model config.
 - **Plan 015 (periodic background agents).** Soft-blocked. Plan 015 introduces the `agent-runs` collection, the `chat-agent:run:<slug>` task family, and the streaming-persist pattern this plan piggybacks on; without it this plan would have to invent equivalent persistence and worker plumbing from scratch.
 
+## Dev app demonstration
+
+When this plan is picked up, `chat-agent/dev/` should grow:
+
+- A `detached: true` toggle in the dev chat UI (or a separate "Long-running run" demo page) that submits a deliberately slow prompt — e.g. `"For each post, suggest a better SEO title"` over the seeded posts — so reviewers can close the tab, reopen it, and see the run resume.
+- A seeded conversation with an in-progress `agent-runs` doc to demonstrate the resume-on-load hook without needing to wait for a real provider response.
+- A short README note showing the user-facing flow ("submit, close tab, reopen, see progress") and the network calls underlying it (POST returns 202, SSE tail picks up).
+
 ## Test plan
 
 Sketched only — actual tests get written alongside implementation.

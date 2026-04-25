@@ -264,6 +264,16 @@ Scheduled-agent runs invoke `runAgent` without an HTTP `req`. Per plan 014's "To
 
 If a consumer needs a specific tool subset for a scheduled agent only (e.g. read-only audits that should not see write tools), they wrap the per-call tool factory inside the agent's task handler — but for the MVP the per-mode filtering driven by `mode` is enough.
 
+## Dev app demonstration
+
+`chat-agent/dev/` ships a working scheduled agent so reviewers can see the full loop without scaffolding their own:
+
+- Add one entry to the dev plugin invocation (`dev/src/payload.config.ts`) under `scheduledAgents` — e.g. `{ slug: 'pages-audit', label: 'Pages audit (dev)', schedule: '*/5 * * * *', mode: 'read', prompt: 'List all posts in the dev DB and report which ones lack a title.' }`. Cadence picked tight (5 min) so a reviewer can watch a real run land in the admin within a session.
+- Enable Payload's `jobs.autoRun` in the dev config (or document the `payload jobs:run` CLI invocation in `dev/README.md`) so the cron actually fires.
+- Seed one or two `posts` docs missing a title in the dev DB so the run produces a non-empty audit and exercises tool calls.
+- Verify the resulting `agent-runs` doc shows up under "Chat → Agent Runs" in the admin with `status: succeeded`, populated `messages`, and non-zero `usage`.
+- Add a Manual-trigger button or doc in `dev/README.md` showing `pnpm --filter chat-agent-dev jobs:queue pages-audit` (or equivalent) so reviewers can fire a run on demand instead of waiting for the cron tick.
+
 ## Test plan
 
 - **Plugin config validation.** Duplicate slugs throw at construction; `mode: 'ask'` throws; unknown model throws; invalid cron throws with the offending entry's slug in the message.
