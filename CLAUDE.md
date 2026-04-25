@@ -56,8 +56,20 @@ Every test must justify its existence by verifying meaningful behavior. A test e
 
 Default to integration tests against real Payload / real React rendering. Reach for unit tests only for pure logic with non-trivial branches. Only stub external boundaries: network, filesystem, time, randomness, LLM providers, third-party SDKs. If a test requires mocking the module under test's close collaborators, test at a higher level instead.
 
-Name each test by the behavior it protects in one sentence (*"rejects a confirmation when the tool call id is unknown"*), not by the method it calls (*"calls handleConfirm with false"*).
+Name each test by the behavior it protects in one sentence (_"rejects a confirmation when the tool call id is unknown"_), not by the method it calls (_"calls handleConfirm with false"_).
 
 ## Changelog
 
 For every `fix` or `feat` commit, add a new line to the `CHANGELOG.md` of the affected plugin. If there is no section for the upcoming version yet, add an `## Unreleased` heading at the top and list changes under it. When a version is released, the `## Unreleased` heading is replaced with the version number by the release workflow.
+
+## Dev App Demonstrations
+
+Every new feature added to a plugin **must** be demonstrated in that plugin's `dev/` app with a minimal, runnable use case. Tests prove correctness; the dev app proves usability. The plugin author needs to be able to click through the feature in the admin panel (or trigger it via the dev app's runtime, depending on the feature) without writing extra code.
+
+Concretely:
+
+- A new collection, field, or admin component → wire it into `dev/src/payload.config.ts` so it appears in the local Payload admin.
+- A new endpoint, hook, or task → add a button, page, or seeded entry to the dev app that exercises it.
+- A new plugin option → set it in the dev app's plugin invocation with a realistic example value.
+
+Plans for new features must include a "Dev app demonstration" section that lists what gets added under `dev/` so reviewers can verify the feature end-to-end without scaffolding the example themselves. PRs that add a feature without a corresponding dev-app touchpoint should be sent back for revision.

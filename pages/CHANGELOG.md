@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: restore proper icon sizes for the slug sync button and the slug-change info banner after the Geist icon standardization
+
 ## 0.7.0
 
 - feat: add request-scoped ancestor caching to avoid redundant DB queries when computing virtual fields for sibling pages
