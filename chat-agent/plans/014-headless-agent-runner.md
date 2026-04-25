@@ -261,7 +261,8 @@ When `req` is omitted, `runAgent` passes the synthetic shim documented above to 
 
 `buildTools`' custom-endpoint branch (`src/tools.ts:477-...`) needs `req` because it calls user-defined endpoint handlers. The headless contract:
 
-- **Custom-endpoint tools are skipped when `req` is absent.** `discoverEndpoints` runs the same way (it reads `payload.config`, not `req`), but `buildTools` only emits the `runEndpoint`-style entries when a real `req` is available. The agent's system prompt is built with `hasCustomEndpoints: false` so it doesn't advertise tools that aren't in the toolset.
+**Custom-endpoint tools are skipped when `req` is absent.** `discoverEndpoints` runs the same way (it reads `payload.config`, not `req`), but `buildTools` only emits the `runEndpoint`-style entries when a real `req` is available. The agent's system prompt is built with `hasCustomEndpoints: false` so it doesn't advertise tools that aren't in the toolset.
+
 - **The synthetic minimal `req` (`{ payload, user, payloadAPI: 'local', headers: new Headers() }`) is for the consumer's `options.tools` factory only**, not for `buildTools`'s custom-endpoint branch. This keeps the fake-req surface narrow: user-defined tools that read `req.payload` work; custom Payload endpoints that expect cookies, locale negotiation, or middleware-attached state remain out of scope until a real consumer needs them.
 
 ## Resolved decisions
@@ -269,7 +270,6 @@ When `req` is omitted, `runAgent` passes the synthetic shim documented above to 
 The following questions were open in the draft and are locked here so plan 017 can build on them without re-debating:
 
 1. **Return shape: raw `streamText` handle.** `RunAgentResult = StreamTextResult<ToolSet, never>`. Plan 017's task handler needs `result.fullStream` to persist deltas into `agent-runs.messages`; a wrapped `{ text, toolCalls, usage }` would force re-streaming or duplicated state. Interactive callers keep `result.toUIMessageStreamResponse(...)`.
-
 2. **Abort default: caller-owned, no implicit signal.** The HTTP path keeps passing `req.signal`. Headless callers either pass their own `abortSignal` (recommended for any run that might exceed the host's idle timeout) or rely on `maxSteps` to terminate. We do **not** install a `process.on('SIGTERM')` default — that surprises consumers who run `runAgent` inside a long-lived worker with its own shutdown protocol. Document the recommendation in JSDoc and the README.
 
 3. **Step cap default: 20 (same as HTTP path).** Headless callers who need more (audits over many pages) opt in via `maxSteps`. Plan 017 raises the per-scheduled-agent default to 50 in the periodic-agents config layer, not here.
