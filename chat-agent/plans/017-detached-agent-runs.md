@@ -18,7 +18,7 @@ For long-running turns — a site-wide audit, a multi-step refactor plan, a tran
 - There's no "submit and check back later" option.
 - Multi-device (start on desktop, finish reading on phone) is impossible.
 
-Background jobs via `runAgent` (plan 014) solve *scheduled* and *non-interactive* use cases but don't help an interactive user who wants to detach mid-run.
+Background jobs via `runAgent` (plan 014) solve _scheduled_ and _non-interactive_ use cases but don't help an interactive user who wants to detach mid-run.
 
 ## Proposal
 
@@ -51,7 +51,7 @@ Key properties:
 
 - The `POST /chat-agent/chat` endpoint is non-streaming when `detached: true` — it returns immediately after enqueueing.
 - The job worker is the sole consumer of the LLM stream. It persists every chunk into the conversation document (or a sibling `agent-runs` collection) as it arrives.
-- The client reconnects via a *separate* read-only SSE endpoint (`/chat-agent/chat/runs/:id`) that tails the persisted stream, so reopening the browser later just resumes the tail from whatever's stored.
+- The client reconnects via a _separate_ read-only SSE endpoint (`/chat-agent/chat/runs/:id`) that tails the persisted stream, so reopening the browser later just resumes the tail from whatever's stored.
 
 ### Payload jobs integration
 
@@ -123,7 +123,7 @@ The user opts in per-message or per-conversation. Detached is probably the right
 
 Explicitly **out of scope** for this plan:
 
-- Resuming an *aborted* run. If the worker dies mid-stream, partial progress stays persisted but the run is marked `failed` — user retries manually. True mid-stream resumption would need the AI SDK's `experimental_resume` primitives and provider cooperation.
+- Resuming an _aborted_ run. If the worker dies mid-stream, partial progress stays persisted but the run is marked `failed` — user retries manually. True mid-stream resumption would need the AI SDK's `experimental_resume` primitives and provider cooperation.
 - Cross-device session transfer beyond what reopening-the-conversation-URL gives you.
 - Real-time collaboration (two browsers watching the same run). The tail endpoint supports it mechanically, but the UI conflict-resolution story is its own design problem.
 
@@ -144,7 +144,7 @@ Sketched only — actual tests get written alongside implementation.
 
 - Job handler end-to-end: enqueue a run against a stub provider, let the worker drain it, assert the conversation document contains the final assistant message.
 - Tail endpoint: subscribe with a conversation that already has a completed run, assert the endpoint replays the persisted chunks and closes cleanly.
-- Abort semantics: close the tail subscription mid-run, assert the worker keeps running (does *not* abort) and the next subscriber catches up from whatever's persisted.
+- Abort semantics: close the tail subscription mid-run, assert the worker keeps running (does _not_ abort) and the next subscriber catches up from whatever's persisted.
 - Authorization: a user subscribing to someone else's `runId` gets `401`, even if the `conversationId` is guessable.
 - Cost cap: a run that exceeds `maxSteps` stops cleanly and records usage once via the budget hook, no double-counting.
 
