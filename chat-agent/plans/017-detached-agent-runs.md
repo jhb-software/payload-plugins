@@ -58,7 +58,10 @@ Key properties:
 This reuses plan 015's machinery rather than introducing a parallel task:
 
 - **Task slug.** Plan 015 ships `chat-agent:run:<slug>` for cron-triggered scheduled agents. Detached-run support extends the same task family — either by registering a generic `chat-agent:run:detached` task that accepts an inline-prompt input shape, or by promoting plan 015's per-slug handler factory so it accepts `{ messages, mode, model }` from the queue payload as well as from the static config. Concrete shape is decided when this plan is picked up; the constraint is "one handler, two triggers (cron and user-initiated)".
-- **Persistence target.** Reuse the `agent-runs` collection introduced in plan 015 — the schema (`status`, `messages`, `usage`, `error`, `startedAt`, `finishedAt`, `jobId`) already covers what a detached run needs. Add a `conversationId` foreign key on `agent-runs` so the tail endpoint can map `runId → conversation` for the resume-on-load case. Keep `agent-conversations` for interactive history; on `onFinish` the task collapses the streamed deltas into a single assistant message and appends it to the conversation, leaving the raw delta trail in `agent-runs`.
+- **Persistence target.** Reuse the `agent-runs` collection introduced in plan 015 — the schema (`status`, `messages`, `usage`, `error`, `startedAt`, `finishedAt`, `jobId`) already covers what a detached run needs. Two **schema-additive changes** this plan makes on top of 015's MVP:
+  1. **`conversationId` foreign key** on `agent-runs` so the tail endpoint can map `runId → conversation` for the resume-on-load case.
+  2. **Incremental writes / `chunks` field.** Plan 015 writes `messages` as a single `ModelMessage[]` once at end-of-run, which is fine for cron audits but blocks tailing. Plan 017 either (a) adds a `chunks: json` field that's appended to as `result.fullStream` drains, or (b) flushes `messages` every N steps. Decide alongside the tail-endpoint design.
+  3. Keep `agent-conversations` for interactive history; on `onFinish` the task collapses the streamed deltas into a single assistant message and appends it to the conversation, leaving the raw delta trail in `agent-runs`.
 - **Detached-only input.** Cron-triggered runs read their prompt from plugin config; detached runs receive `{ messages, mode, model, conversationId, userId }` from `payload.jobs.queue` at submit time. The plan-015 handler grows a thin discriminator over its input shape.
 
 ```ts
@@ -79,7 +82,7 @@ What Payload gives us for free:
 
 What we'd add on top:
 
-- A **tail endpoint** (`GET /chat-agent/chat/runs/:id`, SSE) that reads from `agent-runs.messages` (the chunks the plan-015 handler already persists) and emits an AI-SDK-compatible `UIMessageChunk` stream, so the existing `useChat` transport can consume it without a second client protocol.
+- A **tail endpoint** (`GET /chat-agent/chat/runs/:id`, SSE) that reads from the incremental field this plan adds (`agent-runs.chunks` or per-step flushes of `messages`; see "Persistence target" above) and emits an AI-SDK-compatible `UIMessageChunk` stream, so the existing `useChat` transport can consume it without a second client protocol.
 - A **resume-on-load hook** in the client: when `useChat` mounts and the last conversation message is an in-progress assistant run, look up the active `agent-runs` doc by `conversationId` and auto-subscribe to its tail endpoint instead of rendering static history.
 - A **finish-time conversation merge.** Once the run reaches `succeeded`, the task appends a single consolidated assistant message to `agent-conversations.messages[]`, keeping the chat list free of half-written deltas.
 

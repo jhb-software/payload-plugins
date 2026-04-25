@@ -125,7 +125,7 @@ Admin-visible under the existing "Chat" group, read-only for non-admins. One doc
     { name: 'prompt',     type: 'textarea', required: true }, // exact prompt sent
     { name: 'mode',       type: 'select',   options: AGENT_MODES },
     { name: 'model',      type: 'text' },
-    { name: 'messages',   type: 'json' },                     // assistant + tool messages, same shape as agent-conversations.messages
+    { name: 'messages',   type: 'json' },                     // ModelMessage[] from streamText's result.response.messages on success; empty array on failure (use the `error` field for diagnostics)
     { name: 'usage',      type: 'group',    fields: [
       { name: 'inputTokens',  type: 'number' },
       { name: 'outputTokens', type: 'number' },
@@ -178,8 +178,6 @@ No client-supplied data lands here, so no `beforeValidate` hook to scrub user in
       overrideAccess: true,
     })
 
-    const messages: unknown[] = []
-
     const result = await runAgent(req.payload, {
       user: null,
       overrideAccess: true,
@@ -191,21 +189,29 @@ No client-supplied data lands here, so no `beforeValidate` hook to scrub user in
       abortSignal: ac.signal,
     })
 
-    for await (const chunk of result.fullStream) {
-      messages.push(chunk) // appended verbatim; finalised on succeeded
+    // Drain the stream so the run actually progresses; we don't store the
+    // chunks themselves — `result.response` gives us the assembled
+    // `ModelMessage[]` once the run finishes.
+    for await (const _ of result.fullStream) {
+      /* discard */
     }
 
-    // `result.totalUsage` resolves once `fullStream` drains. Awaiting it inside
-    // the same try block means a mid-stream abort still surfaces (the promise
-    // rejects) and the catch records `aborted`/`failed` without overwriting
-    // partial usage with `{}`.
-    const usage = await result.totalUsage
+    // Both Promises resolve once `fullStream` drains. Awaiting them inside
+    // the same try block means a mid-stream abort still surfaces (they
+    // reject) and the catch records `aborted`/`failed` without leaving the
+    // doc in `running`.
+    const [response, usage] = await Promise.all([result.response, result.totalUsage])
 
     await req.payload.update({
       collection: 'agent-runs',
       id: run.id,
       overrideAccess: true,
-      data: { status: 'succeeded', messages, usage, finishedAt: new Date() },
+      data: {
+        status: 'succeeded',
+        messages: response.messages, // ModelMessage[] — what the LLM actually emitted
+        usage,
+        finishedAt: new Date(),
+      },
     })
     return { status: 'success' as const }
   } catch (err) {
@@ -216,6 +222,7 @@ No client-supplied data lands here, so no `beforeValidate` hook to scrub user in
       overrideAccess: true,
       data: {
         status: aborted ? 'aborted' : 'failed',
+        messages: [], // empty on failure; see `error` for diagnostics
         error:
           err instanceof Error ? `${err.name}: ${err.message}\n${err.stack ?? ''}` : String(err),
         finishedAt: new Date(),
@@ -229,6 +236,8 @@ No client-supplied data lands here, so no `beforeValidate` hook to scrub user in
 ```
 
 Auth invariant: the handler **always** passes `overrideAccess: true`, even for `mode: 'read-write'` runs. There is no logged-in user to attribute access checks to; the schedule itself is the authorisation.
+
+`messages` shape: persisted as `ModelMessage[]` from `result.response.messages` — the AI SDK's canonical "what the LLM emitted" record. On failure or abort, `messages` is `[]` and the failure detail lives in the `error` field. Plan 017's tail/resume use case requires incremental writes (the worker writes mid-run; the browser tails them); when 017 lands it adds either a `chunks: json` field that's appended to during the run, or an incremental flush of `messages` every N steps. Either is a schema-additive change to this collection.
 
 ### 5. Manual trigger documentation
 
@@ -279,7 +288,8 @@ If a consumer needs a specific tool subset for a scheduled agent only (e.g. read
 
 - **Plugin config validation.** Duplicate slugs throw at construction; `mode: 'ask'` throws; unknown model throws; invalid cron throws with the offending entry's slug in the message.
 - **Config transform.** Plugin output's `jobs.tasks` contains one task per scheduled agent with the expected `slug`, `schedule`, and `queue`. Existing user-declared tasks in `config.jobs.tasks` are preserved (assert reference identity for an unrelated user task).
-- **Handler success path.** Stub `runAgent` to emit two text deltas and a tool call, with a known `totalUsage` Promise. Assert the `agent-runs` doc transitions `running` → `succeeded`, `messages` contains both deltas + the tool call, `usage` matches what `result.totalUsage` resolved to, and `jobId` matches the synthetic job's id.
+- **Handler success path.** Stub `runAgent` to return a result whose `response.messages` is a known `ModelMessage[]` (one assistant message containing a text part and a tool call) and whose `totalUsage` is a known token total. Assert the `agent-runs` doc transitions `running` → `succeeded`, `messages` deep-equals `response.messages`, `usage` matches `totalUsage`, and `jobId` matches the synthetic job's id.
+- **Handler failure path: messages emptied.** On thrown / aborted runs, assert `messages` is persisted as `[]` (not `undefined`, not the in-flight chunks) and the `error` field carries the diagnostic.
 - **Handler failure path.** Stub `runAgent` to throw. Assert the doc is `failed` with `error` populated, `finishedAt` set, and the handler re-throws so payload-jobs records the failure (probe via the returned promise).
 - **Timeout path.** `runAgent` takes longer than `timeoutMs`. Assert the controller aborts, the doc is `aborted` (not `failed`), and the abort propagates through `runAgent`'s `abortSignal`.
 - **Auth invariant.** Even with `mode: 'read-write'`, the handler passes `overrideAccess: true` to `runAgent`. Spy on the call and assert.
