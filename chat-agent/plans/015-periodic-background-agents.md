@@ -73,9 +73,9 @@ export interface ScheduledAgent {
    * agent then operates with that user's standard Payload access — same
    * gating as if the user were chatting interactively.
    *
-   * `collection` is typed as Payload's `CollectionSlug` so consumers get
-   * autocomplete on their actual auth-enabled collection slugs from
-   * generated types.
+   * Typed as `Pick<TypedUser, 'collection' | 'id'>` so the shape stays in
+   * sync with whatever Payload's user reference looks like (today
+   * `{ collection: string; id: number | string }` from `BaseUser`).
    *
    * Use a service-account user (`auth: { useAPIKey: true }`) with the
    * permissions the agent actually needs to bound the blast radius via
@@ -90,7 +90,7 @@ export interface ScheduledAgent {
    * agent in `mode: 'read-write'` then literally cannot touch any other
    * collection, regardless of what its prompt asks for.
    */
-  user: { collection: CollectionSlug; id: number | string }
+  user: Pick<TypedUser, 'collection' | 'id'>
 }
 
 export interface ChatAgentPluginOptions {
