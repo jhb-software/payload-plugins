@@ -16,6 +16,7 @@ import {
   UnorderedListFeature,
   UploadFeature,
 } from '@payloadcms/richtext-lexical'
+import { attachDatabasePool } from '@vercel/functions'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -321,6 +322,20 @@ export default buildConfig({
   ],
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || 'mongodb://localhost:27017/chat-agent-dev',
+    connectOptions: {
+      // Close sockets quickly so Fluid Compute can drain the pool between
+      // invocations instead of keeping idle Atlas connections open.
+      maxIdleTimeMS: 5_000,
+      maxPoolSize: 10,
+    },
+    // On Vercel Fluid Compute, hand the underlying MongoClient to
+    // @vercel/functions so idle connections are released when the function
+    // suspends. Guarded by VERCEL so local dev/tests aren't affected.
+    afterOpenConnection: (adapter) => {
+      if (process.env.VERCEL) {
+        attachDatabasePool(adapter.connection.getClient())
+      }
+    },
   }),
   editor: lexicalEditor(),
   endpoints: rootEndpoints,
