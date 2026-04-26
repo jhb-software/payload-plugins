@@ -2,7 +2,7 @@
 
 ## 0.5.0
 
-### Breaking Changes
+> ! This release contains breaking changes.
 
 Alt text is now scoped to image MIME types by default. Documents whose MIME type is not tracked no longer render the alt text field, are not validated for a required alt text, and are excluded from the alt text health widget.
 
