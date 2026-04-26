@@ -96,6 +96,7 @@ export const payloadAltTextPlugin =
             localized: Boolean(config.localization),
             supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
             trackedMimeTypes: altTextCollectionConfig.mimeTypes,
+            validate: altTextCollectionConfig.validate,
           }),
           keywordsField({
             localized: Boolean(config.localization),

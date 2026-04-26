@@ -1,4 +1,4 @@
-import type { CollectionSlug, Where } from 'payload'
+import type { CollectionSlug, TextareaFieldValidation, Where } from 'payload'
 
 export const DEFAULT_TRACKED_MIME_TYPES: readonly string[] = ['image/*']
 
@@ -15,11 +15,37 @@ export type AltTextCollectionConfig = {
   mimeTypes?: string[]
   /** Collection slug to enable the plugin for. */
   slug: CollectionSlug
+  /**
+   * Custom validate function for the alt text field on this collection.
+   * When provided, it fully replaces the default validator (`validateAltText`).
+   *
+   * Use this to relax or extend the default — for example, to skip the
+   * required-alt check when the request body does not touch `alt`
+   * (folder moves, partial API updates).
+   *
+   * @example
+   * ```typescript
+   * import { validateAltText } from '@jhb.software/payload-alt-text-plugin'
+   *
+   * collections: [
+   *   {
+   *     slug: 'media',
+   *     validate: (value, args) => {
+   *       const { req } = args
+   *       if (!req.data || !('alt' in req.data)) return true
+   *       return validateAltText(value, args)
+   *     },
+   *   },
+   * ]
+   * ```
+   */
+  validate?: TextareaFieldValidation
 }
 
 export type NormalizedAltTextCollectionConfig = {
   mimeTypes: string[]
   slug: CollectionSlug
+  validate?: TextareaFieldValidation
 }
 
 export type IncomingCollectionsConfig = (AltTextCollectionConfig | CollectionSlug)[]
@@ -32,10 +58,14 @@ export function normalizeCollectionsConfig(
       return { slug: entry, mimeTypes: [...DEFAULT_TRACKED_MIME_TYPES] }
     }
 
-    return {
+    const normalized: NormalizedAltTextCollectionConfig = {
       slug: entry.slug,
       mimeTypes: entry.mimeTypes ? [...entry.mimeTypes] : [...DEFAULT_TRACKED_MIME_TYPES],
     }
+    if (entry.validate) {
+      normalized.validate = entry.validate
+    }
+    return normalized
   })
 }
 
@@ -90,26 +120,24 @@ export function buildMimeTypeWhere(patterns: readonly string[]): null | Where {
   return clauses.length === 1 ? clauses[0] : { or: clauses }
 }
 
-type TFunction = (key: string) => string
-
-type ValidateAltTextArgs = {
-  data: Record<string, unknown>
-  operation: string
-  req: { t: TFunction }
-}
-
 /**
- * Shared validation logic for the alt text field.
+ * Default validation logic for the alt text field.
  *
  * - Allows an empty value during the initial upload (no regular update has occurred yet).
  * - Allows an empty value when the document's mime type is not tracked for alt text.
  * - Otherwise requires a non-empty value.
+ *
+ * Projects with stricter or looser requirements can pass a custom function to
+ * a collection's `validate` option instead.
  */
 export function validateAltText(
-  value: unknown,
-  { data, operation, req: { t } }: ValidateAltTextArgs,
+  value: Parameters<TextareaFieldValidation>[0],
+  args: Parameters<TextareaFieldValidation>[1],
   trackedMimeTypes?: readonly string[],
 ): string | true {
+  const data = (args.data ?? {}) as Record<string, unknown>
+  const { operation, req } = args
+
   // Since https://github.com/payloadcms/payload/pull/14988, when using external storage (e.g., S3),
   // it is no longer possible to detect whether this validation runs during the initial upload
   // or a regular update by checking the existence of the ID.
@@ -130,7 +158,8 @@ export function validateAltText(
   }
 
   if (typeof value !== 'string' || value.trim().length === 0) {
-    return t('@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
+    // @ts-expect-error - the translation key type does not include the custom key
+    return req.t('@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
   }
 
   return true

@@ -1,4 +1,8 @@
-import { openAIResolver, payloadAltTextPlugin } from '@jhb.software/payload-alt-text-plugin'
+import {
+  openAIResolver,
+  payloadAltTextPlugin,
+  validateAltText,
+} from '@jhb.software/payload-alt-text-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
@@ -7,6 +11,7 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Media } from './collections/Media'
 import { Images } from './collections/Images'
+import { MediaWithFolders } from './collections/MediaWithFolders'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -26,7 +31,10 @@ export default buildConfig({
   localization: {
     locales: ['en', 'de'],
     defaultLocale: 'en',
-    fallback: true,
+    // `fallback: false` lets us reproduce the folder-move scenario from #95:
+    // a doc with alt text only in `en` truly has empty alt in `de`, so the
+    // pre-fix validator rejected folder moves that didn't touch the alt field.
+    fallback: false,
   },
   i18n: {
     supportedLanguages: { en, de },
@@ -39,6 +47,7 @@ export default buildConfig({
     },
     Media,
     Images,
+    MediaWithFolders,
   ],
   db: mongooseAdapter({
     url: process.env.MONGODB_URL!,
@@ -54,6 +63,18 @@ export default buildConfig({
         { slug: 'media', mimeTypes: ['image/*'] },
         // Bare slug defaults to `['image/*']`.
         'images',
+        // Demonstrates the per-collection `validate` option: skip the required-alt
+        // check when the request body does not touch `alt` (e.g. folder moves,
+        // partial API updates). Without this, folder moves on docs with empty
+        // locales fail validation under `localization.fallback: false`. See #95.
+        {
+          slug: 'media-with-folders',
+          validate: (value, args) => {
+            const { req } = args
+            if (!req.data || !('alt' in req.data)) return true
+            return validateAltText(value, args)
+          },
+        },
       ],
       resolver: openAIResolver({
         apiKey: process.env.OPENAI_API_KEY!,

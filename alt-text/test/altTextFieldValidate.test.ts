@@ -1,3 +1,5 @@
+import type { TextareaFieldValidation } from 'payload'
+
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
@@ -7,6 +9,9 @@ const createdAt = '2024-01-01T00:00:00.000Z'
 const updatedAt = '2024-01-02T00:00:00.000Z'
 
 const t = (key: string) => key
+
+type Args = Parameters<TextareaFieldValidation>[1]
+const asArgs = (args: object) => args as Args
 
 const regularUpdateMeta = {
   data: { createdAt, updatedAt },
@@ -18,26 +23,23 @@ describe('validateAltText', () => {
   test('rejects a regular update for a tracked image mime type with an empty alt text', () => {
     const result = validateAltText(
       '',
-      {
+      asArgs({
         ...regularUpdateMeta,
         data: { ...regularUpdateMeta.data, mimeType: 'image/png' },
-      },
+      }),
       ['image/*'],
     )
 
-    assert.equal(
-      result,
-      '@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired',
-    )
+    assert.equal(result, '@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
   })
 
   test('allows an empty alt text for a document whose mime type is not tracked', () => {
     const result = validateAltText(
       '',
-      {
+      asArgs({
         ...regularUpdateMeta,
         data: { ...regularUpdateMeta.data, mimeType: 'video/mp4' },
-      },
+      }),
       ['image/*'],
     )
 
@@ -47,10 +49,10 @@ describe('validateAltText', () => {
   test('accepts a filled alt text for a tracked image mime type', () => {
     const result = validateAltText(
       'A descriptive alt text',
-      {
+      asArgs({
         ...regularUpdateMeta,
         data: { ...regularUpdateMeta.data, mimeType: 'image/png' },
-      },
+      }),
       ['image/*'],
     )
 
@@ -58,25 +60,25 @@ describe('validateAltText', () => {
   })
 
   test('requires alt text regardless of mime type when no trackedMimeTypes are configured', () => {
-    const result = validateAltText('', {
-      ...regularUpdateMeta,
-      data: { ...regularUpdateMeta.data, mimeType: 'video/mp4' },
-    })
-
-    assert.equal(
-      result,
-      '@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired',
+    const result = validateAltText(
+      '',
+      asArgs({
+        ...regularUpdateMeta,
+        data: { ...regularUpdateMeta.data, mimeType: 'video/mp4' },
+      }),
     )
+
+    assert.equal(result, '@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
   })
 
   test('allows an empty alt text on the initial upload regardless of mime type', () => {
     const result = validateAltText(
       '',
-      {
+      asArgs({
         data: { createdAt, updatedAt: createdAt, mimeType: 'image/png' },
         operation: 'update',
         req: { t },
-      },
+      }),
       ['image/*'],
     )
 
@@ -84,13 +86,7 @@ describe('validateAltText', () => {
   })
 
   test('allows an empty alt text when the document has no mime type (non-upload rows)', () => {
-    const result = validateAltText(
-      '',
-      {
-        ...regularUpdateMeta,
-      },
-      ['image/*'],
-    )
+    const result = validateAltText('', asArgs({ ...regularUpdateMeta }), ['image/*'])
 
     assert.equal(result, true)
   })
