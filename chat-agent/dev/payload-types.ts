@@ -64,6 +64,7 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    'service-accounts': ServiceAccountAuthOperations;
   };
   blocks: {
     cta: CtaBlock;
@@ -75,6 +76,7 @@ export interface Config {
     categories: Category;
     'rich-text-demo': RichTextDemo;
     media: Media;
+    'service-accounts': ServiceAccount;
     'agent-token-usage': AgentTokenUsage;
     'agent-conversations': AgentConversation;
     'payload-kv': PayloadKv;
@@ -89,6 +91,7 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     'rich-text-demo': RichTextDemoSelect<false> | RichTextDemoSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'service-accounts': ServiceAccountsSelect<false> | ServiceAccountsSelect<true>;
     'agent-token-usage': AgentTokenUsageSelect<false> | AgentTokenUsageSelect<true>;
     'agent-conversations': AgentConversationsSelect<false> | AgentConversationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -110,13 +113,31 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User;
+  user: User | ServiceAccount;
   jobs: {
     tasks: unknown;
     workflows: unknown;
   };
 }
 export interface UserAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+export interface ServiceAccountAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -335,6 +356,21 @@ export interface RichTextDemo {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-accounts".
+ */
+export interface ServiceAccount {
+  id: string;
+  name: string;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  enableAPIKey?: boolean | null;
+  apiKey?: string | null;
+  apiKeyIndex?: string | null;
+  collection: 'service-accounts';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "agent-token-usage".
  */
 export interface AgentTokenUsage {
@@ -416,6 +452,10 @@ export interface PayloadLockedDocument {
         value: string | Media;
       } | null)
     | ({
+        relationTo: 'service-accounts';
+        value: string | ServiceAccount;
+      } | null)
+    | ({
         relationTo: 'agent-token-usage';
         value: string | AgentTokenUsage;
       } | null)
@@ -424,10 +464,15 @@ export interface PayloadLockedDocument {
         value: string | AgentConversation;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: string | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: string | User;
+      }
+    | {
+        relationTo: 'service-accounts';
+        value: string | ServiceAccount;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -437,10 +482,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: string;
-  user: {
-    relationTo: 'users';
-    value: string | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: string | User;
+      }
+    | {
+        relationTo: 'service-accounts';
+        value: string | ServiceAccount;
+      };
   key?: string | null;
   value?:
     | {
@@ -564,6 +614,19 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-accounts_select".
+ */
+export interface ServiceAccountsSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  enableAPIKey?: T;
+  apiKey?: T;
+  apiKeyIndex?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -55,7 +55,7 @@ function makeReq(
   const payload = {
     config: {
       admin: { routes: { login: '/login' } },
-      custom: { chatAgent: access ? { access } : {} },
+      custom: { chatAgent: access ? { pluginOptions: { access } } : {} },
       routes: { admin: '/admin' },
     },
     find: () => Promise.resolve({ docs: [] }),

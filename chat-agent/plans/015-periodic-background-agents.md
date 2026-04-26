@@ -1,11 +1,11 @@
 ---
 title: Periodic background agents
-description: Declare cron-scheduled agents in plugin config (e.g. "every Monday at 9am, audit SEO metadata") that run unattended via `runAgent`, persist every execution into an admin-visible `agent-runs` collection, and reuse Payload's jobs queue for triggering, retries, and worker lifecycle.
+description: Declare cron-scheduled agents in plugin config (e.g. "every Monday at 9am, audit SEO metadata") that run unattended via `runAgent(req, opts)`, persist every execution into an admin-visible `agent-runs` collection, and reuse Payload's jobs queue for triggering, retries, and worker lifecycle.
 type: feature
 readiness: ready
 ---
 
-> **Sequencing.** Depends on plan [014](./014-headless-agent-runner.md) (`runAgent`). Plan [017](./017-detached-agent-runs.md) (detached interactive runs) reuses the `agent-runs` collection and `chat-agent:run:<slug>` task family introduced here.
+> **Sequencing.** Builds on the shipped `runAgent(req, opts)` primitive. Plan [017](./017-detached-agent-runs.md) (detached interactive runs) reuses the `agent-runs` collection and `chat-agent:run:<slug>` task family introduced here.
 
 ## Problem
 
@@ -22,7 +22,7 @@ All of these need three things the chat endpoint does not provide: a cron trigge
 
 ## Proposal
 
-Five concrete pieces, layered on plan 014's `runAgent`:
+Five concrete pieces, layered on the shipped `runAgent(req, opts)` primitive:
 
 ### 1. `scheduledAgents` plugin option
 
@@ -67,23 +67,30 @@ export interface ScheduledAgent {
   timeoutMs?: number
 
   /**
-   * The user the agent acts as. The handler looks up this user via
-   * `payload.findByID` once per run and passes it to `runAgent`; the agent
-   * then operates with that user's standard Payload access — same gating
-   * as if the user were chatting interactively.
+   * Reference to the user the agent acts as — required. The handler resolves
+   * it via `payload.findByID` once per run, builds a per-run request via
+   * `createLocalReq({ user }, payload)`, and passes that to `runAgent`. The
+   * agent then operates with that user's standard Payload access — same
+   * gating as if the user were chatting interactively.
    *
-   * If omitted, the run uses `user: null, overrideAccess: true` (full DB
-   * access — convenient but unbounded). Configure `actingAs` to a
-   * service-account user with the permissions the agent actually needs
-   * to bound the blast radius via Payload's existing access control,
-   * without any new allowlist mechanism in the plugin.
+   * Typed as `Pick<TypedUser, 'collection' | 'id'>` so the shape stays in
+   * sync with whatever Payload's user reference looks like (today
+   * `{ collection: string; id: number | string }` from `BaseUser`).
    *
-   * Example: an SEO-audit agent acts as a `role: 'seo-bot'` user whose
+   * Use a service-account user (`auth: { useAPIKey: true }`) with the
+   * permissions the agent actually needs to bound the blast radius via
+   * Payload's existing access control. There is no "no actor" mode in the
+   * MVP: every run is auditable to a specific identity. If the agent
+   * needs to escape access checks (e.g. cross-collection audits), set
+   * `mode: 'superuser'` and the handler will pass `overrideAccess: true`
+   * to `runAgent`.
+   *
+   * Example: an SEO-audit agent runs as a `role: 'seo-bot'` user whose
    * collection access permits `read` + `update` on `pages` only. The
    * agent in `mode: 'read-write'` then literally cannot touch any other
    * collection, regardless of what its prompt asks for.
    */
-  actingAs?: { collection: string; id: number | string }
+  user: Pick<TypedUser, 'collection' | 'id'>
 }
 
 export interface ChatAgentPluginOptions {
@@ -99,7 +106,7 @@ export interface ChatAgentPluginOptions {
 - `mode !== 'ask'` (no confirmation channel for unattended runs).
 - `model`, when supplied, exists in `availableModels` (or is the configured `defaultModel` when `availableModels` is unset).
 - `schedule` cron strings: pass them through to Payload's jobs system as-is (Payload accepts cron strings on `task.schedule` and validates them itself). The plugin does **not** bundle a separate cron parser; if Payload rejects the string at task-registration time, surface that error with the offending agent's slug for context. No new dependency.
-- `actingAs.collection`, when supplied, exists in `config.collections`. Validation happens at construction (so a typo in the collection slug fails at boot, not at the first cron tick). The user document itself is looked up at run time — if it has been deleted by then, the run fails with a clear `not found` error.
+- `user.collection` exists in `config.collections` and is auth-enabled. Validation happens at construction (so a typo in the collection slug or pointing at a non-auth collection fails at boot, not at the first cron tick). The user document itself is looked up at run time — if it has been deleted by then, the run fails with a clear `not found` error.
 
 ### 2. Config transform injects one task per agent
 
@@ -208,21 +215,22 @@ When plan 017 lands and `agent-runs` docs gain a `triggeredBy.userId` (for user-
       overrideAccess: true,
     })
 
-    // Resolve the acting user. With `actingAs` configured, the agent runs
-    // under that user's standard Payload access (no overrideAccess). Without
-    // it, the agent gets full DB access — convenient default, unbounded
-    // blast radius.
-    const actingUser = agent.actingAs
-      ? await req.payload.findByID({
-          collection: agent.actingAs.collection,
-          id: agent.actingAs.id,
-          overrideAccess: true,
-        })
-      : null
+    // Resolve the configured user. The agent runs under that user's standard
+    // Payload access — same gating as if the user were chatting
+    // interactively. We construct a per-run req via `createLocalReq` so
+    // `runAgent`'s "req carries the actor" contract holds without
+    // mutating the task handler's shared `req`.
+    const user = await req.payload.findByID({
+      collection: agent.user.collection,
+      id: agent.user.id,
+      overrideAccess: true,
+    })
+    const runReq = await createLocalReq({ user }, req.payload)
 
-    const result = await runAgent(req.payload, {
-      user: actingUser,
-      overrideAccess: actingUser == null,
+    const result = await runAgent(runReq, {
+      // `mode: 'superuser'` requires `overrideAccess: true`; for any other
+      // mode the agent operates within the configured user's normal access.
+      overrideAccess: agent.mode === 'superuser',
       skipBudget: true,
       mode: agent.mode ?? 'read-write',
       model: agent.model,
@@ -277,7 +285,7 @@ When plan 017 lands and `agent-runs` docs gain a `triggeredBy.userId` (for user-
 }
 ```
 
-Auth model: when `agent.actingAs` is **omitted**, the handler passes `user: null, overrideAccess: true` — the agent has full DB access, the schedule itself is the authorisation. When `agent.actingAs` is **set**, the handler looks up that user and passes them through with `overrideAccess: false` — the agent's blast radius collapses to whatever the configured user can do via Payload's normal access rules. There is no separate per-collection allowlist in the plugin; you bound the agent by giving its `actingAs` user only the permissions it should have.
+Auth model: every run has an actor. The handler resolves `agent.user` to a real user document, builds a per-run `req` via `createLocalReq({ user }, payload)`, and passes that to `runAgent`. The agent's blast radius is whatever the configured user can do via Payload's normal access rules. There is no separate per-collection allowlist in the plugin; you bound the agent by giving its `user` only the permissions it should have. For audits that genuinely need to escape access checks (cross-collection reads, admin-style maintenance), set `agent.mode: 'superuser'` and the handler will pass `overrideAccess: true` — explicit and visible at the schedule's declaration site.
 
 `messages` shape: persisted as `ModelMessage[]` from `result.response.messages` — the AI SDK's canonical "what the LLM emitted" record. On failure or abort, `messages` is `[]` and the failure detail lives in the `error` field. Plan 017's tail/resume use case requires incremental writes (the worker writes mid-run; the browser tails them); when 017 lands it adds either a `chunks: json` field that's appended to during the run, or an incremental flush of `messages` every N steps. Either is a schema-additive change to this collection.
 
@@ -316,10 +324,10 @@ Each item below has a noted trigger event so we know when to revisit:
 
 ## Tool resolution and req
 
-Scheduled-agent runs invoke `runAgent` without an HTTP `req`. Per plan 014's "Tool resolution order", that means:
+Scheduled-agent runs invoke `runAgent` with the per-run `req` constructed via `createLocalReq({ user }, payload)`. That carries `req.payload`, `req.user` (the resolved configured user), and Payload's standard middleware-attached fields, so:
 
-- The plugin's `options.tools` factory is called with the synthetic minimal `req` (`{ payload, user: null, payloadAPI: 'local', headers: new Headers() }`). User-defined tools that only read `req.payload` keep working; tools that genuinely need cookies or middleware-attached state must guard or be filtered out by the consumer's factory when `req.payloadAPI === 'local'`.
-- `buildTools`' custom-endpoint branch is skipped (no real `req` to forward), and the system prompt is built with `hasCustomEndpoints: false` so the agent isn't told about tools that aren't in its toolset.
+- The plugin's `options.tools` factory receives a real `req` — user-defined tools that read `req.user`, `req.payload`, or locale work the same way they do in the chat endpoint.
+- `buildTools`' custom-endpoint branch wires `callEndpoint` normally, and the system prompt is built with `hasCustomEndpoints: true` when the config has any.
 
 If a consumer needs a specific tool subset for a scheduled agent only (e.g. read-only audits that should not see write tools), they wrap the per-call tool factory inside the agent's task handler — but for the MVP the per-mode filtering driven by `mode` is enough.
 
@@ -341,9 +349,9 @@ If a consumer needs a specific tool subset for a scheduled agent only (e.g. read
 - **Handler failure path: messages emptied.** On thrown / aborted runs, assert `messages` is persisted as `[]` (not `undefined`, not the in-flight chunks) and the `error` field carries the diagnostic.
 - **Handler failure path.** Stub `runAgent` to throw. Assert the doc is `failed` with `error` populated, `finishedAt` set, and the handler re-throws so payload-jobs records the failure (probe via the returned promise).
 - **Timeout path.** `runAgent` takes longer than `timeoutMs`. Assert the controller aborts, the doc is `aborted` (not `failed`), and the abort propagates through `runAgent`'s `abortSignal`.
-- **Auth — default (no `actingAs`).** Handler passes `user: null, overrideAccess: true` to `runAgent`. Spy and assert.
-- **Auth — with `actingAs`.** Configure `actingAs: { collection: 'users', id: <id> }` for a seeded user with limited access. Handler looks up that user, passes it through with `overrideAccess: false`. Spy on `runAgent` and assert; integration-test that a tool call attempting to read a collection the user can't see returns a Payload access error inside `messages` (not a successful read).
-- **Auth — `actingAs` user missing.** When `actingAs` references a deleted user, the handler surfaces a clear `not found` error and the run is `failed` with `error` populated.
+- **Auth — configured user.** Configure `user: { collection: 'users', id: <id> }` for a seeded user with limited access. Handler looks up that user, builds the per-run req via `createLocalReq`, and the spy on `runAgent` sees the req's `user` matching the seeded one with `overrideAccess: false`. Integration-test that a tool call attempting to read a collection the user can't see returns a Payload access error inside `messages` (not a successful read).
+- **Auth — user missing.** When `user` references a deleted document, the handler surfaces a clear `not found` error and the run is `failed` with `error` populated.
+- **Auth — superuser mode.** With `mode: 'superuser'`, the handler still resolves `user` (the actor is preserved for audit) but passes `overrideAccess: true` to `runAgent`. Spy and assert.
 - **Access reuse — denied.** Configure `chatAgentPlugin({ access: () => false })`. Assert `payload.find({ collection: 'agent-runs' })` from a request that hits the gate returns no docs (and the REST endpoint returns 401). Confirms `isPluginAccessAllowed` flows through to the new collection.
 - **Access reuse — default.** With no `options.access` configured, an authenticated `req.user` can read; an anonymous request cannot. Confirms the helper's fallback applies.
 - **`onInit` warning.** Scheduled agents declared but no `jobs.autoRun` configured → `payload.logger.warn` is called with an actionable message naming the affected slugs.
@@ -352,5 +360,5 @@ If a consumer needs a specific tool subset for a scheduled agent only (e.g. read
 
 ## Related work
 
-- Plan [014](./014-headless-agent-runner.md) — provides the `runAgent` primitive this plan invokes from every scheduled task handler.
+- The `runAgent(req, opts)` primitive this plan invokes from every scheduled task handler ships in the chat-agent plugin's main entry.
 - Plan [017](./017-detached-agent-runs.md) — reuses the `agent-runs` collection and `chat-agent:run:<slug>` task family introduced here for user-initiated detached runs.

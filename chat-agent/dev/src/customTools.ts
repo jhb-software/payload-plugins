@@ -125,7 +125,12 @@ export function customTools({ req }: { req: PayloadRequest }) {
           return { error: 'SLACK_WEBHOOK_URL is not set on the server' }
         }
         // The sender identity is server-controlled; the agent only supplies the body.
-        const sender = req.user?.email ?? 'unknown-user'
+        // Service accounts (used by headless cron callers) have no email — label
+        // them by their account name instead so the audit trail stays useful.
+        const sender =
+          req.user?.collection === 'service-accounts'
+            ? `service:${req.user.name ?? req.user.id}`
+            : (req.user?.email ?? 'unknown-user')
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

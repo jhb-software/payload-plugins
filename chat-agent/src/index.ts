@@ -20,10 +20,8 @@
  *   })
  */
 
-import type { TextStreamPart, Tool, ToolSet } from 'ai'
+import type { TextStreamPart, ToolSet } from 'ai'
 import type { PayloadRequest } from 'payload'
-
-import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import type { AgentMode, ChatAgentPluginOptions } from './types.js'
 
@@ -35,9 +33,7 @@ import {
   resolveModeConfig,
   validateModeAccess,
 } from './modes.js'
-import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
-import { buildSystemPrompt } from './system-prompt.js'
-import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
+import { composeOnFinish, runAgentImpl, ToolsResolverError } from './runAgent.js'
 
 export {
   createPayloadBudget,
@@ -47,6 +43,7 @@ export {
   type PeriodResolver,
   type ScopeResolver,
 } from './budget.js'
+export { runAgent, type RunAgentOptions, type RunAgentResult } from './runAgent.js'
 export type { BudgetConfig, BudgetUsage } from './types.js'
 export type { ChatAgentPluginOptions, ModelFactory, ModelOption } from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
@@ -138,11 +135,12 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
       custom: {
         ...config.custom,
         chatAgent: {
-          access: options.access,
-          availableModels: options.availableModels,
-          defaultModel: options.defaultModel,
           modesConfig,
-          suggestedPrompts: options.suggestedPrompts,
+          // The full plugin options, exposed so `runAgent(req, opts)` and
+          // other consumers (admin views, access guard, /models endpoint)
+          // can read fields off it without re-threading the raw `options`
+          // argument through closures. See `src/plugin-custom-config.ts`.
+          pluginOptions: options,
         },
       },
       endpoints: [
@@ -233,18 +231,22 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             // --- Resolve mode ----------------------------------------------
+            // Per-mode access checks live at the HTTP boundary; `runAgentImpl`
+            // doesn't run them (background callers supply their own authority).
             const requestedMode = body.mode ?? getDefaultMode(modesConfig)
             const modeError = await validateModeAccess(requestedMode, modesConfig, req)
             if (modeError) {
               return Response.json({ error: modeError }, { status: 403 })
             }
             const mode = requestedMode as AgentMode
+            const overrideAccess = mode === 'superuser'
 
-            // --- Budget check ----------------------------------------------
-            // Surfaced as a 429 before we spend tokens. Errors from the
-            // user-supplied check() are deliberately surfaced as 500 (not
-            // swallowed) so a broken budget store fails loudly instead of
-            // silently allowing unlimited spend.
+            // --- Budget pre-check ------------------------------------------
+            // Pre-check here so an out-of-budget caller gets a 429 (instead
+            // of a thrown 500 from `runAgentImpl`) and so `X-Budget-Remaining`
+            // can be set on the SSE response. Recording runs end-of-stream
+            // via the `onFinish` option below; we pass `skipBudget: true` to
+            // `runAgentImpl` to avoid double-counting.
             let remaining: null | number = null
             if (options.budget) {
               try {
@@ -265,124 +267,38 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
               }
             }
 
-            // --- Resolve overrideAccess ------------------------------------
-            const overrideAccess = mode === 'superuser'
-
-            // --- Discover custom endpoints and build tools ------------------
-            const customEndpoints = discoverEndpoints(req.payload.config)
-            const builtInTools = buildTools(
-              req.payload,
-              req.user,
-              overrideAccess,
-              req,
-              customEndpoints,
-              req.payload.config,
-            )
-
-            // --- Resolve the final toolset ---------------------------------
-            // The `tools` factory receives the plugin's default tools and
-            // returns the full map the agent should see. Modeled on
-            // Payload's `lexicalEditor({ features: ({ defaultFeatures }) => ... })`:
-            // the user composes, the plugin does not merge. If omitted,
-            // default tools are used as-is.
-            //
-            // `modelId` is passed in so a multi-provider setup can skip
-            // provider-native tools that the selected provider wouldn't
-            // accept (e.g. Anthropic's `webSearch_*` when the user picked
-            // an OpenAI model).
+            // --- Delegate to `runAgentImpl` --------------------------------
             const modelId = body.model ?? options.defaultModel
-            let allTools: Record<string, Tool>
-            if (options.tools) {
-              try {
-                allTools = await options.tools({ defaultTools: builtInTools, modelId, req })
-              } catch (err) {
-                return Response.json(
-                  {
-                    error: `tools resolver failed: ${err instanceof Error ? err.message : String(err)}`,
-                  },
-                  { status: 500 },
-                )
-              }
-            } else {
-              allTools = builtInTools
-            }
-            const tools = filterToolsByMode(allTools, mode)
-            const systemPrompt = buildSystemPrompt(
-              req.payload.config,
-              options.systemPrompt,
-              customEndpoints.length > 0,
-              mode,
-            )
-            const maxSteps = options.maxSteps ?? 20
-
-            // --- Resolve model from user-provided factory ------------------
-            let resolvedModel
+            let result
             try {
-              resolvedModel = options.model(modelId)
+              result = await runAgentImpl(options, req, {
+                abortSignal: req.signal,
+                messages: body.messages as Parameters<typeof runAgentImpl>[2]['messages'],
+                mode,
+                model: modelId,
+                // Budget was pre-checked above for the 429 + header; record
+                // end-of-stream via the shared composer so `runAgentImpl`
+                // doesn't run a second `check()`.
+                onFinish: composeOnFinish({
+                  budget: options.budget,
+                  callerOnFinish: undefined,
+                  modelId,
+                  req,
+                }),
+                overrideAccess,
+                skipBudget: true,
+              })
             } catch (err) {
+              if (err instanceof ToolsResolverError) {
+                return Response.json({ error: err.message }, { status: 500 })
+              }
+              const message = err instanceof Error ? err.message : String(err)
               return Response.json(
-                {
-                  error: `Failed to resolve model "${modelId}": ${err instanceof Error ? err.message : String(err)}`,
-                },
+                { error: `Failed to resolve model "${modelId}": ${message}` },
                 { status: 500 },
               )
             }
 
-            // --- Budget recording hook -------------------------------------
-            // Attached as `onFinish` (PromiseLike-aware) so the AI SDK awaits
-            // it before closing the stream. Keeps the next check() for the
-            // same user consistent with the spend we just observed.
-            const record = options.budget?.record
-            const onFinish = record
-              ? async (event: {
-                  totalUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
-                }) => {
-                  await record({
-                    model: modelId,
-                    req,
-                    usage: {
-                      inputTokens: event.totalUsage?.inputTokens,
-                      outputTokens: event.totalUsage?.outputTokens,
-                      totalTokens: event.totalUsage?.totalTokens,
-                    },
-                  })
-                }
-              : undefined
-
-            // --- Stream response via AI SDK --------------------------------
-            // Pass the request's abort signal so a client disconnect (tab
-            // close, navigation, server timeout) aborts the in-flight LLM
-            // call instead of racking up tokens on a stream nobody is
-            // listening to.
-            //
-            // `ignoreIncompleteToolCalls` strips tool parts whose state is
-            // `input-streaming` / `input-available`, which covers tool
-            // calls aborted before the provider finished emitting their
-            // input. `sanitizeOrphanToolCalls` is a defence-in-depth pass
-            // that also drops `tool_use` blocks whose `tool_result` never
-            // materialised (and the inverse) — persistence round-trips
-            // and adapter-side bugs (vercel/ai#14259, vercel/ai#14379)
-            // can leak orphans past the SDK filter. Without it, Anthropic
-            // rejects the next request with `tool_use ids were found
-            // without tool_result blocks immediately after`.
-            const converted = await convertToModelMessages(
-              body.messages as Parameters<typeof convertToModelMessages>[0],
-              { ignoreIncompleteToolCalls: true },
-            )
-            const result = streamText({
-              abortSignal: req.signal,
-              messages: sanitizeOrphanToolCalls(converted),
-              model: resolvedModel,
-              onFinish,
-              stopWhen: stepCountIs(maxSteps),
-              system: systemPrompt,
-              toolChoice: 'auto',
-              tools,
-            })
-
-            // `X-Budget-Remaining` lets the client surface soft warnings as
-            // users approach the cap. Only set when a numeric remaining was
-            // returned (null = unlimited, i.e. no header).
             const headers =
               remaining !== null ? { 'X-Budget-Remaining': String(remaining) } : undefined
 

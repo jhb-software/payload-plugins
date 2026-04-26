@@ -191,12 +191,12 @@ function findHandler(endpoints: Endpoint[], method: string, path: string): Paylo
   return handler
 }
 
-/** Builds a payload.config.custom.chatAgent.access shape for handler tests. */
+/** Builds a payload.config.custom.chatAgent shape carrying `access` for handler tests. */
 function payloadWithAccess(
   access: (req: PayloadRequest) => boolean | Promise<boolean>,
   extra: Record<string, unknown> = {},
 ) {
-  return { config: { custom: { chatAgent: { access } } }, ...extra }
+  return { config: { custom: { chatAgent: { pluginOptions: { access } } } }, ...extra }
 }
 
 describe('conversation endpoints respect plugin access()', () => {

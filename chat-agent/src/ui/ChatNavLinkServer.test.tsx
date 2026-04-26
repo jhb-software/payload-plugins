@@ -89,7 +89,7 @@ describe('ChatNavLinkServer', () => {
       asServerProps({
         payload: {
           config: {
-            custom: { chatAgent: { access: () => false } },
+            custom: { chatAgent: { pluginOptions: { access: () => false } } },
           },
         },
         user: { id: 'u1' },
@@ -104,7 +104,7 @@ describe('ChatNavLinkServer', () => {
       asServerProps({
         payload: {
           config: {
-            custom: { chatAgent: { access: () => true } },
+            custom: { chatAgent: { pluginOptions: { access: () => true } } },
           },
         },
         user: { id: 'u1' },
