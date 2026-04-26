@@ -7,6 +7,7 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Media } from './collections/Media'
 import { Images } from './collections/Images'
+import { MediaWithFolders } from './collections/MediaWithFolders'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -26,7 +27,10 @@ export default buildConfig({
   localization: {
     locales: ['en', 'de'],
     defaultLocale: 'en',
-    fallback: true,
+    // `fallback: false` lets us reproduce the folder-move scenario from #95:
+    // a doc with alt text only in `en` truly has empty alt in `de`, so the
+    // pre-fix validator rejected folder moves that didn't touch the alt field.
+    fallback: false,
   },
   i18n: {
     supportedLanguages: { en, de },
@@ -39,6 +43,7 @@ export default buildConfig({
     },
     Media,
     Images,
+    MediaWithFolders,
   ],
   db: mongooseAdapter({
     url: process.env.MONGODB_URL!,
@@ -49,7 +54,7 @@ export default buildConfig({
   },
   plugins: [
     payloadAltTextPlugin({
-      collections: ['media', 'images'], // Specify which upload collections should have alt text fields
+      collections: ['media', 'images', 'media-with-folders'], // Specify which upload collections should have alt text fields
       resolver: openAIResolver({
         apiKey: process.env.OPENAI_API_KEY!,
         model: 'gpt-4.1-mini',
