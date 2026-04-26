@@ -32,9 +32,6 @@ export function altTextField({
     label: translatedLabel('alternateText'),
     localized,
     required: true,
-    validate:
-      validate ??
-      ((value, args) =>
-        validateAltText(value, args as Parameters<typeof validateAltText>[1], trackedMimeTypes)),
+    validate: validate ?? ((value, args) => validateAltText(value, args, trackedMimeTypes)),
   }
 }
