@@ -33,7 +33,7 @@ import {
   resolveModeConfig,
   validateModeAccess,
 } from './modes.js'
-import { runAgentImpl } from './runAgent.js'
+import { composeOnFinish, runAgentImpl, ToolsResolverError } from './runAgent.js'
 
 export {
   createPayloadBudget,
@@ -139,9 +139,9 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
           availableModels: options.availableModels,
           defaultModel: options.defaultModel,
           modesConfig,
-          // Stash the raw plugin options so `runAgent(payload, opts)` can
-          // pick them up off-HTTP without needing the consumer to wire a
-          // factory through closures. See `src/runAgent.ts`.
+          // The full plugin options, exposed so `runAgent(req, opts)` can
+          // read them off-HTTP without the consumer re-threading them through
+          // closures. See `src/plugin-custom-config.ts`.
           pluginOptions: options,
           suggestedPrompts: options.suggestedPrompts,
         },
@@ -186,14 +186,6 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
         },
 
         // --- POST /chat-agent/chat ------------------------------------------
-        // The HTTP handler is now a thin wrapper around `runAgentImpl`: it
-        // owns parsing/validating the JSON body, gating with the plugin's
-        // `access` function, surfacing the budget header + per-message
-        // metadata, and translating `runAgent`'s thrown errors into the
-        // appropriate HTTP status codes. The actual orchestration (mode
-        // resolution, tool composition, system prompt build, model
-        // resolution, `streamText` call) lives in `src/runAgent.ts` so
-        // background jobs and the HTTP path share the same machinery.
         {
           handler: async (req: PayloadRequest) => {
             // --- Auth check -----------------------------------------------
@@ -280,7 +272,6 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
 
             // --- Delegate to `runAgentImpl` --------------------------------
             const modelId = body.model ?? options.defaultModel
-            const record = options.budget?.record
             let result
             try {
               result = await runAgentImpl(options, req, {
@@ -288,27 +279,23 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                 messages: body.messages as Parameters<typeof runAgentImpl>[2]['messages'],
                 mode,
                 model: modelId,
-                onFinish: record
-                  ? async (event) => {
-                      await record({
-                        model: modelId,
-                        req,
-                        usage: {
-                          inputTokens: event.totalUsage?.inputTokens,
-                          outputTokens: event.totalUsage?.outputTokens,
-                          totalTokens: event.totalUsage?.totalTokens,
-                        },
-                      })
-                    }
-                  : undefined,
+                // Budget was pre-checked above for the 429 + header; record
+                // end-of-stream via the shared composer so `runAgentImpl`
+                // doesn't run a second `check()`.
+                onFinish: composeOnFinish({
+                  budget: options.budget,
+                  callerOnFinish: undefined,
+                  modelId,
+                  req,
+                }),
                 overrideAccess,
                 skipBudget: true,
               })
             } catch (err) {
-              const message = err instanceof Error ? err.message : String(err)
-              if (message.startsWith('tools resolver failed:')) {
-                return Response.json({ error: message }, { status: 500 })
+              if (err instanceof ToolsResolverError) {
+                return Response.json({ error: err.message }, { status: 500 })
               }
+              const message = err instanceof Error ? err.message : String(err)
               return Response.json(
                 { error: `Failed to resolve model "${modelId}": ${message}` },
                 { status: 500 },

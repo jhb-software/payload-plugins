@@ -9,16 +9,13 @@ import type { PayloadRequest } from 'payload'
 
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
-import type { AgentMode, ChatAgentPluginOptions } from './types.js'
+import type { AgentMode, BudgetConfig, ChatAgentPluginOptions } from './types.js'
 
 import { getDefaultMode } from './modes.js'
+import { getPluginOptions } from './plugin-custom-config.js'
 import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
 import { buildSystemPrompt } from './system-prompt.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
 
 export interface RunAgentOptions {
   /** Abort signal. Interactive callers pass `req.signal`. */
@@ -72,60 +69,63 @@ export interface RunAgentOptions {
 /** Result mirrors `streamText`'s handle so callers choose how to consume it. */
 export type RunAgentResult = StreamTextResult<ToolSet, never>
 
-// ---------------------------------------------------------------------------
-// Public entry — looks up the plugin's stashed options
-// ---------------------------------------------------------------------------
+/**
+ * Thrown when a consumer-supplied `tools` factory throws. Lets the HTTP
+ * wrapper distinguish caller-config failures (500) from other run errors.
+ */
+export class ToolsResolverError extends Error {
+  override name = 'ToolsResolverError'
+  constructor(cause: unknown) {
+    super(`tools resolver failed: ${cause instanceof Error ? cause.message : String(cause)}`)
+  }
+}
 
 /**
- * Run the chat agent off-HTTP. Looks up the plugin options the chat-agent
- * plugin stashed on `req.payload.config.custom.chatAgent.pluginOptions` and
- * forwards to {@link runAgentImpl}. Throws if the plugin is not installed.
+ * Run the chat agent off-HTTP. Reads the plugin options the chat-agent
+ * plugin wrote into `req.payload.config.custom.chatAgent.pluginOptions` and
+ * forwards to the internal implementation. Throws if the plugin is not installed.
  *
  * `req` carries both the actor (`req.user`) and the Local API
  * (`req.payload`). For background callers without an HTTP `req`, construct
  * one with Payload's `createLocalReq({ user }, payload)` helper.
+ *
+ * Per-mode access checks (`modes.access[mode]`) are NOT run here — the
+ * caller is the authority for headless invocations. The HTTP wrapper
+ * validates them upstream because its `mode` comes from the request body.
  */
 export async function runAgent(
   req: PayloadRequest,
   opts: RunAgentOptions,
 ): Promise<RunAgentResult> {
-  const stash = (
-    req.payload.config as { custom?: { chatAgent?: { pluginOptions?: ChatAgentPluginOptions } } }
-  ).custom?.chatAgent?.pluginOptions
-  if (!stash) {
+  const pluginOptions = getPluginOptions(req.payload)
+  if (!pluginOptions) {
     throw new Error(
       '@jhb.software/payload-chat-agent: runAgent is not available. ' +
         'Did you install `chatAgentPlugin()` in your Payload config?',
     )
   }
-  return runAgentImpl(stash, req, opts)
+  return runAgentImpl(pluginOptions, req, opts)
 }
 
-// ---------------------------------------------------------------------------
-// Implementation — exported for tests, not part of the public package surface.
-// ---------------------------------------------------------------------------
-
 /**
- * The actual orchestration. Pure of HTTP — returns a `streamText` handle and
- * lets the caller decide how to consume it (`toUIMessageStreamResponse` for
- * SSE, `await result.text` / `result.fullStream` for jobs).
+ * @internal The actual orchestration. Pure of HTTP — returns a `streamText`
+ * handle and lets the caller decide how to consume it
+ * (`toUIMessageStreamResponse` for SSE, `await result.text` /
+ * `result.fullStream` for jobs). Exported only for the HTTP wrapper and tests.
  */
 export async function runAgentImpl(
   pluginOptions: ChatAgentPluginOptions,
   req: PayloadRequest,
   opts: RunAgentOptions,
 ): Promise<RunAgentResult> {
-  // --- Validate model factory --------------------------------------------
   if (typeof pluginOptions.model !== 'function') {
     throw new Error(
       'Chat agent plugin is misconfigured: the `model` option must be a function returning a LanguageModel.',
     )
   }
 
-  // --- Resolve mode -------------------------------------------------------
   const mode: AgentMode = opts.mode ?? getDefaultMode(pluginOptions.modes ?? {})
 
-  // --- Auth guard --------------------------------------------------------
   // Fail loudly if there's no actor and the caller hasn't opted in to
   // running without one — otherwise tool calls would silently hit access
   // checks with no subject.
@@ -138,9 +138,8 @@ export async function runAgentImpl(
     throw new Error('runAgent: mode "superuser" requires overrideAccess: true.')
   }
 
-  const overrideAccess = opts.overrideAccess ?? mode === 'superuser'
+  const overrideAccess = opts.overrideAccess ?? false
 
-  // --- Budget check ------------------------------------------------------
   const budget = pluginOptions.budget
   if (budget && !opts.skipBudget) {
     const remaining = await budget.check({ req })
@@ -151,7 +150,6 @@ export async function runAgentImpl(
     }
   }
 
-  // --- Discover custom endpoints + build tools ---------------------------
   const customEndpoints = discoverEndpoints(req.payload.config)
   const builtInTools = buildTools(
     req.payload as unknown as Parameters<typeof buildTools>[0],
@@ -161,42 +159,38 @@ export async function runAgentImpl(
     customEndpoints,
     req.payload.config,
   )
-  const hasCustomEndpoints = customEndpoints.length > 0
 
-  // --- Resolve the modelId so the tools resolver sees it -----------------
   const modelId = opts.model ?? pluginOptions.defaultModel
 
-  // --- Compose the toolset ----------------------------------------------
-  let baseTools: Record<string, Tool>
+  let baseTools: ToolSet
   if (pluginOptions.tools) {
     try {
-      baseTools = await pluginOptions.tools({
+      baseTools = (await pluginOptions.tools({
         defaultTools: builtInTools,
         modelId,
         req,
-      })
+      })) as ToolSet
     } catch (err) {
-      throw new Error(`tools resolver failed: ${err instanceof Error ? err.message : String(err)}`)
+      throw new ToolsResolverError(err)
     }
   } else {
-    baseTools = builtInTools
+    baseTools = builtInTools as ToolSet
   }
 
-  let finalTools: Record<string, Tool>
+  let finalTools: ToolSet
   if (typeof opts.tools === 'function') {
-    finalTools = opts.tools(baseTools as ToolSet) as Record<string, Tool>
+    finalTools = opts.tools(baseTools)
   } else if (opts.tools) {
-    finalTools = opts.tools as Record<string, Tool>
+    finalTools = opts.tools
   } else {
     finalTools = baseTools
   }
-  const tools = filterToolsByMode(finalTools, mode)
+  const tools = filterToolsByMode(finalTools as Record<string, Tool>, mode)
 
-  // --- System prompt -----------------------------------------------------
   const basePrompt = buildSystemPrompt(
     req.payload.config,
     pluginOptions.systemPrompt,
-    hasCustomEndpoints,
+    customEndpoints.length > 0,
     mode,
   )
   let systemPrompt: string
@@ -208,34 +202,14 @@ export async function runAgentImpl(
     systemPrompt = basePrompt
   }
 
-  // --- Resolve the model -------------------------------------------------
   const resolvedModel = pluginOptions.model(modelId)
+  const onFinish = composeOnFinish({
+    budget: opts.skipBudget ? undefined : budget,
+    callerOnFinish: opts.onFinish,
+    modelId,
+    req,
+  })
 
-  // --- Budget recording hook --------------------------------------------
-  // Compose `budget.record` with any caller-supplied `onFinish` (record
-  // first so the caller's hook can read fresh spend).
-  const record = budget?.record
-  const onFinish =
-    record && !opts.skipBudget
-      ? async (event: {
-          totalUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
-        }) => {
-          await record({
-            model: modelId,
-            req,
-            usage: {
-              inputTokens: event.totalUsage?.inputTokens,
-              outputTokens: event.totalUsage?.outputTokens,
-              totalTokens: event.totalUsage?.totalTokens,
-            },
-          })
-          if (opts.onFinish) {
-            await opts.onFinish(event)
-          }
-        }
-      : opts.onFinish
-
-  // --- Normalise messages to ModelMessage[] -----------------------------
   // `sanitizeOrphanToolCalls` is a defence-in-depth pass that drops
   // `tool_use` blocks whose `tool_result` never materialised (and the
   // inverse). Persistence round-trips and adapter-side bugs (vercel/ai#14259,
@@ -244,10 +218,8 @@ export async function runAgentImpl(
   // ids were found without tool_result blocks immediately after`.
   const messages = sanitizeOrphanToolCalls(await normaliseMessages(opts.messages))
 
-  // --- Step cap ---------------------------------------------------------
   const maxSteps = opts.maxSteps ?? pluginOptions.maxSteps ?? 20
 
-  // --- Hand off to streamText -------------------------------------------
   return streamText({
     abortSignal: opts.abortSignal,
     messages,
@@ -260,9 +232,42 @@ export async function runAgentImpl(
   }) as unknown as RunAgentResult
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+type FinishEvent = {
+  totalUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+}
+
+/**
+ * Composes the plugin's `budget.record` (if any) with the caller's `onFinish`
+ * (if any). Records first so the caller's hook can read fresh spend.
+ */
+export function composeOnFinish(args: {
+  budget: BudgetConfig | undefined
+  callerOnFinish: ((event: FinishEvent) => Promise<void> | void) | undefined
+  modelId: string
+  req: PayloadRequest
+}): ((event: FinishEvent) => Promise<void>) | undefined {
+  const { budget, callerOnFinish, modelId, req } = args
+  const record = budget?.record
+  if (!record && !callerOnFinish) {
+    return undefined
+  }
+  return async (event) => {
+    if (record) {
+      await record({
+        model: modelId,
+        req,
+        usage: {
+          inputTokens: event.totalUsage?.inputTokens,
+          outputTokens: event.totalUsage?.outputTokens,
+          totalTokens: event.totalUsage?.totalTokens,
+        },
+      })
+    }
+    if (callerOnFinish) {
+      await callerOnFinish(event)
+    }
+  }
+}
 
 async function normaliseMessages(
   input: ModelMessage[] | string | UIMessage[],
