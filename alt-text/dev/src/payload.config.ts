@@ -72,7 +72,7 @@ export default buildConfig({
           validate: (value, args) => {
             const reqData = (args.req as { data?: Record<string, unknown> }).data
             if (!reqData || !('alt' in reqData)) return true
-            return validateAltText(value, args as Parameters<typeof validateAltText>[1])
+            return validateAltText(value, args)
           },
         },
       ],

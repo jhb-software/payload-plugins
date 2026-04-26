@@ -31,7 +31,8 @@ export type AltTextCollectionConfig = {
    *   {
    *     slug: 'media',
    *     validate: (value, args) => {
-   *       if (!args.req.data || !('alt' in args.req.data)) return true
+   *       const reqData = args.req.data
+   *       if (!reqData || !('alt' in reqData)) return true
    *       return validateAltText(value, args)
    *     },
    *   },
@@ -119,14 +120,6 @@ export function buildMimeTypeWhere(patterns: readonly string[]): null | Where {
   return clauses.length === 1 ? clauses[0] : { or: clauses }
 }
 
-type TFunction = (key: string) => string
-
-type ValidateAltTextArgs = {
-  data: Record<string, unknown>
-  operation: string
-  req: { t: TFunction }
-}
-
 /**
  * Default validation logic for the alt text field.
  *
@@ -135,13 +128,16 @@ type ValidateAltTextArgs = {
  * - Otherwise requires a non-empty value.
  *
  * Projects with stricter or looser requirements can pass a custom function to
- * the plugin's `validate` option instead.
+ * a collection's `validate` option instead.
  */
 export function validateAltText(
-  value: unknown,
-  { data, operation, req: { t } }: ValidateAltTextArgs,
+  value: Parameters<TextareaFieldValidation>[0],
+  args: Parameters<TextareaFieldValidation>[1],
   trackedMimeTypes?: readonly string[],
 ): string | true {
+  const data = (args.data ?? {}) as Record<string, unknown>
+  const { operation, req } = args
+
   // Since https://github.com/payloadcms/payload/pull/14988, when using external storage (e.g., S3),
   // it is no longer possible to detect whether this validation runs during the initial upload
   // or a regular update by checking the existence of the ID.
@@ -162,7 +158,8 @@ export function validateAltText(
   }
 
   if (typeof value !== 'string' || value.trim().length === 0) {
-    return t('@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
+    // @ts-expect-error - the translation key type does not include the custom key
+    return req.t('@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
   }
 
   return true
