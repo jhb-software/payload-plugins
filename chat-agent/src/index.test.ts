@@ -729,7 +729,7 @@ describe('chatAgentPlugin nav link', () => {
     })
     const result = plugin({ endpoints: [] })
 
-    expect(result.custom?.chatAgent?.access).toBe(access)
+    expect(result.custom?.chatAgent?.pluginOptions?.access).toBe(access)
   })
 
   it('preserves existing beforeNavLinks entries', () => {

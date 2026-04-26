@@ -1,11 +1,11 @@
 import type { Payload, PayloadRequest } from 'payload'
 
-import { getPluginCustomConfig } from './plugin-custom-config.js'
+import { getPluginOptions } from './plugin-custom-config.js'
 
 export type PluginAccessFn = (req: PayloadRequest) => boolean | Promise<boolean>
 
 export function getPluginAccess(payload: Payload | undefined): PluginAccessFn | undefined {
-  return getPluginCustomConfig(payload)?.access
+  return getPluginOptions(payload)?.access
 }
 
 /**

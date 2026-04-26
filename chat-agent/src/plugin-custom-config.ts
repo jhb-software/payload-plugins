@@ -8,17 +8,20 @@
 
 import type { Payload } from 'payload'
 
-import type { PluginAccessFn } from './access.js'
-import type { ChatAgentPluginOptions, ModelOption, ModesConfig } from './types.js'
+import type { ChatAgentPluginOptions, ModesConfig } from './types.js'
 
-/** Shape the plugin writes into `payload.config.custom.chatAgent`. */
+/**
+ * Shape the plugin writes into `payload.config.custom.chatAgent`.
+ *
+ * Only `modesConfig` and `pluginOptions` live here — `modesConfig` because it's
+ * the *resolved* form of `options.modes` (not the raw input), `pluginOptions`
+ * because it's the full options blob that handlers and `runAgent` read fields
+ * off of (`access`, `model`, `tools`, `availableModels`, etc.) without
+ * re-threading the raw `options` argument through closures.
+ */
 export interface ChatAgentPluginCustomConfig {
-  access?: PluginAccessFn
-  availableModels?: ModelOption[]
-  defaultModel?: string
   modesConfig?: ModesConfig
   pluginOptions?: ChatAgentPluginOptions
-  suggestedPrompts?: string[]
 }
 
 export function getPluginCustomConfig(

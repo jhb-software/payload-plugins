@@ -10,9 +10,9 @@ interface ChatNavLinkServerProps extends ServerProps {
 
 /**
  * Server wrapper for the ChatNavLink component. Checks the plugin's `access`
- * function (stored in `payload.config.custom.chatAgent.access`) before
- * rendering. If the user is not allowed, returns `null` so the link is hidden
- * from the admin nav sidebar.
+ * function (stored in `payload.config.custom.chatAgent.pluginOptions.access`)
+ * before rendering. If the user is not allowed, returns `null` so the link
+ * is hidden from the admin nav sidebar.
  */
 export default async function ChatNavLinkServer({ path, payload, user }: ChatNavLinkServerProps) {
   if (!(await isPluginAccessAllowed({ payload, user: user ?? null }))) {

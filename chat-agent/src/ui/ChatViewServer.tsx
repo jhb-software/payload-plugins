@@ -4,11 +4,12 @@ import { DefaultTemplate } from '@payloadcms/next/templates'
 import { redirect } from 'next/navigation.js'
 import { formatAdminURL } from 'payload/shared'
 
-import type { AgentMode, ModelOption, ModesConfig } from '../types.js'
+import type { AgentMode } from '../types.js'
 
 import { isPluginAccessAllowed } from '../access.js'
 import { CONVERSATIONS_SLUG } from '../conversations.js'
 import { getDefaultMode, resolveAvailableModes } from '../modes.js'
+import { getPluginCustomConfig, getPluginOptions } from '../plugin-custom-config.js'
 import { AGENT_MODES } from '../types.js'
 import ChatView from './ChatView.js'
 
@@ -69,18 +70,13 @@ export default async function ChatViewServer({
 
   // Resolve modes + models config server-side so the selectors render with the
   // first paint instead of flashing in after a client-side fetch on mount.
-  const pluginConfig = (payload.config.custom?.chatAgent ?? {}) as {
-    availableModels?: ModelOption[]
-    defaultModel?: string
-    modesConfig?: ModesConfig
-    suggestedPrompts?: string[]
-  }
-  const modesConfig = pluginConfig.modesConfig ?? {}
+  const modesConfig = getPluginCustomConfig(payload)?.modesConfig ?? {}
   const availableModes = await resolveAvailableModes(modesConfig, req)
   const defaultMode = getDefaultMode(modesConfig)
-  const availableModels = pluginConfig.availableModels ?? []
-  const defaultModel = pluginConfig.defaultModel
-  const suggestedPrompts = pluginConfig.suggestedPrompts
+  const pluginOptions = getPluginOptions(payload)
+  const availableModels = pluginOptions?.availableModels ?? []
+  const defaultModel = pluginOptions?.defaultModel
+  const suggestedPrompts = pluginOptions?.suggestedPrompts
 
   // Fetch the conversation list server-side so the sidebar renders immediately.
   // The sidebar only uses `id`, `title`, and `updatedAt`; selecting just

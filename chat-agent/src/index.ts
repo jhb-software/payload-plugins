@@ -135,15 +135,12 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
       custom: {
         ...config.custom,
         chatAgent: {
-          access: options.access,
-          availableModels: options.availableModels,
-          defaultModel: options.defaultModel,
           modesConfig,
-          // The full plugin options, exposed so `runAgent(req, opts)` can
-          // read them off-HTTP without the consumer re-threading them through
-          // closures. See `src/plugin-custom-config.ts`.
+          // The full plugin options, exposed so `runAgent(req, opts)` and
+          // other consumers (admin views, access guard, /models endpoint)
+          // can read fields off it without re-threading the raw `options`
+          // argument through closures. See `src/plugin-custom-config.ts`.
           pluginOptions: options,
-          suggestedPrompts: options.suggestedPrompts,
         },
       },
       endpoints: [
