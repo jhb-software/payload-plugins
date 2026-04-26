@@ -30,8 +30,8 @@ const updateArgs = asArgs({
 describe('custom validate composition', () => {
   test('a validator that delegates to validateAltText skips folder moves but still requires submitted alt', () => {
     const customValidator: TextareaFieldValidation = (value, args) => {
-      const reqData = (args.req as { data?: Record<string, unknown> }).data
-      if (!reqData || !('alt' in reqData)) return true
+      const { req } = args
+      if (!req.data || !('alt' in req.data)) return true
       return validateAltText(value, args, ['image/*'])
     }
 

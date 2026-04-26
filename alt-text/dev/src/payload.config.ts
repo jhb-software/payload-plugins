@@ -70,8 +70,8 @@ export default buildConfig({
         {
           slug: 'media-with-folders',
           validate: (value, args) => {
-            const reqData = (args.req as { data?: Record<string, unknown> }).data
-            if (!reqData || !('alt' in reqData)) return true
+            const { req } = args
+            if (!req.data || !('alt' in req.data)) return true
             return validateAltText(value, args)
           },
         },

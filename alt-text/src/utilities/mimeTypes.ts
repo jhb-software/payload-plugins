@@ -31,8 +31,8 @@ export type AltTextCollectionConfig = {
    *   {
    *     slug: 'media',
    *     validate: (value, args) => {
-   *       const reqData = args.req.data
-   *       if (!reqData || !('alt' in reqData)) return true
+   *       const { req } = args
+   *       if (!req.data || !('alt' in req.data)) return true
    *       return validateAltText(value, args)
    *     },
    *   },
