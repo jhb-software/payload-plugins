@@ -13,6 +13,7 @@ import { ChatInput } from './ChatInput.js'
 import './ChatView.css'
 import { SidebarIcon } from './icons/SidebarIcon.js'
 import { MessageList } from './MessageList.js'
+import { hasPendingApproval } from './pending-approval.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
 import { useConversations } from './useConversations.js'
@@ -126,6 +127,11 @@ export default function ChatView({
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
+  // Block the composer while a tool-approval card is awaiting a decision —
+  // sending a new message in that state leaves an orphan `tool_use` in the
+  // transcript that every subsequent request carries forward, and the
+  // agent errors with `Tool result is missing for tool call toolu_...`.
+  const isAwaitingApproval = hasPendingApproval(messages)
 
   const loadConversation = useCallback(
     async (id: string) => {
@@ -378,7 +384,12 @@ export default function ChatView({
               {error.message}
             </div>
           ) : null}
-          <ChatInput isLoading={isLoading} onSend={handleSend} onStop={handleStop} />
+          <ChatInput
+            isAwaitingApproval={isAwaitingApproval}
+            isLoading={isLoading}
+            onSend={handleSend}
+            onStop={handleStop}
+          />
         </div>
       </div>
     </div>

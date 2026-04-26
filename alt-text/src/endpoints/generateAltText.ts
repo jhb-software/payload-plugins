@@ -4,6 +4,8 @@ import { z, ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
+import { matchesMimeType } from '../utilities/mimeTypes.js'
+
 /**
  * Generates alt text for a single image using the configured resolver.
  *
@@ -65,6 +67,17 @@ export const generateAltTextEndpoint =
         'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string'
           ? imageDoc.mimeType
           : undefined
+
+      const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
+
+      if (mimeType && collectionConfig && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
+        return Response.json(
+          {
+            error: `Alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection. Tracked types: ${collectionConfig.mimeTypes.join(', ')}.`,
+          },
+          { status: 400 },
+        )
+      }
 
       if (
         mimeType &&

@@ -12,6 +12,7 @@ import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 import type { AgentMode, ChatAgentPluginOptions } from './types.js'
 
 import { getDefaultMode } from './modes.js'
+import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
 import { buildSystemPrompt } from './system-prompt.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
@@ -235,7 +236,13 @@ export async function runAgentImpl(
       : opts.onFinish
 
   // --- Normalise messages to ModelMessage[] -----------------------------
-  const messages = await normaliseMessages(opts.messages)
+  // `sanitizeOrphanToolCalls` is a defence-in-depth pass that drops
+  // `tool_use` blocks whose `tool_result` never materialised (and the
+  // inverse). Persistence round-trips and adapter-side bugs (vercel/ai#14259,
+  // vercel/ai#14379) can leak orphans past the SDK's `ignoreIncompleteToolCalls`
+  // filter; without this, Anthropic rejects the next request with `tool_use
+  // ids were found without tool_result blocks immediately after`.
+  const messages = sanitizeOrphanToolCalls(await normaliseMessages(opts.messages))
 
   // --- Step cap ---------------------------------------------------------
   const maxSteps = opts.maxSteps ?? pluginOptions.maxSteps ?? 20

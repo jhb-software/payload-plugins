@@ -9,7 +9,7 @@ readiness: draft
 
 There's a usability gap between the two "write-capable" modes today:
 
-- **`ask`** — the agent can call write tools, but every write pauses on a confirmation dialog (`needsApproval: true`, see `tools.ts:594-606`). Good for high-trust operations, but the round-trip is painful when a user is iterating on content and wants the agent to just _do the work_ — especially on long tasks that involve many small edits (e.g. *"rewrite the intro of all 20 blog posts in the 'news' category"*).
+- **`ask`** — the agent can call write tools, but every write pauses on a confirmation dialog (`needsApproval: true`, see `tools.ts:594-606`). Good for high-trust operations, but the round-trip is painful when a user is iterating on content and wants the agent to just _do the work_ — especially on long tasks that involve many small edits (e.g. _"rewrite the intro of all 20 blog posts in the 'news' category"_).
 - **`read-write`** — writes execute instantly, but they hit production data directly. Fine for superuser-style maintenance; too sharp for content iteration where the user wants a safety net.
 
 What users actually want for iterative content work: **instant writes with a safety net**. The agent writes freely, no confirmation dialogs, but the result lands as a draft version — nothing is published until the user reviews and publishes it in the admin panel.
@@ -25,11 +25,13 @@ Understanding Payload's draft model is essential for this plan. There are **two 
 2. **The `_status` field** (document field) — holds the actual status of the document: `'draft'` or `'published'`. This is a regular field on the document, not a query flag.
 
 What `draft: true` does on a write:
+
 - Writes to the **versions table**, not the main table — so the published version is untouched.
 - Relaxes required-field validation, allowing the agent to save work-in-progress content.
 - Sets `_status: 'draft'` on the new version.
 
 What this means for `draft-write` mode:
+
 - Forcing `draft: true` on every create/update ensures the agent's changes land in the versions table and never overwrite the published document.
 - The user reviews the draft in the admin panel's version history and publishes when ready.
 - Collections/globals without `versions.drafts` don't have a versions table, so `draft: true` is a no-op — this is why we must refuse writes to non-drafts-enabled targets (see below).
@@ -40,13 +42,13 @@ What this means for `draft-write` mode:
 
 Add a fourth mode between `ask` and `read-write`:
 
-| Mode           | Writes execute? | Confirmation | Persists as             |
-| -------------- | --------------- | ------------ | ----------------------- |
-| `read`         | no              | —            | —                       |
-| `ask`          | yes             | per-call     | published               |
-| **`draft-write`**  | yes             | none         | **draft version**       |
-| `read-write`   | yes             | none         | published               |
-| `superuser`    | yes             | none         | published (bypass ACL)  |
+| Mode              | Writes execute? | Confirmation | Persists as            |
+| ----------------- | --------------- | ------------ | ---------------------- |
+| `read`            | no              | —            | —                      |
+| `ask`             | yes             | per-call     | published              |
+| **`draft-write`** | yes             | none         | **draft version**      |
+| `read-write`      | yes             | none         | published              |
+| `superuser`       | yes             | none         | published (bypass ACL) |
 
 In `draft-write`:
 
@@ -93,7 +95,7 @@ Add a mode-specific block to `buildSystemPrompt` mirroring the existing per-mode
 > - Some collections/globals may not have drafts enabled; writes to those will fail with a clear error. Relay the error and suggest switching modes.
 > - You do not need to set `draft: true` yourself — it is forced on every write. Required-field validation is relaxed, so partial saves are fine.
 
-Also skip the line *"Always confirm with the user before creating, updating, or deleting documents"* in this mode, since the whole point is that the user has _already_ opted in to instant writes.
+Also skip the line _"Always confirm with the user before creating, updating, or deleting documents"_ in this mode, since the whole point is that the user has _already_ opted in to instant writes.
 
 ## Implementation
 
@@ -114,7 +116,7 @@ Two changes in `filterToolsByMode`:
 if (mode === 'draft-write') {
   const result: Record<string, ExecutableTool> = {}
   for (const [name, tool] of Object.entries(tools)) {
-    if (name === 'delete') continue                 // destructive, no draft equivalent
+    if (name === 'delete') continue // destructive, no draft equivalent
     if (name === 'callEndpoint') {
       result[name] = { ...tool, needsApproval: true } as ExecutableTool
       continue
@@ -154,7 +156,7 @@ Add a branch to the `mode === …` chain in `buildSystemPrompt` with the bullets
 ### 5. `index.ts`
 
 - Pass `req.payload.config` into `filterToolsByMode` (the `allTools` call at `index.ts:272-280` already has it).
-- No change to the `overrideAccess` logic — `draft-write` uses the default `overrideAccess: false`, so user ACL still applies to every write. It's *reversible*, not *privileged*.
+- No change to the `overrideAccess` logic — `draft-write` uses the default `overrideAccess: false`, so user ACL still applies to every write. It's _reversible_, not _privileged_.
 
 ### 6. `ui/ModeSelector.tsx`
 

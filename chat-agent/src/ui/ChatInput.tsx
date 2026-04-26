@@ -18,16 +18,25 @@ const visuallyHidden: React.CSSProperties = {
 }
 
 export function ChatInput({
+  isAwaitingApproval = false,
   isLoading,
   onSend,
   onStop,
 }: {
+  /**
+   * `true` when the last assistant turn is showing a tool-approval card and
+   * the user hasn't clicked Allow / Deny yet. Disables the composer so the
+   * user can't poison the transcript with a message sent while the tool
+   * call is still pending — see `hasPendingApproval`.
+   */
+  isAwaitingApproval?: boolean
   isLoading: boolean
   onSend: (text: string) => void
   onStop?: () => void
 }) {
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const isDisabled = isLoading || isAwaitingApproval
 
   useEffect(() => {
     if (isLoading) {
@@ -58,12 +67,12 @@ export function ChatInput({
   }, [])
 
   const handleSend = useCallback(() => {
-    if (input.trim() && !isLoading) {
+    if (input.trim() && !isDisabled) {
       onSend(input)
       setInput('')
       resetHeight()
     }
-  }, [input, isLoading, onSend, resetHeight])
+  }, [input, isDisabled, onSend, resetHeight])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -92,7 +101,7 @@ export function ChatInput({
       >
         <textarea
           aria-label="Chat message"
-          disabled={isLoading}
+          disabled={isDisabled}
           onChange={(e) => {
             setInput(e.target.value)
             autoResize()
@@ -138,7 +147,7 @@ export function ChatInput({
           ) : (
             <Button
               aria-label="Send message"
-              disabled={!input.trim()}
+              disabled={!input.trim() || isDisabled}
               margin={false}
               size="small"
               tooltip="Send message"
@@ -149,6 +158,20 @@ export function ChatInput({
           )}
         </div>
       </div>
+      {isAwaitingApproval ? (
+        <div
+          role="status"
+          style={{
+            color: 'var(--theme-elevation-600)',
+            fontSize: '12px',
+            lineHeight: '1.4',
+            marginTop: '6px',
+            paddingLeft: '4px',
+          }}
+        >
+          Approve or deny the pending tool call to continue the chat.
+        </div>
+      ) : null}
     </form>
   )
 }

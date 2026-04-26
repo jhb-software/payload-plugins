@@ -1,6 +1,13 @@
-import type { CollectionSlug, Field, PayloadRequest } from 'payload'
+import type { Field, PayloadRequest } from 'payload'
 
 import type { AltTextResolver } from '../resolvers/types.js'
+import type {
+  AltTextCollectionConfig,
+  IncomingCollectionsConfig,
+  NormalizedAltTextCollectionConfig,
+} from '../utilities/mimeTypes.js'
+
+export type { AltTextCollectionConfig, NormalizedAltTextCollectionConfig }
 
 /** Configuration options for the alt text plugin. */
 export type IncomingAltTextPluginConfig = {
@@ -12,8 +19,22 @@ export type IncomingAltTextPluginConfig = {
    */
   access?: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
 
-  /** Collection slugs to enable the plugin for. */
-  collections: CollectionSlug[]
+  /**
+   * Collections to enable the plugin for.
+   *
+   * Each entry may be a bare collection slug or an object with a `slug` and an
+   * optional `mimeTypes` array restricting which MIME types are tracked,
+   * validated, and generated. Bare slugs default to `['image/*']`.
+   *
+   * @example
+   * ```typescript
+   * collections: [
+   *   'images', // shorthand — defaults to ['image/*']
+   *   { slug: 'media', mimeTypes: ['image/*', 'application/pdf'] },
+   * ]
+   * ```
+   */
+  collections: IncomingCollectionsConfig
 
   /** Whether the plugin is enabled. */
   enabled?: boolean
@@ -63,8 +84,8 @@ export type AltTextPluginConfig = {
   /** Access control for plugin endpoints. */
   access: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
 
-  /** Collection slugs to enable the plugin for. */
-  collections: CollectionSlug[]
+  /** Collections with resolved MIME type filters. */
+  collections: NormalizedAltTextCollectionConfig[]
 
   /** Whether the plugin is enabled. */
   enabled: boolean
