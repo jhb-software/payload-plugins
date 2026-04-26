@@ -1,4 +1,4 @@
-import type { CollectionSlug, Where } from 'payload'
+import type { CollectionSlug, TextareaFieldValidation, Where } from 'payload'
 
 export const DEFAULT_TRACKED_MIME_TYPES: readonly string[] = ['image/*']
 
@@ -15,11 +15,36 @@ export type AltTextCollectionConfig = {
   mimeTypes?: string[]
   /** Collection slug to enable the plugin for. */
   slug: CollectionSlug
+  /**
+   * Custom validate function for the alt text field on this collection.
+   * When provided, it fully replaces the default validator (`validateAltText`).
+   *
+   * Use this to relax or extend the default — for example, to skip the
+   * required-alt check when the request body does not touch `alt`
+   * (folder moves, partial API updates).
+   *
+   * @example
+   * ```typescript
+   * import { validateAltText } from '@jhb.software/payload-alt-text-plugin'
+   *
+   * collections: [
+   *   {
+   *     slug: 'media',
+   *     validate: (value, args) => {
+   *       if (!args.req.data || !('alt' in args.req.data)) return true
+   *       return validateAltText(value, args)
+   *     },
+   *   },
+   * ]
+   * ```
+   */
+  validate?: TextareaFieldValidation
 }
 
 export type NormalizedAltTextCollectionConfig = {
   mimeTypes: string[]
   slug: CollectionSlug
+  validate?: TextareaFieldValidation
 }
 
 export type IncomingCollectionsConfig = (AltTextCollectionConfig | CollectionSlug)[]
@@ -32,10 +57,14 @@ export function normalizeCollectionsConfig(
       return { slug: entry, mimeTypes: [...DEFAULT_TRACKED_MIME_TYPES] }
     }
 
-    return {
+    const normalized: NormalizedAltTextCollectionConfig = {
       slug: entry.slug,
       mimeTypes: entry.mimeTypes ? [...entry.mimeTypes] : [...DEFAULT_TRACKED_MIME_TYPES],
     }
+    if (entry.validate) {
+      normalized.validate = entry.validate
+    }
+    return normalized
   })
 }
 

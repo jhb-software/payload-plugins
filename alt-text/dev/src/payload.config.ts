@@ -63,7 +63,18 @@ export default buildConfig({
         { slug: 'media', mimeTypes: ['image/*'] },
         // Bare slug defaults to `['image/*']`.
         'images',
-        'media-with-folders',
+        // Demonstrates the per-collection `validate` option: skip the required-alt
+        // check when the request body does not touch `alt` (e.g. folder moves,
+        // partial API updates). Without this, folder moves on docs with empty
+        // locales fail validation under `localization.fallback: false`. See #95.
+        {
+          slug: 'media-with-folders',
+          validate: (value, args) => {
+            const reqData = (args.req as { data?: Record<string, unknown> }).data
+            if (!reqData || !('alt' in reqData)) return true
+            return validateAltText(value, args as Parameters<typeof validateAltText>[1])
+          },
+        },
       ],
       resolver: openAIResolver({
         apiKey: process.env.OPENAI_API_KEY!,
@@ -73,15 +84,6 @@ export default buildConfig({
       getImageThumbnail: (doc: Record<string, unknown>) => {
         // in a real application, you would use a function to get a thumbnail URL (e.g. from the sizes)
         return doc.url as string
-      },
-      // Demonstrates the `validate` option: skip the required-alt check when
-      // the request body does not touch `alt` (e.g. folder moves, partial API
-      // updates). Without this, folder moves on docs with empty locales fail
-      // validation under `localization.fallback: false`. See #95.
-      validate: (value, args) => {
-        const reqData = (args.req as { data?: Record<string, unknown> }).data
-        if (!reqData || !('alt' in reqData)) return true
-        return validateAltText(value, args as Parameters<typeof validateAltText>[1])
       },
     }),
   ],

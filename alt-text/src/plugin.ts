@@ -62,7 +62,6 @@ export const payloadAltTextPlugin =
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
       resolver: incomingPluginConfig.resolver,
-      validate: incomingPluginConfig.validate,
     }
 
     // Validate locale requirement for non-localized mode
@@ -97,7 +96,7 @@ export const payloadAltTextPlugin =
             localized: Boolean(config.localization),
             supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
             trackedMimeTypes: altTextCollectionConfig.mimeTypes,
-            validate: pluginConfig.validate,
+            validate: altTextCollectionConfig.validate,
           }),
           keywordsField({
             localized: Boolean(config.localization),
