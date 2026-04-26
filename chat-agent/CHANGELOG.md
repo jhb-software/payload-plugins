@@ -4,6 +4,8 @@
 
 - feat: pass the resolved `modelId` to the `tools` plugin option so a multi-provider setup can conditionally include provider-native tools (e.g. drop `anthropic.tools.webSearch_*` when the user selects an OpenAI model) instead of sending a tool shape the selected provider would reject at runtime.
 - fix: clear the chat error banner when starting a new chat or switching conversations via the sidebar, so an error surfaced on the previous chat no longer carries over to an unrelated one
+- fix: scrub orphan `tool_use` / `tool_result` pairs from the converted `ModelMessage[]` after `convertToModelMessages`, so a conversation whose previous turn was interrupted mid tool-run (usage-limit, tab close) can be resumed instead of failing every subsequent request with Anthropic's `tool_use ids were found without tool_result blocks immediately after`. `ignoreIncompleteToolCalls` only covers `input-streaming` / `input-available` parts; stored conversations and adapter-side bugs (vercel/ai#14259, vercel/ai#14379) can still leak orphans past it. This is a defence-in-depth pass that also handles OpenAI reasoning adjacency (vercel/ai#8321) by dropping `reasoning` parts that were paired with a stripped tool-call.
+- fix: disable the chat composer (textarea + send button) while a tool-approval card is awaiting Allow / Deny, with an inline hint, so a user can't send a new message that poisons the transcript with an orphan `tool_use` (which the agent would then fail on every subsequent request with `Tool result is missing for tool call toolu_...`). The sanitizer on the server handles transcripts already corrupted by this path — the composer gate is the front-line prevention.
 
 ## 0.1.0-beta.4
 

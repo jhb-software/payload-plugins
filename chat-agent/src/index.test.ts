@@ -1,7 +1,7 @@
 import type { LanguageModel, Tool } from 'ai'
 import type { Endpoint } from 'payload'
 
-import { streamText } from 'ai'
+import { convertToModelMessages, streamText } from 'ai'
 import { describe, expect, it, vi } from 'vitest'
 
 import { chatAgentPlugin, validateMessages } from './index.js'
@@ -26,6 +26,12 @@ vi.mock('ai', async () => {
   const actual = await vi.importActual<typeof import('ai')>('ai')
   return {
     ...actual,
+    // Wrapped in `vi.fn` so individual tests can override it with
+    // `mockReturnValueOnce` to inject a pre-built orphan-containing
+    // `ModelMessage[]` — the real conversion hides behind
+    // `ignoreIncompleteToolCalls`, so there's no UIMessage shape that
+    // reliably surfaces an orphan through it.
+    convertToModelMessages: vi.fn(actual.convertToModelMessages),
     streamText: vi.fn((streamTextOpts: unknown) => {
       const handle = {
         _streamTextOpts: streamTextOpts,
@@ -344,6 +350,74 @@ describe('chatAgentPlugin tool-call sanitization', () => {
         expect(Array.isArray(part.input)).toBe(false)
       }
     }
+  })
+
+  // Regression for the Anthropic-observable failure a user hit after a
+  // usage-limit error interrupted a tool run and the orphan `tool_use` got
+  // persisted into the conversation store. Resuming that conversation then
+  // failed every request with:
+  //   messages.N: `tool_use` ids were found without `tool_result` blocks
+  //   immediately after: toolu_01E7pmk8d3gwFDfmdzzeLUQ1
+  // `ignoreIncompleteToolCalls` doesn't catch this class of orphan
+  // (it only strips `input-streaming` / `input-available` parts), so the
+  // endpoint must scrub the converted `ModelMessage[]` before calling the
+  // provider. The test drives the exact scenario by injecting an orphan
+  // directly as the conversion output, since no clean UIMessage shape
+  // survives `ignoreIncompleteToolCalls` to expose this path otherwise.
+  it('strips orphan tool_use blocks from the converted messages before calling the provider', async () => {
+    vi.mocked(streamText).mockClear()
+    vi.mocked(convertToModelMessages).mockReturnValueOnce(
+      Promise.resolve([
+        { content: 'find docs about X', role: 'user' },
+        {
+          content: [
+            { type: 'text', text: 'let me search' },
+            {
+              type: 'tool-call',
+              input: { q: 'X' },
+              toolCallId: 'toolu_01E7pmk8d3gwFDfmdzzeLUQ1',
+              toolName: 'find',
+            },
+          ],
+          role: 'assistant',
+        },
+        { content: 'never mind, skip it', role: 'user' },
+      ]),
+    )
+
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const handler = plugin({ endpoints: [] }).endpoints.find(
+      (ep: Endpoint) => ep.path === '/chat-agent/chat',
+    ).handler
+
+    await handler({
+      json: () =>
+        Promise.resolve({
+          messages: [{ id: 'u1', parts: [{ type: 'text', text: 'skip' }], role: 'user' }],
+        }),
+      payload: { config: { collections: [], globals: [] } },
+      user: { id: 1 },
+    })
+
+    const sent = vi.mocked(streamText).mock.calls[0][0].messages as Array<{
+      content: unknown
+      role: string
+    }>
+    const toolCallIds: string[] = []
+    for (const msg of sent) {
+      if (!Array.isArray(msg.content)) {
+        continue
+      }
+      for (const part of msg.content as Array<{ toolCallId?: string; type: string }>) {
+        if (part.type === 'tool-call' && part.toolCallId) {
+          toolCallIds.push(part.toolCallId)
+        }
+      }
+    }
+    expect(toolCallIds).not.toContain('toolu_01E7pmk8d3gwFDfmdzzeLUQ1')
   })
 })
 
