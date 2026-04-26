@@ -121,6 +121,30 @@ export function buildMimeTypeWhere(patterns: readonly string[]): null | Where {
 }
 
 /**
+ * Decides whether the alt text field should render in the admin UI.
+ *
+ * On create, the saved `mimeType` is empty until the upload is processed
+ * server-side, so a freshly dropped file's browser-detected MIME type is used
+ * as a fallback. This is purely a client-side visibility check; server-side
+ * validation runs against the persisted `mimeType` regardless.
+ */
+export function shouldShowAltTextField({
+  documentMimeType,
+  trackedMimeTypes,
+  uploadedFileMimeType,
+}: {
+  documentMimeType: string | undefined
+  trackedMimeTypes: readonly string[] | undefined
+  uploadedFileMimeType?: string | undefined
+}): boolean {
+  if (!trackedMimeTypes || trackedMimeTypes.length === 0) {
+    return true
+  }
+  const effectiveMimeType = documentMimeType || uploadedFileMimeType
+  return !!effectiveMimeType && matchesMimeType(effectiveMimeType, trackedMimeTypes)
+}
+
+/**
  * Default validation logic for the alt text field.
  *
  * - Allows an empty value during the initial upload (no regular update has occurred yet).

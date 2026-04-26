@@ -6,6 +6,7 @@ import {
   DEFAULT_TRACKED_MIME_TYPES,
   matchesMimeType,
   normalizeCollectionsConfig,
+  shouldShowAltTextField,
 } from '../src/utilities/mimeTypes.ts'
 
 describe('matchesMimeType', () => {
@@ -66,6 +67,94 @@ describe('normalizeCollectionsConfig', () => {
       { slug: 'images', mimeTypes: [...DEFAULT_TRACKED_MIME_TYPES] },
       { slug: 'media', mimeTypes: ['image/png'] },
     ])
+  })
+})
+
+describe('shouldShowAltTextField', () => {
+  test('shows the field for an existing document whose mime type matches', () => {
+    assert.equal(
+      shouldShowAltTextField({
+        documentMimeType: 'image/png',
+        trackedMimeTypes: ['image/*'],
+      }),
+      true,
+    )
+  })
+
+  test('hides the field for an existing document whose mime type does not match', () => {
+    assert.equal(
+      shouldShowAltTextField({
+        documentMimeType: 'video/mp4',
+        trackedMimeTypes: ['image/*'],
+      }),
+      false,
+    )
+  })
+
+  test('shows the field for a freshly dropped image on create when no mime type is saved yet', () => {
+    // Reproduces the create-flow regression: before the upload is processed
+    // server-side, `mimeType` is empty in the form. The browser-detected file
+    // type from the dropzone must drive visibility instead.
+    assert.equal(
+      shouldShowAltTextField({
+        documentMimeType: undefined,
+        trackedMimeTypes: ['image/*'],
+        uploadedFileMimeType: 'image/png',
+      }),
+      true,
+    )
+  })
+
+  test('keeps the field hidden when a freshly dropped file is not a tracked mime type', () => {
+    assert.equal(
+      shouldShowAltTextField({
+        documentMimeType: undefined,
+        trackedMimeTypes: ['image/*'],
+        uploadedFileMimeType: 'application/pdf',
+      }),
+      false,
+    )
+  })
+
+  test('hides the field when neither the document nor a dropped file has a mime type yet', () => {
+    assert.equal(
+      shouldShowAltTextField({
+        documentMimeType: undefined,
+        trackedMimeTypes: ['image/*'],
+        uploadedFileMimeType: undefined,
+      }),
+      false,
+    )
+  })
+
+  test('shows the field unconditionally when no trackedMimeTypes are configured', () => {
+    assert.equal(
+      shouldShowAltTextField({
+        documentMimeType: undefined,
+        trackedMimeTypes: undefined,
+        uploadedFileMimeType: undefined,
+      }),
+      true,
+    )
+    assert.equal(
+      shouldShowAltTextField({
+        documentMimeType: undefined,
+        trackedMimeTypes: [],
+        uploadedFileMimeType: undefined,
+      }),
+      true,
+    )
+  })
+
+  test('prefers the saved document mime type over a stale dropped file', () => {
+    assert.equal(
+      shouldShowAltTextField({
+        documentMimeType: 'image/png',
+        trackedMimeTypes: ['image/*'],
+        uploadedFileMimeType: 'application/pdf',
+      }),
+      true,
+    )
   })
 })
 

@@ -2,9 +2,15 @@
 
 import type { TextareaFieldClientProps } from 'payload'
 
-import { FieldLabel, TextareaInput, useDocumentInfo, useField } from '@payloadcms/ui'
+import {
+  FieldLabel,
+  TextareaInput,
+  useDocumentInfo,
+  useField,
+  useUploadControls,
+} from '@payloadcms/ui'
 
-import { matchesMimeType } from '../utilities/mimeTypes.js'
+import { shouldShowAltTextField } from '../utilities/mimeTypes.js'
 import { GenerateAltTextButton } from './GenerateAltTextButton.js'
 
 export const AltTextField = (clientProps: TextareaFieldClientProps) => {
@@ -16,13 +22,17 @@ export const AltTextField = (clientProps: TextareaFieldClientProps) => {
   const { setValue, value } = useField<string>({ path })
   const { id } = useDocumentInfo()
   const { value: mimeType } = useField<string>({ path: 'mimeType' })
+  // On create, `mimeType` is empty until the upload is processed server-side,
+  // so fall back to the browser-detected type of the file in the dropzone.
+  const { uploadControlFile } = useUploadControls()
 
-  const isTrackedMimeType =
-    !trackedMimeTypes ||
-    trackedMimeTypes.length === 0 ||
-    (!!mimeType && matchesMimeType(mimeType, trackedMimeTypes))
-
-  if (!isTrackedMimeType) {
+  if (
+    !shouldShowAltTextField({
+      documentMimeType: mimeType,
+      trackedMimeTypes,
+      uploadedFileMimeType: uploadControlFile?.type,
+    })
+  ) {
     return null
   }
 

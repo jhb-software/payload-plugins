@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: show the alt text field for freshly dropped uploads on create (use the dropzone file's MIME type while the saved `mimeType` is still empty)
+
 ## 0.5.0
 
 ### Breaking Changes
