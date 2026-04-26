@@ -1,4 +1,8 @@
-import { openAIResolver, payloadAltTextPlugin } from '@jhb.software/payload-alt-text-plugin'
+import {
+  openAIResolver,
+  payloadAltTextPlugin,
+  validateAltText,
+} from '@jhb.software/payload-alt-text-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
@@ -69,6 +73,15 @@ export default buildConfig({
       getImageThumbnail: (doc: Record<string, unknown>) => {
         // in a real application, you would use a function to get a thumbnail URL (e.g. from the sizes)
         return doc.url as string
+      },
+      // Demonstrates the `validate` option: skip the required-alt check when
+      // the request body does not touch `alt` (e.g. folder moves, partial API
+      // updates). Without this, folder moves on docs with empty locales fail
+      // validation under `localization.fallback: false`. See #95.
+      validate: (value, args) => {
+        const reqData = (args.req as { data?: Record<string, unknown> }).data
+        if (!reqData || !('alt' in reqData)) return true
+        return validateAltText(value, args as Parameters<typeof validateAltText>[1])
       },
     }),
   ],

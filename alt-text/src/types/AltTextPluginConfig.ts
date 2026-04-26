@@ -1,4 +1,4 @@
-import type { Field, PayloadRequest } from 'payload'
+import type { Field, PayloadRequest, TextareaFieldValidation } from 'payload'
 
 import type { AltTextResolver } from '../resolvers/types.js'
 import type {
@@ -77,6 +77,32 @@ export type IncomingAltTextPluginConfig = {
 
   /** The resolver to use for generating alt text (e.g., openAIResolver) */
   resolver: AltTextResolver
+
+  /**
+   * Custom validate function for the alt text field. When provided, it
+   * fully replaces the plugin's default validator. The default skips
+   * validation on the initial upload and for documents whose mime type is
+   * not tracked, then requires a non-empty value.
+   *
+   * Use this to relax or extend that behavior — for example, to skip
+   * validation when the `alt` field is not part of the request body
+   * (folder moves, partial API updates).
+   *
+   * @example
+   * ```typescript
+   * import { validateAltText } from '@jhb.software/payload-alt-text-plugin'
+   *
+   * payloadAltTextPlugin({
+   *   collections: ['media'],
+   *   validate: (value, args) => {
+   *     // Skip required-check when the request does not touch alt.
+   *     if (!args.req.data || !('alt' in args.req.data)) return true
+   *     return validateAltText(value, args)
+   *   },
+   * })
+   * ```
+   */
+  validate?: TextareaFieldValidation
 }
 
 /** Configuration of the alt text plugin after defaults have been applied. */
@@ -110,4 +136,7 @@ export type AltTextPluginConfig = {
 
   /** The resolver to use for generating alt text */
   resolver: AltTextResolver
+
+  /** Custom validate function that fully replaces the default alt text validator. */
+  validate?: TextareaFieldValidation
 }

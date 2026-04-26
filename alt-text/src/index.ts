@@ -5,3 +5,4 @@ export type {
   AltTextCollectionConfig,
   IncomingAltTextPluginConfig as AltTextPluginConfig,
 } from './types/AltTextPluginConfig.js'
+export { matchesMimeType, validateAltText } from './utilities/mimeTypes.js'

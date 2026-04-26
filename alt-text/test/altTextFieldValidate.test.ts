@@ -11,7 +11,7 @@ const t = (key: string) => key
 const regularUpdateMeta = {
   data: { createdAt, updatedAt },
   operation: 'update',
-  req: { data: { alt: '' } as Record<string, unknown>, t },
+  req: { t },
 }
 
 describe('validateAltText', () => {
@@ -47,7 +47,6 @@ describe('validateAltText', () => {
       {
         ...regularUpdateMeta,
         data: { ...regularUpdateMeta.data, mimeType: 'image/png' },
-        req: { data: { alt: 'A descriptive alt text' }, t },
       },
       ['image/*'],
     )
@@ -70,7 +69,7 @@ describe('validateAltText', () => {
       {
         data: { createdAt, updatedAt: createdAt, mimeType: 'image/png' },
         operation: 'update',
-        req: { data: { alt: '' }, t },
+        req: { t },
       },
       ['image/*'],
     )
@@ -88,62 +87,5 @@ describe('validateAltText', () => {
     )
 
     assert.equal(result, true)
-  })
-
-  // https://github.com/jhb-software/payload-plugins/issues/95
-  test('skips validation when alt is not in the request body (folder move, partial update)', () => {
-    const result = validateAltText(
-      null,
-      {
-        ...regularUpdateMeta,
-        data: { ...regularUpdateMeta.data, mimeType: 'image/png' },
-        req: { data: { folder: 'folder-id' }, t },
-      },
-      ['image/*'],
-    )
-
-    assert.equal(result, true)
-  })
-
-  test('skips validation when the request has no body at all', () => {
-    const result = validateAltText(
-      null,
-      {
-        ...regularUpdateMeta,
-        data: { ...regularUpdateMeta.data, mimeType: 'image/png' },
-        req: { t },
-      },
-      ['image/*'],
-    )
-
-    assert.equal(result, true)
-  })
-
-  test('rejects null submitted via API (clearing alt)', () => {
-    const result = validateAltText(
-      null,
-      {
-        ...regularUpdateMeta,
-        data: { ...regularUpdateMeta.data, mimeType: 'image/png' },
-        req: { data: { alt: null }, t },
-      },
-      ['image/*'],
-    )
-
-    assert.equal(typeof result, 'string')
-  })
-
-  test('rejects whitespace-only alt when alt is submitted', () => {
-    const result = validateAltText(
-      '   ',
-      {
-        ...regularUpdateMeta,
-        data: { ...regularUpdateMeta.data, mimeType: 'image/png' },
-        req: { data: { alt: '   ' }, t },
-      },
-      ['image/*'],
-    )
-
-    assert.equal(typeof result, 'string')
   })
 })

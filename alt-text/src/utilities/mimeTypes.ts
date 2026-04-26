@@ -95,25 +95,24 @@ type TFunction = (key: string) => string
 type ValidateAltTextArgs = {
   data: Record<string, unknown>
   operation: string
-  req: { data?: Record<string, unknown>; t: TFunction }
+  req: { t: TFunction }
 }
 
 /**
- * Shared validation logic for the alt text field.
+ * Default validation logic for the alt text field.
  *
  * - Allows an empty value during the initial upload (no regular update has occurred yet).
  * - Allows an empty value when the document's mime type is not tracked for alt text.
- * - Allows an empty value when the `alt` field is not part of the incoming
- *   request body (folder moves, partial API updates that do not touch alt).
- *   See https://github.com/jhb-software/payload-plugins/issues/95.
  * - Otherwise requires a non-empty value.
+ *
+ * Projects with stricter or looser requirements can pass a custom function to
+ * the plugin's `validate` option instead.
  */
 export function validateAltText(
   value: unknown,
-  { data, operation, req }: ValidateAltTextArgs,
+  { data, operation, req: { t } }: ValidateAltTextArgs,
   trackedMimeTypes?: readonly string[],
 ): string | true {
-  const { data: reqData, t } = req
   // Since https://github.com/payloadcms/payload/pull/14988, when using external storage (e.g., S3),
   // it is no longer possible to detect whether this validation runs during the initial upload
   // or a regular update by checking the existence of the ID.
@@ -131,14 +130,6 @@ export function validateAltText(
     if (!mimeType || !matchesMimeType(mimeType, trackedMimeTypes)) {
       return true
     }
-  }
-
-  const altSubmitted = !!reqData && 'alt' in reqData
-
-  if (!altSubmitted) {
-    // Alt is not part of this request's payload (folder move, partial update,
-    // or any operation that does not touch alt). Skip validation.
-    return true
   }
 
   if (typeof value !== 'string' || value.trim().length === 0) {

@@ -33,10 +33,8 @@ payloadAltTextPlugin({
 })
 ```
 
-Alt text validation now only runs when the `alt` field is present in the request body. Updates that do not include `alt` (folder moves, partial API updates) no longer trigger the required-alt-text check. Admin UI saves and API calls that explicitly include `alt` still require a non-empty value.
-
 - feat: scope alt text tracking, validation, and health to configurable per-collection MIME types (default `['image/*']`)
-- fix: do not fail alt text validation for unfilled locales on updates (fixes folder moves in localized setups with `fallback: false`, [#95](https://github.com/jhb-software/payload-plugins/issues/95))
+- feat: add a `validate` plugin option to override the alt text field validator. Exports the default `validateAltText` so projects can compose around it — e.g. to skip the required-alt check when the request body does not touch `alt` (folder moves, partial API updates in localized setups with `fallback: false`, [#95](https://github.com/jhb-software/payload-plugins/issues/95))
 - refactor: stop auto-injecting the alt text health widget into `admin.dashboard.defaultLayout`. The widget is still registered under `admin.dashboard.widgets`; add `{ widgetSlug: 'alt-text-health', width: 'full' }` to your `defaultLayout` to show it by default.
 - fix: support both Next.js 15 and 16 `revalidateTag` type signatures in the alt text health invalidation hook
 
