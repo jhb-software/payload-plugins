@@ -1,14 +1,18 @@
 import type { TextareaField } from 'payload'
 
+import { validateAltText } from '../utilities/mimeTypes.js'
 import { translatedLabel } from '../utils/translatedLabel.js'
-import { validateAltText } from './validateAltText.js'
 
 export function altTextField({
   localized,
   supportedMimeTypes,
+  trackedMimeTypes,
 }: {
   localized?: TextareaField['localized']
+  /** MIME types the resolver can generate for — used to disable the Generate button. */
   supportedMimeTypes?: string[]
+  /** MIME types for which alt text is tracked — used to hide the field and skip validation for others. */
+  trackedMimeTypes?: string[]
 }): TextareaField {
   return {
     name: 'alt',
@@ -19,11 +23,13 @@ export function altTextField({
       },
       custom: {
         supportedMimeTypes,
+        trackedMimeTypes,
       },
     },
     label: translatedLabel('alternateText'),
     localized,
     required: true,
-    validate: validateAltText,
+    validate: (value, args) =>
+      validateAltText(value, args as Parameters<typeof validateAltText>[1], trackedMimeTypes),
   }
 }

@@ -15,6 +15,7 @@ import {
   createRevalidateAltTextHealthAfterDeleteHook,
 } from './hooks/revalidateAltTextHealth.js'
 import { translations } from './translations/index.js'
+import { normalizeCollectionsConfig } from './utilities/mimeTypes.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
 const altTextHealthWidgetDefinition = {
@@ -48,9 +49,11 @@ export const payloadAltTextPlugin =
 
     const enableHealthCheck = incomingPluginConfig.healthCheck !== false
 
+    const normalizedCollections = normalizeCollectionsConfig(incomingPluginConfig.collections)
+
     const pluginConfig: AltTextPluginConfig = {
       access: incomingPluginConfig.access ?? (({ req }) => !!req.user),
-      collections: incomingPluginConfig.collections,
+      collections: normalizedCollections,
       enabled: incomingPluginConfig.enabled ?? true,
       fieldsOverride: incomingPluginConfig.fieldsOverride,
       getImageThumbnail: incomingPluginConfig.getImageThumbnail,
@@ -69,34 +72,41 @@ export const payloadAltTextPlugin =
       )
     }
 
-    const defaultFields = [
-      altTextField({
-        localized: Boolean(config.localization),
-        supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
-      }),
-      keywordsField({
-        localized: Boolean(config.localization),
-      }),
-    ]
-
-    const fields =
-      incomingPluginConfig.fieldsOverride &&
-      typeof incomingPluginConfig.fieldsOverride === 'function'
-        ? incomingPluginConfig.fieldsOverride({ defaultFields })
-        : defaultFields
+    const collectionConfigBySlug = new Map<string, (typeof normalizedCollections)[number]>(
+      normalizedCollections.map((entry) => [entry.slug, entry]),
+    )
 
     // Ensure collections array exists
     config.collections = config.collections || []
 
     // Map over collections and inject AI alt text fields into specified ones
     config.collections = config.collections.map((collectionConfig) => {
-      if (pluginConfig.collections.includes(collectionConfig.slug)) {
+      const altTextCollectionConfig = collectionConfigBySlug.get(collectionConfig.slug)
+
+      if (altTextCollectionConfig) {
         if (!collectionConfig.upload) {
           console.warn(
             `AI Alt Text Plugin: Collection "${collectionConfig.slug}" is not an upload collection. Skipping field injection.`,
           )
           return collectionConfig
         }
+
+        const defaultFields = [
+          altTextField({
+            localized: Boolean(config.localization),
+            supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
+            trackedMimeTypes: altTextCollectionConfig.mimeTypes,
+          }),
+          keywordsField({
+            localized: Boolean(config.localization),
+          }),
+        ]
+
+        const fields =
+          incomingPluginConfig.fieldsOverride &&
+          typeof incomingPluginConfig.fieldsOverride === 'function'
+            ? incomingPluginConfig.fieldsOverride({ defaultFields })
+            : defaultFields
 
         return {
           ...collectionConfig,
