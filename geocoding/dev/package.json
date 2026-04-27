@@ -18,11 +18,11 @@
   },
   "dependencies": {
     "@jhb.software/payload-geocoding-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.83.0",
-    "@payloadcms/next": "^3.83.0",
-    "@payloadcms/ui": "^3.83.0",
+    "@payloadcms/db-mongodb": "^3.84.1",
+    "@payloadcms/next": "^3.84.1",
+    "@payloadcms/ui": "^3.84.1",
     "next": "15.4.11",
-    "payload": "^3.83.0",
+    "payload": "^3.84.1",
     "react": "19.2.5",
     "react-dom": "19.2.5"
   },

@@ -11,6 +11,6 @@
   },
   "dependencies": {
     "@jhb.software/astro-payload-richtext-lexical": "workspace:*",
-    "astro": "^6.1.7"
+    "astro": "^6.1.9"
   }
 }

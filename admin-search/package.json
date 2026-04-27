@@ -28,19 +28,19 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@payloadcms/translations": "^3.83.0"
+    "@payloadcms/translations": "^3.84.1"
   },
   "peerDependencies": {
-    "@payloadcms/ui": "^3.83.0",
+    "@payloadcms/ui": "^3.84.1",
     "next": "15.4.11",
-    "payload": "^3.83.0",
+    "payload": "^3.84.1",
     "react": "19.2.5",
     "react-dom": "19.2.5"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
     "@swc/cli": "^0.8.1",
-    "@swc/core": "^1.15.26",
+    "@swc/core": "^1.15.30",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "copyfiles": "^2.4.1",
