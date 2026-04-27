@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: defer the alt text health cache invalidation via `after()` so `payload.create` / `payload.update` invoked from `onInit` (or any other render-time path) no longer crash with `revalidateTag … during render`
+
 ## 0.5.0
 
 > ! This release contains breaking changes.

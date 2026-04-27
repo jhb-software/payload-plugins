@@ -155,6 +155,22 @@ buildConfig({
 
 Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 
+#### Skipping cache revalidation for individual writes
+
+The plugin invalidates the cached health scan via `afterChange` and `afterDelete` hooks. For writes that don't need to invalidate the cache — typically seed data created from `payload.onInit`, batch imports, or migrations — pass `context: { disableRevalidate: true }` to skip the revalidation:
+
+```ts
+await payload.create({
+  collection: 'media',
+  data: {
+    /* ... */
+  },
+  context: { disableRevalidate: true },
+})
+```
+
+This is also useful as an escape hatch in older Next.js setups where `revalidateTag` is not safe to call from your write site (the plugin already defers the call via `after()` to escape render scopes, so this is rarely needed at runtime).
+
 ### Resolvers
 
 This plugin is designed to work seamlessly with various AI providers by accepting a customizable resolver as a configuration option.
