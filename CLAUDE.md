@@ -43,7 +43,7 @@ Document IDs must always support both `string` and `number` (MongoDB uses string
 
 ## Test-Driven Fixes and Features
 
-For every new fix or feature, a failing test must be added **first** that succeeds once the fix/feature is in place. For bug fixes, the failing test must reproduce the bug as a user would observe it (wrong response, wrong UI state, wrong DB row) — not merely exercise the line being changed.
+For new fixes/features that can satisfy the four-point gate below, add a failing test **first** that succeeds once the fix is in place. For bug fixes, it must reproduce the bug as a user would observe it (wrong response, wrong UI state, wrong DB row) — not merely exercise the line being changed. **If satisfying the gate would require restructuring production code to be mockable, skip the test, ship the fix, and say so in the PR.**
 
 Every test must justify its existence by verifying meaningful behavior. A test earns its place only if **all** of these hold:
 
@@ -52,7 +52,7 @@ Every test must justify its existence by verifying meaningful behavior. A test e
 - It survives a reasonable refactor of the code under test.
 - It does not restate what TypeScript, a schema, or a constant already guarantees.
 
-**Do not add** render-without-crashing smoke tests, prop-passthrough assertions, tests whose assertions only check that a mock was called, or tests added to hit a coverage number.
+**Do not add** tests that assert on mocks of close collaborators, smoke renders, prop passthroughs, or coverage padding.
 
 Default to integration tests against real Payload / real React rendering. Reach for unit tests only for pure logic with non-trivial branches. Only stub external boundaries: network, filesystem, time, randomness, LLM providers, third-party SDKs. If a test requires mocking the module under test's close collaborators, test at a higher level instead.
 
