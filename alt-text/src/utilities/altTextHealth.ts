@@ -8,22 +8,13 @@ import type {
 } from '../types/AltTextPluginConfig.js'
 
 import { createCachedAltTextHealthScan } from './altTextHealthCache.js'
-import {
-  ALT_TEXT_HEALTH_CACHE_TTL,
-  ALT_TEXT_HEALTH_GLOBAL_TAG,
-  ALT_TEXT_HEALTH_PLUGIN_SLUG,
-  getAltTextHealthCollectionTag,
-} from './altTextHealthTags.js'
 import { localesFromConfig } from './localesFromConfig.js'
 import { buildMimeTypeWhere } from './mimeTypes.js'
 import { summarizeCollection } from './summarizeCollection.js'
 
-export {
-  ALT_TEXT_HEALTH_CACHE_TTL,
-  ALT_TEXT_HEALTH_GLOBAL_TAG,
-  ALT_TEXT_HEALTH_PLUGIN_SLUG,
-  getAltTextHealthCollectionTag,
-}
+export const ALT_TEXT_HEALTH_PLUGIN_SLUG = 'alt-text'
+export const ALT_TEXT_HEALTH_CACHE_TTL = 3600
+export const ALT_TEXT_HEALTH_GLOBAL_TAG = 'alt-text-health'
 
 export type AltTextHealthErrorCode =
   | 'ALT_TEXT_COLLECTION_READ_FAILED'
@@ -192,6 +183,9 @@ async function computeAltTextHealthScan({
     localeCodes,
   }
 }
+
+export const getAltTextHealthCollectionTag = (collectionSlug: string): string =>
+  `${ALT_TEXT_HEALTH_GLOBAL_TAG}:${collectionSlug}`
 
 async function getAltTextHealthScan(req: PayloadRequest): Promise<AltTextHealthScan> {
   const { payload } = req
