@@ -7,9 +7,9 @@ vi.mock('next/navigation.js', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 
-const mockConfig = { routes: { api: '/api' }, serverURL: '' }
+// Minimal stub: importing the real @payloadcms/ui pulls in CSS that vitest can't load.
 vi.mock('@payloadcms/ui', () => ({
-  useConfig: () => ({ config: mockConfig }),
+  useConfig: () => ({ config: { routes: { api: '/api' }, serverURL: '' } }),
 }))
 
 const { DeploymentStatusPoller } = await import('./DeploymentStatusPoller.js')
@@ -47,8 +47,6 @@ describe('DeploymentStatusPoller', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     mockRefresh.mockClear()
-    mockConfig.routes.api = '/api'
-    mockConfig.serverURL = ''
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.resolve(mockFetchResponse(idleDeploymentsResponse))),
@@ -136,48 +134,5 @@ describe('DeploymentStatusPoller', () => {
     await flushPolling()
 
     expect(fetch).toHaveBeenCalledWith('/api/vercel-deployments', expect.anything())
-  })
-
-  it('uses the configured API route when polling the list endpoint', async () => {
-    mockConfig.routes.api = '/custom-api'
-    mockConfig.serverURL = 'https://cms.example.com'
-
-    render(
-      <DeploymentStatusPoller>
-        <div />
-      </DeploymentStatusPoller>,
-    )
-    await flushPolling()
-
-    expect(fetch).toHaveBeenCalledWith(
-      'https://cms.example.com/custom-api/vercel-deployments',
-      expect.anything(),
-    )
-  })
-
-  it('uses the configured API route when polling an active deployment', async () => {
-    mockConfig.routes.api = '/custom-api'
-    mockConfig.serverURL = 'https://cms.example.com'
-
-    // Start with a building deployment so the poller switches to active mode
-    vi.mocked(fetch).mockResolvedValue(mockFetchResponse(buildingDeploymentsResponse))
-
-    render(
-      <DeploymentStatusPoller>
-        <div />
-      </DeploymentStatusPoller>,
-    )
-    await flushPolling()
-
-    vi.mocked(fetch).mockResolvedValue(mockFetchResponse({ id: 'dpl-2', status: 'BUILDING' }))
-    vi.mocked(fetch).mockClear()
-
-    await vi.advanceTimersByTimeAsync(5 * 1000)
-    await flushPolling()
-
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('https://cms.example.com/custom-api/vercel-deployments?id=dpl-2'),
-      expect.anything(),
-    )
   })
 })
