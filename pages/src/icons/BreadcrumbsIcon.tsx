@@ -4,7 +4,7 @@ export const BreadcrumbsIcon: React.FC<{
   readonly ariaLabel?: string
   readonly className?: string
   readonly size?: number
-}> = ({ ariaLabel, className, size = 16 }) => {
+}> = ({ ariaLabel, className, size = 20 }) => {
   return (
     <svg
       aria-label={ariaLabel}
@@ -12,7 +12,7 @@ export const BreadcrumbsIcon: React.FC<{
       data-testid="geist-icon"
       height={size}
       strokeLinejoin="round"
-      style={{ color: 'currentcolor' }}
+      style={{ color: 'var(--theme-elevation-800)' }}
       viewBox="0 0 16 16"
       width={size}
     >

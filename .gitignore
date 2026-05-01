@@ -373,3 +373,4 @@ tsconfig.tsbuildinfo
 /dist
 .notes/
 package-lock.json
+alt-text/dev/media-with-folders

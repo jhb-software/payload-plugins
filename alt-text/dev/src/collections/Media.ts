@@ -7,7 +7,7 @@ export const Media: CollectionConfig = {
     singular: { de: 'Medium', en: 'Media' },
   },
   upload: {
-    mimeTypes: ['image/*'],
+    mimeTypes: ['image/*', 'video/*'],
   },
   fields: [
     // The plugin will automatically inject context, alt, and keywords fields

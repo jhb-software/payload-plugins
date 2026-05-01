@@ -2,11 +2,25 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { chatAgentPlugin, createPayloadBudget } from '@jhb.software/payload-chat-agent'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import {
+  BlocksFeature,
+  BoldFeature,
+  HeadingFeature,
+  InlineCodeFeature,
+  ItalicFeature,
+  lexicalEditor,
+  LinkFeature,
+  OrderedListFeature,
+  RelationshipFeature,
+  UnderlineFeature,
+  UnorderedListFeature,
+  UploadFeature,
+} from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
+import { customTools } from './customTools.js'
 import { postsEndpoints, rootEndpoints } from './endpoints.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -22,6 +36,40 @@ const chatBudget = createPayloadBudget({
   limit: 200_000,
   period: 'daily',
   scope: 'user',
+})
+
+// Build a minimal valid Lexical `SerializedEditorState` from an array of
+// plain-text paragraphs. Matches the shape Payload's lexical editor produces
+// for a paragraphs-only document, so the seeded posts round-trip through the
+// admin panel without triggering the "Slate → Lexical" migration error.
+const lexicalFromParagraphs = (paragraphs: string[]) => ({
+  root: {
+    type: 'root',
+    format: '' as const,
+    indent: 0,
+    version: 1,
+    direction: 'ltr' as const,
+    children: paragraphs.map((text) => ({
+      type: 'paragraph',
+      format: '' as const,
+      indent: 0,
+      version: 1,
+      direction: 'ltr' as const,
+      textFormat: 0,
+      textStyle: '',
+      children: [
+        {
+          type: 'text',
+          detail: 0,
+          format: 0,
+          mode: 'normal',
+          style: '',
+          text,
+          version: 1,
+        },
+      ],
+    })),
+  },
 })
 
 const resolveModel = (id: string) => {
@@ -53,6 +101,27 @@ export default buildConfig({
     meta: { titleSuffix: '- Chat Agent Dev' },
     user: 'users',
   },
+  blocks: [
+    {
+      slug: 'cta',
+      interfaceName: 'CtaBlock',
+      labels: { singular: 'Call to Action', plural: 'Calls to Action' },
+      fields: [
+        { name: 'heading', type: 'text', required: true },
+        { name: 'buttonLabel', type: 'text', required: true },
+        { name: 'buttonHref', type: 'text', required: true },
+      ],
+    },
+    {
+      slug: 'hero',
+      labels: { singular: 'Hero', plural: 'Heroes' },
+      fields: [
+        { name: 'headline', type: 'text', required: true },
+        { name: 'subheadline', type: 'text' },
+        { name: 'image', type: 'relationship', relationTo: 'media' },
+      ],
+    },
+  ],
   collections: [
     {
       slug: 'users',
@@ -70,18 +139,56 @@ export default buildConfig({
       slug: 'posts',
       admin: { useAsTitle: 'title' },
       endpoints: postsEndpoints,
+      versions: { drafts: true },
       fields: [
         { name: 'title', type: 'text', required: true },
         { name: 'slug', type: 'text', required: true, unique: true },
         {
-          name: 'status',
-          type: 'select',
-          options: ['draft', 'published', 'archived'],
-          defaultValue: 'draft',
+          name: 'path',
+          type: 'text',
+          virtual: true,
+          hooks: {
+            afterRead: [({ data }) => (data?.slug ? `/posts/${data.slug}` : undefined)],
+          },
         },
         { name: 'content', type: 'richText' },
         { name: 'author', type: 'relationship', relationTo: 'users' },
         { name: 'featuredImage', type: 'relationship', relationTo: 'media' },
+        // Reference case: `layout` uses globally-declared blocks by slug.
+        // `getCollectionSchema({ slug: 'posts' })` resolves each slug against
+        // `config.blocks` so the agent sees cta + hero fields inlined.
+        //
+        // Payload rejects mixing `blockReferences` and inline `blocks` on the
+        // same field ("You cannot have both blockReferences and blocks in the
+        // same blocks field"), so inline blocks live on `sidebar` below.
+        {
+          name: 'layout',
+          type: 'blocks',
+          blockReferences: ['cta', 'hero'],
+          blocks: [],
+        },
+        // Inline case: `pullQuote` and `socialLinks` are scoped to this field
+        // and do not appear in `listBlocks`.
+        {
+          name: 'sidebar',
+          type: 'blocks',
+          blocks: [
+            {
+              slug: 'pullQuote',
+              fields: [
+                { name: 'quote', type: 'textarea', required: true },
+                { name: 'attribution', type: 'text' },
+              ],
+            },
+            {
+              slug: 'socialLinks',
+              fields: [
+                { name: 'twitter', type: 'text' },
+                { name: 'github', type: 'text' },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -92,6 +199,106 @@ export default buildConfig({
         { name: 'description', type: 'textarea' },
       ],
     },
+    // Demo collection for plan 013: each richText field is configured with a
+    // different lexical feature set so `getCollectionSchema({ slug:
+    // 'rich-text-demo' })` surfaces a distinct `lexical.features` /
+    // `lexical.options` shape per field — useful for eyeballing the feature
+    // summary end-to-end in the admin panel + chat agent.
+    {
+      slug: 'rich-text-demo',
+      admin: { useAsTitle: 'title' },
+      fields: [
+        { name: 'title', type: 'text', required: true },
+        // 1. Marks-only: no structural features (no headings, no lists, no
+        //    blocks). The summary should list inline marks and nothing else.
+        {
+          name: 'inlineOnly',
+          type: 'richText',
+          editor: lexicalEditor({
+            features: () => [
+              BoldFeature(),
+              ItalicFeature(),
+              UnderlineFeature(),
+              InlineCodeFeature(),
+            ],
+          }),
+        },
+        // 2. Structural body with headings restricted to h2/h3 — the summary
+        //    should surface `options.heading.enabledHeadingSizes: ['h2','h3']`
+        //    so the agent knows not to emit h1/h4+.
+        {
+          name: 'structuredBody',
+          type: 'richText',
+          editor: lexicalEditor({
+            features: ({ defaultFeatures }) => [
+              ...defaultFeatures,
+              HeadingFeature({ enabledHeadingSizes: ['h2', 'h3'] }),
+              UnorderedListFeature(),
+              OrderedListFeature(),
+            ],
+          }),
+        },
+        // 3. Blocks showcase: global blocks (`cta`, `hero`) + a block declared
+        //    inline here, plus an inline block. `options.blocks.slugs` should
+        //    include all three block slugs; the inline `calloutBox` should
+        //    round-trip through the shared `blocksBySlug` so `getBlockSchema({
+        //    slug: 'calloutBox' })` resolves without appearing in
+        //    `listBlocks`.
+        {
+          name: 'contentWithBlocks',
+          type: 'richText',
+          editor: lexicalEditor({
+            features: ({ defaultFeatures }) => [
+              ...defaultFeatures,
+              BlocksFeature({
+                blocks: [
+                  'cta',
+                  'hero',
+                  {
+                    slug: 'calloutBox',
+                    fields: [
+                      {
+                        name: 'tone',
+                        type: 'select',
+                        options: ['info', 'warning', 'danger'],
+                        required: true,
+                      },
+                      { name: 'body', type: 'textarea', required: true },
+                    ],
+                  },
+                ],
+                inlineBlocks: [
+                  {
+                    slug: 'emoji',
+                    fields: [{ name: 'shortcode', type: 'text', required: true }],
+                  },
+                ],
+              }),
+            ],
+          }),
+        },
+        // 4. Full-featured — headings, link (with custom `rel` field +
+        //    enabledCollections), upload, relationship, blocks. Exercises
+        //    every typed projection in `LexicalFeatureSummary.options`.
+        {
+          name: 'everything',
+          type: 'richText',
+          editor: lexicalEditor({
+            features: ({ defaultFeatures }) => [
+              ...defaultFeatures,
+              HeadingFeature({ enabledHeadingSizes: ['h1', 'h2', 'h3'] }),
+              LinkFeature({
+                enabledCollections: ['posts', 'categories'],
+                fields: ({ defaultFields }) => [...defaultFields, { name: 'rel', type: 'text' }],
+              }),
+              UploadFeature({ collections: { media: { fields: [] } } }),
+              RelationshipFeature({ enabledCollections: ['posts', 'categories'] }),
+              BlocksFeature({ blocks: ['cta', 'hero'] }),
+            ],
+          }),
+        },
+      ],
+    },
     {
       slug: 'media',
       admin: { useAsTitle: 'filename' },
@@ -100,6 +307,26 @@ export default buildConfig({
         mimeTypes: ['image/*'],
       },
       fields: [{ name: 'alt', type: 'text' }],
+    },
+    // Service-account collection for cron / scheduled `runAgent` callers.
+    // `useAPIKey: true` enables Payload's API-key auth strategy: the cron
+    // runner sends `Authorization: service-accounts API-Key <key>` and Payload
+    // resolves `req.user` to the matching service-account doc. The
+    // `disableLocalStrategy` flag turns off email/password — service accounts
+    // exist only to authenticate non-human callers.
+    //
+    // Wired into `/api/audit-content` (see `dev/src/endpoints.ts`) so the
+    // headless `runAgent` invocation runs as the service-account user
+    // instead of `null + overrideAccess`. That keeps the agent's tool calls
+    // subject to Payload access control as the service account.
+    {
+      slug: 'service-accounts',
+      admin: { useAsTitle: 'name' },
+      auth: { useAPIKey: true, disableLocalStrategy: true },
+      fields: [
+        { name: 'name', type: 'text', required: true },
+        { name: 'description', type: 'textarea' },
+      ],
     },
     chatBudget.collection,
   ],
@@ -122,12 +349,11 @@ export default buildConfig({
     outputFile: path.resolve(__dirname, '../payload-types.ts'),
   },
   async onInit(payload) {
-    const existingUsers = await payload.find({
+    const existingUsers = await payload.count({
       collection: 'users',
-      limit: 1,
     })
 
-    if (existingUsers.docs.length === 0) {
+    if (existingUsers.totalDocs === 0) {
       await payload.create({
         collection: 'users',
         data: {
@@ -139,30 +365,57 @@ export default buildConfig({
     }
 
     // Seed some posts if none exist
-    const existingPosts = await payload.find({
+    const existingPosts = await payload.count({
       collection: 'posts',
-      limit: 1,
     })
 
-    if (existingPosts.docs.length === 0) {
+    if (existingPosts.totalDocs === 0) {
       const posts = [
         {
           title: 'Getting Started with Payload CMS',
           slug: 'getting-started',
-          status: 'published' as const,
+          _status: 'published' as const,
+          content: lexicalFromParagraphs([
+            'Payload is a headless CMS and application framework built with TypeScript, Next.js, and React.',
+            'This guide walks you through installing the CLI, scaffolding a project, and running the admin panel locally.',
+          ]),
         },
         {
           title: 'Advanced Field Configuration',
           slug: 'advanced-fields',
-          status: 'published' as const,
+          _status: 'published' as const,
+          content: lexicalFromParagraphs([
+            'Beyond the basic text and number fields, Payload ships with arrays, blocks, relationships, and richText.',
+            'Each field supports access control, hooks, and validation — compose them to model any domain.',
+          ]),
         },
-        { title: 'Building Custom Endpoints', slug: 'custom-endpoints', status: 'draft' as const },
+        {
+          title: 'Building Custom Endpoints',
+          slug: 'custom-endpoints',
+          _status: 'draft' as const,
+          content: lexicalFromParagraphs([
+            'Custom endpoints let you expose REST routes alongside the generated collection API.',
+            'Use `req.payload` inside a handler to run Local API calls with full access and hook context.',
+          ]),
+        },
         {
           title: 'Authentication & Access Control',
           slug: 'auth-access',
-          status: 'published' as const,
+          _status: 'published' as const,
+          content: lexicalFromParagraphs([
+            'Payload ships with a pluggable auth strategy and a fine-grained access control system.',
+            'Access functions run per operation and can return booleans or query constraints to scope results.',
+          ]),
         },
-        { title: 'Plugin Development Guide', slug: 'plugin-dev', status: 'draft' as const },
+        {
+          title: 'Plugin Development Guide',
+          slug: 'plugin-dev',
+          _status: 'draft' as const,
+          content: lexicalFromParagraphs([
+            'A Payload plugin is a function that receives the incoming config and returns a modified one.',
+            'Plugins can add collections, fields, endpoints, hooks, and admin UI overrides in a single package.',
+          ]),
+        },
       ]
       for (const post of posts) {
         await payload.create({ collection: 'posts', data: post })
@@ -170,12 +423,11 @@ export default buildConfig({
     }
 
     // Seed categories if none exist
-    const existingCategories = await payload.find({
+    const existingCategories = await payload.count({
       collection: 'categories',
-      limit: 1,
     })
 
-    if (existingCategories.docs.length === 0) {
+    if (existingCategories.totalDocs === 0) {
       const categories = [
         { name: 'Tutorials', description: 'Step-by-step guides' },
         { name: 'Reference', description: 'API documentation and reference material' },
@@ -185,6 +437,25 @@ export default buildConfig({
         await payload.create({ collection: 'categories', data: cat })
       }
     }
+
+    // Seed an audit-runner service account with a deterministic API key.
+    // The key is intentionally hardcoded to keep the dev demo runnable —
+    // never do this in a real deployment.
+    const existingServiceAccounts = await payload.count({
+      collection: 'service-accounts',
+    })
+
+    if (existingServiceAccounts.totalDocs === 0) {
+      await payload.create({
+        collection: 'service-accounts',
+        data: {
+          name: 'audit-runner',
+          description: 'Used by the daily content-audit cron to invoke `runAgent`.',
+          enableAPIKey: true,
+          apiKey: 'demo-audit-secret-key-change-me',
+        },
+      })
+    }
   },
   plugins: [
     chatAgentPlugin({
@@ -192,12 +463,36 @@ export default buildConfig({
       availableModels: [
         { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
         { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+        { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+        { id: 'claude-opus-4-7', label: 'Claude Opus 4.7' },
         { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
         { id: 'gpt-5-nano', label: 'GPT-5 nano' },
       ],
       budget: chatBudget.budget,
       defaultModel: 'claude-haiku-4-5-20251001',
       model: resolveModel,
+      // One `tools` factory composes the final toolset the agent sees.
+      // Spread `defaultTools` to keep the built-in Payload tools, then add
+      // user-defined tools and provider-native ones (executed server-side by
+      // the provider, billed separately ~$10 / 1k searches).
+      //
+      // The Anthropic-native web tools are gated on `modelId` so we don't
+      // send Anthropic-shaped tools to OpenAI when the user picks a `gpt-*`
+      // model — OpenAI would reject the unknown tool shape at runtime.
+      //
+      // Using `webFetch_20250910` (pre-dynamic-filtering) so this works with
+      // all Claude models. The newer `webFetch_20260209` adds
+      // code-execution-based filtering but requires Opus 4.6+/Sonnet 4.6.
+      tools: ({ defaultTools, modelId, req }) => ({
+        ...defaultTools,
+        ...customTools({ req }),
+        ...(modelId.startsWith('claude-')
+          ? {
+              webFetch: anthropic.tools.webFetch_20250910(),
+              webSearch: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+            }
+          : {}),
+      }),
       modes: {
         default: 'ask',
         access: {

@@ -64,15 +64,21 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    'service-accounts': ServiceAccountAuthOperations;
   };
-  blocks: {};
+  blocks: {
+    cta: CtaBlock;
+    hero: Hero;
+  };
   collections: {
     users: User;
     posts: Post;
     categories: Category;
+    'rich-text-demo': RichTextDemo;
     media: Media;
-    'chat-token-usage': ChatTokenUsage;
-    'chat-conversations': ChatConversation;
+    'service-accounts': ServiceAccount;
+    'agent-token-usage': AgentTokenUsage;
+    'agent-conversations': AgentConversation;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -83,9 +89,11 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    'rich-text-demo': RichTextDemoSelect<false> | RichTextDemoSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
-    'chat-token-usage': ChatTokenUsageSelect<false> | ChatTokenUsageSelect<true>;
-    'chat-conversations': ChatConversationsSelect<false> | ChatConversationsSelect<true>;
+    'service-accounts': ServiceAccountsSelect<false> | ServiceAccountsSelect<true>;
+    'agent-token-usage': AgentTokenUsageSelect<false> | AgentTokenUsageSelect<true>;
+    'agent-conversations': AgentConversationsSelect<false> | AgentConversationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -105,7 +113,7 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User;
+  user: User | ServiceAccount;
   jobs: {
     tasks: unknown;
     workflows: unknown;
@@ -128,6 +136,67 @@ export interface UserAuthOperations {
     email: string;
     password: string;
   };
+}
+export interface ServiceAccountAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CtaBlock".
+ */
+export interface CtaBlock {
+  heading: string;
+  buttonLabel: string;
+  buttonHref: string;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'cta';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hero".
+ */
+export interface Hero {
+  headline: string;
+  subheadline?: string | null;
+  image?: (string | null) | Media;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'hero';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: string;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -163,7 +232,7 @@ export interface Post {
   id: string;
   title: string;
   slug: string;
-  status?: ('draft' | 'published' | 'archived') | null;
+  path?: string | null;
   content?: {
     root: {
       type: string;
@@ -181,27 +250,28 @@ export interface Post {
   } | null;
   author?: (string | null) | User;
   featuredImage?: (string | null) | Media;
+  layout?: (CtaBlock | Hero)[] | null;
+  sidebar?:
+    | (
+        | {
+            quote: string;
+            attribution?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'pullQuote';
+          }
+        | {
+            twitter?: string | null;
+            github?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'socialLinks';
+          }
+      )[]
+    | null;
   updatedAt: string;
   createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: string;
-  alt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -216,9 +286,94 @@ export interface Category {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-token-usage".
+ * via the `definition` "rich-text-demo".
  */
-export interface ChatTokenUsage {
+export interface RichTextDemo {
+  id: string;
+  title: string;
+  inlineOnly?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  structuredBody?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  contentWithBlocks?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  everything?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-accounts".
+ */
+export interface ServiceAccount {
+  id: string;
+  name: string;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  enableAPIKey?: boolean | null;
+  apiKey?: string | null;
+  apiKeyIndex?: string | null;
+  collection: 'service-accounts';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agent-token-usage".
+ */
+export interface AgentTokenUsage {
   id: string;
   scope: string;
   period: string;
@@ -231,9 +386,9 @@ export interface ChatTokenUsage {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-conversations".
+ * via the `definition` "agent-conversations".
  */
-export interface ChatConversation {
+export interface AgentConversation {
   id: string;
   title: string;
   messages:
@@ -289,22 +444,35 @@ export interface PayloadLockedDocument {
         value: string | Category;
       } | null)
     | ({
+        relationTo: 'rich-text-demo';
+        value: string | RichTextDemo;
+      } | null)
+    | ({
         relationTo: 'media';
         value: string | Media;
       } | null)
     | ({
-        relationTo: 'chat-token-usage';
-        value: string | ChatTokenUsage;
+        relationTo: 'service-accounts';
+        value: string | ServiceAccount;
       } | null)
     | ({
-        relationTo: 'chat-conversations';
-        value: string | ChatConversation;
+        relationTo: 'agent-token-usage';
+        value: string | AgentTokenUsage;
+      } | null)
+    | ({
+        relationTo: 'agent-conversations';
+        value: string | AgentConversation;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: string | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: string | User;
+      }
+    | {
+        relationTo: 'service-accounts';
+        value: string | ServiceAccount;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -314,10 +482,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: string;
-  user: {
-    relationTo: 'users';
-    value: string | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: string | User;
+      }
+    | {
+        relationTo: 'service-accounts';
+        value: string | ServiceAccount;
+      };
   key?: string | null;
   value?:
     | {
@@ -372,12 +545,34 @@ export interface UsersSelect<T extends boolean = true> {
 export interface PostsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
-  status?: T;
+  path?: T;
   content?: T;
   author?: T;
   featuredImage?: T;
+  layout?: T | {};
+  sidebar?:
+    | T
+    | {
+        pullQuote?:
+          | T
+          | {
+              quote?: T;
+              attribution?: T;
+              id?: T;
+              blockName?: T;
+            };
+        socialLinks?:
+          | T
+          | {
+              twitter?: T;
+              github?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -386,6 +581,19 @@ export interface PostsSelect<T extends boolean = true> {
 export interface CategoriesSelect<T extends boolean = true> {
   name?: T;
   description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rich-text-demo_select".
+ */
+export interface RichTextDemoSelect<T extends boolean = true> {
+  title?: T;
+  inlineOnly?: T;
+  structuredBody?: T;
+  contentWithBlocks?: T;
+  everything?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -409,9 +617,22 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-token-usage_select".
+ * via the `definition` "service-accounts_select".
  */
-export interface ChatTokenUsageSelect<T extends boolean = true> {
+export interface ServiceAccountsSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  enableAPIKey?: T;
+  apiKey?: T;
+  apiKeyIndex?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agent-token-usage_select".
+ */
+export interface AgentTokenUsageSelect<T extends boolean = true> {
   scope?: T;
   period?: T;
   model?: T;
@@ -423,9 +644,9 @@ export interface ChatTokenUsageSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-conversations_select".
+ * via the `definition` "agent-conversations_select".
  */
-export interface ChatConversationsSelect<T extends boolean = true> {
+export interface AgentConversationsSelect<T extends boolean = true> {
   title?: T;
   messages?: T;
   user?: T;

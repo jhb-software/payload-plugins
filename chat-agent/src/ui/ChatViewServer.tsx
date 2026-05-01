@@ -1,12 +1,15 @@
 import type { AdminViewServerProps } from 'payload'
 
 import { DefaultTemplate } from '@payloadcms/next/templates'
+import { redirect } from 'next/navigation.js'
+import { formatAdminURL } from 'payload/shared'
 
-import type { AgentMode, ModelOption, ModesConfig } from '../types.js'
+import type { AgentMode } from '../types.js'
 
 import { isPluginAccessAllowed } from '../access.js'
 import { CONVERSATIONS_SLUG } from '../conversations.js'
 import { getDefaultMode, resolveAvailableModes } from '../modes.js'
+import { getPluginCustomConfig, getPluginOptions } from '../plugin-custom-config.js'
 import { AGENT_MODES } from '../types.js'
 import ChatView from './ChatView.js'
 
@@ -18,6 +21,25 @@ export default async function ChatViewServer({
   const { locale, permissions, req, visibleEntities } = initPageResult
   const conversationId = req.searchParams.get('conversation') ?? undefined
   const { i18n, payload, user } = req
+
+  // Custom admin views are not auto-gated by Payload's root router (see the
+  // `isCustomAdminView` skip in `@payloadcms/next`'s RootPage), so an
+  // unauthenticated visitor would otherwise see the nav chrome wrapped
+  // around a "Not authorized" message.
+  // Redirect to login ourselves and preserve the original path so
+  // the user lands back on the chat view after signing in.
+  if (!user) {
+    const adminRoute = payload.config.routes.admin
+    const loginRoute = payload.config.admin.routes.login
+    const segments = Array.isArray(params?.segments) ? params.segments : []
+    const currentPath: '' | `/${string}` | null = segments.length ? `/${segments.join('/')}` : null
+    const queryString = req.searchParams.toString()
+    const currentRoute =
+      formatAdminURL({ adminRoute, path: currentPath }) + (queryString ? `?${queryString}` : '')
+    const loginURL = formatAdminURL({ adminRoute, path: loginRoute })
+
+    redirect(currentRoute ? `${loginURL}?redirect=${encodeURIComponent(currentRoute)}` : loginURL)
+  }
 
   // Payload's route resolver does NOT auto-wrap custom admin views registered
   // via `admin.components.views` in DefaultTemplate — custom views get no
@@ -48,25 +70,24 @@ export default async function ChatViewServer({
 
   // Resolve modes + models config server-side so the selectors render with the
   // first paint instead of flashing in after a client-side fetch on mount.
-  const pluginConfig = (payload.config.custom?.chatAgent ?? {}) as {
-    availableModels?: ModelOption[]
-    defaultModel?: string
-    modesConfig?: ModesConfig
-    suggestedPrompts?: string[]
-  }
-  const modesConfig = pluginConfig.modesConfig ?? {}
+  const modesConfig = getPluginCustomConfig(payload)?.modesConfig ?? {}
   const availableModes = await resolveAvailableModes(modesConfig, req)
   const defaultMode = getDefaultMode(modesConfig)
-  const availableModels = pluginConfig.availableModels ?? []
-  const defaultModel = pluginConfig.defaultModel
-  const suggestedPrompts = pluginConfig.suggestedPrompts
+  const pluginOptions = getPluginOptions(payload)
+  const availableModels = pluginOptions?.availableModels ?? []
+  const defaultModel = pluginOptions?.defaultModel
+  const suggestedPrompts = pluginOptions?.suggestedPrompts
 
-  // Fetch the conversation list server-side so the sidebar renders immediately
+  // Fetch the conversation list server-side so the sidebar renders immediately.
+  // The sidebar only uses `id`, `title`, and `updatedAt`; selecting just
+  // those avoids sending the full `messages` JSON of every conversation on
+  // the first paint.
   const { docs: conversations } = user
     ? await payload.find({
         collection: CONVERSATIONS_SLUG,
         depth: 0,
         limit: 50,
+        select: { title: true, updatedAt: true },
         sort: '-updatedAt',
         where: { user: { equals: user.id } },
       })

@@ -140,4 +140,54 @@ describe('ChatInput', () => {
     expect(submit.textContent?.trim()).toBe('')
     expect(submit.querySelector('svg')).not.toBeNull()
   })
+
+  // Regression: sending a new message while a tool-approval card is still
+  // awaiting Allow / Deny poisons the conversation — the next request
+  // contains an orphan `tool_use` that every subsequent request also
+  // carries, and the agent errors with "Tool result is missing for tool
+  // call toolu_...". Block the send at the source by disabling the
+  // composer while an approval is pending, with an inline hint explaining
+  // why.
+  describe('pending tool approval', () => {
+    it('disables the textarea and blocks submission while an approval is pending', () => {
+      const onSend = vi.fn()
+      render(<ChatInput isAwaitingApproval={true} isLoading={false} onSend={onSend} />)
+      const textarea = screen.getByPlaceholderText(/type a message/i)
+      expect(textarea.hasAttribute('disabled')).toBe(true)
+      fireEvent.change(textarea, { target: { value: 'new question' } })
+      fireEvent.submit(textarea.closest('form')!)
+      expect(onSend).not.toHaveBeenCalled()
+    })
+
+    it('disables the send button while an approval is pending, even with draft text', () => {
+      render(<ChatInput isAwaitingApproval={true} isLoading={false} onSend={vi.fn()} />)
+      const submit = screen.getByRole('button', { name: /send/i })
+      expect((submit as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    it('surfaces a hint telling the user to approve or deny the pending tool call', () => {
+      render(<ChatInput isAwaitingApproval={true} isLoading={false} onSend={vi.fn()} />)
+      expect(screen.getByText(/approve or deny/i)).toBeDefined()
+    })
+
+    it('does not show the pending-approval hint when no approval is pending', () => {
+      render(<ChatInput isLoading={false} onSend={vi.fn()} />)
+      expect(screen.queryByText(/approve or deny/i)).toBeNull()
+    })
+
+    it('re-enables the composer once the approval is resolved', () => {
+      const onSend = vi.fn()
+      const { rerender } = render(
+        <ChatInput isAwaitingApproval={true} isLoading={false} onSend={onSend} />,
+      )
+      const textarea = screen.getByPlaceholderText(/type a message/i)
+      expect(textarea.hasAttribute('disabled')).toBe(true)
+
+      rerender(<ChatInput isAwaitingApproval={false} isLoading={false} onSend={onSend} />)
+      expect(textarea.hasAttribute('disabled')).toBe(false)
+      fireEvent.change(textarea, { target: { value: 'now i can send' } })
+      fireEvent.submit(textarea.closest('form')!)
+      expect(onSend).toHaveBeenCalledWith('now i can send')
+    })
+  })
 })

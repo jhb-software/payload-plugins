@@ -14,20 +14,20 @@
  */
 
 import type { Tool } from 'ai'
-import type { PayloadRequest, SanitizedConfig } from 'payload'
+import type { PayloadRequest, SanitizedConfig, TypedUser } from 'payload'
 
 import { z } from 'zod'
 
 import type { PayloadConfigForPrompt, RawBlock } from './schema.js'
 import type { AgentMode } from './types.js'
 
-import { extractFields } from './schema.js'
+import { extractFields, normalizeLabel } from './schema.js'
 
 // ---------------------------------------------------------------------------
 // Tool classification
 // ---------------------------------------------------------------------------
 
-/** Tools that only read data (safe in all modes). */
+/** Built-in tools that only read data (safe in all modes). */
 export const READ_TOOL_NAMES = [
   'find',
   'findByID',
@@ -35,11 +35,35 @@ export const READ_TOOL_NAMES = [
   'findGlobal',
   'getCollectionSchema',
   'getGlobalSchema',
+  'listBlocks',
+  'getBlockSchema',
   'listEndpoints',
 ] as const
 
-/** Tools that modify data (restricted in read/ask modes). */
+/** Built-in tools that modify data (restricted in read/ask modes). */
 export const WRITE_TOOL_NAMES = ['create', 'update', 'delete', 'updateGlobal'] as const
+
+const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
+
+/**
+ * Classify a tool as safe for `read` mode.
+ *
+ * A tool is a read if either:
+ * - It's a built-in read tool (by name), or
+ * - It has no `execute` function, i.e. it's a provider-native server-executed
+ *   tool (e.g. `anthropic.tools.webSearch_*`). The provider runs it and the
+ *   client can't approve after the fact, so gating it with `needsApproval`
+ *   would invent a gate the plugin can't enforce.
+ *
+ * Everything else — built-in writes, `callEndpoint`, and user-defined tools
+ * with an `execute` function — is treated as a write.
+ */
+function isReadTool(name: string, tool: Tool): boolean {
+  if (readToolSet.has(name)) {
+    return true
+  }
+  return typeof (tool as { execute?: unknown }).execute !== 'function'
+}
 
 // ---------------------------------------------------------------------------
 // Shared Zod schemas (reused across tools)
@@ -117,12 +141,28 @@ interface PayloadLocalAPI {
 type ExecutableTool = Required<Pick<Tool<Record<string, unknown>, unknown>, 'execute'>> &
   Tool<Record<string, unknown>, unknown>
 
+/**
+ * Request/response contract for a custom endpoint, read from
+ * `endpoint.custom.schema`. Each leaf is intentionally `unknown` — it's
+ * surfaced to the agent verbatim, not validated here.
+ */
+export interface EndpointSchema {
+  /** Request body shape */
+  body?: Record<string, unknown>
+  /** Query string parameters */
+  query?: Record<string, unknown>
+  /** Response shape */
+  response?: Record<string, unknown>
+}
+
 /** Minimal representation of a custom endpoint for the agent. */
 export interface DiscoverableEndpoint {
   description?: string
   handler: (req: PayloadRequest) => Promise<Response> | Response
   method: string
   path: string
+  /** Optional request/response contract declared via `endpoint.custom.schema`. */
+  schema?: EndpointSchema
 }
 
 /**
@@ -143,6 +183,7 @@ export function discoverEndpoints(config: SanitizedConfig): DiscoverableEndpoint
         handler: ep.handler,
         method: ep.method,
         path: `/api${ep.path}`,
+        ...(ep.custom.schema && { schema: ep.custom.schema as EndpointSchema }),
       })
     }
   }
@@ -158,6 +199,7 @@ export function discoverEndpoints(config: SanitizedConfig): DiscoverableEndpoint
           handler: ep.handler,
           method: ep.method,
           path: `/api/${col.slug}${ep.path}`,
+          ...(ep.custom.schema && { schema: ep.custom.schema as EndpointSchema }),
         })
       }
     }
@@ -174,6 +216,7 @@ export function discoverEndpoints(config: SanitizedConfig): DiscoverableEndpoint
           handler: ep.handler,
           method: ep.method,
           path: `/api/globals/${global.slug}${ep.path}`,
+          ...(ep.custom.schema && { schema: ep.custom.schema as EndpointSchema }),
         })
       }
     }
@@ -206,7 +249,7 @@ function matchRoute(pattern: string, path: string): null | Record<string, string
 
 export function buildTools(
   payload: PayloadLocalAPI,
-  user: unknown,
+  user: null | TypedUser,
   overrideAccess = false,
   /** The original request, used for calling custom endpoint handlers. */
   req?: PayloadRequest,
@@ -450,6 +493,64 @@ export function buildTools(
               slug: z.string().describe('Global slug (see the slug catalog in the system prompt)'),
             }),
           } satisfies ExecutableTool,
+
+          listBlocks: {
+            description:
+              'List all globally-declared blocks (config.blocks). These blocks can be referenced from `blocks` fields and inserted into lexical fields configured with BlocksFeature.',
+            execute: () => ({
+              blocks: (config.blocks ?? []).map((block) => {
+                const singular = normalizeLabel(block.labels?.singular)
+                const plural = normalizeLabel(block.labels?.plural)
+                const labels =
+                  singular !== undefined || plural !== undefined
+                    ? {
+                        ...(singular !== undefined && { singular }),
+                        ...(plural !== undefined && { plural }),
+                      }
+                    : undefined
+                return {
+                  slug: block.slug,
+                  ...(labels && { labels }),
+                  ...(typeof block.interfaceName === 'string' && {
+                    interfaceName: block.interfaceName,
+                  }),
+                }
+              }),
+            }),
+            inputSchema: z.object({}),
+          } satisfies ExecutableTool,
+
+          getBlockSchema: {
+            description:
+              'Get the field schema for a globally-declared block by slug. Call listBlocks first to discover slugs. Returns { error } if the slug is unknown.',
+            execute: (input: Record<string, unknown>) => {
+              const slug = input.slug as string
+              const block = blocksBySlug[slug]
+              if (!block) {
+                return { error: `Unknown block slug "${slug}"` }
+              }
+              const singular = normalizeLabel(block.labels?.singular)
+              const plural = normalizeLabel(block.labels?.plural)
+              const labels =
+                singular !== undefined || plural !== undefined
+                  ? {
+                      ...(singular !== undefined && { singular }),
+                      ...(plural !== undefined && { plural }),
+                    }
+                  : undefined
+              return {
+                slug,
+                fields: extractFields(block.fields ?? [], blocksBySlug),
+                ...(labels && { labels }),
+                ...(typeof block.interfaceName === 'string' && {
+                  interfaceName: block.interfaceName,
+                }),
+              }
+            },
+            inputSchema: z.object({
+              slug: z.string().describe('Block slug from listBlocks'),
+            }),
+          } satisfies ExecutableTool,
         }
       : {}),
 
@@ -458,13 +559,14 @@ export function buildTools(
       ? {
           listEndpoints: {
             description:
-              'List plugin-provided custom API endpoints that can be invoked via `callEndpoint`. Returns method, path, and description for each.',
+              'List plugin-provided custom API endpoints that can be invoked via `callEndpoint`. Returns method, path, and description for each, plus an optional `schema` describing the request/response contract (query/body/response shapes) when the endpoint declares one.',
             execute: () => {
               return {
                 endpoints: customEndpoints.map((ep) => ({
                   description: ep.description,
                   method: ep.method.toUpperCase(),
                   path: ep.path,
+                  ...(ep.schema && { schema: ep.schema }),
                 })),
               }
             },
@@ -560,31 +662,25 @@ export function buildTools(
 // Tool filtering by agent mode
 // ---------------------------------------------------------------------------
 
-/** Tools treated as writes for `read`/`ask` mode filtering. */
-export const WRITE_TOOLS_WITH_ENDPOINT: ReadonlySet<string> = new Set([
-  'callEndpoint',
-  ...WRITE_TOOL_NAMES,
-])
-const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
-
 /**
  * Filter tools based on the active agent mode.
  *
- * - `read`:       Only read tools (write tools and callEndpoint removed).
- * - `ask`:        All tools, but write tools gain `needsApproval: true` so the
- *                 AI SDK pauses on them and waits for a client approval
- *                 response before executing server-side.
+ * - `read`:       Only read tools. Provider-native tools (no `execute`) are
+ *                 kept; everything else with an `execute` function is dropped.
+ * - `ask`:        All tools, but anything classified as a write gains
+ *                 `needsApproval: true` so the AI SDK pauses on it and waits
+ *                 for a client approval response before executing.
  * - `read-write`: All tools unchanged.
  * - `superuser`:  All tools unchanged (overrideAccess is handled at build time).
  */
-export function filterToolsByMode(
-  tools: Record<string, ExecutableTool>,
+export function filterToolsByMode<T extends Tool>(
+  tools: Record<string, T>,
   mode: AgentMode,
-): Record<string, ExecutableTool> {
+): Record<string, T> {
   if (mode === 'read') {
-    const filtered: Record<string, ExecutableTool> = {}
+    const filtered: Record<string, T> = {}
     for (const [name, tool] of Object.entries(tools)) {
-      if (readToolSet.has(name)) {
+      if (isReadTool(name, tool)) {
         filtered[name] = tool
       }
     }
@@ -592,19 +688,17 @@ export function filterToolsByMode(
   }
 
   if (mode === 'ask') {
-    const result: Record<string, ExecutableTool> = {}
+    const result: Record<string, T> = {}
     for (const [name, tool] of Object.entries(tools)) {
-      if (WRITE_TOOLS_WITH_ENDPOINT.has(name)) {
-        // Mark as requiring approval; the SDK pauses and waits for the client
-        // to respond via `addToolApprovalResponse` before executing.
-        result[name] = { ...tool, needsApproval: true } as ExecutableTool
-      } else {
+      if (isReadTool(name, tool)) {
         result[name] = tool
+      } else {
+        result[name] = { ...tool, needsApproval: true } as T
       }
     }
     return result
   }
 
-  // read-write and superuser: all tools with execute
+  // read-write and superuser: all tools unchanged
   return tools
 }

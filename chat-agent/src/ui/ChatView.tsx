@@ -13,6 +13,7 @@ import { ChatInput } from './ChatInput.js'
 import './ChatView.css'
 import { SidebarIcon } from './icons/SidebarIcon.js'
 import { MessageList } from './MessageList.js'
+import { hasPendingApproval } from './pending-approval.js'
 import { type ConversationSummary, Sidebar } from './Sidebar.js'
 import { type ChatMessageUI, useChat } from './use-chat.js'
 import { useConversations } from './useConversations.js'
@@ -89,6 +90,7 @@ export default function ChatView({
   // CSS take over above the breakpoint. Keeping the default stable avoids a
   // hydration mismatch (we can't know the viewport server-side).
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
 
   const setActiveChatId = useCallback((id: string | undefined) => {
     setChatId(id)
@@ -102,6 +104,7 @@ export default function ChatView({
 
   const {
     addToolApprovalResponse,
+    clearError,
     error,
     messages,
     regenerate,
@@ -124,9 +127,15 @@ export default function ChatView({
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
+  // Block the composer while a tool-approval card is awaiting a decision —
+  // sending a new message in that state leaves an orphan `tool_use` in the
+  // transcript that every subsequent request carries forward, and the
+  // agent errors with `Tool result is missing for tool call toolu_...`.
+  const isAwaitingApproval = hasPendingApproval(messages)
 
   const loadConversation = useCallback(
     async (id: string) => {
+      setIsLoadingMessages(true)
       try {
         const res = await fetch(`${endpointUrl}/conversations/${id}`, {
           credentials: 'include',
@@ -139,15 +148,21 @@ export default function ChatView({
         setActiveChatId(id)
         setInitialMessages(msgs)
         setMessages(msgs)
+        // The AI SDK's `error` state belongs to the chat that just failed;
+        // leaving it set would surface that chat's banner on top of the
+        // conversation the user just switched to.
+        clearError()
         if (doc.model) {
           setSelectedModel(doc.model)
         }
         setMode(resolveMode(doc.mode))
       } catch {
         // silently ignore
+      } finally {
+        setIsLoadingMessages(false)
       }
     },
-    [endpointUrl, resolveMode, setActiveChatId, setMessages],
+    [clearError, endpointUrl, resolveMode, setActiveChatId, setMessages],
   )
 
   // Load conversation on mount only if server didn't provide messages
@@ -179,9 +194,13 @@ export default function ChatView({
     setActiveChatId(undefined)
     setInitialMessages(undefined)
     setMessages([])
+    // Drop the error surfaced on the prior conversation so it doesn't bleed
+    // into the fresh chat (where it would be misleading — the error had
+    // nothing to do with the new session).
+    clearError()
     setSelectedModel(defaultModel)
     setMode(defaultMode)
-  }, [setActiveChatId, setMessages, defaultModel, defaultMode])
+  }, [clearError, setActiveChatId, setMessages, defaultModel, defaultMode])
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -334,6 +353,7 @@ export default function ChatView({
           />
           <MessageList
             isLoading={isLoading}
+            isLoadingMessages={isLoadingMessages}
             // Keying by conversation id makes switching conversations a fresh
             // mount, so `MessageList` re-runs its initial pre-paint scroll-to-
             // bottom for every conversation. Without this, navigating to (or
@@ -364,7 +384,12 @@ export default function ChatView({
               {error.message}
             </div>
           ) : null}
-          <ChatInput isLoading={isLoading} onSend={handleSend} onStop={handleStop} />
+          <ChatInput
+            isAwaitingApproval={isAwaitingApproval}
+            isLoading={isLoading}
+            onSend={handleSend}
+            onStop={handleStop}
+          />
         </div>
       </div>
     </div>

@@ -23,8 +23,6 @@ When the plugin is enabled for an upload collection, it will:
 3. Add a bulk generate button to the collection list view
    - This button will allow you to generate alt text for multiple images at once
 4. Register an `Alt text health` dashboard widget
-   - The widget is available in Payload's dashboard editor
-   - It is added to the default dashboard layout for first-time and reset layouts
    - Results are cached and revalidated when documents in the configured upload collections change
 
 ## Installation
@@ -56,6 +54,8 @@ export default buildConfig({
 
 Note: When localization is disabled in your Payload config (default), you need to specify the locale to generate the alt texts in via the `locale` plugin option.
 
+To restrict which MIME types the plugin tracks, validates, and generates for — or to override the default validator on a per-collection basis — pass an object instead of a bare slug. See [Per-collection options](#per-collection-options).
+
 ### Admin list search
 
 By default, the plugin sets `admin.listSearchableFields` on the configured upload collections to `['filename', 'keywords', 'alt']` so the admin list-view search matches against these fields. To opt out, set `admin.listSearchableFields` on the collection yourself — any explicit value is preserved as-is:
@@ -77,22 +77,81 @@ This is also the recommended escape hatch if you hit Payload's Postgres SQL-buil
 
 ### Plugin Options
 
-| Option                       | Type               | Required | Description                                                                                                      |
-| ---------------------------- | ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| `collections`                | `CollectionSlug[]` | Yes      | Collections to enable alt text generation for                                                                    |
-| `resolver`                   | `AltTextResolver`  | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                |
-| `getImageThumbnail`          | `Function`         | Yes      | Function to get the thumbnail URL from an image document                                                         |
-| `enabled`                    | `boolean`          | No       | Whether to enable the plugin                                                                                     |
-| `locale`                     | `string`           | No       | Locale for alt text generation (required when localization is disabled)                                          |
-| `maxBulkGenerateConcurrency` | `number`           | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                |
-| `fieldsOverride`             | `Function`         | No       | Override the default fields inserted by the plugin                                                               |
-| `healthCheck`                | `boolean`          | No       | Enable alt text health tracking: REST endpoint, cache revalidation hooks, and dashboard widget (default: `true`) |
+| Option                       | Type                                  | Required | Description                                                                                                      |
+| ---------------------------- | ------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `collections`                | `(CollectionSlug \| CollectionObj)[]` | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))            |
+| `resolver`                   | `AltTextResolver`                     | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                |
+| `getImageThumbnail`          | `Function`                            | Yes      | Function to get the thumbnail URL from an image document                                                         |
+| `enabled`                    | `boolean`                             | No       | Whether to enable the plugin                                                                                     |
+| `locale`                     | `string`                              | No       | Locale for alt text generation (required when localization is disabled)                                          |
+| `maxBulkGenerateConcurrency` | `number`                              | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                |
+| `fieldsOverride`             | `Function`                            | No       | Override the default fields inserted by the plugin                                                               |
+| `healthCheck`                | `boolean`                             | No       | Enable alt text health tracking: REST endpoint, cache revalidation hooks, and dashboard widget (default: `true`) |
+
+### Per-collection options
+
+Each entry in `collections` may be either a bare collection slug (shorthand, defaults to `['image/*']` for `mimeTypes`) or an object with the following fields:
+
+| Option      | Type                      | Required | Description                                                                                                                                                                                       |
+| ----------- | ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slug`      | `CollectionSlug`          | Yes      | The collection slug                                                                                                                                                                               |
+| `mimeTypes` | `string[]`                | No       | MIME types the plugin tracks, validates, and generates for. Supports wildcards like `image/*`. Defaults to `['image/*']`.                                                                         |
+| `validate`  | `TextareaFieldValidation` | No       | Custom validator that fully replaces the default required-alt check. Import `validateAltText` from the plugin to compose around the default behavior (see [Custom validator](#custom-validator)). |
+
+```ts
+payloadAltTextPlugin({
+  collections: [
+    'images', // shorthand — defaults to mimeTypes: ['image/*']
+    { slug: 'media', mimeTypes: ['image/*', 'application/pdf'] },
+  ],
+  // ...
+})
+```
+
+#### Custom validator
+
+The default validator requires alt text on every tracked document. Some workflows — folder moves, partial API updates, or localized setups with `fallback: false` where some locales are intentionally empty — need to skip that check when the request body does not touch `alt`. Pass a `validate` function to override the default, and compose around the exported `validateAltText` to keep the standard behavior for full updates:
+
+```ts
+import { payloadAltTextPlugin, validateAltText } from '@jhb.software/payload-alt-text-plugin'
+
+payloadAltTextPlugin({
+  collections: [
+    {
+      slug: 'media',
+      validate: (value, args) => {
+        // Skip the required-alt check when the request body does not touch `alt`
+        // (e.g. folder moves, partial API updates).
+        if (!args.req.data || !('alt' in args.req.data)) return true
+        return validateAltText(value, args)
+      },
+    },
+  ],
+  // ...
+})
+```
 
 ## Dashboard Widget
 
 The plugin registers an `Alt text health` dashboard widget that shows alt text coverage across all configured upload collections, with cached queries that revalidate on document changes. Collections with missing alt text show a clickable badge linking to the affected images.
 
 <img width="696" height="246" alt="image" src="https://github.com/user-attachments/assets/75df7349-0307-4047-b1ac-6b2ee0814464" />
+
+The widget is registered under `admin.dashboard.widgets` with the slug `alt-text-health`. To show it by default on the dashboard, add it to your `admin.dashboard.defaultLayout`:
+
+```ts
+buildConfig({
+  admin: {
+    dashboard: {
+      defaultLayout: [
+        // ...other default widgets
+        { widgetSlug: 'alt-text-health', width: 'full' },
+      ],
+    },
+  },
+  // ...
+})
+```
 
 Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 

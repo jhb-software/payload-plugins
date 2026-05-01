@@ -26,6 +26,7 @@
     "format": "prettier --write src \"*.{json,md,js,mjs,cjs}\"",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {

@@ -2,10 +2,14 @@ import type { Payload, PayloadRequest } from 'payload'
 
 import { unstable_cache } from 'next/cache.js'
 
-import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
+import type {
+  AltTextPluginConfig,
+  NormalizedAltTextCollectionConfig,
+} from '../types/AltTextPluginConfig.js'
 
 import { createCachedAltTextHealthScan } from './altTextHealthCache.js'
 import { localesFromConfig } from './localesFromConfig.js'
+import { buildMimeTypeWhere } from './mimeTypes.js'
 import { summarizeCollection } from './summarizeCollection.js'
 
 export const ALT_TEXT_HEALTH_PLUGIN_SLUG = 'alt-text'
@@ -50,7 +54,7 @@ export type AltTextHealthWidgetData = {
 }
 
 type AltTextHealthComputationArgs = {
-  collections: string[]
+  collections: NormalizedAltTextCollectionConfig[]
   isLocalized: boolean
   localeCodes: string[]
   payload: Payload
@@ -85,7 +89,13 @@ async function fetchAllDocs(
   payload: Payload,
   collection: string,
   isLocalized: boolean,
+  mimeTypes: readonly string[],
 ): Promise<{ alt: unknown; id: number | string }[]> {
+  const where = buildMimeTypeWhere(mimeTypes)
+  if (!where) {
+    return []
+  }
+
   const docs: { alt: unknown; id: number | string }[] = []
   let page = 1
   let hasMore = true
@@ -102,6 +112,7 @@ async function fetchAllDocs(
       select: {
         alt: true,
       },
+      where,
     })
 
     for (const doc of result.docs) {
@@ -125,22 +136,22 @@ async function computeAltTextHealthScan({
   payload,
 }: AltTextHealthComputationArgs): Promise<AltTextHealthScan> {
   const collectionSummaries = await Promise.all(
-    collections.map(async (collection): Promise<AltTextHealthScanCollection> => {
+    collections.map(async ({ slug, mimeTypes }): Promise<AltTextHealthScanCollection> => {
       try {
-        const docs = await fetchAllDocs(payload, collection, isLocalized)
+        const docs = await fetchAllDocs(payload, slug, isLocalized, mimeTypes)
 
         return summarizeCollection({
-          collection,
+          collection: slug,
           docs,
           isLocalized,
           localeCodes,
         })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error'
-        const collectionError = createCollectionReadError(collection, message)
+        const collectionError = createCollectionReadError(slug, message)
 
         payload.logger.error({
-          collection,
+          collection: slug,
           err: error,
           msg: 'Alt text health check failed while reading a collection.',
           operation: 'find',
@@ -148,7 +159,7 @@ async function computeAltTextHealthScan({
         })
 
         return {
-          collection,
+          collection: slug,
           completeDocs: 0,
           error: collectionError,
           invalidDocIds: undefined,
@@ -198,13 +209,16 @@ async function getAltTextHealthScan(req: PayloadRequest): Promise<AltTextHealthS
 
   const cacheKeyParts = [
     ALT_TEXT_HEALTH_GLOBAL_TAG,
-    [...collections].sort().join(','),
+    [...collections]
+      .map(({ slug, mimeTypes }) => `${slug}:${[...mimeTypes].sort().join('|')}`)
+      .sort()
+      .join(','),
     localeCodes.join(','),
   ]
 
   const tags = [
     ALT_TEXT_HEALTH_GLOBAL_TAG,
-    ...new Set(collections.map((collection) => getAltTextHealthCollectionTag(collection))),
+    ...new Set(collections.map(({ slug }) => getAltTextHealthCollectionTag(slug))),
   ]
 
   const getCachedHealthScan = createCachedAltTextHealthScan({

@@ -1,9 +1,11 @@
 import type { Payload, PayloadRequest } from 'payload'
 
+import { getPluginOptions } from './plugin-custom-config.js'
+
 export type PluginAccessFn = (req: PayloadRequest) => boolean | Promise<boolean>
 
 export function getPluginAccess(payload: Payload | undefined): PluginAccessFn | undefined {
-  return payload?.config?.custom?.chatAgent?.access as PluginAccessFn | undefined
+  return getPluginOptions(payload)?.access
 }
 
 /**

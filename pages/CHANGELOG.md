@@ -3,8 +3,7 @@
 ## Unreleased
 
 - fix: respect a user-customized `routes.api` when `getBreadcrumbs` is called from client-side field components. `getBreadcrumbs` now takes an optional `apiURL` argument (required when called without a `req`) that the `PathField` supplies from `useConfig()`. The internal `fetchRestApi` helper has been removed and inlined.
-- style: standardize icons to use Geist icon set (16x16 filled)
-- refactor: use i18next interpolation for translations
+- fix: restore proper icon sizes for the slug sync button and the slug-change info banner after the Geist icon standardization
 
 ## 0.7.0
 
@@ -16,7 +15,10 @@
 - fix: prevent circular parent references
 - fix: only set alternatePaths on previousDoc meta instead of copying entire meta
 - fix: pass draft arg to parent document lookups in breadcrumb generation
-- chore: upgrade to Payload 3.79.0
+- style: standardize icons to use Geist icon set (16x16 filled)
+- refactor: use i18next interpolation for translations
+- fix type issue in the `afterChange` virtual-fields hook
+- chore: upgrade to Payload 3.84.1
 
 ## 0.6.0
 
