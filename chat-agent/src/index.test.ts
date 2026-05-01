@@ -518,6 +518,44 @@ describe('chatAgentPlugin modes', () => {
     expect(body.default).toBe('read-write')
   })
 
+  it('modes endpoint returns the configured emptyState (title, description, suggestedPrompts)', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: {
+        description: 'I can help with **content**.',
+        suggestedPrompts: ['Audit recent drafts'],
+        title: 'Welcome, editor',
+      },
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      description: 'I can help with **content**.',
+      suggestedPrompts: ['Audit recent drafts'],
+      title: 'Welcome, editor',
+    })
+    // The legacy top-level field must not leak into the response — clients
+    // should read everything from `emptyState`.
+    expect(body.suggestedPrompts).toBeUndefined()
+  })
+
+  it('modes endpoint omits emptyState when no fields are configured', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toBeUndefined()
+  })
+
   it('chat endpoint rejects invalid mode', async () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',

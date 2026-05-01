@@ -23,7 +23,7 @@
 import type { TextStreamPart, ToolSet } from 'ai'
 import type { PayloadRequest } from 'payload'
 
-import type { AgentMode, ChatAgentPluginOptions } from './types.js'
+import type { AgentMode, ChatAgentPluginOptions, EmptyStateConfig } from './types.js'
 
 import { isPluginAccessAllowed } from './access.js'
 import { conversationEndpoints, conversationsCollection } from './conversations.js'
@@ -45,7 +45,12 @@ export {
 } from './budget.js'
 export { runAgent, type RunAgentOptions, type RunAgentResult } from './runAgent.js'
 export type { BudgetConfig, BudgetUsage } from './types.js'
-export type { ChatAgentPluginOptions, ModelFactory, ModelOption } from './types.js'
+export type {
+  ChatAgentPluginOptions,
+  EmptyStateConfig,
+  ModelFactory,
+  ModelOption,
+} from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 
@@ -54,6 +59,23 @@ export { type MessageMetadata, messageMetadataSchema } from './types.js'
 // triggering a CSS import chain (DefaultTemplate → @payloadcms/ui → react-image-crop).
 const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent/server#ChatViewServer'
 const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent/server#ChatNavLinkServer'
+
+/**
+ * Returns the configured empty state if any field is populated, otherwise
+ * `undefined`. Used by the modes endpoint and the SSR view so an unconfigured
+ * plugin doesn't ship an empty `emptyState` object that the client then has
+ * to special-case.
+ */
+export function pickEmptyState(input: EmptyStateConfig | undefined): EmptyStateConfig | undefined {
+  if (!input) {
+    return undefined
+  }
+  const hasField =
+    (typeof input.title === 'string' && input.title.length > 0) ||
+    (typeof input.description === 'string' && input.description.length > 0) ||
+    (Array.isArray(input.suggestedPrompts) && input.suggestedPrompts.length > 0)
+  return hasField ? input : undefined
+}
 
 /**
  * Validate that a messages array is non-empty and has valid roles.
@@ -155,12 +177,11 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             const available = await resolveAvailableModes(modesConfig, req)
+            const emptyState = pickEmptyState(options.emptyState)
             return Response.json({
               default: getDefaultMode(modesConfig),
               modes: available,
-              ...(options.suggestedPrompts?.length
-                ? { suggestedPrompts: options.suggestedPrompts }
-                : {}),
+              ...(emptyState ? { emptyState } : {}),
             })
           },
           method: 'get',

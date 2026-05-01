@@ -46,6 +46,7 @@ Provider API keys are never read from `process.env` by the plugin — pass them 
 | `adminView`       | `{ path, Component }`                         | No       | Customize the admin chat view route or component                                                        |
 | `navLink`         | `boolean`                                     | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
 | `budget`          | `BudgetConfig`                                | No       | Optional token budget (see below)                                                                       |
+| `emptyState`      | `EmptyStateConfig`                            | No       | Customize the empty chat screen — title, markdown description, and suggested-prompt chips (see below)   |
 | `tools`           | `({ req, defaultTools, modelId }) => ToolMap` | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)          |
 
 ### Mixing providers
@@ -93,6 +94,27 @@ chatAgentPlugin({
 - Modes without an access function are available to all authenticated users
 - `superuser` requires an explicit access function to be enabled
 - Users only see modes they have access to
+
+### Empty chat screen
+
+Customize what editors see before they've sent the first message. Without this option, the chat opens to a generic "What can I help you with?" headline and a few example prompt chips — useful for showing what the agent can do, but not what it _shouldn't_ try (or the human-friendly name of your assistant).
+
+```ts
+chatAgentPlugin({
+  emptyState: {
+    title: 'Content Assistant',
+    description:
+      'I can help with **drafting**, **translating**, and finding stale pages. ' +
+      'I cannot delete content or change user permissions.',
+    suggestedPrompts: ['Audit my recent draft posts', 'Translate the homepage tagline to German'],
+  },
+})
+```
+
+- `title` overrides the default headline
+- `description` is rendered as Markdown using the same renderer as assistant messages — links, lists, `**bold**`, `code`, etc. all work
+- `suggestedPrompts` _replaces_ the built-in defaults (it does not merge)
+- All three fields are optional and can be combined in any order
 
 ### Custom endpoints
 

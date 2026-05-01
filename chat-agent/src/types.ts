@@ -54,6 +54,23 @@ export interface ModelOption {
 export type ModelFactory = (modelId: string) => LanguageModel
 
 // ---------------------------------------------------------------------------
+// Empty state
+// ---------------------------------------------------------------------------
+
+/**
+ * Customizes the empty chat screen — title, optional markdown description,
+ * and the clickable suggested-prompt chips below them.
+ */
+export interface EmptyStateConfig {
+  /** Markdown body shown beneath the title. Rendered with the same Markdown component used for assistant messages. */
+  description?: string
+  /** Suggested prompts shown as clickable chips. Replaces (does not merge with) the built-in defaults. */
+  suggestedPrompts?: string[]
+  /** Headline. Defaults to `"What can I help you with?"`. */
+  title?: string
+}
+
+// ---------------------------------------------------------------------------
 // Agent modes
 // ---------------------------------------------------------------------------
 
@@ -178,6 +195,30 @@ export interface ChatAgentPluginOptions {
   budget?: BudgetConfig
   /** Model id used when no per-request override is provided. Passed to `model(id)`. */
   defaultModel: string
+  /**
+   * Customize the chat view's empty state — the screen shown before the user
+   * has sent any messages. Use `title` and `description` to give editors
+   * context for what the agent can or can't do, and `suggestedPrompts` to
+   * seed the clickable prompt chips.
+   *
+   * `description` is rendered as Markdown (via the same renderer used for
+   * assistant messages), so links, lists, and inline formatting all work.
+   *
+   * @example
+   * ```ts
+   * chatAgentPlugin({
+   *   emptyState: {
+   *     title: 'Content Assistant',
+   *     description: 'I can help with **drafting**, **translating**, and finding stale pages. I cannot delete content or change user permissions.',
+   *     suggestedPrompts: [
+   *       'Audit recent drafts',
+   *       'Translate the homepage to German',
+   *     ],
+   *   },
+   * })
+   * ```
+   */
+  emptyState?: EmptyStateConfig
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
   /**
@@ -198,8 +239,6 @@ export interface ChatAgentPluginOptions {
    * Set to `false` to hide it. Default: `true`.
    */
   navLink?: boolean
-  /** Suggested prompts shown as clickable chips in the empty chat state. */
-  suggestedPrompts?: string[]
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
   /**

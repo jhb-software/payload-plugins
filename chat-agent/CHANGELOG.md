@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+BREAKING CHANGES:
+
+- feat!: add an `emptyState` plugin option to customize the empty chat screen with a `title`, a markdown `description` (rendered by the same renderer used for assistant messages), and `suggestedPrompts` chips so editors get context for what the agent can and can't do before sending the first message. The previous top-level `suggestedPrompts` option has moved under `emptyState.suggestedPrompts` — rename it in your `chatAgentPlugin({ ... })` invocation to migrate.
+
+OTHER CHANGES:
+
 - feat: add `runAgent(req, opts)` so cron-triggered endpoints, Payload tasks, and webhooks can invoke the agent off-HTTP with the same tool / prompt / model machinery the chat endpoint uses. Throws if `req.user` is missing unless the caller passes `overrideAccess: true`.
 - feat: pass the resolved `modelId` to the `tools` plugin option so a multi-provider setup can conditionally include provider-native tools (e.g. drop `anthropic.tools.webSearch_*` when the user selects an OpenAI model) instead of sending a tool shape the selected provider would reject at runtime.
 - fix: clear the chat error banner when starting a new chat or switching conversations via the sidebar, so an error surfaced on the previous chat no longer carries over to an unrelated one
