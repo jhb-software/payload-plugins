@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
+
 ## 0.5.0
 
 > ! This release contains breaking changes.
