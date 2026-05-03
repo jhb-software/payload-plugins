@@ -7,6 +7,11 @@ vi.mock('next/navigation.js', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 
+// Minimal stub: importing the real @payloadcms/ui pulls in CSS that vitest can't load.
+vi.mock('@payloadcms/ui', () => ({
+  useConfig: () => ({ config: { routes: { api: '/api' }, serverURL: '' } }),
+}))
+
 const { DeploymentStatusPoller } = await import('./DeploymentStatusPoller.js')
 
 function mockFetchResponse(data: object) {

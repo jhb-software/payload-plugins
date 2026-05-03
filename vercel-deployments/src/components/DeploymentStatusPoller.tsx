@@ -1,5 +1,6 @@
 'use client'
 
+import { useConfig } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import React, { createContext, use, useCallback, useEffect, useRef, useState } from 'react'
 
@@ -27,6 +28,13 @@ export const useDeploymentPoller = () => use(PollerContext)
  */
 export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter()
+  const {
+    config: {
+      routes: { api: apiRoute },
+      serverURL,
+    },
+  } = useConfig()
+  const deploymentsEndpoint = `${serverURL ?? ''}${apiRoute}/vercel-deployments`
   const intervalRef = useRef<null | ReturnType<typeof setInterval>>(null)
   const activeDeploymentIdRef = useRef<null | string>(null)
   const [isBuilding, setIsBuilding] = useState(false)
@@ -59,7 +67,7 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
     }
 
     try {
-      const res = await fetch(`/api/vercel-deployments?id=${encodeURIComponent(deploymentId)}`, {
+      const res = await fetch(`${deploymentsEndpoint}?id=${encodeURIComponent(deploymentId)}`, {
         credentials: 'include',
       })
       if (!res.ok) {
@@ -87,12 +95,12 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
     } catch {
       // Silently ignore polling errors
     }
-  }, [router])
+  }, [router, deploymentsEndpoint])
 
   // Poll the list endpoint to detect any in-progress deployments (idle mode)
   const pollDeploymentsList = useCallback(async () => {
     try {
-      const res = await fetch('/api/vercel-deployments', { credentials: 'include' })
+      const res = await fetch(deploymentsEndpoint, { credentials: 'include' })
       if (!res.ok) {
         return
       }
@@ -122,7 +130,7 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
     } catch {
       // Silently ignore polling errors
     }
-  }, [router])
+  }, [router, deploymentsEndpoint])
 
   // Switch between idle and active polling based on build state
   useEffect(() => {

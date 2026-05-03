@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: respect a user-customized `routes.api` when `getBreadcrumbs` is called from client-side field components. `getBreadcrumbs` now takes an optional `apiURL` argument (required when called without a `req`) that the `PathField` supplies from `useConfig()`. The internal `fetchRestApi` helper has been removed and inlined.
 - fix: restore proper icon sizes for the slug sync button and the slug-change info banner after the Geist icon standardization
 
 ## 0.7.0

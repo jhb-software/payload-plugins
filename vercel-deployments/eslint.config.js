@@ -31,6 +31,15 @@ export default [
     },
   },
   {
+    // Test files use `vi.mock` to stub hooks like `useConfig`, `useRouter`, etc.
+    // The mock arrow functions share names with real hooks, so the rule flags them
+    // as "useless custom hooks" — but they are intentionally plain mocks.
+    files: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    rules: {
+      '@eslint-react/hooks-extra/no-useless-custom-hooks': 'off',
+    },
+  },
+  {
     ignores: defaultESLintIgnores,
   },
   {
