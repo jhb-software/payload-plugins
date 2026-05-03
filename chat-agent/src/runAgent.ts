@@ -11,10 +11,13 @@ import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import type { AgentMode, BudgetConfig, ChatAgentPluginOptions } from './types.js'
 
+import { systemMessageWithCache, withTrailingCache } from './cache-control.js'
+import { debugLogPromptIfEnabled } from './debug-prompt.js'
 import { getDefaultMode } from './modes.js'
 import { getPluginOptions } from './plugin-custom-config.js'
 import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
 import { buildSystemPrompt } from './system-prompt.js'
+import { applyToolDiscovery } from './tool-discovery.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
 export interface RunAgentOptions {
@@ -185,7 +188,11 @@ export async function runAgentImpl(
   } else {
     finalTools = baseTools
   }
-  const tools = filterToolsByMode(finalTools as Record<string, Tool>, mode)
+  const tools = applyToolDiscovery(
+    filterToolsByMode(finalTools as Record<string, Tool>, mode),
+    pluginOptions.toolDiscovery,
+    modelId,
+  )
 
   const basePrompt = buildSystemPrompt(
     req.payload.config,
@@ -220,13 +227,18 @@ export async function runAgentImpl(
 
   const maxSteps = opts.maxSteps ?? pluginOptions.maxSteps ?? 20
 
+  await debugLogPromptIfEnabled({ messages, systemPrompt, tools })
+
   return streamText({
     abortSignal: opts.abortSignal,
     messages,
     model: resolvedModel,
     onFinish,
+    prepareStep: ({ messages: stepMessages }) => ({
+      messages: withTrailingCache(stepMessages),
+    }),
     stopWhen: stepCountIs(maxSteps),
-    system: systemPrompt,
+    system: systemMessageWithCache(systemPrompt),
     toolChoice: 'auto',
     tools,
   }) as unknown as RunAgentResult

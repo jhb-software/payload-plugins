@@ -242,6 +242,28 @@ export interface ChatAgentPluginOptions {
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
   /**
+   * Use Anthropic's Tool Search Tool to load most tool definitions
+   * on-demand. Tools listed in `eager` stay in the system-prompt prefix;
+   * every other tool gets `providerOptions.anthropic.deferLoading: true`
+   * and is only loaded when Claude finds it via `searchTool`. Anthropic
+   * reports ~85% reduction in tool-definition tokens on large catalogs.
+   *
+   * Activates only when the resolved `modelId` starts with `claude-`. For
+   * other providers this option is silently ignored — the toolset is sent
+   * eagerly as before.
+   *
+   * @example
+   * ```ts
+   * import { anthropic } from '@ai-sdk/anthropic'
+   * chatAgentPlugin({
+   *   toolDiscovery: {
+   *     searchTool: anthropic.tools.toolSearchBm25_20251119(),
+   *   },
+   * })
+   * ```
+   */
+  toolDiscovery?: ToolDiscoveryConfig
+  /**
    * Customize the tools exposed to the agent. Called once per chat request
    * with the authenticated request, the selected model id, and the plugin's
    * default tools (Payload Local API: `find`, `create`,
@@ -298,6 +320,32 @@ export interface ChatAgentPluginOptions {
     modelId: string
     req: PayloadRequest
   }) => Promise<Record<string, Tool>> | Record<string, Tool>
+}
+
+/**
+ * Anthropic Tool Search Tool configuration. See `ChatAgentPluginOptions.toolDiscovery`.
+ */
+export interface ToolDiscoveryConfig {
+  /**
+   * Names of tools to keep eagerly loaded (always present in the prefix).
+   * Anthropic recommends the 3–5 most frequently used tools. Everything else
+   * in the toolset gets `defer_loading: true`.
+   *
+   * Default: `['find', 'findByID', 'count', 'findGlobal', 'getCollectionSchema']`.
+   */
+  eager?: string[]
+  /**
+   * The Anthropic tool search tool, constructed from
+   * `@ai-sdk/anthropic`. Pass either the BM25 (natural-language) variant
+   * or the regex variant.
+   *
+   * @example
+   * ```ts
+   * import { anthropic } from '@ai-sdk/anthropic'
+   * { searchTool: anthropic.tools.toolSearchBm25_20251119() }
+   * ```
+   */
+  searchTool: Tool
 }
 
 // ---------------------------------------------------------------------------

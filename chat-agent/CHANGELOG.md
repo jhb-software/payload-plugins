@@ -8,6 +8,10 @@ BREAKING CHANGES:
 
 OTHER CHANGES:
 
+- feat: add `toolDiscovery` plugin option for Anthropic's [Tool Search Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool). Cuts tool-definition tokens on the prefix substantially; activates only for `claude-*` models, ignored for other providers.
+- perf: tighten the system prompt to cut redundant fetches
+- perf: tighten the tool definitions
+- perf: enable Anthropic prompt caching so multi-step tool-use turns stop re-paying full input tokens for the system prompt, tool definitions, and accumulated tool-result history on every step.
 - feat: add `runAgent(req, opts)` so cron-triggered endpoints, Payload tasks, and webhooks can invoke the agent off-HTTP with the same tool / prompt / model machinery the chat endpoint uses. Throws if `req.user` is missing unless the caller passes `overrideAccess: true`.
 - feat: pass the resolved `modelId` to the `tools` plugin option so a multi-provider setup can conditionally include provider-native tools (e.g. drop `anthropic.tools.webSearch_*` when the user selects an OpenAI model) instead of sending a tool shape the selected provider would reject at runtime.
 - fix: clear the chat error banner when starting a new chat or switching conversations via the sidebar, so an error surfaced on the previous chat no longer carries over to an unrelated one

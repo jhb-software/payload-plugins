@@ -76,6 +76,10 @@ Concretely:
 
 Plans for new features must include a "Dev app demonstration" section that lists what gets added under `dev/` so reviewers can verify the feature end-to-end without scaffolding the example themselves. PRs that add a feature without a corresponding dev-app touchpoint should be sent back for revision.
 
+## Comment and Doc Voice
+
+No "we"/"us"/"our" in code comments, doc comments, or CHANGELOG entries. Use descriptive or imperative voice instead.
+
 ## Removing Implemented Plans
 
 When a PR ships the feature described in a `plans/<NNN>-*.md` file, **delete that plan in the same PR** and update any cross-references in other plans / docs to point at the shipped artifact (README section, public API, etc.). A grep for the deleted plan's number across `plans/`, `README.md`, and `CHANGELOG.md` should return nothing. Plans are forward-looking design docs; once the feature exists the code, README, and CHANGELOG are authoritative, and leaving the plan around just invites drift.

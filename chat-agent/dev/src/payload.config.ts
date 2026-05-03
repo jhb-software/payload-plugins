@@ -498,6 +498,13 @@ export default buildConfig({
       // Using `webFetch_20250910` (pre-dynamic-filtering) so this works with
       // all Claude models. The newer `webFetch_20260209` adds
       // code-execution-based filtering but requires Opus 4.6+/Sonnet 4.6.
+      // Anthropic Tool Search Tool: cold-path tools (writes, schema lookups,
+      // custom endpoints) are sent with `defer_loading: true` and only loaded
+      // when Claude finds them via this BM25 search tool. Activates only for
+      // Claude models — ignored for OpenAI runs.
+      toolDiscovery: {
+        searchTool: anthropic.tools.toolSearchBm25_20251119(),
+      },
       tools: ({ defaultTools, modelId, req }) => ({
         ...defaultTools,
         ...customTools({ req }),

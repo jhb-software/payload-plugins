@@ -69,28 +69,18 @@ function isReadTool(name: string, tool: Tool): boolean {
 // Shared Zod schemas (reused across tools)
 // ---------------------------------------------------------------------------
 
-const depth = z
-  .number()
-  .optional()
-  .describe(
-    'Depth of relationship population (default: 0 = IDs only). Increase only when you need related document fields.',
-  )
-const locale = z.string().optional().describe("Locale code for localized fields (e.g. 'en', 'de')")
-const fallbackLocale = z
-  .string()
-  .optional()
-  .describe('Fallback locale if the requested locale has no value.')
+const depth = z.number().optional().describe('Relationship depth. 0 (default) = IDs only.')
+const locale = z.string().optional().describe("Locale code (e.g. 'en').")
+const fallbackLocale = z.string().optional().describe('Fallback locale if requested is empty.')
 const select = z
   .record(z.string(), z.boolean())
   .optional()
-  .describe(
-    'Select specific fields. Object with field names as keys and true/false as values. Use this to reduce response size.',
-  )
+  .describe('Field selection: { fieldName: true | false }. Reduces response size.')
 const populate = z
   .record(z.string(), z.unknown())
   .optional()
-  .describe('Control which relationship fields to populate.')
-const draft = z.boolean().optional().describe('If true, include draft documents.')
+  .describe('Per-field relationship population.')
+const draft = z.boolean().optional().describe('Include drafts.')
 
 // ---------------------------------------------------------------------------
 // Common params helper
@@ -272,13 +262,12 @@ export function buildTools(
 
   return {
     find: {
-      description:
-        'Query documents from a collection. Returns paginated results with docs, totalDocs, page, hasNextPage.',
+      description: 'Query a collection. Returns { docs, totalDocs, page, hasNextPage }.',
       execute: async (input: Record<string, unknown>) => {
         return payload.find({
           collection: input.collection,
-          limit: input.limit ?? 10,
-          page: input.page ?? 1,
+          limit: input.limit,
+          page: input.page,
           sort: input.sort,
           where: input.where ?? {},
           ...commonParams(input),
@@ -286,25 +275,25 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        collection: z.string().describe("Collection slug (e.g. 'posts')"),
+        collection: z.string(),
         depth,
         draft,
         fallbackLocale,
-        limit: z.number().optional().describe('Max documents to return (default: 10)'),
+        limit: z.number().optional().describe('Max docs.'),
         locale,
-        page: z.number().optional().describe('Page number for pagination (default: 1)'),
+        page: z.number().optional().describe('Page number.'),
         populate,
         select,
-        sort: z.string().optional().describe("Sort field. Prefix with '-' for descending"),
+        sort: z.string().optional().describe("Sort field; prefix '-' for desc."),
         where: z
           .record(z.string(), z.unknown())
           .optional()
-          .describe("Payload where query. Example: { status: { equals: 'published' } }"),
+          .describe("Payload where query, e.g. { status: { equals: 'published' } }."),
       }),
     },
 
     findByID: {
-      description: 'Get a single document by its ID.',
+      description: 'Get a document by ID.',
       execute: async (input: Record<string, unknown>) => {
         return payload.findByID({
           id: input.id,
@@ -314,8 +303,8 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        id: z.string().describe('Document ID'),
-        collection: z.string().describe('Collection slug'),
+        id: z.string(),
+        collection: z.string(),
         depth,
         draft,
         fallbackLocale,
@@ -326,7 +315,7 @@ export function buildTools(
     },
 
     create: {
-      description: 'Create a new document. Returns the created document.',
+      description: 'Create a document.',
       execute: async (input: Record<string, unknown>) => {
         return payload.create({
           collection: input.collection,
@@ -336,8 +325,8 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        collection: z.string().describe('Collection slug'),
-        data: z.record(z.string(), z.unknown()).describe('Document data'),
+        collection: z.string(),
+        data: z.record(z.string(), z.unknown()),
         depth,
         draft,
         fallbackLocale,
@@ -347,7 +336,7 @@ export function buildTools(
     },
 
     update: {
-      description: 'Update a document by ID. Returns the updated document.',
+      description: 'Update a document by ID. Partial — omitted fields are unchanged.',
       execute: async (input: Record<string, unknown>) => {
         return payload.update({
           id: input.id,
@@ -358,11 +347,9 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        id: z.string().describe('Document ID to update'),
-        collection: z.string().describe('Collection slug'),
-        data: z
-          .record(z.string(), z.unknown())
-          .describe('Fields to update (partial, omitted fields unchanged)'),
+        id: z.string(),
+        collection: z.string(),
+        data: z.record(z.string(), z.unknown()),
         depth,
         draft,
         fallbackLocale,
@@ -373,7 +360,7 @@ export function buildTools(
     },
 
     delete: {
-      description: 'Delete a document by ID. Returns the deleted document.',
+      description: 'Delete a document by ID.',
       execute: async (input: Record<string, unknown>) => {
         return payload.delete({
           id: input.id,
@@ -384,15 +371,15 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        id: z.string().describe('Document ID to delete'),
-        collection: z.string().describe('Collection slug'),
+        id: z.string(),
+        collection: z.string(),
         depth,
         select,
       }),
     },
 
     count: {
-      description: 'Count documents matching a query. Returns { totalDocs: number }.',
+      description: 'Count documents matching a query.',
       execute: async (input: Record<string, unknown>) => {
         return payload.count({
           collection: input.collection,
@@ -401,13 +388,13 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        collection: z.string().describe('Collection slug'),
-        where: z.record(z.string(), z.unknown()).optional().describe('Payload where query'),
+        collection: z.string(),
+        where: z.record(z.string(), z.unknown()).optional(),
       }),
     },
 
     findGlobal: {
-      description: 'Get a global document (singleton). One document per global slug.',
+      description: 'Get a global (singleton) by slug.',
       execute: async (input: Record<string, unknown>) => {
         return payload.findGlobal({
           slug: input.slug,
@@ -416,7 +403,7 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        slug: z.string().describe("Global slug (e.g. 'settings')"),
+        slug: z.string(),
         depth,
         draft,
         fallbackLocale,
@@ -427,7 +414,7 @@ export function buildTools(
     },
 
     updateGlobal: {
-      description: 'Update a global document. Returns the updated global.',
+      description: 'Update a global by slug.',
       execute: async (input: Record<string, unknown>) => {
         return payload.updateGlobal({
           slug: input.slug,
@@ -437,8 +424,8 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        slug: z.string().describe('Global slug'),
-        data: z.record(z.string(), z.unknown()).describe('Fields to update'),
+        slug: z.string(),
+        data: z.record(z.string(), z.unknown()),
         depth,
         draft,
         fallbackLocale,
@@ -457,7 +444,7 @@ export function buildTools(
       ? {
           getCollectionSchema: {
             description:
-              'Get the field schema for a collection by slug. Call this before querying, filtering, or writing to a collection so you know which fields exist and their types.',
+              "Get a collection's field schema. Call before querying, filtering, or writing to learn field names and types.",
             execute: (input: Record<string, unknown>) => {
               const slug = input.slug as string
               const collection = config.collections?.find((c) => c.slug === slug)
@@ -470,15 +457,12 @@ export function buildTools(
               }
             },
             inputSchema: z.object({
-              slug: z
-                .string()
-                .describe('Collection slug (see the slug catalog in the system prompt)'),
+              slug: z.string(),
             }),
           } satisfies ExecutableTool,
 
           getGlobalSchema: {
-            description:
-              'Get the field schema for a global by slug. Call this before reading or updating a global so you know which fields exist.',
+            description: "Get a global's field schema. Call before reading or updating.",
             execute: (input: Record<string, unknown>) => {
               const slug = input.slug as string
               const global = config.globals?.find((g) => g.slug === slug)
@@ -490,13 +474,13 @@ export function buildTools(
               }
             },
             inputSchema: z.object({
-              slug: z.string().describe('Global slug (see the slug catalog in the system prompt)'),
+              slug: z.string(),
             }),
           } satisfies ExecutableTool,
 
           listBlocks: {
             description:
-              'List all globally-declared blocks (config.blocks). These blocks can be referenced from `blocks` fields and inserted into lexical fields configured with BlocksFeature.',
+              'List globally-declared blocks (config.blocks). Used in `blocks` fields and lexical BlocksFeature.',
             execute: () => ({
               blocks: (config.blocks ?? []).map((block) => {
                 const singular = normalizeLabel(block.labels?.singular)
@@ -522,7 +506,7 @@ export function buildTools(
 
           getBlockSchema: {
             description:
-              'Get the field schema for a globally-declared block by slug. Call listBlocks first to discover slugs. Returns { error } if the slug is unknown.',
+              "Get a block's field schema by slug. Call listBlocks first to discover slugs.",
             execute: (input: Record<string, unknown>) => {
               const slug = input.slug as string
               const block = blocksBySlug[slug]
@@ -548,7 +532,7 @@ export function buildTools(
               }
             },
             inputSchema: z.object({
-              slug: z.string().describe('Block slug from listBlocks'),
+              slug: z.string(),
             }),
           } satisfies ExecutableTool,
         }
@@ -559,7 +543,7 @@ export function buildTools(
       ? {
           listEndpoints: {
             description:
-              'List plugin-provided custom API endpoints that can be invoked via `callEndpoint`. Returns method, path, and description for each, plus an optional `schema` describing the request/response contract (query/body/response shapes) when the endpoint declares one.',
+              'List custom endpoints invocable via `callEndpoint`. Returns method, path, description, and an optional request/response `schema` per endpoint.',
             execute: () => {
               return {
                 endpoints: customEndpoints.map((ep) => ({
@@ -579,8 +563,7 @@ export function buildTools(
     ...(customEndpoints && customEndpoints.length > 0 && req
       ? {
           callEndpoint: {
-            description:
-              'Invoke a custom API endpoint. Call `listEndpoints` first to see which endpoints are available.',
+            description: 'Invoke a custom endpoint. Run `listEndpoints` first to discover them.',
             execute: async (input: Record<string, unknown>) => {
               const path = input.path as string
               const method = (input.method as string).toLowerCase()
@@ -640,17 +623,14 @@ export function buildTools(
               body: z
                 .record(z.string(), z.unknown())
                 .optional()
-                .describe('Request body (for POST/PUT/PATCH)'),
-              method: z.enum(['get', 'post', 'put', 'patch', 'delete']).describe('HTTP method'),
+                .describe('Request body for POST/PUT/PATCH.'),
+              method: z.enum(['get', 'post', 'put', 'patch', 'delete']),
               path: z
                 .string()
                 .describe(
-                  "Full API path (e.g. '/api/posts/publish/123'). Must match one of the available custom endpoints.",
+                  "Full path, e.g. '/api/posts/publish/123'. Must match a listed endpoint.",
                 ),
-              query: z
-                .record(z.string(), z.string())
-                .optional()
-                .describe('Query string parameters'),
+              query: z.record(z.string(), z.string()).optional(),
             }),
           } satisfies ExecutableTool,
         }
