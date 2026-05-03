@@ -43,6 +43,9 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# chat-agent local debug dumps + scratch conversation files
+.chat-agent-debug/
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 

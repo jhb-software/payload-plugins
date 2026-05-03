@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: add `toolDiscovery` plugin option for Anthropic's [Tool Search Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool). Cuts tool-definition tokens on the prefix substantially; activates only for `claude-*` models, ignored for other providers.
 - perf: tighten the system prompt to cut redundant fetches
 - perf: tighten the tool definitions
 - perf: enable Anthropic prompt caching so multi-step tool-use turns stop re-paying full input tokens for the system prompt, tool definitions, and accumulated tool-result history on every step.

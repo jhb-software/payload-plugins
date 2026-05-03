@@ -17,6 +17,7 @@ import { getDefaultMode } from './modes.js'
 import { getPluginOptions } from './plugin-custom-config.js'
 import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
 import { buildSystemPrompt } from './system-prompt.js'
+import { applyToolDiscovery } from './tool-discovery.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
 export interface RunAgentOptions {
@@ -187,7 +188,11 @@ export async function runAgentImpl(
   } else {
     finalTools = baseTools
   }
-  const tools = filterToolsByMode(finalTools as Record<string, Tool>, mode)
+  const tools = applyToolDiscovery(
+    filterToolsByMode(finalTools as Record<string, Tool>, mode),
+    pluginOptions.toolDiscovery,
+    modelId,
+  )
 
   const basePrompt = buildSystemPrompt(
     req.payload.config,
