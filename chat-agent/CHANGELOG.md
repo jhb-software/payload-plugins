@@ -4,7 +4,7 @@
 
 BREAKING CHANGES:
 
-- feat!: add an `emptyState` plugin option to customize the empty chat screen with a `title`, a markdown `description` (rendered by the same renderer used for assistant messages), and `suggestedPrompts` chips so editors get context for what the agent can and can't do before sending the first message. The previous top-level `suggestedPrompts` option has moved under `emptyState.suggestedPrompts` — rename it in your `chatAgentPlugin({ ... })` invocation to migrate.
+- feat!: add an `emptyState` plugin option to customize the empty chat screen with a `title`, a markdown `description`, and `starterPrompts` chips so editors get context for what the agent can and can't do before sending the first message. The previous top-level `suggestedPrompts` option has been renamed to `emptyState.starterPrompts` — rename it in your `chatAgentPlugin({ ... })` invocation to migrate. Pass `starterPrompts: []` to hide the chips entirely; omit the field to keep the built-in defaults.
 
 OTHER CHANGES:
 

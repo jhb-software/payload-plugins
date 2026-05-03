@@ -478,7 +478,7 @@ export default buildConfig({
         description:
           'I can help with **drafting**, **translating**, and finding stale pages. ' +
           'I cannot delete content or change user permissions — for those, see [the docs](https://payloadcms.com/docs).',
-        suggestedPrompts: [
+        starterPrompts: [
           'Audit my recent draft posts',
           'Translate the homepage tagline to German',
           'Show pages with an empty meta description',

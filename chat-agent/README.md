@@ -109,7 +109,7 @@ chatAgentPlugin({
     description:
       'I can help with **drafting**, **translating**, and finding stale pages. ' +
       'I cannot delete content or change user permissions.',
-    suggestedPrompts: ['Audit my recent draft posts', 'Translate the homepage tagline to German'],
+    starterPrompts: ['Audit my recent draft posts', 'Translate the homepage tagline to German'],
   },
 })
 ```

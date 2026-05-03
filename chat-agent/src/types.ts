@@ -69,7 +69,7 @@ export interface EmptyStateConfig {
    * the built-in defaults. Pass an empty array (`[]`) to disable the chips
    * entirely; omit the field to keep the built-in defaults.
    */
-  suggestedPrompts?: string[]
+  starterPrompts?: string[]
   /** Headline. Defaults to `"What can I help you with?"`. */
   title?: string
 }
@@ -202,7 +202,7 @@ export interface ChatAgentPluginOptions {
   /**
    * Customize the chat view's empty state — the screen shown before the user
    * has sent any messages. Use `title` and `description` to give editors
-   * context for what the agent can or can't do, and `suggestedPrompts` to
+   * context for what the agent can or can't do, and `starterPrompts` to
    * seed the clickable prompt chips.
    *
    * `description` is rendered as Markdown (via the same renderer used for
@@ -214,7 +214,7 @@ export interface ChatAgentPluginOptions {
    *   emptyState: {
    *     title: 'Content Assistant',
    *     description: 'I can help with **drafting**, **translating**, and finding stale pages. I cannot delete content or change user permissions.',
-   *     suggestedPrompts: [
+   *     starterPrompts: [
    *       'Audit recent drafts',
    *       'Translate the homepage to German',
    *     ],

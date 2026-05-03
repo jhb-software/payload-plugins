@@ -70,13 +70,13 @@ export function pickEmptyState(input: EmptyStateConfig | undefined): EmptyStateC
   if (!input) {
     return undefined
   }
-  // `suggestedPrompts: []` is meaningful — it's the opt-out signal that
+  // `starterPrompts: []` is meaningful — it's the opt-out signal that
   // disables the chips on the client. Treat any array (incl. empty) as a
   // configured field so the empty array survives the trip to the client.
   const hasField =
     (typeof input.title === 'string' && input.title.length > 0) ||
     (typeof input.description === 'string' && input.description.length > 0) ||
-    Array.isArray(input.suggestedPrompts)
+    Array.isArray(input.starterPrompts)
   return hasField ? input : undefined
 }
 

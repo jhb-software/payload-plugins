@@ -35,7 +35,7 @@ function EmptyState({
   const description = config?.description
   // `undefined` means "not configured" — fall back to the built-in defaults.
   // An explicit `[]` means "no chips, please" and is the documented opt-out.
-  const suggestions = config?.suggestedPrompts ?? DEFAULT_SUGGESTIONS
+  const suggestions = config?.starterPrompts ?? DEFAULT_SUGGESTIONS
   return (
     <div
       style={{

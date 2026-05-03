@@ -84,10 +84,10 @@ describe('MessageList', () => {
     expect(link.getAttribute('href')).toBe('https://x.test')
   })
 
-  it('renders emptyState.suggestedPrompts in place of the built-in defaults', () => {
+  it('renders emptyState.starterPrompts in place of the built-in defaults', () => {
     render(
       <MessageList
-        emptyState={{ suggestedPrompts: ['Audit recent drafts', 'Translate the homepage'] }}
+        emptyState={{ starterPrompts: ['Audit recent drafts', 'Translate the homepage'] }}
         messages={[]}
       />,
     )
@@ -97,10 +97,10 @@ describe('MessageList', () => {
     expect(screen.queryByText('Show me the 5 most recent posts')).toBeNull()
   })
 
-  it('renders no suggestion chips when emptyState.suggestedPrompts is an empty array', () => {
+  it('renders no suggestion chips when emptyState.starterPrompts is an empty array', () => {
     // An explicit `[]` is the documented way to disable the chips entirely —
     // distinct from omitting the field, which keeps the built-in defaults.
-    render(<MessageList emptyState={{ suggestedPrompts: [] }} messages={[]} />)
+    render(<MessageList emptyState={{ starterPrompts: [] }} messages={[]} />)
     expect(screen.queryByText('Show me the 5 most recent posts')).toBeNull()
     expect(screen.queryByRole('button')).toBeNull()
   })

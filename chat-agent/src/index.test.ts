@@ -518,12 +518,12 @@ describe('chatAgentPlugin modes', () => {
     expect(body.default).toBe('read-write')
   })
 
-  it('modes endpoint returns the configured emptyState (title, description, suggestedPrompts)', async () => {
+  it('modes endpoint returns the configured emptyState (title, description, starterPrompts)', async () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
       emptyState: {
         description: 'I can help with **content**.',
-        suggestedPrompts: ['Audit recent drafts'],
+        starterPrompts: ['Audit recent drafts'],
         title: 'Welcome, editor',
       },
       model: makeModelFactory().factory,
@@ -535,19 +535,19 @@ describe('chatAgentPlugin modes', () => {
     const body = await response.json()
     expect(body.emptyState).toEqual({
       description: 'I can help with **content**.',
-      suggestedPrompts: ['Audit recent drafts'],
+      starterPrompts: ['Audit recent drafts'],
       title: 'Welcome, editor',
     })
     // The legacy top-level field must not leak into the response — clients
     // should read everything from `emptyState`.
-    expect(body.suggestedPrompts).toBeUndefined()
+    expect(body.starterPrompts).toBeUndefined()
   })
 
-  it('modes endpoint preserves an empty suggestedPrompts array so the client can disable the default chips', async () => {
+  it('modes endpoint preserves an empty starterPrompts array so the client can disable the default chips', async () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
       emptyState: {
-        suggestedPrompts: [],
+        starterPrompts: [],
         title: 'Content Assistant',
       },
       model: makeModelFactory().factory,
@@ -558,7 +558,7 @@ describe('chatAgentPlugin modes', () => {
     const response = await handler({ user: { id: 'u1' } })
     const body = await response.json()
     expect(body.emptyState).toEqual({
-      suggestedPrompts: [],
+      starterPrompts: [],
       title: 'Content Assistant',
     })
   })
