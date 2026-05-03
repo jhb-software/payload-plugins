@@ -12,6 +12,7 @@ import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 import type { AgentMode, BudgetConfig, ChatAgentPluginOptions } from './types.js'
 
 import { systemMessageWithCache, withTrailingCache } from './cache-control.js'
+import { debugLogPromptIfEnabled } from './debug-prompt.js'
 import { getDefaultMode } from './modes.js'
 import { getPluginOptions } from './plugin-custom-config.js'
 import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
@@ -220,6 +221,8 @@ export async function runAgentImpl(
   const messages = sanitizeOrphanToolCalls(await normaliseMessages(opts.messages))
 
   const maxSteps = opts.maxSteps ?? pluginOptions.maxSteps ?? 20
+
+  await debugLogPromptIfEnabled({ messages, systemPrompt, tools })
 
   return streamText({
     abortSignal: opts.abortSignal,
