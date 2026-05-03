@@ -11,6 +11,7 @@ import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import type { AgentMode, BudgetConfig, ChatAgentPluginOptions } from './types.js'
 
+import { systemMessageWithCache, withTrailingCache } from './cache-control.js'
 import { getDefaultMode } from './modes.js'
 import { getPluginOptions } from './plugin-custom-config.js'
 import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
@@ -225,8 +226,11 @@ export async function runAgentImpl(
     messages,
     model: resolvedModel,
     onFinish,
+    prepareStep: ({ messages: stepMessages }) => ({
+      messages: withTrailingCache(stepMessages),
+    }),
     stopWhen: stepCountIs(maxSteps),
-    system: systemPrompt,
+    system: systemMessageWithCache(systemPrompt),
     toolChoice: 'auto',
     tools,
   }) as unknown as RunAgentResult
