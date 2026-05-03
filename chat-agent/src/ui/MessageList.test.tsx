@@ -48,7 +48,7 @@ beforeAll(() => {
 describe('MessageList', () => {
   afterEach(cleanup)
 
-  it('shows suggested prompts when there are no messages', () => {
+  it('shows the default headline and built-in prompts when no emptyState is configured', () => {
     render(<MessageList messages={[]} />)
     expect(screen.getByText(/what can i help you with/i)).toBeDefined()
     expect(screen.getByText('Show me the 5 most recent posts')).toBeDefined()
@@ -59,6 +59,55 @@ describe('MessageList', () => {
     render(<MessageList messages={[]} onSendSuggestion={onSendSuggestion} />)
     fireEvent.click(screen.getByText('Show me the 5 most recent posts'))
     expect(onSendSuggestion).toHaveBeenCalledWith('Show me the 5 most recent posts')
+  })
+
+  it('renders a custom title from emptyState.title in place of the default headline', () => {
+    render(<MessageList emptyState={{ title: 'Welcome, editor' }} messages={[]} />)
+    expect(screen.getByText('Welcome, editor')).toBeDefined()
+    expect(screen.queryByText(/what can i help you with/i)).toBeNull()
+  })
+
+  it('renders emptyState.description as markdown (not as plain text)', () => {
+    render(
+      <MessageList
+        emptyState={{ description: 'I can help with **bold things** and [links](https://x.test).' }}
+        messages={[]}
+      />,
+    )
+    // Asserting the parsed `<strong>` / `<a>` (not just text presence) is what
+    // proves the description ran through the markdown renderer rather than
+    // being escaped/printed verbatim — a regression to plain-text rendering
+    // would still pass a naive `getByText` check.
+    const strong = screen.getByText('bold things')
+    expect(strong.tagName).toBe('STRONG')
+    const link = screen.getByRole('link', { name: 'links' })
+    expect(link.getAttribute('href')).toBe('https://x.test')
+  })
+
+  it('renders emptyState.starterPrompts in place of the built-in defaults', () => {
+    render(
+      <MessageList
+        emptyState={{ starterPrompts: ['Audit recent drafts', 'Translate the homepage'] }}
+        messages={[]}
+      />,
+    )
+    expect(screen.getByText('Audit recent drafts')).toBeDefined()
+    expect(screen.getByText('Translate the homepage')).toBeDefined()
+    // Defaults should be replaced, not merged.
+    expect(screen.queryByText('Show me the 5 most recent posts')).toBeNull()
+  })
+
+  it('renders no suggestion chips when emptyState.starterPrompts is an empty array', () => {
+    // An explicit `[]` is the documented way to disable the chips entirely —
+    // distinct from omitting the field, which keeps the built-in defaults.
+    render(<MessageList emptyState={{ starterPrompts: [] }} messages={[]} />)
+    expect(screen.queryByText('Show me the 5 most recent posts')).toBeNull()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('does not render a description block when emptyState.description is absent', () => {
+    const { container } = render(<MessageList emptyState={{ title: 'Hi' }} messages={[]} />)
+    expect(container.querySelector('.chat-agent-markdown')).toBeNull()
   })
 
   it('shows messages and hides empty state when messages exist', () => {

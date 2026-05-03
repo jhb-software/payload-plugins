@@ -6,7 +6,7 @@ import type { UIMessage } from 'ai'
 import { Button, SetStepNav } from '@payloadcms/ui'
 import { useCallback, useEffect, useState } from 'react'
 
-import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
+import type { AgentMode, EmptyStateConfig, MessageMetadata, ModelOption } from '../types.js'
 
 import { ChatHeader } from './ChatHeader.js'
 import { ChatInput } from './ChatInput.js'
@@ -42,13 +42,14 @@ export interface ChatViewProps {
   conversationId?: string
   defaultMode?: AgentMode
   defaultModel?: string
+  /** Customizes the empty chat screen (title, markdown description, suggested prompt chips). */
+  emptyState?: EmptyStateConfig
   initialConversations?: ConversationSummary[]
   initialMessages?: unknown[]
   /** Mode persisted on the conversation doc; used as the initial selection when resuming. */
   initialMode?: AgentMode
   /** Model id persisted on the conversation doc; used as the initial selection when resuming. */
   initialModel?: string
-  suggestedPrompts?: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -61,11 +62,11 @@ export default function ChatView({
   conversationId,
   defaultMode = 'ask',
   defaultModel,
+  emptyState,
   initialConversations,
   initialMessages: serverMessages,
   initialMode,
   initialModel,
-  suggestedPrompts,
 }: ChatViewProps) {
   const endpointUrl = '/api/chat-agent/chat'
   const [chatId, setChatId] = useState(conversationId)
@@ -352,6 +353,7 @@ export default function ChatView({
             title={currentTitle}
           />
           <MessageList
+            emptyState={emptyState}
             isLoading={isLoading}
             isLoadingMessages={isLoadingMessages}
             // Keying by conversation id makes switching conversations a fresh
@@ -367,7 +369,6 @@ export default function ChatView({
             onSendSuggestion={handleSend}
             onToolApprove={handleToolApprove}
             onToolDeny={handleToolDeny}
-            suggestedPrompts={suggestedPrompts}
           />
           {error ? (
             <div
