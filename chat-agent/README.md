@@ -98,7 +98,9 @@ chatAgentPlugin({
 
 ### Empty chat screen
 
-Customize what editors see before they've sent the first message. Without this option, the chat opens to a generic "What can I help you with?" headline and a few example prompt chips — useful for showing what the agent can do, but not what it _shouldn't_ try (or the human-friendly name of your assistant).
+Customize what editors see before they've sent the first message. Without this option, the chat opens to a generic "What can I help you with?" headline and a few example prompt chips.
+
+Example:
 
 ```ts
 chatAgentPlugin({
@@ -111,11 +113,6 @@ chatAgentPlugin({
   },
 })
 ```
-
-- `title` overrides the default headline
-- `description` is rendered as Markdown using the same renderer as assistant messages — links, lists, `**bold**`, `code`, etc. all work
-- `suggestedPrompts` _replaces_ the built-in defaults (it does not merge)
-- All three fields are optional and can be combined in any order
 
 ### Custom endpoints
 

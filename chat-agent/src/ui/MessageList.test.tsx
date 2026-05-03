@@ -97,6 +97,14 @@ describe('MessageList', () => {
     expect(screen.queryByText('Show me the 5 most recent posts')).toBeNull()
   })
 
+  it('renders no suggestion chips when emptyState.suggestedPrompts is an empty array', () => {
+    // An explicit `[]` is the documented way to disable the chips entirely —
+    // distinct from omitting the field, which keeps the built-in defaults.
+    render(<MessageList emptyState={{ suggestedPrompts: [] }} messages={[]} />)
+    expect(screen.queryByText('Show me the 5 most recent posts')).toBeNull()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
   it('does not render a description block when emptyState.description is absent', () => {
     const { container } = render(<MessageList emptyState={{ title: 'Hi' }} messages={[]} />)
     expect(container.querySelector('.chat-agent-markdown')).toBeNull()

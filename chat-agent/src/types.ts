@@ -64,7 +64,11 @@ export type ModelFactory = (modelId: string) => LanguageModel
 export interface EmptyStateConfig {
   /** Markdown body shown beneath the title. Rendered with the same Markdown component used for assistant messages. */
   description?: string
-  /** Suggested prompts shown as clickable chips. Replaces (does not merge with) the built-in defaults. */
+  /**
+   * Suggested prompts shown as clickable chips. Replaces (does not merge with)
+   * the built-in defaults. Pass an empty array (`[]`) to disable the chips
+   * entirely; omit the field to keep the built-in defaults.
+   */
   suggestedPrompts?: string[]
   /** Headline. Defaults to `"What can I help you with?"`. */
   title?: string

@@ -543,6 +543,26 @@ describe('chatAgentPlugin modes', () => {
     expect(body.suggestedPrompts).toBeUndefined()
   })
 
+  it('modes endpoint preserves an empty suggestedPrompts array so the client can disable the default chips', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: {
+        suggestedPrompts: [],
+        title: 'Content Assistant',
+      },
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      suggestedPrompts: [],
+      title: 'Content Assistant',
+    })
+  })
+
   it('modes endpoint omits emptyState when no fields are configured', async () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',

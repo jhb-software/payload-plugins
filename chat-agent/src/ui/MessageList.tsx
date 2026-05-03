@@ -33,9 +33,9 @@ function EmptyState({
 }) {
   const title = config?.title ?? DEFAULT_TITLE
   const description = config?.description
-  const suggestions = config?.suggestedPrompts?.length
-    ? config.suggestedPrompts
-    : DEFAULT_SUGGESTIONS
+  // `undefined` means "not configured" — fall back to the built-in defaults.
+  // An explicit `[]` means "no chips, please" and is the documented opt-out.
+  const suggestions = config?.suggestedPrompts ?? DEFAULT_SUGGESTIONS
   return (
     <div
       style={{
