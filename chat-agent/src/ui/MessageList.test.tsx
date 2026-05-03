@@ -74,10 +74,10 @@ describe('MessageList', () => {
         messages={[]}
       />,
     )
-    // The presence of a parsed `<strong>` and `<a>` proves the description
-    // went through the markdown renderer rather than being escaped/printed
-    // verbatim. If we ever rendered description as plain text again, both
-    // assertions would fail.
+    // Asserting the parsed `<strong>` / `<a>` (not just text presence) is what
+    // proves the description ran through the markdown renderer rather than
+    // being escaped/printed verbatim — a regression to plain-text rendering
+    // would still pass a naive `getByText` check.
     const strong = screen.getByText('bold things')
     expect(strong.tagName).toBe('STRONG')
     const link = screen.getByRole('link', { name: 'links' })
