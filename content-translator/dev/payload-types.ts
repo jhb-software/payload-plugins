@@ -146,6 +146,14 @@ export interface Page {
     };
     [k: string]: unknown;
   } | null;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+  };
+  seo?: {
+    ogTitle?: string | null;
+    ogDescription?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -324,6 +332,18 @@ export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
   content?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+      };
+  seo?:
+    | T
+    | {
+        ogTitle?: T;
+        ogDescription?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
