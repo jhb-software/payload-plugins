@@ -44,7 +44,9 @@ update_dependencies() {
     # Update peerDependencies (pnpm up doesn't handle these)
     # Skip `next`: peer ranges are intentionally `^15.0.0 || ^16.0.0` and
     # would otherwise be collapsed to a single `^16.x.x` by ncu.
-    npx npm-check-updates -u --target latest --dep peer --reject next,eslint-config-next,typescript,eslint,@eslint/js || return 1
+    # Skip `astro`: the richtext-lexical plugin's peer range `>=5.x` is
+    # intentionally broad and ncu would narrow it to the current major.
+    npx npm-check-updates -u --target latest --dep peer --reject next,astro,eslint-config-next,typescript,eslint,@eslint/js || return 1
 
     # Reinstall to update lockfile after peerDependencies change
     pnpm install || return 1
