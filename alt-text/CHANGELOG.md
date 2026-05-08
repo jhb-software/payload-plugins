@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
 - fix: respect a user-customized `routes.api` in the generate and bulk-generate buttons (the fetch previously hardcoded `/api/alt-text-plugin/...`)
 - refactor: use Payload's `formatAdminURL` helper when linking from the health widget to collection lists
 

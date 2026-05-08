@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "outDir": "./dist",
     "rootDir": ".",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "paths": {
       "@payload-config": ["./src/payload.config.ts"],
       "payload/generated-types": ["./src/payload-types.ts"]
@@ -25,6 +25,6 @@
       }
     ]
   },
-  "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
   "exclude": ["node_modules", "dist", "build"]
 }

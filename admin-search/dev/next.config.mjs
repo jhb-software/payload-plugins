@@ -2,10 +2,6 @@ import { withPayload } from '@payloadcms/next/withPayload'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
   // Allow for ESM .js import statements
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
