@@ -8,6 +8,7 @@ import type { AgentMode } from '../types.js'
 
 import { isPluginAccessAllowed } from '../access.js'
 import { CONVERSATIONS_SLUG } from '../conversations.js'
+import { pickEmptyState } from '../index.js'
 import { getDefaultMode, resolveAvailableModes } from '../modes.js'
 import { getPluginCustomConfig, getPluginOptions } from '../plugin-custom-config.js'
 import { AGENT_MODES } from '../types.js'
@@ -76,7 +77,7 @@ export default async function ChatViewServer({
   const pluginOptions = getPluginOptions(payload)
   const availableModels = pluginOptions?.availableModels ?? []
   const defaultModel = pluginOptions?.defaultModel
-  const suggestedPrompts = pluginOptions?.suggestedPrompts
+  const emptyState = pickEmptyState(pluginOptions?.emptyState)
 
   // Fetch the conversation list server-side so the sidebar renders immediately.
   // The sidebar only uses `id`, `title`, and `updatedAt`; selecting just
@@ -124,6 +125,7 @@ export default async function ChatViewServer({
         conversationId={conversationId}
         defaultMode={defaultMode}
         defaultModel={defaultModel}
+        emptyState={emptyState}
         initialConversations={conversations.map((d) => ({
           id: String(d.id),
           title: (d.title as string) ?? 'New conversation',
@@ -132,7 +134,6 @@ export default async function ChatViewServer({
         initialMessages={initialMessages}
         initialMode={initialMode}
         initialModel={initialModel}
-        suggestedPrompts={suggestedPrompts}
       />
     </DefaultTemplate>
   )

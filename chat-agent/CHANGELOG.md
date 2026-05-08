@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+BREAKING CHANGES:
+
+- feat!: add an `emptyState` plugin option to customize the empty chat screen with a `title`, a markdown `description`, and `starterPrompts` chips. The previous top-level `suggestedPrompts` option has been removed in favor of `emptyState.starterPrompts`.
+
+OTHER CHANGES:
+
 - feat: add `toolDiscovery` plugin option for Anthropic's [Tool Search Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool). Cuts tool-definition tokens on the prefix substantially; activates only for `claude-*` models, ignored for other providers.
 - perf: tighten the system prompt to cut redundant fetches
 - perf: tighten the tool definitions
