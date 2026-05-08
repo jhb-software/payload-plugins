@@ -91,7 +91,7 @@ export function buildSystemPrompt(
     "- Respect that your actions are limited by the current user's permissions.",
     '- If a tool call fails with a permission error, tell the user they lack access.',
     '- Payload uses [Lexical](https://lexical.dev) for rich text fields — their values are Lexical editor JSON state, not HTML or Markdown.',
-    "- Drafts: for versioned collections, the `draft` flag selects which table is read from or written to — the versions table (drafts) or the main collection table (published); it acts as a \"latest version\" flag and relaxes required-field validation on writes. The document's actual status lives in the `_status` field, with values `'draft'` or `'published'`.",
+    "- Drafts: for versioned collections, the `draft` flag selects which table is read from or written to — the versions table (drafts) or the main collection table (published); it acts as a \"latest version\" flag and relaxes required-field validation on writes. The document's actual status lives in the `_status` field, with values `'draft'` or `'published'`. **If a fetched document has `_status: 'draft'`, pass `draft: true` on subsequent reads — without it you may get the published version (which can be empty if the doc was never published).**",
     ...(hasBlocksFeature
       ? [
           '',
@@ -120,6 +120,8 @@ export function buildSystemPrompt(
     '- Keep `depth` at 0 (the default) unless you specifically need populated relationship data. Depth 0 returns relationship IDs only.',
     '- Use `limit` to fetch only as many documents as needed.',
     '- For listing/browsing, select only summary fields (e.g. id, title, slug, status) first, then fetch full details with findByID only when needed.',
+    "- Don't re-fetch a document already loaded in this conversation unless its data may have changed. A write tool (`update`, `create`, `updateGlobal`) returns the saved document — use that response directly instead of following it with a `findByID`.",
+    '- When an expected field is missing from a response, the most likely causes (in order) are: a localized field unset in the requested locale (try another locale), an unpublished doc requiring `draft: true`, or a `select` that excluded the field. Check those before broadening `depth` or removing `select`.',
     '',
     '## Admin Panel Links',
     `When referencing a document (after create/update/find), render it as a markdown link to its admin page so the user can open it. Use the title as the label, ID as fallback. Patterns (relative URLs): \`${adminRoute}/collections/<slug>/<id>\`, \`${adminRoute}/collections/<slug>\`, \`${adminRoute}/globals/<slug>\`.`,
@@ -161,7 +163,7 @@ export function buildSystemPrompt(
       '## Localization',
       `Locales: ${locales.join(', ')}`,
       `Default locale: ${payloadConfig.localization.defaultLocale}`,
-      'Use the `locale` parameter in tool calls to read/write localized fields.',
+      'Use the `locale` parameter in tool calls to read/write localized fields. **A localized field with no value in the requested locale is omitted from the response — not returned as `null`.** If a field you expect is missing, try the other locales before broadening `select` or `depth`.',
     )
   }
 

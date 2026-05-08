@@ -518,6 +518,64 @@ describe('chatAgentPlugin modes', () => {
     expect(body.default).toBe('read-write')
   })
 
+  it('modes endpoint returns the configured emptyState (title, description, starterPrompts)', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: {
+        description: 'I can help with **content**.',
+        starterPrompts: ['Audit recent drafts'],
+        title: 'Welcome, editor',
+      },
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      description: 'I can help with **content**.',
+      starterPrompts: ['Audit recent drafts'],
+      title: 'Welcome, editor',
+    })
+    // The legacy top-level field must not leak into the response — clients
+    // should read everything from `emptyState`.
+    expect(body.starterPrompts).toBeUndefined()
+  })
+
+  it('modes endpoint preserves an empty starterPrompts array so the client can disable the default chips', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: {
+        starterPrompts: [],
+        title: 'Content Assistant',
+      },
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      starterPrompts: [],
+      title: 'Content Assistant',
+    })
+  })
+
+  it('modes endpoint omits emptyState when no fields are configured', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toBeUndefined()
+  })
+
   it('chat endpoint rejects invalid mode', async () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',

@@ -1,14 +1,16 @@
 import type { CollectionSlug, PayloadRequest } from 'payload'
 
+import { stringify } from 'qs-esm'
+
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
 
-import { fetchRestApi } from './fetchRestApi.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
 /** Returns the breadcrumbs to the given document. */
 export async function getBreadcrumbs({
+  apiURL,
   breadcrumbLabelField,
   data,
   locale,
@@ -17,6 +19,12 @@ export async function getBreadcrumbs({
   parentField,
   req,
 }: {
+  /**
+   * Base URL of the Payload REST API (e.g. `${serverURL}${routes.api}`).
+   * Required when `req` is undefined (i.e. when called from a client component)
+   * so the plugin respects a user-customized `routes.api`.
+   */
+  apiURL?: string
   breadcrumbLabelField: string
   data: Record<string, any>
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -61,23 +69,30 @@ export async function getBreadcrumbs({
     throw new Error('Parent ID not found for document with id ' + data.id)
   }
 
-  const parent = req
-    ? await findByIDCached({
-        id: parentId,
-        collection: parentCollection,
-        locale,
-        req,
-      })
-    : await fetchRestApi<{ breadcrumbs: Breadcrumb[]; id: number | string }>(
-        `/${parentCollection}/${parentId}`,
-        {
-          depth: 0,
-          locale,
-          select: {
-            breadcrumbs: true,
-          },
-        },
+  let parent: null | Record<string, unknown> | undefined
+  if (req) {
+    parent = await findByIDCached({
+      id: parentId,
+      collection: parentCollection,
+      locale,
+      req,
+    })
+  } else {
+    if (!apiURL) {
+      throw new Error('[Pages Plugin] getBreadcrumbs requires `apiURL` when called without `req`.')
+    }
+    const query = stringify({ depth: 0, locale, select: { breadcrumbs: true } })
+    const response = await fetch(`${apiURL}/${parentCollection}/${parentId}?${query}`, {
+      headers: { 'Content-Type': 'application/json' },
+      method: 'GET',
+    })
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch the parent document via the Payload REST API. ${response.statusText}`,
       )
+    }
+    parent = (await response.json()) as Record<string, unknown>
+  }
 
   if (!parent) {
     // This can be the case, when the parent document got deleted.

@@ -161,6 +161,39 @@ describe('buildSystemPrompt', () => {
     expect(prompt).not.toContain('## Localization')
   })
 
+  it('warns that a localized field with no value is omitted from the response', () => {
+    // Without this hint, the agent reacts to a missing localized field by
+    // broadening `select` / `depth` / `draft` instead of trying another
+    // locale — burning 3-5 redundant tool calls per investigation.
+    const config = {
+      collections: [],
+      globals: [],
+      localization: {
+        defaultLocale: 'de',
+        locales: ['en', 'de'],
+      },
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toMatch(/omitted from the response/i)
+    expect(prompt).toMatch(/try (the )?other locales?/i)
+  })
+
+  it('directs the agent to pass `draft: true` when a fetched document has _status: draft', () => {
+    // The descriptive `draft` paragraph alone left the agent re-fetching
+    // unpublished documents without the flag and getting empty content.
+    const prompt = buildSystemPrompt({ collections: [], globals: [] })
+    expect(prompt).toMatch(/_status.*['"]draft['"].*draft: true/s)
+  })
+
+  it('tells the agent not to re-fetch a document already loaded this conversation', () => {
+    // Caching helps with the prefix cost, but re-fetching at all still pays
+    // full output tokens for the new tool input + new tool result. The cheapest
+    // re-fetch is the one that doesn't happen.
+    const prompt = buildSystemPrompt({ collections: [], globals: [] })
+    expect(prompt).toMatch(/don['’]t re-?fetch/i)
+    expect(prompt).toMatch(/write tool|update.*returns|create.*returns/i)
+  })
+
   it('omits collections section when empty', () => {
     const prompt = buildSystemPrompt({ collections: [], globals: [] })
     expect(prompt).not.toContain('## Collections')

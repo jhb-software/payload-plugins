@@ -46,7 +46,9 @@ Provider API keys are never read from `process.env` by the plugin — pass them 
 | `adminView`       | `{ path, Component }`                         | No       | Customize the admin chat view route or component                                                        |
 | `navLink`         | `boolean`                                     | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
 | `budget`          | `BudgetConfig`                                | No       | Optional token budget (see below)                                                                       |
+| `emptyState`      | `EmptyStateConfig`                            | No       | Customize the empty chat screen — title, markdown description, and suggested-prompt chips (see below)   |
 | `tools`           | `({ req, defaultTools, modelId }) => ToolMap` | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)          |
+| `toolDiscovery`   | `{ searchTool, eager? }`                      | No       | Anthropic's Tool Search Tool — defer cold-path tool definitions and load them on demand (see below)     |
 
 ### Mixing providers
 
@@ -93,6 +95,24 @@ chatAgentPlugin({
 - Modes without an access function are available to all authenticated users
 - `superuser` requires an explicit access function to be enabled
 - Users only see modes they have access to
+
+### Empty chat screen
+
+Customize what editors see before they've sent the first message. Without this option, the chat opens to a generic "What can I help you with?" headline and a few example prompt chips.
+
+Example:
+
+```ts
+chatAgentPlugin({
+  emptyState: {
+    title: 'Content Assistant',
+    description:
+      'I can help with **drafting**, **translating**, and finding stale pages. ' +
+      'I cannot delete content or change user permissions.',
+    starterPrompts: ['Audit my recent draft posts', 'Translate the homepage tagline to German'],
+  },
+})
+```
 
 ### Custom endpoints
 
@@ -184,6 +204,31 @@ Classification for mode filtering:
 - **User-defined executable tools** (anything with an `execute` function) default to the safe "write" classification: excluded in `read`, gated behind `needsApproval: true` in `ask`, passed through in `read-write` / `superuser`. The plugin can't know the tool's side effects.
 
 The plugin does not merge — what the factory returns is what the agent sees. Omit `tools` entirely to use the defaults. Runnable examples of custom tools (Axiom Logs, Vercel Logs, Slack webhook) live in `chat-agent/dev/src/customTools.ts`.
+
+### Deferred tool loading (Anthropic Tool Search)
+
+Large toolsets (many collections × CRUD + custom endpoints + provider-native tools) push tool definitions into the multi-thousand-token range, and Anthropic charges for them on every step of a tool-use loop. Anthropic's [Tool Search Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool) lets you mark cold-path tools with `defer_loading: true` so their definitions are held out of the system-prompt prefix until Claude finds them via a search call.
+
+Opt in by passing a `searchTool`:
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic'
+
+chatAgentPlugin({
+  defaultModel: 'claude-sonnet-4-20250514',
+  model: (id) => anthropic(id),
+  toolDiscovery: {
+    searchTool: anthropic.tools.toolSearchBm25_20251119(),
+    // Optional: override the default eager set. Anthropic recommends 3–5 tools.
+    // Default: ['find', 'findByID', 'count', 'findGlobal', 'getCollectionSchema']
+    // eager: ['find', 'findByID', 'getCollectionSchema'],
+  },
+})
+```
+
+Every tool not named in `eager` is sent with `providerOptions.anthropic.deferLoading: true`. The search tool is registered under a reserved internal key so it can't collide with user-defined tools. Either Anthropic search variant works — `toolSearchBm25_20251119()` (natural-language) or `toolSearchRegex_20251119()`.
+
+Activates only when the resolved `modelId` starts with `claude-`. For OpenAI, Google, and other providers the option is silently ignored — tools are sent eagerly as before — so it's safe to leave configured in a multi-provider setup.
 
 ### Budget limiting
 

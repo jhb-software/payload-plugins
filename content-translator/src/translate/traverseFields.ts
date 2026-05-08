@@ -204,6 +204,8 @@ export const traverseFields = ({
           valuesToTranslate,
         })
 
+        siblingDataTranslated[field.name] = groupDataTranslated
+
         break
       }
       case 'richText': {
@@ -286,6 +288,10 @@ export const traverseFields = ({
             translatedData,
             valuesToTranslate,
           })
+
+          if (hasName) {
+            siblingDataTranslated[tab.name] = tabDataTranslated
+          }
         }
 
         break

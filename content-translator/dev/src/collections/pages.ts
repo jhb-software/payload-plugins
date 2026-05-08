@@ -22,5 +22,41 @@ export const pagesSchema: CollectionConfig = {
       required: false,
       localized: true,
     },
+    {
+      name: 'meta',
+      type: 'group',
+      fields: [
+        {
+          name: 'title',
+          type: 'text',
+          localized: true,
+        },
+        {
+          name: 'description',
+          type: 'textarea',
+          localized: true,
+        },
+      ],
+    },
+    {
+      type: 'tabs',
+      tabs: [
+        {
+          name: 'seo',
+          fields: [
+            {
+              name: 'ogTitle',
+              type: 'text',
+              localized: true,
+            },
+            {
+              name: 'ogDescription',
+              type: 'textarea',
+              localized: true,
+            },
+          ],
+        },
+      ],
+    },
   ],
 }

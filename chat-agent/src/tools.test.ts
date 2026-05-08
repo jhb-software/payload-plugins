@@ -105,7 +105,6 @@ describe('buildTools', () => {
         depth: 2,
         limit: 5,
         overrideAccess: false,
-        page: 1,
         select: { slug: true, title: true },
         sort: '-createdAt',
         user: mockUser,
@@ -518,7 +517,7 @@ describe('callEndpoint tool', () => {
     ]
     const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
     expect(tools.callEndpoint).toBeDefined()
-    expect(tools.callEndpoint.description).toContain('custom API endpoint')
+    expect(tools.callEndpoint.description).toContain('custom endpoint')
   })
 
   it('calls the matching handler with route params', async () => {

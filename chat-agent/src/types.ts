@@ -54,6 +54,27 @@ export interface ModelOption {
 export type ModelFactory = (modelId: string) => LanguageModel
 
 // ---------------------------------------------------------------------------
+// Empty state
+// ---------------------------------------------------------------------------
+
+/**
+ * Customizes the empty chat screen — title, optional markdown description,
+ * and the clickable suggested-prompt chips below them.
+ */
+export interface EmptyStateConfig {
+  /** Markdown body shown beneath the title. Rendered with the same Markdown component used for assistant messages. */
+  description?: string
+  /**
+   * Suggested prompts shown as clickable chips. Replaces (does not merge with)
+   * the built-in defaults. Pass an empty array (`[]`) to disable the chips
+   * entirely; omit the field to keep the built-in defaults.
+   */
+  starterPrompts?: string[]
+  /** Headline. Defaults to `"What can I help you with?"`. */
+  title?: string
+}
+
+// ---------------------------------------------------------------------------
 // Agent modes
 // ---------------------------------------------------------------------------
 
@@ -178,6 +199,30 @@ export interface ChatAgentPluginOptions {
   budget?: BudgetConfig
   /** Model id used when no per-request override is provided. Passed to `model(id)`. */
   defaultModel: string
+  /**
+   * Customize the chat view's empty state — the screen shown before the user
+   * has sent any messages. Use `title` and `description` to give editors
+   * context for what the agent can or can't do, and `starterPrompts` to
+   * seed the clickable prompt chips.
+   *
+   * `description` is rendered as Markdown (via the same renderer used for
+   * assistant messages), so links, lists, and inline formatting all work.
+   *
+   * @example
+   * ```ts
+   * chatAgentPlugin({
+   *   emptyState: {
+   *     title: 'Content Assistant',
+   *     description: 'I can help with **drafting**, **translating**, and finding stale pages. I cannot delete content or change user permissions.',
+   *     starterPrompts: [
+   *       'Audit recent drafts',
+   *       'Translate the homepage to German',
+   *     ],
+   *   },
+   * })
+   * ```
+   */
+  emptyState?: EmptyStateConfig
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
   /**
@@ -198,10 +243,30 @@ export interface ChatAgentPluginOptions {
    * Set to `false` to hide it. Default: `true`.
    */
   navLink?: boolean
-  /** Suggested prompts shown as clickable chips in the empty chat state. */
-  suggestedPrompts?: string[]
   /** Custom text prepended to the auto-generated system prompt. */
   systemPrompt?: string
+  /**
+   * Use Anthropic's Tool Search Tool to load most tool definitions
+   * on-demand. Tools listed in `eager` stay in the system-prompt prefix;
+   * every other tool gets `providerOptions.anthropic.deferLoading: true`
+   * and is only loaded when Claude finds it via `searchTool`. Anthropic
+   * reports ~85% reduction in tool-definition tokens on large catalogs.
+   *
+   * Activates only when the resolved `modelId` starts with `claude-`. For
+   * other providers this option is silently ignored — the toolset is sent
+   * eagerly as before.
+   *
+   * @example
+   * ```ts
+   * import { anthropic } from '@ai-sdk/anthropic'
+   * chatAgentPlugin({
+   *   toolDiscovery: {
+   *     searchTool: anthropic.tools.toolSearchBm25_20251119(),
+   *   },
+   * })
+   * ```
+   */
+  toolDiscovery?: ToolDiscoveryConfig
   /**
    * Customize the tools exposed to the agent. Called once per chat request
    * with the authenticated request, the selected model id, and the plugin's
@@ -259,6 +324,32 @@ export interface ChatAgentPluginOptions {
     modelId: string
     req: PayloadRequest
   }) => Promise<Record<string, Tool>> | Record<string, Tool>
+}
+
+/**
+ * Anthropic Tool Search Tool configuration. See `ChatAgentPluginOptions.toolDiscovery`.
+ */
+export interface ToolDiscoveryConfig {
+  /**
+   * Names of tools to keep eagerly loaded (always present in the prefix).
+   * Anthropic recommends the 3–5 most frequently used tools. Everything else
+   * in the toolset gets `defer_loading: true`.
+   *
+   * Default: `['find', 'findByID', 'count', 'findGlobal', 'getCollectionSchema']`.
+   */
+  eager?: string[]
+  /**
+   * The Anthropic tool search tool, constructed from
+   * `@ai-sdk/anthropic`. Pass either the BM25 (natural-language) variant
+   * or the regex variant.
+   *
+   * @example
+   * ```ts
+   * import { anthropic } from '@ai-sdk/anthropic'
+   * { searchTool: anthropic.tools.toolSearchBm25_20251119() }
+   * ```
+   */
+  searchTool: Tool
 }
 
 // ---------------------------------------------------------------------------

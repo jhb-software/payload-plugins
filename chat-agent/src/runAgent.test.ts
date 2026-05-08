@@ -377,7 +377,8 @@ describe('runAgent systemPrompt option', () => {
       systemPrompt: 'you are a custom audit agent',
     })
 
-    expect(lastStreamTextCall().system).toBe('you are a custom audit agent')
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toBe('you are a custom audit agent')
   })
 
   it('lets a function transform the derived base prompt', async () => {
@@ -392,9 +393,86 @@ describe('runAgent systemPrompt option', () => {
       systemPrompt: (base) => `${base}\n\nExtra instruction.`,
     })
 
-    const sent = lastStreamTextCall().system as string
-    expect(sent.endsWith('Extra instruction.')).toBe(true)
-    expect(sent).toContain('CMS content assistant')
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content.endsWith('Extra instruction.')).toBe(true)
+    expect(sent.content).toContain('CMS content assistant')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Anthropic prompt caching
+// ---------------------------------------------------------------------------
+
+describe('runAgent prompt caching', () => {
+  it('marks the system prompt with an ephemeral cache breakpoint so it is reused across requests', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'claude-haiku-4-5',
+      model: makeModelFactory().factory,
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    const sent = lastStreamTextCall().system as {
+      content: string
+      providerOptions: { anthropic: { cacheControl: { type: string } } }
+      role: string
+    }
+    expect(sent.role).toBe('system')
+    expect(sent.providerOptions.anthropic.cacheControl).toEqual({ type: 'ephemeral' })
+    expect(sent.content).toContain('CMS content assistant')
+  })
+
+  it('keeps a single cache breakpoint on the trailing message as multi-step accumulates messages', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'claude-haiku-4-5',
+      model: makeModelFactory().factory,
+    })
+
+    await runAgent(req, { messages: [{ content: 'hi', role: 'user' }] })
+
+    const prepareStep = lastStreamTextCall().prepareStep
+    expect(prepareStep).toBeDefined()
+
+    // Simulate a multi-step state — earlier user message carries a stale
+    // breakpoint that should be moved onto the new tool-result tail.
+    const stepMessages = [
+      {
+        content: 'hi',
+        providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+        role: 'user' as const,
+      },
+      {
+        content: [{ type: 'tool-call' as const, input: {}, toolCallId: 'a', toolName: 'find' }],
+        role: 'assistant' as const,
+      },
+      {
+        content: [
+          {
+            type: 'tool-result' as const,
+            output: { type: 'json' as const, value: { ok: true } },
+            toolCallId: 'a',
+            toolName: 'find',
+          },
+        ],
+        role: 'tool' as const,
+      },
+    ]
+    const result = await prepareStep!({
+      experimental_context: undefined,
+      messages: stepMessages,
+      model: {} as unknown as Parameters<NonNullable<typeof prepareStep>>[0]['model'],
+      stepNumber: 1,
+      steps: [] as unknown as Parameters<NonNullable<typeof prepareStep>>[0]['steps'],
+    })
+
+    const out = (result as { messages: typeof stepMessages }).messages
+    expect(out[0].providerOptions).toBeUndefined()
+    expect(out[1].providerOptions).toBeUndefined()
+    expect(out[2].providerOptions).toEqual({
+      anthropic: { cacheControl: { type: 'ephemeral' } },
+    })
   })
 })
 

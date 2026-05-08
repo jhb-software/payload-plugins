@@ -470,6 +470,21 @@ export default buildConfig({
       ],
       budget: chatBudget.budget,
       defaultModel: 'claude-haiku-4-5-20251001',
+      // Demonstrate the customizable empty-chat screen — title, markdown
+      // description (rendered by the same renderer used for assistant
+      // messages), and the suggested-prompt chips that replace the built-in
+      // defaults. Open `/admin/chat` in a fresh state to see it.
+      emptyState: {
+        description:
+          'I can help with **drafting**, **translating**, and finding stale pages. ' +
+          'I cannot delete content or change user permissions — for those, see [the docs](https://payloadcms.com/docs).',
+        starterPrompts: [
+          'Audit my recent draft posts',
+          'Translate the homepage tagline to German',
+          'Show pages with an empty meta description',
+        ],
+        title: 'Content Assistant',
+      },
       model: resolveModel,
       // One `tools` factory composes the final toolset the agent sees.
       // Spread `defaultTools` to keep the built-in Payload tools, then add
@@ -483,6 +498,13 @@ export default buildConfig({
       // Using `webFetch_20250910` (pre-dynamic-filtering) so this works with
       // all Claude models. The newer `webFetch_20260209` adds
       // code-execution-based filtering but requires Opus 4.6+/Sonnet 4.6.
+      // Anthropic Tool Search Tool: cold-path tools (writes, schema lookups,
+      // custom endpoints) are sent with `defer_loading: true` and only loaded
+      // when Claude finds them via this BM25 search tool. Activates only for
+      // Claude models — ignored for OpenAI runs.
+      toolDiscovery: {
+        searchTool: anthropic.tools.toolSearchBm25_20251119(),
+      },
       tools: ({ defaultTools, modelId, req }) => ({
         ...defaultTools,
         ...customTools({ req }),
