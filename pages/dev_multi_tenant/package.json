@@ -27,10 +27,10 @@
     "@payloadcms/next": "^3.84.1",
     "@payloadcms/plugin-multi-tenant": "^3.84.1",
     "@payloadcms/ui": "^3.84.1",
-    "next": "16.2.4",
+    "next": "16.2.6",
     "payload": "^3.84.1",
-    "react": "19.2.5",
-    "react-dom": "19.2.5"
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
     "copyfiles": "^2.4.1",

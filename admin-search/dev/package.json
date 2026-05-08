@@ -25,10 +25,10 @@
     "@payloadcms/richtext-lexical": "^3.83.0",
     "@payloadcms/translations": "^3.83.0",
     "@payloadcms/ui": "^3.83.0",
-    "next": "16.2.4",
+    "next": "16.2.6",
     "payload": "^3.83.0",
-    "react": "19.2.5",
-    "react-dom": "19.2.5"
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
