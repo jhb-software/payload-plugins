@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: respect a user-customized `routes.api` in the deployment poller and trigger button (the fetch previously hardcoded `/api/vercel-deployments`)
+
 ## 0.2.1
 
 - style: standardize icons to use Geist icon set (16x16 filled)

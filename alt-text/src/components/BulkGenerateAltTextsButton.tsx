@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, toast, useSelection, useTranslation } from '@payloadcms/ui'
+import { Button, toast, useConfig, useSelection, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { useTransition } from 'react'
 
@@ -16,6 +16,12 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
   const [isPending, startTransition] = useTransition()
   const { selected, setSelection } = useSelection()
+  const {
+    config: {
+      routes: { api: apiRoute },
+      serverURL,
+    },
+  } = useConfig()
 
   const selectedIds = Array.from(selected.entries())
     .filter(([, isSelected]) => isSelected)
@@ -30,13 +36,16 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
       }
 
       try {
-        const response = await fetch('/api/alt-text-plugin/generate/bulk', {
-          body: JSON.stringify({
-            collection: collectionSlug,
-            ids: selectedIds,
-          }),
-          method: 'POST',
-        })
+        const response = await fetch(
+          `${serverURL ?? ''}${apiRoute}/alt-text-plugin/generate/bulk`,
+          {
+            body: JSON.stringify({
+              collection: collectionSlug,
+              ids: selectedIds,
+            }),
+            method: 'POST',
+          },
+        )
 
         if (!response.ok) {
           toast.error(t('@jhb.software/payload-alt-text-plugin:failedToGenerate'))

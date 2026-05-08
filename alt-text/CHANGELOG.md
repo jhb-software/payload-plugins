@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- fix: respect a user-customized `routes.api` in the generate and bulk-generate buttons (the fetch previously hardcoded `/api/alt-text-plugin/...`)
+- refactor: use Payload's `formatAdminURL` helper when linking from the health widget to collection lists
+
 ## 0.5.0
 
 > ! This release contains breaking changes.
