@@ -4,6 +4,7 @@
 
 - style: standardize icons to use Geist icon set (16x16 filled)
 - feat: add configurable `access` option for the translate endpoint (defaults to requiring authentication)
+- fix: "translate empty fields" now populates localized fields nested inside groups and named tabs when the target locale has no value yet
 
 ## 0.1.2
 
