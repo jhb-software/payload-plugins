@@ -35,6 +35,11 @@
  * that preceded it trips a different provider error, so this pass also
  * drops any `reasoning` parts that immediately precede a stripped
  * tool-call within the same assistant message.
+ *
+ * Approval-pending tool-calls: a `needsApproval` tool's `tool-result`
+ * arrives only after the user approves, so a `tool-call` paired with a
+ * `tool-approval-request` is not an orphan — stripping it makes the SDK
+ * throw `AI_ToolCallNotFoundForApprovalError` on the next request.
  */
 
 import type { ModelMessage } from 'ai'
@@ -62,9 +67,20 @@ function isReasoningPart(part: unknown): boolean {
   )
 }
 
+function isToolApprovalRequestPart(part: unknown): part is ToolCallLike {
+  return (
+    typeof part === 'object' &&
+    part !== null &&
+    (part as { type?: unknown }).type === 'tool-approval-request'
+  )
+}
+
 export function sanitizeOrphanToolCalls(messages: ModelMessage[]): ModelMessage[] {
   const toolCallIds = new Set<string>()
   const toolResultIds = new Set<string>()
+  // Approval-pending tool-calls have no `tool-result` yet but must survive
+  // the orphan filter; track the toolCallIds referenced by approval requests.
+  const approvalRequestToolCallIds = new Set<string>()
 
   for (const msg of messages) {
     if (!Array.isArray(msg.content)) {
@@ -75,6 +91,8 @@ export function sanitizeOrphanToolCalls(messages: ModelMessage[]): ModelMessage[
         toolCallIds.add(part.toolCallId)
       } else if (isToolResultPart(part) && typeof part.toolCallId === 'string') {
         toolResultIds.add(part.toolCallId)
+      } else if (isToolApprovalRequestPart(part) && typeof part.toolCallId === 'string') {
+        approvalRequestToolCallIds.add(part.toolCallId)
       }
     }
   }
@@ -95,7 +113,7 @@ export function sanitizeOrphanToolCalls(messages: ModelMessage[]): ModelMessage[
         continue
       }
       if (isToolCallPart(part) && typeof part.toolCallId === 'string') {
-        if (toolResultIds.has(part.toolCallId)) {
+        if (toolResultIds.has(part.toolCallId) || approvalRequestToolCallIds.has(part.toolCallId)) {
           kept.push(...pendingReasoning, part)
         }
         // Dropped tool-call: also discard the reasoning paired with it.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: stop the orphan sanitizer from stripping ask-mode tool-calls that are waiting on user approval, which made the next request fail with `AI_ToolCallNotFoundForApprovalError`.
+
 ## 0.1.0-beta.5
 
 BREAKING CHANGES:

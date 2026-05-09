@@ -161,6 +161,98 @@ describe('sanitizeOrphanToolCalls', () => {
     expect(sanitizeOrphanToolCalls(messages)).toEqual(messages)
   })
 
+  it('keeps a tool-call paired with a tool-approval-request even when no tool-result exists yet', () => {
+    // Reproduces `AI_ToolCallNotFoundForApprovalError`: a `needsApproval` tool
+    // emits `tool-call` + `tool-approval-request` in the same assistant turn,
+    // the user approves (tool message with `tool-approval-response`), and on
+    // the next request the SDK's `collectToolApprovals` looks up the
+    // `tool-call` by id. If the sanitizer treats the still-pending tool-call
+    // as an orphan and drops it, the SDK throws:
+    //   Tool call "<id>" not found for approval request "<approvalId>"
+    // because the tool hasn't run yet — the tool-result only materialises
+    // after approval is collected.
+    const messages = [
+      { content: 'invoke the endpoint', role: 'user' },
+      {
+        content: [
+          {
+            type: 'tool-call',
+            input: { path: '/api/x' },
+            toolCallId: 'toolu_018qKuPMi81DFiL1yBZh8Cdn',
+            toolName: 'callEndpoint',
+          },
+          {
+            type: 'tool-approval-request',
+            approvalId: 'aitxt-duc0sEmD7MBzh469OUFMwaQN',
+            toolCallId: 'toolu_018qKuPMi81DFiL1yBZh8Cdn',
+          },
+        ],
+        role: 'assistant',
+      },
+      {
+        content: [
+          {
+            type: 'tool-approval-response',
+            approvalId: 'aitxt-duc0sEmD7MBzh469OUFMwaQN',
+            approved: true,
+          },
+        ],
+        role: 'tool',
+      },
+    ] as unknown as ModelMessage[]
+
+    expect(sanitizeOrphanToolCalls(messages)).toEqual(messages)
+  })
+
+  it('drops a tool-call that has neither a tool-result nor a tool-approval-request', () => {
+    // Negative control for the approval-request rule above: only the
+    // approval-pairing should rescue an unresulted tool-call. A bare
+    // tool-call with no result and no approval-request is still an orphan
+    // and must be stripped.
+    const messages: ModelMessage[] = [
+      {
+        content: [{ type: 'tool-call', input: {}, toolCallId: 'call_bare_orphan', toolName: 't' }],
+        role: 'assistant',
+      },
+      { content: 'never mind', role: 'user' },
+    ]
+
+    const sanitized = sanitizeOrphanToolCalls(messages)
+    expect(collectToolCallIds(sanitized)).toEqual([])
+  })
+
+  it('keeps reasoning paired with an approval-pending tool-call', () => {
+    // Same OpenAI reasoning-adjacency rule as for resulted tool-calls:
+    // reasoning that precedes a kept tool-call must stay so the provider
+    // sees a valid reasoning → tool-call sequence, even when the tool-call
+    // is waiting on approval rather than on a result.
+    const messages = [
+      {
+        content: [
+          { type: 'reasoning', text: 'I should call the endpoint' },
+          {
+            type: 'tool-call',
+            input: { path: '/api/x' },
+            toolCallId: 'toolu_pending_approval',
+            toolName: 'callEndpoint',
+          },
+          {
+            type: 'tool-approval-request',
+            approvalId: 'approve_xyz',
+            toolCallId: 'toolu_pending_approval',
+          },
+        ],
+        role: 'assistant',
+      },
+      {
+        content: [{ type: 'tool-approval-response', approvalId: 'approve_xyz', approved: true }],
+        role: 'tool',
+      },
+    ] as unknown as ModelMessage[]
+
+    expect(sanitizeOrphanToolCalls(messages)).toEqual(messages)
+  })
+
   it('leaves string-content user/system messages alone', () => {
     const messages: ModelMessage[] = [
       { content: 'be nice', role: 'system' },
