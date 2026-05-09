@@ -59,7 +59,7 @@
     "eslint": "^9.0.0",
     "prettier": "^3.8.3",
     "rimraf": "6.1.3",
-    "typescript": "5.9.3",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   },
   "files": [
@@ -105,5 +105,10 @@
   },
   "engines": {
     "node": "^18.20.2 || >=20.9.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "next": "16.2.6"
+    }
   }
 }

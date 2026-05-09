@@ -43,7 +43,7 @@
     "eslint": "^9.0.0",
     "prettier": "^3.8.3",
     "rimraf": "6.1.3",
-    "typescript": "5.9.3"
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "next": "^15.0.0 || ^16.0.0",
@@ -81,6 +81,11 @@
       "import": "./src/exports/client.ts",
       "types": "./src/exports/client.ts",
       "default": "./src/exports/client.ts"
+    }
+  },
+  "pnpm": {
+    "overrides": {
+      "next": "16.2.6"
     }
   }
 }
