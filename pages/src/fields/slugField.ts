@@ -1,6 +1,7 @@
 import type { Field } from 'payload'
-import type { SlugFieldProps } from 'src/components/client/SlugFieldClient.js'
-import type { Locale } from 'src/types/Locale.js'
+
+import type { SlugFieldProps } from '../components/client/SlugFieldClient.js'
+import type { Locale } from '../types/Locale.js'
 
 import { beforeDuplicateSlug } from '../hooks/beforeDuplicate.js'
 import { formatSlug } from '../hooks/validateSlug.js'

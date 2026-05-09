@@ -1,5 +1,6 @@
 import type { ClientCollectionConfig, CollectionConfig } from 'payload'
-import type { PageCollectionConfig } from 'src/types/PageCollectionConfig.js'
+
+import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 
 /** Checks if the config is a PageCollectionConfig. */
 export const isPageCollectionConfig = (
