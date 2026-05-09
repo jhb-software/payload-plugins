@@ -243,8 +243,25 @@ export interface ChatAgentPluginOptions {
    * Set to `false` to hide it. Default: `true`.
    */
   navLink?: boolean
-  /** Custom text prepended to the auto-generated system prompt. */
-  systemPrompt?: string
+  /**
+   * Customize the system prompt the agent receives. Wrap or replace
+   * `defaultPrompt` and return the final string. Called once per chat
+   * request, so the callback can read from Payload (globals, the user, ...).
+   *
+   * @example Append extra instructions
+   * ```ts
+   * chatAgentPlugin({
+   *   systemPrompt: ({ defaultPrompt }) =>
+   *     `${defaultPrompt}\n\nAlways respond in German.`,
+   * })
+   * ```
+   *
+   * @example Replace entirely
+   * ```ts
+   * chatAgentPlugin({ systemPrompt: () => 'You are a marketing assistant.' })
+   * ```
+   */
+  systemPrompt?: (args: { defaultPrompt: string; req: PayloadRequest }) => Promise<string> | string
   /**
    * Use Anthropic's Tool Search Tool to load most tool definitions
    * on-demand. Tools listed in `eager` stay in the system-prompt prefix;

@@ -400,6 +400,87 @@ describe('runAgent systemPrompt option', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Plugin-level systemPrompt callback (resolves per request)
+// ---------------------------------------------------------------------------
+
+describe('plugin-level systemPrompt callback', () => {
+  it('passes the auto-generated prompt as `defaultPrompt` and uses the callback return value as the final prompt', async () => {
+    vi.mocked(streamText).mockClear()
+    const callback = vi.fn(
+      async ({ defaultPrompt }: { defaultPrompt: string; req: PayloadRequest }) =>
+        `${defaultPrompt}\n\nAlways respond in German.`,
+    )
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      systemPrompt: callback,
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    expect(callback).toHaveBeenCalledTimes(1)
+    expect(callback.mock.calls[0]?.[0].req).toBe(req)
+    expect(callback.mock.calls[0]?.[0].defaultPrompt).toContain('CMS content assistant')
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toContain('CMS content assistant')
+    expect(sent.content.endsWith('Always respond in German.')).toBe(true)
+  })
+
+  it('lets the callback fully replace the auto-generated prompt by ignoring `defaultPrompt`', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      systemPrompt: () => 'You are a marketing assistant.',
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toBe('You are a marketing assistant.')
+    expect(sent.content).not.toContain('CMS content assistant')
+  })
+
+  it('re-invokes the callback on each request so a Payload-global edit takes effect on the next chat', async () => {
+    vi.mocked(streamText).mockClear()
+    let dynamicTone = 'formal'
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      systemPrompt: ({ defaultPrompt }) => `${defaultPrompt}\n\nTone: ${dynamicTone}.`,
+    })
+
+    await runAgent(req, { messages: 'hi' })
+    const first = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(first.content.endsWith('Tone: formal.')).toBe(true)
+
+    dynamicTone = 'casual'
+
+    await runAgent(req, { messages: 'hi again' })
+    const second = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(second.content.endsWith('Tone: casual.')).toBe(true)
+  })
+
+  it('lets a per-call systemPrompt override still replace the plugin-level result', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      systemPrompt: () => 'plugin-level prompt',
+    })
+
+    await runAgent(req, {
+      messages: 'hi',
+      systemPrompt: 'caller-side replacement',
+    })
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toBe('caller-side replacement')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Anthropic prompt caching
 // ---------------------------------------------------------------------------
 

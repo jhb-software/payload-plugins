@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+BREAKING CHANGES:
+
+- feat!: `systemPrompt` is now a per-request factory `({ req, defaultPrompt }) => string | Promise<string>` instead of a static string. Wrap `defaultPrompt` to extend, ignore it to replace. Migrate `systemPrompt: 'extra'` → `systemPrompt: ({ defaultPrompt }) => \`${defaultPrompt}\n\nextra\``.
+
+OTHER CHANGES:
+
 - fix: stop the orphan sanitizer from stripping ask-mode tool-calls that are waiting on user approval, which made the next request fail with `AI_ToolCallNotFoundForApprovalError`.
 
 ## 0.1.0-beta.5

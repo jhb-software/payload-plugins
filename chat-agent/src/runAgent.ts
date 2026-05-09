@@ -194,12 +194,10 @@ export async function runAgentImpl(
     modelId,
   )
 
-  const basePrompt = buildSystemPrompt(
-    req.payload.config,
-    pluginOptions.systemPrompt,
-    customEndpoints.length > 0,
-    mode,
-  )
+  const defaultPrompt = buildSystemPrompt(req.payload.config, customEndpoints.length > 0, mode)
+  const basePrompt = pluginOptions.systemPrompt
+    ? await pluginOptions.systemPrompt({ defaultPrompt, req })
+    : defaultPrompt
   let systemPrompt: string
   if (typeof opts.systemPrompt === 'string') {
     systemPrompt = opts.systemPrompt

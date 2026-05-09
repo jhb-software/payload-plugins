@@ -9,15 +9,6 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('confirm with the user')
   })
 
-  it('prepends custom prefix when provided', () => {
-    const prompt = buildSystemPrompt(
-      { collections: [], globals: [] },
-      'You are a marketing assistant.',
-    )
-    expect(prompt.startsWith('You are a marketing assistant.')).toBe(true)
-    expect(prompt).toContain('CMS content assistant')
-  })
-
   it('lists collection slugs only, not their fields', () => {
     const config = {
       collections: [
@@ -109,7 +100,7 @@ describe('buildSystemPrompt', () => {
   })
 
   it('mentions listEndpoints only when custom endpoints exist', () => {
-    const withEndpoints = buildSystemPrompt({ collections: [], globals: [] }, undefined, true)
+    const withEndpoints = buildSystemPrompt({ collections: [], globals: [] }, true)
     expect(withEndpoints).toContain('listEndpoints')
 
     const withoutEndpoints = buildSystemPrompt({ collections: [], globals: [] })
@@ -119,7 +110,7 @@ describe('buildSystemPrompt', () => {
   it('does not dump endpoint paths/descriptions into the prompt', () => {
     // Endpoints live behind listEndpoints now — the prompt only signals that
     // they exist. Agent pays one round trip to see them.
-    const prompt = buildSystemPrompt({ collections: [], globals: [] }, undefined, true)
+    const prompt = buildSystemPrompt({ collections: [], globals: [] }, true)
     expect(prompt).not.toContain('## Custom Endpoints')
   })
 
@@ -270,26 +261,26 @@ describe('buildSystemPrompt with modes', () => {
   const minConfig = { collections: [], globals: [] }
 
   it('includes read-only instructions in read mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, false, 'read')
+    const prompt = buildSystemPrompt(minConfig, false, 'read')
     expect(prompt).toContain('read-only mode')
     expect(prompt).toContain('only read content')
     expect(prompt).not.toContain('confirm with the user before creating')
   })
 
   it('includes ask mode instructions in ask mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, false, 'ask')
+    const prompt = buildSystemPrompt(minConfig, false, 'ask')
     expect(prompt).toContain('ask mode')
     expect(prompt).toContain('confirmation')
   })
 
   it('includes superuser instructions in superuser mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, false, 'superuser')
+    const prompt = buildSystemPrompt(minConfig, false, 'superuser')
     expect(prompt).toContain('superuser mode')
     expect(prompt).toContain('bypassing normal user permissions')
   })
 
   it('includes standard rules in read-write mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, false, 'read-write')
+    const prompt = buildSystemPrompt(minConfig, false, 'read-write')
     expect(prompt).toContain('confirm with the user before creating')
   })
 

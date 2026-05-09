@@ -704,6 +704,10 @@ export interface Setting {
   id: string;
   siteName?: string | null;
   tagline?: string | null;
+  /**
+   * Appended to the chat agent system prompt on every request. Edit and the next chat reflects the change — no restart needed.
+   */
+  chatAgentPrompt?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -714,6 +718,7 @@ export interface Setting {
 export interface SettingsSelect<T extends boolean = true> {
   siteName?: T;
   tagline?: T;
+  chatAgentPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

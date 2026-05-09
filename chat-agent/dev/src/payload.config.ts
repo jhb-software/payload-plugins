@@ -336,6 +336,17 @@ export default buildConfig({
       fields: [
         { name: 'siteName', type: 'text', defaultValue: 'My Site' },
         { name: 'tagline', type: 'text' },
+        // Editable agent prompt demonstrating the `systemPrompt` callback
+        // form. The plugin reads this on every chat request, so editors can
+        // change the agent's tone or instructions in the admin panel.
+        {
+          name: 'chatAgentPrompt',
+          type: 'textarea',
+          admin: {
+            description:
+              'Appended to the chat agent system prompt on every request. Edit and the next chat reflects the change.',
+          },
+        },
       ],
     },
   ],
@@ -486,6 +497,15 @@ export default buildConfig({
         title: 'Content Assistant',
       },
       model: resolveModel,
+      // Demonstrate the `systemPrompt` callback. Edit
+      // `settings.chatAgentPrompt` in the admin panel to change the agent's
+      // instructions on the next chat. Returning `defaultPrompt` unchanged
+      // when the field is empty leaves the auto-generated prompt intact.
+      systemPrompt: async ({ defaultPrompt, req }) => {
+        const settings = await req.payload.findGlobal({ slug: 'settings' })
+        const extra = settings?.chatAgentPrompt?.trim()
+        return extra ? `${defaultPrompt}\n\n${extra}` : defaultPrompt
+      },
       // One `tools` factory composes the final toolset the agent sees.
       // Spread `defaultTools` to keep the built-in Payload tools, then add
       // user-defined tools and provider-native ones (executed server-side by

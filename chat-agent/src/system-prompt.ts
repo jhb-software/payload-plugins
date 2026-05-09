@@ -14,25 +14,21 @@ import type { AgentMode } from './types.js'
 import { scanRichTextFeatures } from './schema.js'
 
 /**
- * Build the system prompt for the chat agent.
+ * Build the auto-generated system prompt for the chat agent. Consumers don't
+ * extend it through this function; they either replace or wrap the returned
+ * string via the plugin's `systemPrompt` option.
  *
  * @param payloadConfig        The Payload runtime config (`req.payload.config`)
- * @param customPrefix         Optional user-provided text prepended to the prompt
  * @param hasCustomEndpoints   Whether `listEndpoints` is available — controls
  *                             whether to mention it in the rules
  * @param mode                 Current agent mode (affects behavioral instructions)
  */
 export function buildSystemPrompt(
   payloadConfig: PayloadConfigForPrompt,
-  customPrefix?: string,
   hasCustomEndpoints = false,
   mode?: AgentMode,
 ): string {
   const sections: string[] = []
-
-  if (customPrefix) {
-    sections.push(customPrefix)
-  }
 
   const adminRoute = payloadConfig.routes?.admin ?? '/admin'
 
