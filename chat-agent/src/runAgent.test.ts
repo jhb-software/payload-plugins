@@ -407,7 +407,7 @@ describe('plugin-level systemPrompt callback', () => {
   it('passes the auto-generated prompt as `defaultPrompt` and uses the callback return value as the final prompt', async () => {
     vi.mocked(streamText).mockClear()
     const callback = vi.fn(
-      async ({ defaultPrompt }: { defaultPrompt: string; req: PayloadRequest }) =>
+      ({ defaultPrompt }: { defaultPrompt: string; req: PayloadRequest }) =>
         `${defaultPrompt}\n\nAlways respond in German.`,
     )
     const req = makeReqWithPlugin({
