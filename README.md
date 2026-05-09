@@ -1,8 +1,8 @@
 # JHB Software - Payload CMS Plugins
 
-This repository contains a collection of powerful plugins designed to enhance [Payload CMS](https://payloadcms.com/), a headless content management system.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> ⚠️ **Warning**: This repository is actively evolving and may undergo significant changes. While the plugins are functional, please thoroughly test before using in production environments.
+This repository contains a collection of powerful plugins designed to enhance [Payload CMS](https://payloadcms.com/), a headless content management system.
 
 ## Plugins
 
@@ -73,6 +73,8 @@ A plugin for managing Vercel deployments of static websites. When your site is s
 [→ Vercel Deployments plugin ](./vercel-deployments)
 
 ### Chat Agent Plugin
+
+[![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-chat-agent)](https://www.npmjs.com/package/@jhb.software/payload-chat-agent)
 
 A Payload CMS plugin that adds an AI chat agent for reading, creating, and updating content. It provides an admin panel chat view where users can interact with their content through natural language, powered by Claude and the Payload Local API.
 
