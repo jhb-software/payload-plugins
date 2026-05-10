@@ -11,7 +11,7 @@ import type { UIMessage } from 'ai'
 
 import { useChat as useAIChat } from '@ai-sdk/react'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { type AgentMode, type MessageMetadata, messageMetadataSchema } from '../types.js'
 
@@ -196,6 +196,34 @@ export function useChat(options?: string | UseChatOptions) {
 
   const chat = useAIChat(chatOptions as any)
   messagesRef.current = chat.messages as UIMessage<MessageMetadata>[]
+
+  // The AI SDK auto-submits immediately after `addToolApprovalResponse()`,
+  // but that trigger is lost if the browser reloads after the approval has
+  // been saved as `approval-responded`. On hydration, submit that restored
+  // transcript once so the approved tool actually runs instead of rendering
+  // forever as a non-terminal "running" part.
+  const resumedApprovalRef = useRef<undefined | string>(undefined)
+  useEffect(() => {
+    if (!initialMessages || initialMessages.length === 0) {
+      return
+    }
+    if (chat.status === 'streaming' || chat.status === 'submitted') {
+      return
+    }
+    if (!lastAssistantMessageIsCompleteWithApprovalResponses({ messages: initialMessages })) {
+      return
+    }
+    const lastMessage = initialMessages[initialMessages.length - 1]
+    if (!lastMessage) {
+      return
+    }
+    const resumeKey = `${chatId ?? 'new'}:${lastMessage.id}`
+    if (resumedApprovalRef.current === resumeKey) {
+      return
+    }
+    resumedApprovalRef.current = resumeKey
+    void chat.sendMessage()
+  }, [chat.sendMessage, chat.status, chatId, initialMessages])
 
   return {
     ...chat,
