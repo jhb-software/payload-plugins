@@ -107,6 +107,20 @@ describe('buildSystemPrompt', () => {
     expect(withoutEndpoints).not.toContain('listEndpoints')
   })
 
+  it('mentions deferred tool search only when deferred tools are enabled', () => {
+    const withDeferredTools = buildSystemPrompt(
+      { collections: [], globals: [] },
+      false,
+      undefined,
+      true,
+    )
+    expect(withDeferredTools).toContain('Some tools are deferred')
+    expect(withDeferredTools).toContain('_chatAgentToolSearch')
+
+    const withoutDeferredTools = buildSystemPrompt({ collections: [], globals: [] })
+    expect(withoutDeferredTools).not.toContain('Some tools are deferred')
+  })
+
   it('does not dump endpoint paths/descriptions into the prompt', () => {
     // Endpoints live behind listEndpoints now — the prompt only signals that
     // they exist. Agent pays one round trip to see them.

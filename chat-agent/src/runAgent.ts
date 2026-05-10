@@ -17,7 +17,7 @@ import { getDefaultMode } from './modes.js'
 import { getPluginOptions } from './plugin-custom-config.js'
 import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
 import { buildSystemPrompt } from './system-prompt.js'
-import { applyToolDiscovery } from './tool-discovery.js'
+import { applyToolDiscovery, isAnthropicModel } from './tool-discovery.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
 export interface RunAgentOptions {
@@ -194,7 +194,13 @@ export async function runAgentImpl(
     modelId,
   )
 
-  const defaultPrompt = buildSystemPrompt(req.payload.config, customEndpoints.length > 0, mode)
+  const hasDeferredTools = Boolean(pluginOptions.toolDiscovery && isAnthropicModel(modelId))
+  const defaultPrompt = buildSystemPrompt(
+    req.payload.config,
+    customEndpoints.length > 0,
+    mode,
+    hasDeferredTools,
+  )
   const basePrompt = pluginOptions.systemPrompt
     ? await pluginOptions.systemPrompt({ defaultPrompt, req })
     : defaultPrompt

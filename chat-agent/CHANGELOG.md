@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: add system prompt guidance for Claude to use `_chatAgentToolSearch` when deferred tool loading hides a needed tool.
+
 ## 0.1.0-beta.6
 
 BREAKING CHANGES:

@@ -481,6 +481,44 @@ describe('plugin-level systemPrompt callback', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Deferred tool loading prompt guidance
+// ---------------------------------------------------------------------------
+
+describe('runAgent deferred tool prompt guidance', () => {
+  const fakeSearchTool = { type: 'tool_search_tool_bm25_20251119' } as unknown as Tool
+
+  it('adds concise tool-search guidance for Claude when tool discovery is enabled', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'claude-haiku-4-5-20251001',
+      model: makeModelFactory().factory,
+      toolDiscovery: { searchTool: fakeSearchTool },
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toContain(
+      'Some tools are deferred. If a needed tool is missing, call `_chatAgentToolSearch` first.',
+    )
+  })
+
+  it('omits tool-search guidance for non-Claude models', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      toolDiscovery: { searchTool: fakeSearchTool },
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).not.toContain('Some tools are deferred')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Anthropic prompt caching
 // ---------------------------------------------------------------------------
 

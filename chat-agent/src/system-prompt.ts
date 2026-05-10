@@ -27,6 +27,7 @@ export function buildSystemPrompt(
   payloadConfig: PayloadConfigForPrompt,
   hasCustomEndpoints = false,
   mode?: AgentMode,
+  hasDeferredTools = false,
 ): string {
   const sections: string[] = []
 
@@ -80,6 +81,11 @@ export function buildSystemPrompt(
     ...(hasCustomEndpoints
       ? [
           '- Call `listEndpoints` to see plugin-provided custom endpoints that can be invoked via `callEndpoint`.',
+        ]
+      : []),
+    ...(hasDeferredTools
+      ? [
+          '- Some tools are deferred. If a needed tool is missing, call `_chatAgentToolSearch` first.',
         ]
       : []),
     '- When showing results, format them clearly. Summarize large result sets.',
