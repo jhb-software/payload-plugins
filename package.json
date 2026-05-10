@@ -71,6 +71,15 @@
     "prettier-plugin-astro": "^0.14.1"
   },
   "lint-staged": {
+    "admin-search/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir admin-search exec eslint --fix",
+    "alt-text/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir alt-text exec eslint --fix",
+    "astro-payload-richtext-lexical/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir astro-payload-richtext-lexical exec eslint --fix",
+    "chat-agent/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir chat-agent exec eslint --fix",
+    "cloudinary/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir cloudinary exec eslint --fix",
+    "content-translator/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir content-translator exec eslint --fix",
+    "geocoding/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir geocoding exec eslint --fix",
+    "pages/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir pages exec eslint --fix",
+    "vercel-deployments/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir vercel-deployments exec eslint --fix",
     "*.{js,jsx,ts,tsx,json,css,md,yaml,yml}": "prettier --write"
   }
 }

@@ -24,12 +24,12 @@ const approvalRespondedMessage = (): UIMessage<MessageMetadata> =>
     id: 'asst-approval',
     parts: [
       {
+        type: 'dynamic-tool',
+        approval: { id: 'approval-1', approved: true },
         input: { collection: 'posts', data: { title: 'Approved' } },
         state: 'approval-responded',
         toolCallId: 'tool-1',
         toolName: 'create',
-        type: 'dynamic-tool',
-        approval: { approved: true, id: 'approval-1' },
       },
     ],
     role: 'assistant',
@@ -212,7 +212,7 @@ describe('useChat', () => {
         ([input]) => asUrl(input) === '/api/chat-agent/chat',
       )
       expect(chatCalls).toHaveLength(1)
-      const body = JSON.parse(String((chatCalls[0]?.[1] as RequestInit | undefined)?.body))
+      const body = JSON.parse(String(chatCalls[0]?.[1]?.body))
       expect(body.messages).toHaveLength(2)
       expect(body.messages[1].parts[0].state).toBe('approval-responded')
 

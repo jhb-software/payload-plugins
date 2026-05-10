@@ -7,6 +7,7 @@
  * plus conversation persistence via the agent-conversations collection.
  */
 
+import type { UseChatOptions as AIUseChatOptions } from '@ai-sdk/react'
 import type { UIMessage } from 'ai'
 
 import { useChat as useAIChat } from '@ai-sdk/react'
@@ -121,7 +122,7 @@ export function useChat(options?: string | UseChatOptions) {
   )
 
   const handleFinish = useCallback(
-    async ({
+    ({
       message,
       messages: allMessages,
     }: {
@@ -131,7 +132,7 @@ export function useChat(options?: string | UseChatOptions) {
       if (message.role !== 'assistant') {
         return
       }
-      await persistMessages(allMessages)
+      void persistMessages(allMessages)
     },
     [persistMessages],
   )
@@ -178,7 +179,7 @@ export function useChat(options?: string | UseChatOptions) {
     [endpointUrl],
   )
 
-  const chatOptions: Record<string, unknown> = {
+  const chatOptions: AIUseChatOptions<ChatMessageUI> = {
     messageMetadataSchema,
     onError: handleError,
     onFinish: handleFinish,
@@ -194,7 +195,7 @@ export function useChat(options?: string | UseChatOptions) {
     chatOptions.messages = initialMessages
   }
 
-  const chat = useAIChat(chatOptions as any)
+  const chat = useAIChat(chatOptions)
   messagesRef.current = chat.messages as UIMessage<MessageMetadata>[]
 
   // The AI SDK auto-submits immediately after `addToolApprovalResponse()`,
@@ -202,7 +203,7 @@ export function useChat(options?: string | UseChatOptions) {
   // been saved as `approval-responded`. On hydration, submit that restored
   // transcript once so the approved tool actually runs instead of rendering
   // forever as a non-terminal "running" part.
-  const resumedApprovalRef = useRef<undefined | string>(undefined)
+  const resumedApprovalRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (!initialMessages || initialMessages.length === 0) {
       return
