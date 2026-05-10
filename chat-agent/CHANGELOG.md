@@ -9,6 +9,7 @@ BREAKING CHANGES:
 OTHER CHANGES:
 
 - fix: stop the orphan sanitizer from stripping ask-mode tool-calls that are waiting on user approval, which made the next request fail with `AI_ToolCallNotFoundForApprovalError`.
+- feat: animate the tool-call status dot and surface an elapsed-second counter while a tool is running, so a slow endpoint or long-running tool no longer reads as a frozen UI. Honors `prefers-reduced-motion`.
 
 ## 0.1.0-beta.5
 

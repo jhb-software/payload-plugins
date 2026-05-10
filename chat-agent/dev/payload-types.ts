@@ -705,7 +705,7 @@ export interface Setting {
   siteName?: string | null;
   tagline?: string | null;
   /**
-   * Appended to the chat agent system prompt on every request. Edit and the next chat reflects the change — no restart needed.
+   * Appended to the chat agent system prompt on every request. Edit and the next chat reflects the change.
    */
   chatAgentPrompt?: string | null;
   updatedAt?: string | null;

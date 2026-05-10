@@ -2,7 +2,7 @@
 import type { UIMessage } from 'ai'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MessageMetadata } from '../types.js'
@@ -239,6 +239,99 @@ describe('MessageBubble', () => {
 
     render(<MessageBubble message={message} />)
     expect(screen.getByText(/running/i)).toBeDefined()
+  })
+
+  it('animates the running-state dot so it reads as in-progress, not frozen', () => {
+    const message = {
+      id: '1',
+      parts: [
+        {
+          type: 'dynamic-tool',
+          input: { collection: 'posts' },
+          state: 'input-available',
+          toolCallId: 'tc1',
+          toolName: 'find',
+        },
+      ],
+      role: 'assistant',
+    } as unknown as UIMessage<MessageMetadata>
+
+    const { container } = render(<MessageBubble message={message} />)
+    const dot = container.querySelector('[data-chat-agent-tool-dot]')
+    expect(dot).not.toBeNull()
+    expect(dot!.getAttribute('data-running')).toBe('true')
+  })
+
+  it('shows elapsed seconds next to a still-running tool call after one second', () => {
+    vi.useFakeTimers()
+    try {
+      const message = {
+        id: '1',
+        parts: [
+          {
+            type: 'dynamic-tool',
+            input: { collection: 'posts' },
+            state: 'input-available',
+            toolCallId: 'tc1',
+            toolName: 'find',
+          },
+        ],
+        role: 'assistant',
+      } as unknown as UIMessage<MessageMetadata>
+
+      render(<MessageBubble message={message} />)
+
+      // No timer yet — under 1s reads as "just started", a flash of "0s" is noise.
+      expect(screen.queryByText(/\d+s$/)).toBeNull()
+
+      act(() => {
+        vi.advanceTimersByTime(1100)
+      })
+      expect(screen.getByText(/1s$/)).toBeDefined()
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(screen.getByText(/3s$/)).toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops the elapsed timer once the tool finishes', () => {
+    vi.useFakeTimers()
+    try {
+      const running = {
+        id: '1',
+        parts: [
+          {
+            type: 'dynamic-tool',
+            input: { collection: 'posts' },
+            state: 'input-available',
+            toolCallId: 'tc1',
+            toolName: 'find',
+          },
+        ],
+        role: 'assistant',
+      } as unknown as UIMessage<MessageMetadata>
+
+      const { rerender } = render(<MessageBubble message={running} />)
+      act(() => {
+        vi.advanceTimersByTime(2100)
+      })
+      expect(screen.getByText(/2s$/)).toBeDefined()
+
+      const completed = {
+        ...running,
+        parts: [{ ...running.parts[0], output: { docs: [] }, state: 'output-available' }],
+      } as unknown as UIMessage<MessageMetadata>
+
+      rerender(<MessageBubble message={completed} />)
+      // Timer is gone, completed state has no status label of its own
+      expect(screen.queryByText(/\ds$/)).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('labels a failed tool call and hides the error text until expanded', () => {

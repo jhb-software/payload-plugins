@@ -69,6 +69,67 @@
   padding-left: var(--gutter-h);
 }
 
+/* In-progress tool indicator. The pulse keeps the dot visibly alive so a slow
+ * tool call (a 5s endpoint, a long search) doesn't read as a frozen UI. */
+@keyframes chat-agent-tool-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.3);
+  }
+}
+
+.chat-agent-tool-dot--running {
+  animation: chat-agent-tool-pulse 1.2s ease-in-out infinite;
+  /* Honor users who've asked the OS to dial back motion. */
+}
+
+/* Cycling dots after the "Running" label. Three siblings each fade in on a
+ * staggered delay; the trio together reads as ". .. …" sweeping right. */
+.chat-agent-running-dots {
+  display: inline-block;
+  letter-spacing: 1px;
+  margin-left: 1px;
+}
+
+.chat-agent-running-dots > span {
+  animation: chat-agent-running-dot 1.4s ease-in-out infinite;
+  opacity: 0.25;
+}
+
+.chat-agent-running-dots > span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.chat-agent-running-dots > span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes chat-agent-running-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-agent-tool-dot--running,
+  .chat-agent-running-dots > span {
+    animation: none;
+  }
+  .chat-agent-running-dots > span {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 768px) {
   .chat-agent-view__sidebar-toggle {
     display: inline-flex;
