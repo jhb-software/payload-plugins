@@ -205,6 +205,7 @@ describe('extractFields — lexical feature summary', () => {
       ]),
     ])
     expect(field.lexical?.features).toContain('myThing')
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- assertion required for tsc since options is a strict typed shape
     expect((field.lexical?.options as Record<string, unknown> | undefined)?.myThing).toBeUndefined()
   })
 

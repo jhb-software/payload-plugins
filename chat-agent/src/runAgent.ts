@@ -155,7 +155,7 @@ export async function runAgentImpl(
 
   const customEndpoints = discoverEndpoints(req.payload.config)
   const builtInTools = buildTools(
-    req.payload as unknown as Parameters<typeof buildTools>[0],
+    req.payload,
     req.user,
     overrideAccess,
     req,
@@ -168,16 +168,16 @@ export async function runAgentImpl(
   let baseTools: ToolSet
   if (pluginOptions.tools) {
     try {
-      baseTools = (await pluginOptions.tools({
+      baseTools = await pluginOptions.tools({
         defaultTools: builtInTools,
         modelId,
         req,
-      })) as ToolSet
+      })
     } catch (err) {
       throw new ToolsResolverError(err)
     }
   } else {
-    baseTools = builtInTools as ToolSet
+    baseTools = builtInTools
   }
 
   let finalTools: ToolSet
@@ -245,7 +245,7 @@ export async function runAgentImpl(
     system: systemMessageWithCache(systemPrompt),
     toolChoice: 'auto',
     tools,
-  }) as unknown as RunAgentResult
+  })
 }
 
 type FinishEvent = {
@@ -289,7 +289,7 @@ async function normaliseMessages(
   input: ModelMessage[] | string | UIMessage[],
 ): Promise<ModelMessage[]> {
   if (typeof input === 'string') {
-    return [{ content: input, role: 'user' } as ModelMessage]
+    return [{ content: input, role: 'user' }]
   }
   if (!Array.isArray(input) || input.length === 0) {
     return input as ModelMessage[]

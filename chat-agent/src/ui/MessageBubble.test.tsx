@@ -44,7 +44,7 @@ function makeMessage(
     parts: [{ type: 'text' as const, text }],
     role: 'user',
     ...rest,
-  } as UIMessage<MessageMetadata>
+  }
 }
 
 describe('MessageBubble', () => {

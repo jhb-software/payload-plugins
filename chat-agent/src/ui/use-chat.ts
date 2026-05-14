@@ -196,7 +196,7 @@ export function useChat(options?: string | UseChatOptions) {
   }
 
   const chat = useAIChat(chatOptions)
-  messagesRef.current = chat.messages as UIMessage<MessageMetadata>[]
+  messagesRef.current = chat.messages
 
   // The AI SDK auto-submits immediately after `addToolApprovalResponse()`,
   // but that trigger is lost if the browser reloads after the approval has

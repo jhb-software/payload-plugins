@@ -512,7 +512,7 @@ function projectFeatureOptions(
       if (!collections || typeof collections !== 'object' || Array.isArray(collections)) {
         return undefined
       }
-      return { collections: Object.keys(collections as Record<string, unknown>) }
+      return { collections: Object.keys(collections) }
     }
 
     default:

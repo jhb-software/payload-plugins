@@ -14,7 +14,7 @@ function makeMessage(meta?: MessageMetadata): UIMessage<MessageMetadata> {
     metadata: meta,
     parts: [{ type: 'text' as const, text: 'hi' }],
     role: 'assistant',
-  } as UIMessage<MessageMetadata>
+  }
 }
 
 describe('TokenBadge', () => {
