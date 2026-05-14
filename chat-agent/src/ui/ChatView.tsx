@@ -242,7 +242,7 @@ export default function ChatView({
         return
       }
       const truncated = messages.slice(0, msgIndex)
-      setMessages(truncated as UIMessage<MessageMetadata>[])
+      setMessages(truncated)
       void sendMessage({ text: newText })
     },
     [messages, sendMessage, setMessages],
@@ -344,7 +344,7 @@ export default function ChatView({
             canRename={Boolean(chatId)}
             defaultModel={defaultModel}
             disabled={isLoading}
-            messages={messages as UIMessage<MessageMetadata>[]}
+            messages={messages}
             mode={mode}
             onModeChange={setMode}
             onModelChange={setSelectedModel}
@@ -363,7 +363,7 @@ export default function ChatView({
             // `MessageList` instance whose `useLayoutEffect` already ran with
             // the previous conversation's messages and won't re-fire.
             key={chatId ?? 'new'}
-            messages={messages as UIMessage<MessageMetadata>[]}
+            messages={messages}
             onEditMessage={handleEditMessage}
             onRetry={handleRetry}
             onSendSuggestion={handleSend}

@@ -81,5 +81,9 @@
     "pages/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir pages exec eslint --fix",
     "vercel-deployments/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir vercel-deployments exec eslint --fix",
     "*.{js,jsx,ts,tsx,json,css,md,yaml,yml}": "prettier --write"
-  }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.1.1"
 }

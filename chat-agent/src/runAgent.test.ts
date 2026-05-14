@@ -144,7 +144,7 @@ describe('runAgent auth and mode guards', () => {
         defaultModel: 'gpt-4o-mini',
         model: makeModelFactory().factory,
       },
-      undefined as unknown as { id: number | string },
+      undefined,
     )
     ;(req as unknown as { user: unknown }).user = null
 
@@ -583,7 +583,7 @@ describe('runAgent prompt caching', () => {
       messages: stepMessages,
       model: {} as unknown as Parameters<NonNullable<typeof prepareStep>>[0]['model'],
       stepNumber: 1,
-      steps: [] as unknown as Parameters<NonNullable<typeof prepareStep>>[0]['steps'],
+      steps: [],
     })
 
     const out = (result as { messages: typeof stepMessages }).messages

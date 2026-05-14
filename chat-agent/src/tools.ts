@@ -365,7 +365,7 @@ export function buildTools(
         return payload.delete({
           id: input.id,
           collection: input.collection,
-          depth: (input.depth as number) ?? 0,
+          depth: input.depth ?? 0,
           select: input.select,
           ...access,
         })
@@ -673,7 +673,7 @@ export function filterToolsByMode<T extends Tool>(
       if (isReadTool(name, tool)) {
         result[name] = tool
       } else {
-        result[name] = { ...tool, needsApproval: true } as T
+        result[name] = { ...tool, needsApproval: true }
       }
     }
     return result

@@ -49,7 +49,7 @@ function makeReq(
   access?: (req: PayloadRequest) => boolean | Promise<boolean>,
   {
     searchParams = new URLSearchParams(),
-    user = { id: 'u1' } as { id: string } | null,
+    user = { id: 'u1' },
   }: { searchParams?: URLSearchParams; user?: { id: string } | null } = {},
 ): PayloadRequest {
   const payload = {

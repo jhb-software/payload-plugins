@@ -12,12 +12,11 @@ const message = (
   id: string,
   role: 'assistant' | 'user',
   text: string,
-): UIMessage<MessageMetadata> =>
-  ({
-    id,
-    parts: [{ type: 'text' as const, text }],
-    role,
-  }) as UIMessage<MessageMetadata>
+): UIMessage<MessageMetadata> => ({
+  id,
+  parts: [{ type: 'text' as const, text }],
+  role,
+})
 
 const approvalRespondedMessage = (): UIMessage<MessageMetadata> =>
   ({
@@ -89,7 +88,7 @@ describe('useChat', () => {
     const { rerender, result } = renderHook(
       ({ chatId }: { chatId: string | undefined }) =>
         useChat({ chatId, endpointUrl: '/api/chat-agent/chat' }),
-      { initialProps: { chatId: 'convo-a' as string | undefined } },
+      { initialProps: { chatId: 'convo-a' } },
     )
 
     act(() => {
@@ -141,7 +140,7 @@ describe('useChat', () => {
       const { rerender, result } = renderHook(
         ({ chatId }: { chatId: string | undefined }) =>
           useChat({ chatId, endpointUrl: '/api/chat-agent/chat' }),
-        { initialProps: { chatId: 'convo-a' as string | undefined } },
+        { initialProps: { chatId: 'convo-a' } },
       )
 
       rerender({ chatId: 'convo-b' })

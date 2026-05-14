@@ -27,7 +27,7 @@ function toolPart(overrides: {
 }
 
 function assistant(parts: UIMessage['parts']): UIMessage {
-  return { id: `a-${Math.random()}`, parts, role: 'assistant' } as UIMessage
+  return { id: `a-${Math.random()}`, parts, role: 'assistant' }
 }
 
 function user(text: string): UIMessage {
@@ -35,7 +35,7 @@ function user(text: string): UIMessage {
     id: `u-${Math.random()}`,
     parts: [{ type: 'text', text }],
     role: 'user',
-  } as UIMessage
+  }
 }
 
 describe('hasPendingApproval', () => {
