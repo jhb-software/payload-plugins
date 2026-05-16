@@ -1,12 +1,13 @@
 import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
 
 import pMap from 'p-map'
-import { z, ZodError } from 'zod'
+import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { localesFromConfig } from '../utilities/localesFromConfig.js'
 import { matchesMimeType } from '../utilities/mimeTypes.js'
+import { bulkGenerateAltTextsRequestSchema, formatZodError } from './schemas.js'
 
 /**
  * Generates and updates alt text for multiple images in all locales.
@@ -21,12 +22,7 @@ export const bulkGenerateAltTextsEndpoint =
 
       const data = 'json' in req && typeof req.json === 'function' ? await req.json() : null
 
-      const schema = z.object({
-        collection: z.string(),
-        ids: z.array(z.union([z.string(), z.number()])),
-      })
-
-      const { collection, ids } = schema.parse(data)
+      const { collection, ids } = bulkGenerateAltTextsRequestSchema.parse(data)
 
       let updatedDocs = 0
       const erroredDocs: (number | string)[] = []
@@ -94,16 +90,7 @@ export const bulkGenerateAltTextsEndpoint =
       })
     } catch (error) {
       if (error instanceof ZodError) {
-        return Response.json(
-          {
-            details: error.issues.map((e) => ({
-              message: e.message,
-              path: e.path.join('.'),
-            })),
-            error: 'Validation failed',
-          },
-          { status: 400 },
-        )
+        return Response.json(formatZodError(error), { status: 400 })
       }
       console.error('Error in bulk generation:', error)
       return Response.json(

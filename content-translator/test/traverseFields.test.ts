@@ -31,33 +31,95 @@ const runTraverse = (fields: Field[], dataFrom: Record<string, unknown>, emptyOn
 
 describe('traverseFields ID types', () => {
   describe('array field IDs', () => {
-    test('accepts string IDs (MongoDB)', () => {
-      const arrayData: { id: number | string }[] = [
-        { id: '507f1f77bcf86cd799439011' },
-        { id: '507f1f77bcf86cd799439012' },
-      ]
-      assert.equal(typeof arrayData[0].id, 'string')
+    const arrayFields: Field[] = [
+      {
+        name: 'items',
+        type: 'array',
+        localized: true,
+        fields: [{ name: 'title', type: 'text' }],
+      },
+    ]
+
+    test('translates array items keyed by string IDs (MongoDB)', () => {
+      const translated = runTraverse(
+        arrayFields,
+        {
+          items: [
+            { id: '507f1f77bcf86cd799439011', title: 'One' },
+            { id: '507f1f77bcf86cd799439012', title: 'Two' },
+          ],
+        },
+        false,
+      )
+
+      const items = translated.items as Array<{ id: number | string; title: string }>
+      assert.equal(items.length, 2)
+      assert.equal(items[0].title, 'TRANSLATED:One')
+      assert.equal(items[1].title, 'TRANSLATED:Two')
     })
 
-    test('accepts numeric IDs (PostgreSQL)', () => {
-      const arrayData: { id: number | string }[] = [{ id: 1 }, { id: 2 }]
-      assert.equal(typeof arrayData[0].id, 'number')
+    test('translates array items keyed by numeric IDs (PostgreSQL)', () => {
+      const translated = runTraverse(
+        arrayFields,
+        {
+          items: [
+            { id: 1, title: 'One' },
+            { id: 2, title: 'Two' },
+          ],
+        },
+        false,
+      )
+
+      const items = translated.items as Array<{ id: number | string; title: string }>
+      assert.equal(items.length, 2)
+      assert.equal(items[0].title, 'TRANSLATED:One')
+      assert.equal(items[1].title, 'TRANSLATED:Two')
     })
   })
 
   describe('block field IDs', () => {
-    test('accepts string IDs (MongoDB)', () => {
-      const blockData: { blockType: string; id: number | string }[] = [
-        { id: '507f1f77bcf86cd799439011', blockType: 'hero' },
-      ]
-      assert.equal(typeof blockData[0].id, 'string')
+    const blockFields: Field[] = [
+      {
+        name: 'layout',
+        type: 'blocks',
+        localized: true,
+        blocks: [
+          {
+            slug: 'hero',
+            fields: [{ name: 'headline', type: 'text' }],
+          },
+        ],
+      } as unknown as Field,
+    ]
+
+    test('translates blocks keyed by string IDs (MongoDB)', () => {
+      const translated = runTraverse(
+        blockFields,
+        {
+          layout: [{ id: '507f1f77bcf86cd799439011', blockType: 'hero', headline: 'Welcome' }],
+        },
+        false,
+      )
+
+      const layout = translated.layout as Array<{ blockType: string; headline: string }>
+      assert.equal(layout.length, 1)
+      assert.equal(layout[0].blockType, 'hero')
+      assert.equal(layout[0].headline, 'TRANSLATED:Welcome')
     })
 
-    test('accepts numeric IDs (PostgreSQL)', () => {
-      const blockData: { blockType: string; id: number | string }[] = [
-        { id: 42, blockType: 'hero' },
-      ]
-      assert.equal(typeof blockData[0].id, 'number')
+    test('translates blocks keyed by numeric IDs (PostgreSQL)', () => {
+      const translated = runTraverse(
+        blockFields,
+        {
+          layout: [{ id: 42, blockType: 'hero', headline: 'Welcome' }],
+        },
+        false,
+      )
+
+      const layout = translated.layout as Array<{ blockType: string; headline: string }>
+      assert.equal(layout.length, 1)
+      assert.equal(layout[0].blockType, 'hero')
+      assert.equal(layout[0].headline, 'TRANSLATED:Welcome')
     })
   })
 })

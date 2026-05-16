@@ -1,10 +1,11 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
-import { z, ZodError } from 'zod'
+import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { matchesMimeType } from '../utilities/mimeTypes.js'
+import { formatZodError, generateAltTextRequestSchema } from './schemas.js'
 
 /**
  * Generates alt text for a single image using the configured resolver.
@@ -25,14 +26,7 @@ export const generateAltTextEndpoint =
 
       const data = 'json' in req && typeof req.json === 'function' ? await req.json() : null
 
-      const requestSchema = z.object({
-        id: z.union([z.string(), z.number()]),
-        collection: z.string(),
-        locale: z.string().nullable(),
-        update: z.boolean().optional().default(false),
-      })
-
-      const { id, collection, locale, update } = requestSchema.parse(data)
+      const { id, collection, locale, update } = generateAltTextRequestSchema.parse(data)
 
       const imageDoc = await req.payload.findByID({
         id,
@@ -138,16 +132,7 @@ export const generateAltTextEndpoint =
       return Response.json({ id, collection, ...result.result })
     } catch (error) {
       if (error instanceof ZodError) {
-        return Response.json(
-          {
-            details: error.issues.map((e) => ({
-              message: e.message,
-              path: e.path.join('.'),
-            })),
-            error: 'Validation failed',
-          },
-          { status: 400 },
-        )
+        return Response.json(formatZodError(error), { status: 400 })
       }
       console.error('Error generating alt text:', error)
       return Response.json(
