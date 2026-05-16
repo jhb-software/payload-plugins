@@ -10,6 +10,9 @@ import type { ValueToTranslate } from './types.js'
 import { isEmpty } from '../utils/isEmpty.js'
 import { traverseRichText } from './traverseRichText.js'
 
+const isUnsafeKey = (key: string): boolean =>
+  key === '__proto__' || key === 'constructor' || key === 'prototype'
+
 export const traverseFields = ({
   dataFrom,
   emptyOnly,
@@ -36,6 +39,10 @@ export const traverseFields = ({
 
   for (const field of fields) {
     if ('virtual' in field && field.virtual) {
+      continue
+    }
+
+    if ('name' in field && isUnsafeKey(field.name)) {
       continue
     }
 
@@ -264,6 +271,10 @@ export const traverseFields = ({
       case 'tabs':
         for (const tab of field.tabs) {
           const hasName = tabHasName(tab)
+
+          if (hasName && isUnsafeKey(tab.name)) {
+            continue
+          }
 
           const tabDataFrom = hasName
             ? (siblingDataFrom[tab.name] as Record<string, unknown>)

@@ -161,3 +161,43 @@ describe('traverseFields - emptyOnly with missing target sub-objects (#137)', ()
     })
   })
 })
+
+describe('traverseFields - prototype pollution', () => {
+  for (const unsafeName of ['__proto__', 'constructor', 'prototype']) {
+    test(`ignores a field named "${unsafeName}" instead of writing to its key`, () => {
+      const fields: Field[] = [
+        { name: unsafeName, type: 'text', localized: true } as Field,
+        { name: 'safe', type: 'text', localized: true } as Field,
+      ]
+
+      const translated = runTraverse(fields, { [unsafeName]: 'hostile', safe: 'hello' }, false)
+
+      assert.equal(translated.safe, 'TRANSLATED:hello')
+      assert.equal(Object.prototype.hasOwnProperty.call(translated, unsafeName), false)
+      assert.equal(Object.getPrototypeOf(translated), Object.prototype)
+      assert.equal(({} as Record<string, unknown>).hostile, undefined)
+    })
+
+    test(`ignores a named tab named "${unsafeName}"`, () => {
+      const fields: Field[] = [
+        {
+          type: 'tabs',
+          tabs: [
+            { name: unsafeName, fields: [{ name: 'inner', type: 'text', localized: true }] },
+            { name: 'safe', fields: [{ name: 'inner', type: 'text', localized: true }] },
+          ],
+        } as Field,
+      ]
+
+      const translated = runTraverse(
+        fields,
+        { [unsafeName]: { inner: 'hostile' }, safe: { inner: 'hello' } },
+        false,
+      )
+
+      assert.deepEqual(translated.safe, { inner: 'TRANSLATED:hello' })
+      assert.equal(Object.prototype.hasOwnProperty.call(translated, unsafeName), false)
+      assert.equal(Object.getPrototypeOf(translated), Object.prototype)
+    })
+  }
+})
