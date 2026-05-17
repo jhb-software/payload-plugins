@@ -303,7 +303,7 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        id: z.string(),
+        id: z.union([z.string(), z.number()]),
         collection: z.string(),
         depth,
         draft,
@@ -347,7 +347,7 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        id: z.string(),
+        id: z.union([z.string(), z.number()]),
         collection: z.string(),
         data: z.record(z.string(), z.unknown()),
         depth,
@@ -371,7 +371,7 @@ export function buildTools(
         })
       },
       inputSchema: z.object({
-        id: z.string(),
+        id: z.union([z.string(), z.number()]),
         collection: z.string(),
         depth,
         select,
