@@ -208,7 +208,7 @@ export interface ChatAgentPluginOptions {
    * `description` is rendered as Markdown (via the same renderer used for
    * assistant messages), so links, lists, and inline formatting all work.
    *
-   * @example
+   * @example Static config
    * ```ts
    * chatAgentPlugin({
    *   emptyState: {
@@ -221,8 +221,23 @@ export interface ChatAgentPluginOptions {
    *   },
    * })
    * ```
+   *
+   * @example Per-request callback (e.g. read from a Payload global)
+   * ```ts
+   * chatAgentPlugin({
+   *   emptyState: async ({ req }) => {
+   *     const site = await req.payload.findGlobal({ slug: 'site' })
+   *     return {
+   *       title: site.chatTitle,
+   *       starterPrompts: site.chatPrompts,
+   *     }
+   *   },
+   * })
+   * ```
    */
-  emptyState?: EmptyStateConfig
+  emptyState?:
+    | EmptyStateConfig
+    | ((args: { req: PayloadRequest }) => EmptyStateConfig | Promise<EmptyStateConfig>)
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
   /**

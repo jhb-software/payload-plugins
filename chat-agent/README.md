@@ -46,7 +46,7 @@ Provider API keys are never read from `process.env` by the plugin — pass them 
 | `adminView`       | `{ path, Component }`                                   | No       | Customize the admin chat view route or component                                                                                                                                                        |
 | `navLink`         | `boolean`                                               | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                                                                                                                |
 | `budget`          | `BudgetConfig`                                          | No       | Optional token budget (see below)                                                                                                                                                                       |
-| `emptyState`      | `EmptyStateConfig`                                      | No       | Customize the empty chat screen — title, markdown description, and suggested-prompt chips (see below)                                                                                                   |
+| `emptyState`      | `EmptyStateConfig \| (({ req }) => MaybePromise<EmptyStateConfig>)` | No | Customize the empty chat screen — static object or per-request callback (see below)                                                                                                             |
 | `tools`           | `({ req, defaultTools, modelId }) => ToolMap`           | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)                                                                                                          |
 | `toolDiscovery`   | `{ searchTool, eager? }`                                | No       | Anthropic's Tool Search Tool — defer cold-path tool definitions and load them on demand (see below)                                                                                                     |
 
@@ -100,9 +100,10 @@ chatAgentPlugin({
 
 Customize what editors see before they've sent the first message. Without this option, the chat opens to a generic "What can I help you with?" headline and a few example prompt chips.
 
-Example:
+Accepts a static object or a per-request callback (e.g. to read from a Payload global):
 
 ```ts
+// Static
 chatAgentPlugin({
   emptyState: {
     title: 'Content Assistant',
@@ -110,6 +111,17 @@ chatAgentPlugin({
       'I can help with **drafting**, **translating**, and finding stale pages. ' +
       'I cannot delete content or change user permissions.',
     starterPrompts: ['Audit my recent draft posts', 'Translate the homepage tagline to German'],
+  },
+})
+
+// Per-request callback
+chatAgentPlugin({
+  emptyState: async ({ req }) => {
+    const site = await req.payload.findGlobal({ slug: 'site' })
+    return {
+      title: site.chatTitle,
+      starterPrompts: site.chatPrompts,
+    }
   },
 })
 ```
