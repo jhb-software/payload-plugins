@@ -91,10 +91,10 @@ chatAgentPlugin({
 })
 ```
 
-- `read` is always available and cannot be restricted
-- Modes without an access function are available to all authenticated users
+- Modes without an access function are available to all authenticated users (including `read`)
 - `superuser` requires an explicit access function to be enabled
 - Users only see modes they have access to
+- When only one mode remains after access filtering, the mode selector is hidden
 
 ### Empty chat screen
 
