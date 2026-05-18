@@ -9,7 +9,6 @@ export type CloudinaryClientUploadHandlerExtra = {
   cloudName: string
   folder?: string
   prefix: string
-  useFilename?: boolean
 }
 
 export type ClientUploadContext = {
@@ -108,11 +107,11 @@ export const CloudinaryClientUploadHandler: ReturnType<
   typeof createClientUploadHandler<CloudinaryClientUploadHandlerExtra>
 > = createClientUploadHandler<CloudinaryClientUploadHandlerExtra>({
   handler: async ({ apiRoute, collectionSlug, extra, file, serverHandlerPath, serverURL }) => {
-    const { apiKey, cloudName, folder, prefix, useFilename } = extra
+    const { apiKey, cloudName, folder, prefix } = extra
 
     const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
     const timestamp = Math.round(new Date().getTime() / 1000).toString()
-    const publicId = useFilename ? generatePublicId(prefix, file.name) : undefined
+    const publicId = generatePublicId(prefix, file.name)
 
     const paramsToSign = buildParamsToSign({ folder, publicId, timestamp })
     const signature = await getSignature(

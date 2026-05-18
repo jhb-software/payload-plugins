@@ -2,10 +2,27 @@ import type { StaticHandler } from '@payloadcms/plugin-cloud-storage/types'
 
 import type { ClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
 
-// This is called:
-// - after the client upload is finished with the clientUploadContext
-// - whenever the file is requested from the api/[collection]/[filename] path
-export const getStaticHandler = (): StaticHandler => {
+import { generateCloudinaryUrl } from './utilities/generateCloudinaryUrl.js'
+import { generatePublicId } from './utilities/generatePublicId.js'
+
+// staticHandler is called for two distinct flows:
+//   1. After a client upload, addDataAndFileToRequest invokes it with
+//      params.clientUploadContext so it can fetch the file content from Cloudinary for
+//      server-side size generation.
+//   2. When the admin (or any client of /api/{collection}/file/{filename}) requests the
+//      original file with disablePayloadAccessControl: false. The doc.url field may
+//      point back at this same route (Payload's default for upload collections), so the
+//      handler must NOT read doc.url to find the Cloudinary location — it must derive
+//      the Cloudinary public_id itself, the same way the rest of the plugin does.
+export const getStaticHandler = ({
+  cloudName,
+  collectionPrefix,
+  folderSrc,
+}: {
+  cloudName: string
+  collectionPrefix: string
+  folderSrc: string
+}): StaticHandler => {
   return async (req, { doc, params }) => {
     try {
       type Params = {
@@ -15,56 +32,32 @@ export const getStaticHandler = (): StaticHandler => {
       }
       const { clientUploadContext, collection, filename } = params as Params
 
-      let publicId: string | undefined
       let secureUrl: string | undefined
 
       if (
         clientUploadContext &&
-        'publicId' in clientUploadContext &&
-        clientUploadContext.publicId &&
+        typeof clientUploadContext === 'object' &&
         'secureUrl' in clientUploadContext &&
-        clientUploadContext.secureUrl
+        typeof clientUploadContext.secureUrl === 'string'
       ) {
-        publicId = clientUploadContext.publicId
         secureUrl = clientUploadContext.secureUrl
       } else {
-        if (
-          doc &&
-          'cloudinaryPublicId' in doc &&
-          'url' in doc &&
-          typeof doc.cloudinaryPublicId === 'string' &&
-          typeof doc.url === 'string'
-        ) {
-          publicId = doc.cloudinaryPublicId
-          secureUrl = doc.url
-        } else {
-          const result = await req.payload.find({
-            collection,
-            limit: 1,
-            pagination: false,
-            req,
-            select: {
-              cloudinaryPublicId: true,
-              url: true,
-            },
-            where: {
-              filename: { equals: filename },
-            },
+        const mimeType = await getMimeType({
+          collection,
+          doc: doc as { mimeType?: unknown } | undefined,
+          filename,
+          req,
+        })
+        if (mimeType) {
+          secureUrl = generateCloudinaryUrl({
+            cloudinaryPublicId: `${folderSrc}${generatePublicId(collectionPrefix, filename)}`,
+            cloudName,
+            mimeType,
           })
-
-          if (
-            result.docs.length > 0 &&
-            'cloudinaryPublicId' in result.docs[0] &&
-            'url' in result.docs[0]
-          ) {
-            publicId = result.docs[0].cloudinaryPublicId as string
-            secureUrl = result.docs[0].url as string
-          }
         }
       }
 
-      if (!publicId || !secureUrl) {
-        console.log('No publicId or secureUrl found, returning 404')
+      if (!secureUrl) {
         return new Response(null, { status: 404, statusText: 'Not Found' })
       }
 
@@ -102,15 +95,36 @@ export const getStaticHandler = (): StaticHandler => {
         'http_code' in err.error &&
         err.error.http_code === 404
       ) {
-        const cloudinaryError =
-          'message' in err.error ? err.error.message : JSON.stringify(err.error)
-
-        console.log('Error fetching file from cloudinary, 404, message:', cloudinaryError)
         return new Response(null, { status: 404, statusText: 'Not Found' })
       }
-
       req.payload.logger.error({ err, msg: 'Unexpected error in staticHandler' })
       return new Response('Internal Server Error', { status: 500 })
     }
   }
+}
+
+async function getMimeType({
+  collection,
+  doc,
+  filename,
+  req,
+}: {
+  collection: string
+  doc?: { mimeType?: unknown }
+  filename: string
+  req: Parameters<StaticHandler>[0]
+}): Promise<string | undefined> {
+  if (doc && typeof doc.mimeType === 'string') {
+    return doc.mimeType
+  }
+  const result = await req.payload.find({
+    collection,
+    limit: 1,
+    pagination: false,
+    req,
+    select: { mimeType: true },
+    where: { filename: { equals: filename } },
+  })
+  const found = result.docs[0] as { mimeType?: unknown } | undefined
+  return found && typeof found.mimeType === 'string' ? found.mimeType : undefined
 }

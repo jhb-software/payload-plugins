@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+> ⚠️ **Breaking changes** below — review before upgrading.
+
+- refactor: align with `@payloadcms/storage-s3`'s stateless model. `cloudinaryPublicId` is now derived from `filename` + collection prefix + folder via a field-level `beforeChange` hook, not read from the Cloudinary upload response. The plugin no longer depends on `@payloadcms/plugin-cloud-storage` invoking `adapter.handleUpload` for client uploads — which it stopped doing in 3.82+ — so client uploads on Payload 3.82+ now persist correctly without any workaround.
+- fix: admin previews no longer fail with "missing on disk" after a client upload (root cause covered by the refactor above).
+- refactor: the static handler derives the Cloudinary URL from `cloudinaryPublicId` + `mimeType` instead of reading `doc.url`. Documents no longer need `doc.url` to point at a Cloudinary CDN URL for the API route to work.
+
+### Breaking changes
+
+- The `useFilename` config option has been removed. The plugin now always uses the original filename as the `public_id`. If you depended on `useFilename: false` (random Cloudinary IDs), migration: rename your `public_id`s in Cloudinary to match the new derivation `${folder}/${prefix}${filename without extension}`, or pin to 0.3.x.
+- `adapter.handleUpload` no longer writes `cloudinaryPublicId` or `url` onto the document. Anyone reading these fields downstream still gets the same values, but the write happens through field hooks now.
+
 ## 0.3.4
 
 - feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16

@@ -1,34 +1,28 @@
 import type { GenerateURL } from '@payloadcms/plugin-cloud-storage/types'
 
-import type { CloudinaryStorageOptions } from './types.js'
-
 import { generateCloudinaryUrl } from './utilities/generateCloudinaryUrl.js'
+import { generatePublicId } from './utilities/generatePublicId.js'
 
-export const getGenerateUrl = ({ options }: { options: CloudinaryStorageOptions }): GenerateURL => {
-  return ({ data }) => {
-    const mimeType = (
-      'mimeType' in data && typeof data.mimeType === 'string' ? data.mimeType : undefined
-    ) as string | undefined
+export const getGenerateUrl = ({
+  cloudName,
+  collectionPrefix,
+  folderSrc,
+}: {
+  cloudName: string
+  collectionPrefix: string
+  folderSrc: string
+}): GenerateURL => {
+  return ({ data, filename }) => {
+    const mimeType =
+      data && 'mimeType' in data && typeof data.mimeType === 'string' ? data.mimeType : undefined
 
-    if (!mimeType) {
-      console.warn(
-        'MimeType field is missing in data passed to the generateURL function. This can happen if a find query contains select without mimeType. Falling back to auto/upload.',
-        data,
-      )
-    }
-
-    const cloudinaryPublicId =
-      'cloudinaryPublicId' in data && typeof data.cloudinaryPublicId === 'string'
-        ? data.cloudinaryPublicId
-        : undefined
-    if (!cloudinaryPublicId) {
-      // since Payload 3.7X this is called during upload, therefore its not possible to throw an error here, otherwise the upload fails
+    if (!filename) {
       return undefined as unknown as string
     }
 
     return generateCloudinaryUrl({
-      cloudinaryPublicId,
-      cloudName: options.cloudName,
+      cloudinaryPublicId: `${folderSrc}${generatePublicId(collectionPrefix, filename)}`,
+      cloudName,
       mimeType,
     })
   }

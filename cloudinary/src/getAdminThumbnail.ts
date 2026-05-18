@@ -1,38 +1,39 @@
 import { generateCloudinaryUrl } from './utilities/generateCloudinaryUrl.js'
+import { generatePublicId } from './utilities/generatePublicId.js'
 
 type GetAdminThumbnail = (args: { doc: Record<string, unknown> }) => false | null | string
 
-type GetAdminThumbnailFactory = (cloudName: string) => GetAdminThumbnail
+type GetAdminThumbnailFactory = (args: {
+  cloudName: string
+  collectionPrefix: string
+  folderSrc: string
+}) => GetAdminThumbnail
 
-/**
- * Factory function to create the adminThumbnail function with access to cloudName.
- * This generates thumbnail URLs directly from cloudinaryPublicId instead of relying on doc.url,
- * which may still be a relative path when Payload's thumbnailURL hook runs.
- */
-export const getAdminThumbnailFactory: GetAdminThumbnailFactory = (cloudName) => {
+// Derive the thumbnail URL from doc.filename + collection prefix + folder rather than
+// reading doc.cloudinaryPublicId. The plugin owns the entire public_id namespace, so it
+// can reconstruct it without depending on a value that the upload pipeline may not have
+// persisted yet (e.g. during the upload-in-progress render).
+export const getAdminThumbnailFactory: GetAdminThumbnailFactory = ({
+  cloudName,
+  collectionPrefix,
+  folderSrc,
+}) => {
   return ({ doc }) => {
-    const cloudinaryPublicId = doc.cloudinaryPublicId
+    const filename = doc.filename
     const mimeType = doc.mimeType
 
-    if (
-      !cloudinaryPublicId ||
-      !mimeType ||
-      typeof cloudinaryPublicId !== 'string' ||
-      typeof mimeType !== 'string'
-    ) {
-      // since Payload 3.7X this is called during upload, therefore its not possible to throw an error here, otherwise the upload fails
-      return undefined as unknown as string
+    if (!filename || !mimeType || typeof filename !== 'string' || typeof mimeType !== 'string') {
+      return null
     }
 
+    const cloudinaryPublicId = `${folderSrc}${generatePublicId(collectionPrefix, filename)}`
     const transformOptions = 'w_300,h_300,c_fill,f_auto,q_auto,dpr_auto'
 
-    // For videos, create an image thumbnail (webp format)
     if (mimeType.startsWith('video/')) {
-      const publicIdWithoutExt = cloudinaryPublicId.replace(/\.[^/.]+$/, '')
       return generateCloudinaryUrl({
-        cloudinaryPublicId: `${publicIdWithoutExt}.webp`,
+        cloudinaryPublicId: `${cloudinaryPublicId}.webp`,
         cloudName,
-        mimeType: 'video/', // Keep as video for correct resource type
+        mimeType: 'video/',
         transformOptions,
       })
     }

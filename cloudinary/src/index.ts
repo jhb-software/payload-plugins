@@ -4,7 +4,7 @@ import type {
   CollectionOptions,
   GeneratedAdapter,
 } from '@payloadcms/plugin-cloud-storage/types'
-import type { Config, Field, Plugin } from 'payload'
+import type { Config, Field, Plugin, TextField } from 'payload'
 
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import { initClientUploads } from '@payloadcms/plugin-cloud-storage/utilities'
@@ -19,11 +19,50 @@ import { getGenerateSignature } from './getGenerateSignature.js'
 import { getHandleDelete } from './handleDelete.js'
 import { getHandleUpload } from './handleUpload.js'
 import { getStaticHandler } from './staticHandler.js'
+import { generatePublicId } from './utilities/generatePublicId.js'
 
-const defaultUploadOptions: Partial<CloudinaryStorageOptions> = {
-  enabled: true,
-  useFilename: true,
-}
+const folderSrcOf = (folder?: string) => (folder ? folder.replace(/^\/|\/$/g, '') + '/' : '')
+
+const collectionPrefixOf = (collOptions: CloudinaryStorageOptions['collections'][string]) =>
+  (typeof collOptions === 'object' && collOptions.prefix) || ''
+
+// Cloudinary's public_id is fully determined by what the plugin tells Cloudinary to use:
+// `${folder}/${collectionPrefix}${filename without extension}`. No piece comes from the
+// upload response, so the field can be persisted via a beforeChange hook driven by
+// data.filename — identical to how @payloadcms/storage-s3 reconstructs S3 keys without
+// per-doc state. Aligning with that pattern removes the need for adapters to receive
+// clientUploadContext through afterChange (which upstream now skips).
+const buildPublicIdField = ({
+  collectionPrefix,
+  folderSrc,
+}: {
+  collectionPrefix: string
+  folderSrc: string
+}): TextField => ({
+  name: 'cloudinaryPublicId',
+  type: 'text',
+  admin: {
+    disableBulkEdit: true,
+    hidden: true,
+    readOnly: true,
+  },
+  hooks: {
+    beforeChange: [
+      ({ data, originalDoc, value }) => {
+        const filename =
+          (data && typeof data.filename === 'string' && data.filename) ||
+          (originalDoc && typeof originalDoc.filename === 'string' && originalDoc.filename) ||
+          undefined
+        if (!filename) {
+          return value
+        }
+        return `${folderSrc}${generatePublicId(collectionPrefix, filename)}`
+      },
+    ],
+  },
+  label: 'Cloudinary Public ID',
+  required: false,
+})
 
 export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageOptions) => Plugin =
   (incomingOptions: CloudinaryStorageOptions) =>
@@ -34,24 +73,8 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       cloud_name: incomingOptions.cloudName,
     })
 
-    const options = {
-      ...defaultUploadOptions,
-      ...incomingOptions,
-    }
-
-    const fields: Field[] = [
-      {
-        name: 'cloudinaryPublicId',
-        type: 'text',
-        admin: {
-          disableBulkEdit: true,
-          hidden: true,
-          readOnly: true,
-        },
-        label: 'Cloudinary Public ID',
-        required: false, // set to false to match with the default url field
-      },
-    ]
+    const options = { enabled: true, ...incomingOptions }
+    const folderSrc = folderSrcOf(options.folder)
 
     const isPluginDisabled = options.enabled === false
 
@@ -69,7 +92,6 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
           cloudName: options.cloudName,
           folder: options.folder,
           prefix: (typeof collection === 'object' && collection.prefix) || '',
-          useFilename: options.useFilename,
         }) satisfies CloudinaryClientUploadHandlerExtra,
       serverHandler: getGenerateSignature({
         access:
@@ -83,9 +105,6 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       return incomingConfig
     }
 
-    const adapter = cloudinaryStorageAdapter({ ...options })
-
-    // Add adapter to each collection option object
     const collectionsWithAdapter: CloudStoragePluginOptions['collections'] = Object.entries(
       options.collections,
     ).reduce(
@@ -93,26 +112,37 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
         ...acc,
         [slug]: {
           ...(collOptions === true ? {} : collOptions),
-          adapter,
+          adapter: cloudinaryStorageAdapter({
+            clientUploads: options.clientUploads,
+            cloudName: options.cloudName,
+            collectionPrefix: collectionPrefixOf(collOptions),
+            folderSrc,
+          }),
         },
       }),
       {} as Record<string, CollectionOptions>,
     )
 
-    // Set disableLocalStorage: true for collections specified in the plugin options
     const config = {
       ...incomingConfig,
       collections: (incomingConfig.collections || []).map((collection) => {
-        if (!collectionsWithAdapter[collection.slug]) {
+        const collOptions = options.collections[collection.slug]
+        if (!collOptions) {
           return collection
         }
+        const collectionPrefix = collectionPrefixOf(collOptions)
+        const publicIdField: Field = buildPublicIdField({ collectionPrefix, folderSrc })
 
         return {
           ...collection,
-          fields: [...fields, ...(collection.fields || [])],
+          fields: [publicIdField, ...(collection.fields || [])],
           upload: {
             ...(typeof collection.upload === 'object' ? collection.upload : {}),
-            adminThumbnail: getAdminThumbnailFactory(options.cloudName),
+            adminThumbnail: getAdminThumbnailFactory({
+              cloudName: options.cloudName,
+              collectionPrefix,
+              folderSrc,
+            }),
             crop: false,
             disableLocalStorage: true,
           },
@@ -125,21 +155,23 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
     })(config)
   }
 
-function cloudinaryStorageAdapter(options: CloudinaryStorageOptions): Adapter {
-  return ({ prefix }): GeneratedAdapter => {
-    const folderSrc = options.folder ? options.folder.replace(/^\/|\/$/g, '') + '/' : '' // ensure only trailing slash is present
-
-    return {
-      name: 'cloudinary',
-      clientUploads: options.clientUploads,
-      generateURL: getGenerateUrl({ options }),
-      handleDelete: getHandleDelete(),
-      handleUpload: getHandleUpload({
-        folderSrc,
-        prefix,
-        useFilename: options.useFilename,
-      }),
-      staticHandler: getStaticHandler(),
-    }
-  }
+function cloudinaryStorageAdapter({
+  clientUploads,
+  cloudName,
+  collectionPrefix,
+  folderSrc,
+}: {
+  clientUploads?: CloudinaryStorageOptions['clientUploads']
+  cloudName: string
+  collectionPrefix: string
+  folderSrc: string
+}): Adapter {
+  return (): GeneratedAdapter => ({
+    name: 'cloudinary',
+    clientUploads,
+    generateURL: getGenerateUrl({ cloudName, collectionPrefix, folderSrc }),
+    handleDelete: getHandleDelete(),
+    handleUpload: getHandleUpload({ collectionPrefix, folderSrc }),
+    staticHandler: getStaticHandler({ cloudName, collectionPrefix, folderSrc }),
+  })
 }

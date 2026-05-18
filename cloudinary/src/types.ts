@@ -36,10 +36,4 @@ export type CloudinaryStorageOptions = {
    * Folder name to upload files to.
    */
   folder?: string
-
-  /**
-   * Whether to use the original filename as part of the public ID
-   * @default true
-   */
-  useFilename?: boolean
 }
