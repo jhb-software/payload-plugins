@@ -10,10 +10,10 @@ import {
 function safeRevalidateTag(req: PayloadRequest, tag: string): void {
   try {
     // Support both Next 15 and Next 16. Next 15 types `revalidateTag(tag)` as 1-arg; Next 16
-    // added a required second `profile` arg (a 1-arg call still works at runtime, with a
-    // deprecation warning). Cast so the build succeeds regardless of which Next types are
-    // resolved, while keeping runtime behaviour correct on both versions.
-    ;(revalidateTag as (tag: string) => void)(tag)
+    // added a required second `profile` arg and logs a deprecation warning for 1-arg calls.
+    // Passing 'max' satisfies Next 16 and is ignored at runtime by Next 15. The cast lets the
+    // build succeed regardless of which Next types are resolved from the consuming project.
+    ;(revalidateTag as (tag: string, profile?: string) => void)(tag, 'max')
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
 
