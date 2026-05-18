@@ -211,7 +211,9 @@ describe('useChat', () => {
         ([input]) => asUrl(input) === '/api/chat-agent/chat',
       )
       expect(chatCalls).toHaveLength(1)
-      const body = JSON.parse(String(chatCalls[0]?.[1]?.body))
+      const rawBody = chatCalls[0]?.[1]?.body
+      expect(typeof rawBody).toBe('string')
+      const body = JSON.parse(rawBody as string)
       expect(body.messages).toHaveLength(2)
       expect(body.messages[1].parts[0].state).toBe('approval-responded')
 

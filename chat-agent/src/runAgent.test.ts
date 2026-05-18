@@ -1,3 +1,4 @@
+import type * as AiModule from 'ai'
 import type { LanguageModel, Tool, UIMessage } from 'ai'
 import type { Payload, PayloadRequest } from 'payload'
 
@@ -14,7 +15,7 @@ import { runAgent } from './runAgent.js'
 // `stepCountIs`, …) and only swap `streamText` for a vi.fn whose return value
 // satisfies `result.text` / `result.totalUsage` reads in tests.
 vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+  const actual = await vi.importActual<typeof AiModule>('ai')
   return {
     ...actual,
     streamText: vi.fn((streamTextOpts: unknown) => {

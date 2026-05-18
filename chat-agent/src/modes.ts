@@ -77,7 +77,7 @@ export async function validateModeAccess(
   req: PayloadRequest,
 ): Promise<null | string> {
   if (typeof mode !== 'string' || !(AGENT_MODES as readonly string[]).includes(mode)) {
-    return `Invalid mode "${mode}". Must be one of: ${AGENT_MODES.join(', ')}`
+    return `Invalid mode "${String(mode)}". Must be one of: ${AGENT_MODES.join(', ')}`
   }
 
   const available = await resolveAvailableModes(modesConfig, req)

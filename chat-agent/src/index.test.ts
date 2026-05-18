@@ -1,3 +1,4 @@
+import type * as AiModule from 'ai'
 import type { LanguageModel, Tool } from 'ai'
 import type { Endpoint } from 'payload'
 
@@ -23,7 +24,7 @@ type NavLinkEntry = { clientProps?: { path?: string }; path?: string } | string
 // `toUIMessageStreamResponse` on the returned object so budget tests can
 // assert on `headers` / invoke the `onFinish` callback.
 vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+  const actual = await vi.importActual<typeof AiModule>('ai')
   return {
     ...actual,
     // Wrapped in `vi.fn` so individual tests can override it with
@@ -580,8 +581,8 @@ describe('chatAgentPlugin modes', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
       emptyState: ({ req }) => ({
-        title: `Hello, ${(req.user as { id: string }).id}`,
         starterPrompts: ['Draft a post'],
+        title: `Hello, ${(req.user as { id: string }).id}`,
       }),
       model: makeModelFactory().factory,
     })
@@ -591,8 +592,8 @@ describe('chatAgentPlugin modes', () => {
     const response = await handler({ user: { id: 'u1' } })
     const body = await response.json()
     expect(body.emptyState).toEqual({
-      title: 'Hello, u1',
       starterPrompts: ['Draft a post'],
+      title: 'Hello, u1',
     })
   })
 
@@ -600,7 +601,7 @@ describe('chatAgentPlugin modes', () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',
       emptyState: async () => {
-        const config = await Promise.resolve({ title: 'Async title', starterPrompts: ['Hello'] })
+        const config = await Promise.resolve({ starterPrompts: ['Hello'], title: 'Async title' })
         return config
       },
       model: makeModelFactory().factory,
@@ -611,8 +612,8 @@ describe('chatAgentPlugin modes', () => {
     const response = await handler({ user: { id: 'u1' } })
     const body = await response.json()
     expect(body.emptyState).toEqual({
-      title: 'Async title',
       starterPrompts: ['Hello'],
+      title: 'Async title',
     })
   })
 

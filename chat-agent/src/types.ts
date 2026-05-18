@@ -236,8 +236,8 @@ export interface ChatAgentPluginOptions {
    * ```
    */
   emptyState?:
-    | EmptyStateConfig
     | ((args: { req: PayloadRequest }) => EmptyStateConfig | Promise<EmptyStateConfig>)
+    | EmptyStateConfig
   /** Maximum tool-use loop steps per request. Default: 20 */
   maxSteps?: number
   /**
