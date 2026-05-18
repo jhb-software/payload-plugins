@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.7
 
+- feat: `emptyState` accepts a per-request callback `({ req }) => EmptyStateConfig | Promise<EmptyStateConfig>` in addition to a static object, so the empty chat screen can be loaded from a Payload global or varied per tenant.
+- feat: allow restricting the `read` mode via `modes.access.read`. Previously `read` was unconditionally available and the access function was ignored.
+- fix: accept numeric IDs in the `findById`, `update`, and `delete` tool schemas so Postgres setups (numeric document IDs) stop failing tool calls with a Zod validation error.
 - fix: add system prompt guidance for Claude to use `_chatAgentToolSearch` when deferred tool loading hides a needed tool.
 
 ## 0.1.0-beta.6
