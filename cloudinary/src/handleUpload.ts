@@ -5,8 +5,6 @@ import type stream from 'stream'
 import { v2 as cloudinary } from 'cloudinary'
 import fs from 'fs'
 
-import type { ClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
-
 import { generatePublicId } from './utilities/generatePublicId.js'
 
 type HandleUploadArgs = {
@@ -17,22 +15,15 @@ type HandleUploadArgs = {
 
 const multipartThreshold = 1024 * 1024 * 99 // 99MB
 
+// Client uploads never reach this handler; @payloadcms/plugin-cloud-storage 3.82+ skips it
+// for files with a clientUploadContext. Persistence for that path lives in the beforeChange
+// hook registered in src/index.ts.
 export const getHandleUpload = ({
   folderSrc,
   prefix = '',
   useFilename,
 }: HandleUploadArgs): HandleUpload => {
   return async ({ data, file }) => {
-    const clientUploadContext = file.clientUploadContext as ClientUploadContext | undefined
-
-    // If the file was already uploaded from the client, add the publicId and secureUrl to the data object and return it
-    if (clientUploadContext) {
-      data.cloudinaryPublicId = clientUploadContext.publicId
-      data.url = clientUploadContext.secureUrl
-
-      return data
-    }
-
     const uploadOptions: UploadApiOptions = {
       folder: folderSrc,
       public_id: useFilename ? generatePublicId(prefix, file.filename) : undefined,

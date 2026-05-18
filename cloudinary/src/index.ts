@@ -4,7 +4,7 @@ import type {
   CollectionOptions,
   GeneratedAdapter,
 } from '@payloadcms/plugin-cloud-storage/types'
-import type { Config, Field, Plugin } from 'payload'
+import type { CollectionBeforeChangeHook, Config, Field, Plugin } from 'payload'
 
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import { initClientUploads } from '@payloadcms/plugin-cloud-storage/utilities'
@@ -120,10 +120,44 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       }),
     }
 
-    return cloudStoragePlugin({
+    const result = cloudStoragePlugin({
       collections: collectionsWithAdapter,
     })(config)
+
+    // @payloadcms/plugin-cloud-storage 3.82+ skips adapter.handleUpload for files carrying a
+    // clientUploadContext, so the Cloudinary publicId and secure URL no longer reach the doc
+    // via that path. Persist them here instead — collection-level beforeChange runs after the
+    // URL field hook, letting us overwrite data.url with the Cloudinary CDN URL.
+    result.collections = (result.collections || []).map((collection) => {
+      if (!collectionsWithAdapter[collection.slug]) {
+        return collection
+      }
+      const existingHooks = collection.hooks || {}
+      return {
+        ...collection,
+        hooks: {
+          ...existingHooks,
+          beforeChange: [persistClientUploadContext, ...(existingHooks.beforeChange || [])],
+        },
+      }
+    })
+
+    return result
   }
+
+const persistClientUploadContext: CollectionBeforeChangeHook = ({ data, req }) => {
+  const ctx = req?.file?.clientUploadContext
+  if (!ctx || typeof ctx !== 'object') {
+    return data
+  }
+  if ('publicId' in ctx && typeof ctx.publicId === 'string') {
+    data.cloudinaryPublicId = ctx.publicId
+  }
+  if ('secureUrl' in ctx && typeof ctx.secureUrl === 'string') {
+    data.url = ctx.secureUrl
+  }
+  return data
+}
 
 function cloudinaryStorageAdapter(options: CloudinaryStorageOptions): Adapter {
   return ({ prefix }): GeneratedAdapter => {

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: persist `cloudinaryPublicId` and `url` for client-side uploads on Payload 3.82+. Upstream `@payloadcms/plugin-cloud-storage` now skips `handleUpload` when the file came from a client upload, which previously left documents without a Cloudinary URL and caused admin previews to fail with a "missing on disk" error.
+
 ## 0.3.4
 
 - feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
