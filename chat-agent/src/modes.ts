@@ -34,7 +34,6 @@ export function resolveModeConfig(options: ChatAgentPluginOptions | undefined): 
  * the list of modes available to the user.
  *
  * Rules:
- * - `read` is always available (cannot be restricted).
  * - `superuser` is only available if an explicit access function is configured
  *   and returns true.
  * - Other modes are available to all authenticated users unless an access
@@ -47,12 +46,6 @@ export async function resolveAvailableModes(
   const available: AgentMode[] = []
 
   for (const mode of AGENT_MODES) {
-    // read is always available
-    if (mode === 'read') {
-      available.push(mode)
-      continue
-    }
-
     // superuser requires explicit access configuration
     if (mode === 'superuser' && !modesConfig.access?.superuser) {
       continue
