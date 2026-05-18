@@ -576,6 +576,46 @@ describe('chatAgentPlugin modes', () => {
     expect(body.emptyState).toBeUndefined()
   })
 
+  it('modes endpoint resolves emptyState callback per-request', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: ({ req }) => ({
+        title: `Hello, ${(req.user as { id: string }).id}`,
+        starterPrompts: ['Draft a post'],
+      }),
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      title: 'Hello, u1',
+      starterPrompts: ['Draft a post'],
+    })
+  })
+
+  it('modes endpoint resolves async emptyState callback', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: async () => {
+        const config = await Promise.resolve({ title: 'Async title', starterPrompts: ['Hello'] })
+        return config
+      },
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      title: 'Async title',
+      starterPrompts: ['Hello'],
+    })
+  })
+
   it('chat endpoint rejects invalid mode', async () => {
     const plugin = chatAgentPlugin({
       defaultModel: 'claude-sonnet-4-20250514',

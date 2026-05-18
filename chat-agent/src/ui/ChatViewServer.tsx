@@ -8,7 +8,7 @@ import type { AgentMode } from '../types.js'
 
 import { isPluginAccessAllowed } from '../access.js'
 import { CONVERSATIONS_SLUG } from '../conversations.js'
-import { pickEmptyState } from '../index.js'
+import { resolveEmptyState } from '../index.js'
 import { getDefaultMode, resolveAvailableModes } from '../modes.js'
 import { getPluginCustomConfig, getPluginOptions } from '../plugin-custom-config.js'
 import { AGENT_MODES } from '../types.js'
@@ -77,7 +77,7 @@ export default async function ChatViewServer({
   const pluginOptions = getPluginOptions(payload)
   const availableModels = pluginOptions?.availableModels ?? []
   const defaultModel = pluginOptions?.defaultModel
-  const emptyState = pickEmptyState(pluginOptions?.emptyState)
+  const emptyState = await resolveEmptyState(pluginOptions?.emptyState, req)
 
   // Fetch the conversation list server-side so the sidebar renders immediately.
   // The sidebar only uses `id`, `title`, and `updatedAt`; selecting just

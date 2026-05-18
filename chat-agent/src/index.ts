@@ -61,23 +61,26 @@ const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent/server#ChatViewSer
 const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent/server#ChatNavLinkServer'
 
 /**
- * Returns the configured empty state if any field is populated, otherwise
- * `undefined`. Used by the modes endpoint and the SSR view so an unconfigured
- * plugin doesn't ship an empty `emptyState` object that the client then has
- * to special-case.
+ * Resolves the configured empty state — supports both a static object and a
+ * per-request callback. Returns `undefined` when no field is populated so an
+ * unconfigured plugin doesn't ship an empty object the client has to special-case.
  */
-export function pickEmptyState(input: EmptyStateConfig | undefined): EmptyStateConfig | undefined {
-  if (!input) {
+export async function resolveEmptyState(
+  input: ChatAgentPluginOptions['emptyState'],
+  req: PayloadRequest,
+): Promise<EmptyStateConfig | undefined> {
+  const resolved = typeof input === 'function' ? await input({ req }) : input
+  if (!resolved) {
     return undefined
   }
   // `starterPrompts: []` is meaningful — it's the opt-out signal that
   // disables the chips on the client. Treat any array (incl. empty) as a
   // configured field so the empty array survives the trip to the client.
   const hasField =
-    (typeof input.title === 'string' && input.title.length > 0) ||
-    (typeof input.description === 'string' && input.description.length > 0) ||
-    Array.isArray(input.starterPrompts)
-  return hasField ? input : undefined
+    (typeof resolved.title === 'string' && resolved.title.length > 0) ||
+    (typeof resolved.description === 'string' && resolved.description.length > 0) ||
+    Array.isArray(resolved.starterPrompts)
+  return hasField ? resolved : undefined
 }
 
 /**
@@ -180,7 +183,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             const available = await resolveAvailableModes(modesConfig, req)
-            const emptyState = pickEmptyState(options.emptyState)
+            const emptyState = await resolveEmptyState(options.emptyState, req)
             return Response.json({
               default: getDefaultMode(modesConfig),
               modes: available,
