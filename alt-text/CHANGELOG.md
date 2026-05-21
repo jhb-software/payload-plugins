@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: add `baseUrl` option to `openAIResolver` for OpenAI-compatible providers (e.g. Nebius, Azure)
+
 ## 0.6.1
 
 - fix: pass `'max'` as the second `revalidateTag` argument so the health-widget cache invalidation no longer triggers Next 16's deprecation warning
