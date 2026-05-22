@@ -123,6 +123,7 @@ export function buildSystemPrompt(
     '- Use `limit` to fetch only as many documents as needed.',
     '- For listing/browsing, select only summary fields (e.g. id, title, slug, status) first, then fetch full details with findByID only when needed.',
     "- Don't re-fetch a document already loaded in this conversation unless its data may have changed. A write tool (`update`, `create`, `updateGlobal`) returns the saved document — use that response directly instead of following it with a `findByID`.",
+    '- Use `updateMany` / `deleteMany` to apply the same change to multiple documents in one call instead of looping `update` / `delete` per document.',
     '- When an expected field is missing from a response, the most likely causes (in order) are: a localized field unset in the requested locale (try another locale), an unpublished doc requiring `draft: true`, or a `select` that excluded the field. Check those before broadening `depth` or removing `select`.',
     '',
     '## Admin Panel Links',

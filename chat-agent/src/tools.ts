@@ -41,7 +41,14 @@ export const READ_TOOL_NAMES = [
 ] as const
 
 /** Built-in tools that modify data (restricted in read/ask modes). */
-export const WRITE_TOOL_NAMES = ['create', 'update', 'delete', 'updateGlobal'] as const
+export const WRITE_TOOL_NAMES = [
+  'create',
+  'update',
+  'updateMany',
+  'delete',
+  'deleteMany',
+  'updateGlobal',
+] as const
 
 const readToolSet: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
 
@@ -359,6 +366,35 @@ export function buildTools(
       }),
     },
 
+    updateMany: {
+      description:
+        'Update multiple documents matching a where query. Partial — omitted fields are unchanged. Returns { docs, errors }.',
+      execute: async (input: Record<string, unknown>) => {
+        return payload.update({
+          collection: input.collection,
+          data: input.data,
+          where: input.where,
+          ...(input.limit !== undefined && { limit: input.limit }),
+          ...commonParams(input),
+          ...access,
+        })
+      },
+      inputSchema: z.object({
+        collection: z.string(),
+        data: z.record(z.string(), z.unknown()),
+        depth,
+        draft,
+        fallbackLocale,
+        limit: z.number().optional().describe('Max documents to update (default: no limit).'),
+        locale,
+        populate,
+        select,
+        where: z
+          .record(z.string(), z.unknown())
+          .describe("Payload where query, e.g. { status: { equals: 'draft' } }."),
+      }),
+    },
+
     delete: {
       description: 'Delete a document by ID.',
       execute: async (input: Record<string, unknown>) => {
@@ -375,6 +411,27 @@ export function buildTools(
         collection: z.string(),
         depth,
         select,
+      }),
+    },
+
+    deleteMany: {
+      description: 'Delete multiple documents matching a where query. Returns { docs, errors }.',
+      execute: async (input: Record<string, unknown>) => {
+        return payload.delete({
+          collection: input.collection,
+          depth: input.depth ?? 0,
+          select: input.select,
+          where: input.where,
+          ...access,
+        })
+      },
+      inputSchema: z.object({
+        collection: z.string(),
+        depth,
+        select,
+        where: z
+          .record(z.string(), z.unknown())
+          .describe("Payload where query, e.g. { status: { equals: 'draft' } }."),
       }),
     },
 

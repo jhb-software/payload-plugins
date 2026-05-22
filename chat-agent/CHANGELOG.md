@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: add `updateMany` and `deleteMany` tools for bulk-updating/deleting documents matching a `where` query in a single call.
+
 ## 0.1.0-beta.7
 
 - feat: `emptyState` accepts a per-request callback `({ req }) => EmptyStateConfig | Promise<EmptyStateConfig>` in addition to a static object, so the empty chat screen can be loaded from a Payload global or varied per tenant.

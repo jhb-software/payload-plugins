@@ -50,11 +50,13 @@ describe('buildTools', () => {
       'count',
       'create',
       'delete',
+      'deleteMany',
       'find',
       'findByID',
       'findGlobal',
       'update',
       'updateGlobal',
+      'updateMany',
     ])
   })
 
@@ -71,6 +73,7 @@ describe('buildTools', () => {
       'count',
       'create',
       'delete',
+      'deleteMany',
       'find',
       'findByID',
       'findGlobal',
@@ -80,6 +83,7 @@ describe('buildTools', () => {
       'listBlocks',
       'update',
       'updateGlobal',
+      'updateMany',
     ])
   })
 
@@ -208,6 +212,77 @@ describe('buildTools', () => {
     )
   })
 
+  it('updateMany calls payload.update with where (no id)', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.updateMany.execute(
+      {
+        collection: 'posts',
+        data: { status: 'published' },
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'posts',
+        data: { status: 'published' },
+        depth: 0,
+        overrideAccess: false,
+        user: mockUser,
+        where: { status: { equals: 'draft' } },
+      }),
+    )
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({ id: expect.anything() }),
+    )
+  })
+
+  it('updateMany forwards limit', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.updateMany.execute(
+      {
+        collection: 'posts',
+        data: { status: 'published' },
+        limit: 10,
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.update).toHaveBeenCalledWith(expect.objectContaining({ limit: 10 }))
+  })
+
+  it('deleteMany calls payload.delete with where (no id)', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.deleteMany.execute(
+      {
+        collection: 'posts',
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.delete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'posts',
+        depth: 0,
+        overrideAccess: false,
+        user: mockUser,
+        where: { status: { equals: 'draft' } },
+      }),
+    )
+    expect(payload.delete).toHaveBeenCalledWith(
+      expect.not.objectContaining({ id: expect.anything() }),
+    )
+  })
+
   it('count calls payload.count correctly', async () => {
     const payload = createMockPayload()
     const tools = buildTools(payload, mockUser)
@@ -323,11 +398,15 @@ describe('buildTools', () => {
     await tools.findByID.execute({ id: '1', collection: 'posts' }, ctx)
     await tools.create.execute({ collection: 'posts', data: {} }, ctx)
     await tools.update.execute({ id: '1', collection: 'posts', data: {} }, ctx)
+    await tools.updateMany.execute({ collection: 'posts', data: {}, where: { x: {} } }, ctx)
     await tools.delete.execute({ id: '1', collection: 'posts' }, ctx)
+    await tools.deleteMany.execute({ collection: 'posts', where: { x: {} } }, ctx)
     await tools.count.execute({ collection: 'posts' }, ctx)
     await tools.findGlobal.execute({ slug: 'settings' }, ctx)
     await tools.updateGlobal.execute({ slug: 'settings', data: {} }, ctx)
 
+    // updateMany and deleteMany share payload.update / payload.delete with
+    // their single-document counterparts — the loop below covers both.
     for (const method of [
       'find',
       'findByID',
@@ -673,7 +752,9 @@ describe('filterToolsByMode', () => {
       expect(names).toEqual(expect.arrayContaining(['find', 'findByID', 'count', 'findGlobal']))
       expect(names).not.toContain('create')
       expect(names).not.toContain('update')
+      expect(names).not.toContain('updateMany')
       expect(names).not.toContain('delete')
+      expect(names).not.toContain('deleteMany')
       expect(names).not.toContain('updateGlobal')
     })
 
@@ -696,7 +777,7 @@ describe('filterToolsByMode', () => {
     it('includes all tools', () => {
       const tools = getAllTools()
       const filtered = filterToolsByMode(tools, 'ask')
-      expect(Object.keys(filtered)).toHaveLength(8)
+      expect(Object.keys(filtered)).toHaveLength(10)
     })
 
     it('read tools are unchanged (no needsApproval, still have execute)', () => {
@@ -753,11 +834,13 @@ describe('filterToolsByMode', () => {
           'count',
           'create',
           'delete',
+          'deleteMany',
           'find',
           'findByID',
           'findGlobal',
           'update',
           'updateGlobal',
+          'updateMany',
         ])
         for (const tool of Object.values(filtered)) {
           expect(tool).not.toHaveProperty('needsApproval')
