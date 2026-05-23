@@ -287,10 +287,9 @@ export function walkRawFields(fields: readonly unknown[], visit: FieldVisitor): 
 /**
  * Scan raw Payload field groups for the rich-text features that gate
  * downstream behavior (currently the system-prompt bullets, block-node
- * example, and list-node example). The `featureKeyMismatches` set collects
- * feature keys whose Lexical node `type` differs from the key
- * (e.g. `blockquote` → `quote`), so the system prompt can emit a mapping
- * table.
+ * example, and list-node example). Runs as a single `walkRawFields` pass
+ * over every field group — no short-circuit, because `featureKeyMismatches`
+ * must see all `richText` fields to collect every mismatch.
  *
  * - `hasLexicalFeatures`: any `richText` field has at least one lexical feature
  * - `hasBlocksFeature`:   any `richText` field carries `blocks` / `inlineBlocks`
