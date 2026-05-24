@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: `update` and `delete` tools now accept a `where` query for bulk operations, mirroring Payload's local API. Pass `id` to target a single document or `where` to update/delete many in one call; `update` also accepts an optional `limit` when using `where`.
+
 ## 0.1.0-beta.7
 
 - feat: `emptyState` accepts a per-request callback `({ req }) => EmptyStateConfig | Promise<EmptyStateConfig>` in addition to a static object, so the empty chat screen can be loaded from a Payload global or varied per tenant.
