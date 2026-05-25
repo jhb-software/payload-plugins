@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 - feat: add `baseUrl` option to `openAIResolver` for OpenAI-compatible providers (e.g. Nebius, Azure)
 
