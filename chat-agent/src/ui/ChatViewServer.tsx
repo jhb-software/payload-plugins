@@ -54,7 +54,7 @@ export default async function ChatViewServer({
     permissions,
     req,
     searchParams,
-    user: user ?? undefined,
+    user,
     visibleEntities,
   }
 
