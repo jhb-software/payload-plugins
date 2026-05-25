@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: `update` and `delete` tools now accept a `where` query for bulk operations, mirroring Payload's local API. Pass `id` to target a single document or `where` to update/delete many in one call; `update` also accepts an optional `limit` when using `where`.
 - fix: document in the system prompt that the list (`unorderedList`/`orderedList`/`checklist`), `blockquote`, and `horizontalRule` feature keys serialize to different Lexical node types, so the agent stops emitting types that fail `parseEditorState`.
 
 ## 0.1.0-beta.7

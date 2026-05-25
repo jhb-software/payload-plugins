@@ -336,46 +336,83 @@ export function buildTools(
     },
 
     update: {
-      description: 'Update a document by ID. Partial — omitted fields are unchanged.',
+      description:
+        'Update one document by `id`, or many documents matching `where`. Partial — omitted fields are unchanged. With `id`, returns the updated document; with `where`, returns `{ docs, errors }`. Exactly one of `id` / `where` is required.',
       execute: async (input: Record<string, unknown>) => {
         return payload.update({
-          id: input.id,
           collection: input.collection,
           data: input.data,
+          ...(input.id !== undefined
+            ? { id: input.id }
+            : {
+                where: input.where,
+                ...(input.limit !== undefined && { limit: input.limit }),
+              }),
           ...commonParams(input),
           ...access,
         })
       },
-      inputSchema: z.object({
-        id: z.union([z.string(), z.number()]),
-        collection: z.string(),
-        data: z.record(z.string(), z.unknown()),
-        depth,
-        draft,
-        fallbackLocale,
-        locale,
-        populate,
-        select,
-      }),
+      inputSchema: z
+        .object({
+          id: z
+            .union([z.string(), z.number()])
+            .optional()
+            .describe('Single-document target. Omit when using `where`.'),
+          collection: z.string(),
+          data: z.record(z.string(), z.unknown()),
+          depth,
+          draft,
+          fallbackLocale,
+          limit: z
+            .number()
+            .optional()
+            .describe('Max documents to update; only applies with `where`.'),
+          locale,
+          populate,
+          select,
+          where: z
+            .record(z.string(), z.unknown())
+            .optional()
+            .describe(
+              "Bulk-update target, e.g. { status: { equals: 'draft' } }. Omit when using `id`.",
+            ),
+        })
+        .refine((input) => (input.id !== undefined) !== (input.where !== undefined), {
+          message: 'Pass exactly one of `id` (single document) or `where` (multiple documents).',
+        }),
     },
 
     delete: {
-      description: 'Delete a document by ID.',
+      description:
+        'Delete one document by `id`, or many documents matching `where`. With `id`, returns the deleted document; with `where`, returns `{ docs, errors }`. Exactly one of `id` / `where` is required.',
       execute: async (input: Record<string, unknown>) => {
         return payload.delete({
-          id: input.id,
           collection: input.collection,
           depth: input.depth ?? 0,
           select: input.select,
+          ...(input.id !== undefined ? { id: input.id } : { where: input.where }),
           ...access,
         })
       },
-      inputSchema: z.object({
-        id: z.union([z.string(), z.number()]),
-        collection: z.string(),
-        depth,
-        select,
-      }),
+      inputSchema: z
+        .object({
+          id: z
+            .union([z.string(), z.number()])
+            .optional()
+            .describe('Single-document target. Omit when using `where`.'),
+          collection: z.string(),
+          depth,
+          select,
+          where: z
+            .record(z.string(), z.unknown())
+            .optional()
+            .describe(
+              "Bulk-delete target, e.g. { status: { equals: 'draft' } }. Omit when using `id`.",
+            ),
+        })
+        .refine((input) => (input.id !== undefined) !== (input.where !== undefined), {
+          message: 'Pass exactly one of `id` (single document) or `where` (multiple documents).',
+        }),
     },
 
     count: {

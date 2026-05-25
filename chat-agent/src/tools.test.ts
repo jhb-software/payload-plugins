@@ -21,6 +21,7 @@ import {
  */
 const asConfig = (v: unknown) => v as SanitizedConfig
 const asReq = (v: unknown) => v as PayloadRequest
+const asSchema = (v: unknown) => v as { safeParse: (input: unknown) => { success: boolean } }
 
 describe('buildTools', () => {
   // Cast to `TypedUser` — the parameter is typed against Payload's generated
@@ -206,6 +207,101 @@ describe('buildTools', () => {
         user: mockUser,
       }),
     )
+  })
+
+  it('update with where forwards to payload.update without an id (bulk path)', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.update.execute(
+      {
+        collection: 'posts',
+        data: { status: 'published' },
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'posts',
+        data: { status: 'published' },
+        overrideAccess: false,
+        user: mockUser,
+        where: { status: { equals: 'draft' } },
+      }),
+    )
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({ id: expect.anything() }),
+    )
+  })
+
+  it('update with where forwards limit', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.update.execute(
+      {
+        collection: 'posts',
+        data: { status: 'published' },
+        limit: 10,
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.update).toHaveBeenCalledWith(expect.objectContaining({ limit: 10 }))
+  })
+
+  it('delete with where forwards to payload.delete without an id (bulk path)', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.delete.execute(
+      {
+        collection: 'posts',
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.delete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'posts',
+        overrideAccess: false,
+        user: mockUser,
+        where: { status: { equals: 'draft' } },
+      }),
+    )
+    expect(payload.delete).toHaveBeenCalledWith(
+      expect.not.objectContaining({ id: expect.anything() }),
+    )
+  })
+
+  it('update schema requires exactly one of id or where', () => {
+    // Mirrors Payload's local update API: `id` updates a single doc, `where`
+    // updates many. Passing neither would silently target nothing useful;
+    // passing both is ambiguous. Both must be caught at the schema, since the
+    // AI SDK validates input before `execute` runs.
+    const schema = asSchema(buildTools(createMockPayload(), mockUser).update.inputSchema)
+
+    expect(schema.safeParse({ collection: 'posts', data: {} }).success).toBe(false)
+    expect(
+      schema.safeParse({ id: '1', collection: 'posts', data: {}, where: { x: {} } }).success,
+    ).toBe(false)
+    expect(schema.safeParse({ id: '1', collection: 'posts', data: {} }).success).toBe(true)
+    expect(schema.safeParse({ collection: 'posts', data: {}, where: { x: {} } }).success).toBe(true)
+  })
+
+  it('delete schema requires exactly one of id or where', () => {
+    // Same rationale as `update` — the schema guards a destructive op against
+    // accidental "delete everything" when `where` is forgotten.
+    const schema = asSchema(buildTools(createMockPayload(), mockUser).delete.inputSchema)
+
+    expect(schema.safeParse({ collection: 'posts' }).success).toBe(false)
+    expect(schema.safeParse({ id: '1', collection: 'posts', where: { x: {} } }).success).toBe(false)
+    expect(schema.safeParse({ id: '1', collection: 'posts' }).success).toBe(true)
+    expect(schema.safeParse({ collection: 'posts', where: { x: {} } }).success).toBe(true)
   })
 
   it('count calls payload.count correctly', async () => {
