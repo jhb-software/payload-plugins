@@ -284,6 +284,12 @@ export function walkRawFields(fields: readonly unknown[], visit: FieldVisitor): 
   return false
 }
 
+/** Feature keys whose Lexical node type differs from the key name. */
+export const FEATURE_KEY_TO_NODE_TYPE: Record<string, string> = {
+  blockquote: 'quote',
+  horizontalRule: 'horizontalrule',
+}
+
 /**
  * Scan raw Payload field groups for the rich-text features that gate
  * downstream behavior (currently the system-prompt bullets, block-node
@@ -297,13 +303,6 @@ export function walkRawFields(fields: readonly unknown[], visit: FieldVisitor): 
  * - `featureKeyMismatches`: feature keys present in the config whose node type
  *   differs from the key name
  */
-
-/** Feature keys whose Lexical node type differs from the key name. */
-export const FEATURE_KEY_TO_NODE_TYPE: Record<string, string> = {
-  blockquote: 'quote',
-  horizontalRule: 'horizontalrule',
-}
-
 export function scanRichTextFeatures(fieldGroups: readonly (readonly unknown[])[]): {
   featureKeyMismatches: string[]
   hasBlocksFeature: boolean

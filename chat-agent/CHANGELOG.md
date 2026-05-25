@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- fix: document in the system prompt that the `unorderedList`/`orderedList`/`checklist` feature keys map to `"type": "list"` nodes (and `blockquote` → `quote`, `horizontalRule` → `horizontalrule`), so the agent stops emitting invalid node types that fail `parseEditorState`.
+- fix: document in the system prompt that the list (`unorderedList`/`orderedList`/`checklist`), `blockquote`, and `horizontalRule` feature keys serialize to different Lexical node types, so the agent stops emitting types that fail `parseEditorState`.
 
 ## 0.1.0-beta.7
 
