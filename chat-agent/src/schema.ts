@@ -293,7 +293,7 @@ export function walkRawFields(fields: readonly unknown[], visit: FieldVisitor): 
  *
  * - `hasLexicalFeatures`: any `richText` field has at least one lexical feature
  * - `hasBlocksFeature`:   any `richText` field carries `blocks` / `inlineBlocks`
- * - `hasListFeature`:     any `richText` field carries `unorderedList` / `orderedList`
+ * - `hasListFeature`:     any `richText` field carries `unorderedList` / `orderedList` / `checklist`
  * - `featureKeyMismatches`: feature keys present in the config whose node type
  *   differs from the key name
  */
@@ -328,7 +328,11 @@ export function scanRichTextFeatures(fieldGroups: readonly (readonly unknown[])[
       if (keys.includes('blocks') || keys.includes('inlineBlocks')) {
         hasBlocksFeature = true
       }
-      if (keys.includes('unorderedList') || keys.includes('orderedList')) {
+      if (
+        keys.includes('unorderedList') ||
+        keys.includes('orderedList') ||
+        keys.includes('checklist')
+      ) {
         hasListFeature = true
       }
       for (const key of keys) {

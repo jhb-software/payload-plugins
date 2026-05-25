@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: document in the system prompt that the `unorderedList`/`orderedList`/`checklist` feature keys map to `"type": "list"` nodes (and `blockquote` → `quote`, `horizontalRule` → `horizontalrule`), so the agent stops emitting invalid node types that fail `parseEditorState`.
+
 ## 0.1.0-beta.7
 
 - feat: `emptyState` accepts a per-request callback `({ req }) => EmptyStateConfig | Promise<EmptyStateConfig>` in addition to a static object, so the empty chat screen can be loaded from a Payload global or varied per tenant.
