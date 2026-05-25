@@ -284,26 +284,37 @@ export function walkRawFields(fields: readonly unknown[], visit: FieldVisitor): 
   return false
 }
 
+/** Feature keys whose Lexical node type differs from the key name. */
+export const FEATURE_KEY_TO_NODE_TYPE: Record<string, string> = {
+  blockquote: 'quote',
+  horizontalRule: 'horizontalrule',
+}
+
 /**
  * Scan raw Payload field groups for the rich-text features that gate
- * downstream behavior (currently the system-prompt bullets and block-node
- * example). Runs as a single `walkRawFields` pass and short-circuits once
- * both flags are set.
+ * downstream behavior (currently the system-prompt bullets, block-node
+ * example, and list-node example). Runs as a single `walkRawFields` pass
+ * over every field group — no short-circuit, because `featureKeyMismatches`
+ * must see all `richText` fields to collect every mismatch.
  *
  * - `hasLexicalFeatures`: any `richText` field has at least one lexical feature
  * - `hasBlocksFeature`:   any `richText` field carries `blocks` / `inlineBlocks`
+ * - `hasListFeature`:     any `richText` field carries `unorderedList` / `orderedList` / `checklist`
+ * - `featureKeyMismatches`: feature keys present in the config whose node type
+ *   differs from the key name
  */
 export function scanRichTextFeatures(fieldGroups: readonly (readonly unknown[])[]): {
+  featureKeyMismatches: string[]
   hasBlocksFeature: boolean
   hasLexicalFeatures: boolean
+  hasListFeature: boolean
 } {
   let hasLexicalFeatures = false
   let hasBlocksFeature = false
+  let hasListFeature = false
+  const featureKeyMismatchSet = new Set<string>()
 
   for (const group of fieldGroups) {
-    if (hasLexicalFeatures && hasBlocksFeature) {
-      break
-    }
     walkRawFields(group, (field) => {
       if (field.type !== 'richText') {
         return
@@ -316,11 +327,28 @@ export function scanRichTextFeatures(fieldGroups: readonly (readonly unknown[])[
       if (keys.includes('blocks') || keys.includes('inlineBlocks')) {
         hasBlocksFeature = true
       }
-      return hasLexicalFeatures && hasBlocksFeature ? 'stop' : 'skip'
+      if (
+        keys.includes('unorderedList') ||
+        keys.includes('orderedList') ||
+        keys.includes('checklist')
+      ) {
+        hasListFeature = true
+      }
+      for (const key of keys) {
+        if (key in FEATURE_KEY_TO_NODE_TYPE) {
+          featureKeyMismatchSet.add(key)
+        }
+      }
+      return 'skip'
     })
   }
 
-  return { hasBlocksFeature, hasLexicalFeatures }
+  return {
+    featureKeyMismatches: [...featureKeyMismatchSet].sort(),
+    hasBlocksFeature,
+    hasLexicalFeatures,
+    hasListFeature,
+  }
 }
 
 /**

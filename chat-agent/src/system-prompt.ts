@@ -11,7 +11,7 @@
 import type { PayloadConfigForPrompt } from './schema.js'
 import type { AgentMode } from './types.js'
 
-import { scanRichTextFeatures } from './schema.js'
+import { FEATURE_KEY_TO_NODE_TYPE, scanRichTextFeatures } from './schema.js'
 
 /**
  * Build the auto-generated system prompt for the chat agent. Consumers don't
@@ -37,7 +37,8 @@ export function buildSystemPrompt(
     ...(payloadConfig.collections ?? []).map((c) => c.fields ?? []),
     ...(payloadConfig.globals ?? []).map((g) => g.fields ?? []),
   ]
-  const { hasBlocksFeature, hasLexicalFeatures } = scanRichTextFeatures(fieldGroups)
+  const { featureKeyMismatches, hasBlocksFeature, hasLexicalFeatures, hasListFeature } =
+    scanRichTextFeatures(fieldGroups)
 
   sections.push(
     'You are a CMS content assistant with access to the Payload CMS database.',
@@ -114,6 +115,34 @@ export function buildSystemPrompt(
           '```',
           '',
           'The `blockType` discriminator lives inside `fields`, not at the top level. `blockName` is an empty string unless the user named the block. `id` is optional on input — Payload generates an ObjectId automatically. Inline-block nodes use `"type": "inlineBlock"` and `"version": 1` instead.',
+        ]
+      : []),
+    ...(hasListFeature
+      ? [
+          '',
+          '## Lexical list nodes',
+          'The `unorderedList`, `orderedList`, and `checklist` feature keys all emit `"type": "list"` — never a node type matching the key. Distinguish via `listType`/`tag`: `bullet`/`ul`, `number`/`ol`, `check`/`ul`.',
+          '',
+          '```json',
+          '{',
+          '  "type": "list", "version": 1, "listType": "bullet", "tag": "ul", "start": 1, "format": "",',
+          '  "children": [',
+          '    { "type": "listitem", "version": 1, "value": 1, "format": "", "indent": 0, "children": [{ "type": "text", "text": "…" }] }',
+          '  ]',
+          '}',
+          '```',
+          '',
+          'Increment `value` for each sibling `listitem`. Checklist items add `"checked": true | false`.',
+        ]
+      : []),
+    ...(featureKeyMismatches.length > 0
+      ? [
+          '',
+          '## Feature key → node type',
+          'These feature keys serialize to a different node `type`:',
+          ...featureKeyMismatches.map(
+            (key) => `- \`${key}\` → \`"type": "${FEATURE_KEY_TO_NODE_TYPE[key]}"\``,
+          ),
         ]
       : []),
     '',

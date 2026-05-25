@@ -466,4 +466,81 @@ describe('buildSystemPrompt rich-text feature guidance', () => {
     const prompt = buildSystemPrompt(config)
     expect(prompt).not.toContain('"type": "block"')
   })
+
+  it('includes list node docs when unorderedList or orderedList features are present', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'unorderedList'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('## Lexical list nodes')
+    expect(prompt).toContain('"type": "list"')
+    expect(prompt).toContain('"listType": "bullet"')
+    expect(prompt).toContain('"type": "listitem"')
+    expect(prompt).toContain('all emit `"type": "list"`')
+  })
+
+  it('includes list node docs with checklist guidance when the checklist feature is present', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'checklist'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('## Lexical list nodes')
+    expect(prompt).toContain('"checked"')
+  })
+
+  it('omits list node docs when no list features are present', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'italic'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('## Lexical list nodes')
+  })
+
+  it('includes feature key → node type mapping for blockquote and horizontalRule', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['blockquote', 'horizontalRule'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('## Feature key → node type')
+    expect(prompt).toContain('`blockquote` → `"type": "quote"`')
+    expect(prompt).toContain('`horizontalRule` → `"type": "horizontalrule"`')
+  })
+
+  it('omits feature key mapping when no mismatched features are present', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'heading'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('## Feature key → node type')
+  })
 })
