@@ -291,6 +291,16 @@ export const FEATURE_KEY_TO_NODE_TYPE: Record<string, string> = {
 }
 
 /**
+ * Feature keys that exist purely to drive editor toolbars and never correspond
+ * to a content node the agent can emit. Dropped during normalization so they
+ * don't pollute `lexical.features`.
+ */
+const UI_ONLY_FEATURE_KEYS = new Set([
+  'toolbarFixed', // FixedToolbarFeature
+  'toolbarInline', // InlineToolbarFeature
+])
+
+/**
  * Scan raw Payload field groups for the rich-text features that gate
  * downstream behavior (currently the system-prompt bullets, block-node
  * example, and list-node example). Runs as a single `walkRawFields` pass
@@ -372,8 +382,11 @@ export function getLexicalFeatureKeys(editor: unknown): string[] {
  *   2. `editor.resolvedFeatureMap` — `Map<key, { serverFeatureProps?, ... }>`
  *
  * Detection is purely structural so the extractor has no hard dependency on
- * `@payloadcms/richtext-lexical`. Returns `undefined` on unrecognised shapes
- * (never throws) so the caller can omit the `lexical` key entirely.
+ * `@payloadcms/richtext-lexical`. UI-only feature keys (see
+ * `UI_ONLY_FEATURE_KEYS`) are dropped so neither the summary nor the
+ * feature-presence scans see editor-chrome keys. Returns `undefined` on
+ * unrecognised shapes (never throws) so the caller can omit the `lexical` key
+ * entirely.
  */
 function normalizeLexicalFeatures(
   editor: unknown,
@@ -397,13 +410,14 @@ function normalizeLexicalFeatures(
           f && typeof f === 'object' && typeof (f as { key?: unknown }).key === 'string',
         )
       })
+      .filter((f) => !UI_ONLY_FEATURE_KEYS.has(f.key))
       .map((f) => ({ key: f.key, props: toProps(f as Record<string, unknown>) }))
   }
 
   if (e.resolvedFeatureMap instanceof Map) {
     const entries: { key: string; props: Record<string, unknown> }[] = []
     for (const [key, value] of e.resolvedFeatureMap.entries()) {
-      if (typeof key !== 'string') {
+      if (typeof key !== 'string' || UI_ONLY_FEATURE_KEYS.has(key)) {
         continue
       }
       const props =

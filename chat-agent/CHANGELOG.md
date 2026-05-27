@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: drop the UI-only `toolbarInline` and `toolbarFixed` feature keys from a `richText` field's `lexical.features`
+
 ## 0.1.0-beta.8
 
 - feat: `update` and `delete` tools now accept a `where` query for bulk operations, mirroring Payload's local API. Pass `id` to target a single document or `where` to update/delete many in one call; `update` also accepts an optional `limit` when using `where`.

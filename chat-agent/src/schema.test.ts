@@ -209,6 +209,25 @@ describe('extractFields — lexical feature summary', () => {
     expect((field.lexical?.options as Record<string, unknown> | undefined)?.myThing).toBeUndefined()
   })
 
+  it('drops UI-only toolbar feature keys from features', () => {
+    const [field] = extractFields([
+      richTextField('body', [
+        { key: 'toolbarInline' },
+        { key: 'bold' },
+        { key: 'toolbarFixed' },
+        { key: 'heading' },
+      ]),
+    ])
+    expect(field.lexical?.features).toEqual(['bold', 'heading'])
+  })
+
+  it('omits the lexical key when only UI-only features are present', () => {
+    const [field] = extractFields([
+      richTextField('body', [{ key: 'toolbarInline' }, { key: 'toolbarFixed' }]),
+    ])
+    expect(field.lexical).toBeUndefined()
+  })
+
   it('omits the lexical key when the richText editor is absent', () => {
     const [field] = extractFields([{ name: 'body', type: 'richText' }])
     expect(field.lexical).toBeUndefined()
