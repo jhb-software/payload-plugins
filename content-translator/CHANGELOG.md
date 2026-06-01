@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: map OpenAI translations back to their source by key instead of array position, so when the model merges or drops a fragment only that fragment stays untranslated instead of shifting every later field onto the wrong value; the translate operation now refuses to apply a result whose length does not match the request
 - fix: skip fields and tabs named `__proto__`, `constructor`, or `prototype` during traversal to avoid prototype-polluting writes when a user-supplied Payload config contains such a name
 
 ## 0.2.0

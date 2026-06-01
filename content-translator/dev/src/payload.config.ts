@@ -14,6 +14,7 @@ import { authorsSchema } from './collections/authors'
 import { mediaSchema } from './collections/media'
 import { pagesSchema } from './collections/pages'
 import { postsSchema } from './collections/posts'
+import { droppingResolver } from './resolvers/droppingResolver'
 import { mockResolver } from './resolvers/mockResolver'
 import { seed } from './seed'
 
@@ -84,6 +85,7 @@ export default buildConfig({
       collections: ['pages', 'posts', 'authors'],
       globals: [],
       // resolver: mockResolver(), // custom resolver for testing
+      // resolver: droppingResolver(), // returns a misaligned result to verify the operation fails loudly
       resolver: openAIResolver({
         apiKey: process.env.OPENAI_API_KEY || '',
         model: 'gpt-4o-mini',

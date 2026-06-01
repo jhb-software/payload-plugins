@@ -1,9 +1,9 @@
-import he from 'he'
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
 import type { TranslatorCustomConfig } from '../types.js'
 import type { TranslateArgs, TranslateResult, ValueToTranslate } from './types.js'
 
+import { applyTranslations } from './applyTranslations.js'
 import { findEntityWithConfig } from './findEntityWithConfig.js'
 import { traverseFields } from './traverseFields.js'
 import { updateEntity } from './updateEntity.js'
@@ -83,11 +83,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
       success: false,
     }
   } else {
-    resolveResult.translatedTexts.forEach((translated, index) => {
-      const formattedValue = he.decode(translated)
-
-      valuesToTranslate[index].onTranslate(formattedValue)
-    })
+    applyTranslations(valuesToTranslate, resolveResult.translatedTexts)
 
     if (args.update) {
       await updateEntity({
