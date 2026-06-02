@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 - fix: stop the deployment widget skeleton from flashing again right after load — the first background poll no longer triggers a redundant refresh of already-rendered data
 - fix: deployment widget skeleton now reserves the same height as the loaded row, removing the layout shift when the deployment info appears
