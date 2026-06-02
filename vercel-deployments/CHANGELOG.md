@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- fix: stop the deployment widget skeleton from flashing again right after load — the first background poll no longer triggers a redundant refresh of already-rendered data
+- fix: deployment widget skeleton now reserves the same height as the loaded row, removing the layout shift when the deployment info appears
+
 ## 0.3.0
 
 - feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16

@@ -124,8 +124,16 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
       }
 
       if (lastResponseRef.current !== responseText) {
+        // The server component already rendered with this exact data on the
+        // initial load, so refreshing on the first poll would just re-suspend
+        // the Suspense boundary and flash the skeleton again (twice under
+        // StrictMode's double-invoked effect). Seed the cache instead; only
+        // refresh once a later poll observes a real change.
+        const isFirstPoll = lastResponseRef.current === null
         lastResponseRef.current = responseText
-        router.refresh()
+        if (!isFirstPoll) {
+          router.refresh()
+        }
       }
     } catch {
       // Silently ignore polling errors

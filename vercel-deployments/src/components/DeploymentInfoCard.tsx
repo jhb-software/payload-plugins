@@ -67,7 +67,16 @@ export function DeploymentInfoCard({
             </div>
           ) : null}
 
-          <Suspense fallback={<DeploymentInfoSkeleton />}>
+          <Suspense
+            fallback={
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <DeploymentInfoRowSkeleton
+                  icon={<ClockIcon />}
+                  label={t('vercel-dashboard:deploymentInfoActiveDeployment')}
+                />
+              </div>
+            }
+          >
             <DeploymentInfo i18n={i18n} pluginConfig={pluginConfig} />
           </Suspense>
 
@@ -187,17 +196,29 @@ export default async function DeploymentInfo({
   )
 }
 
-function DeploymentInfoSkeleton() {
+// Mirrors a single DeploymentInfoRow so the loading state reserves the exact
+// same height as the loaded content — the real icon + label stay put and only
+// the value shimmers. The shimmer height matches the Pill (size="small"), whose
+// rendered height is its line-height (calc(var(--base) * 1.2)) since the small
+// pill has zero block padding; a flat 1.25rem bar was shorter and shifted.
+function DeploymentInfoRowSkeleton({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div
-      style={{
-        animation: 'pulse 2s infinite',
-        backgroundColor: 'var(--theme-elevation-100)',
-        borderRadius: '0.25rem',
-        height: '1.25rem',
-        maxWidth: '22.5rem',
-      }}
-    />
+    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem' }}>
+      <span style={{ alignItems: 'center', display: 'flex', gap: '0.375rem' }}>
+        {icon}
+        <span style={{ fontWeight: 500 }}>{label}:</span>
+      </span>
+      <span
+        aria-hidden="true"
+        style={{
+          animation: 'pulse 2s infinite',
+          backgroundColor: 'var(--theme-elevation-100)',
+          borderRadius: 'var(--style-radius-s)',
+          height: 'calc(var(--base) * 1.2)',
+          width: '11rem',
+        }}
+      />
+    </div>
   )
 }
 
