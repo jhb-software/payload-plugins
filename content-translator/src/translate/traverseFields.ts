@@ -5,9 +5,12 @@ import { tabHasName } from 'payload/shared'
 
 const ObjectID = typeof ObjectIDModule === 'function' ? ObjectIDModule : ObjectIDModule.default
 
-import type { ValueToTranslate } from './types.js'
+import type { IncrementalAccumulator, TranslateMode, ValueToTranslate } from './types.js'
 
 import { isEmpty } from '../utils/isEmpty.js'
+import { hashNode, hashText, nodePlainText } from './richtext/hashNode.js'
+import { setNodeHashes } from './richtext/nodeState.js'
+import { reconcileIncremental } from './richtext/reconcileIncremental.js'
 import { traverseRichText } from './traverseRichText.js'
 
 const isUnsafeKey = (key: string): boolean =>
@@ -15,9 +18,10 @@ const isUnsafeKey = (key: string): boolean =>
 
 export const traverseFields = ({
   dataFrom,
-  emptyOnly,
   fields,
+  incremental,
   localizedParent,
+  mode,
   payloadConfig,
   siblingDataFrom,
   siblingDataTranslated,
@@ -25,9 +29,10 @@ export const traverseFields = ({
   valuesToTranslate,
 }: {
   dataFrom: Record<string, unknown>
-  emptyOnly: boolean
   fields: Field[]
+  incremental?: IncrementalAccumulator
   localizedParent?: boolean
+  mode: TranslateMode
   payloadConfig: SanitizedConfig
   siblingDataFrom?: Record<string, unknown>
   siblingDataTranslated?: Record<string, unknown>
@@ -36,6 +41,11 @@ export const traverseFields = ({
 }) => {
   siblingDataFrom = siblingDataFrom ?? dataFrom
   siblingDataTranslated = siblingDataTranslated ?? translatedData
+  incremental = incremental ?? { conflictCount: 0, stamps: [] }
+
+  // `incremental` only changes richText behavior; everything else fills empty
+  // targets only, so existing (possibly hand-edited) translations are preserved.
+  const fillEmptyOnly = mode !== 'all'
 
   for (const field of fields) {
     if ('virtual' in field && field.virtual) {
@@ -60,7 +70,7 @@ export const traverseFields = ({
           (siblingDataTranslated[field.name] as { id: number | string }[] | undefined) ?? []
 
         if (field.localized || localizedParent) {
-          if (arrayDataTranslated.length > 0 && emptyOnly) {
+          if (arrayDataTranslated.length > 0 && fillEmptyOnly) {
             break
           }
 
@@ -72,9 +82,10 @@ export const traverseFields = ({
         arrayDataTranslated.forEach((item, index) => {
           traverseFields({
             dataFrom,
-            emptyOnly,
             fields: field.fields,
+            incremental,
             localizedParent: localizedParent ?? field.localized,
+            mode,
             payloadConfig,
             siblingDataFrom: arrayDataFrom[index],
             siblingDataTranslated: item,
@@ -104,7 +115,7 @@ export const traverseFields = ({
             | undefined) ?? []
 
         if (field.localized || localizedParent) {
-          if (blocksDataTranslated.length > 0 && emptyOnly) {
+          if (blocksDataTranslated.length > 0 && fillEmptyOnly) {
             break
           }
 
@@ -140,9 +151,10 @@ export const traverseFields = ({
 
           traverseFields({
             dataFrom,
-            emptyOnly,
             fields: blockConfig.fields,
+            incremental,
             localizedParent: localizedParent ?? field.localized,
+            mode,
             payloadConfig,
             siblingDataFrom: blocksDataFrom[index],
             siblingDataTranslated: item,
@@ -174,9 +186,10 @@ export const traverseFields = ({
       case 'row':
         traverseFields({
           dataFrom,
-          emptyOnly,
           fields: field.fields,
+          incremental,
           localizedParent,
+          mode,
           payloadConfig,
           siblingDataFrom,
           siblingDataTranslated,
@@ -201,9 +214,10 @@ export const traverseFields = ({
 
         traverseFields({
           dataFrom,
-          emptyOnly,
           fields: field.fields,
+          incremental,
           localizedParent: field.localized,
+          mode,
           payloadConfig,
           siblingDataFrom: groupDataFrom,
           siblingDataTranslated: groupDataTranslated,
@@ -224,19 +238,65 @@ export const traverseFields = ({
           break
         }
 
-        if (emptyOnly && !isEmpty(siblingDataTranslated[field.name])) {
-          break
-        }
-
-        const richTextDataFrom = siblingDataFrom[field.name] as object
-
-        siblingDataTranslated[field.name] = richTextDataFrom
+        const richTextDataFrom = siblingDataFrom[field.name] as Record<string, unknown>
 
         if (!richTextDataFrom) {
           break
         }
 
         const isLexical = 'root' in richTextDataFrom
+        const existingTarget = siblingDataTranslated[field.name]
+
+        // Incremental: diff source against the existing translation at the
+        // paragraph/block level instead of skipping or wholesale-replacing.
+        if (mode === 'incremental' && isLexical && !isEmpty(existingTarget)) {
+          const sourceRoot = richTextDataFrom.root as Record<string, unknown>
+          const targetRoot = (existingTarget as Record<string, unknown>).root as Record<
+            string,
+            unknown
+          >
+
+          const { children, conflictCount, stamps } = reconcileIncremental({
+            collectUnitTexts: (unitNode) => {
+              traverseRichText({
+                incremental,
+                mode: 'all',
+                onText: (siblingData, key) => {
+                  valuesToTranslate.push({
+                    onTranslate: (translated: string) => {
+                      siblingData[key] = translated
+                    },
+                    value: siblingData[key],
+                  })
+                },
+                payloadConfig,
+                root: unitNode,
+                translatedData,
+                valuesToTranslate,
+              })
+            },
+            sourceChildren: (sourceRoot?.children as Record<string, unknown>[]) ?? [],
+            targetChildren: (targetRoot?.children as Record<string, unknown>[]) ?? [],
+          })
+
+          siblingDataTranslated[field.name] = {
+            ...richTextDataFrom,
+            root: { ...sourceRoot, children },
+          }
+          incremental.stamps.push(...stamps)
+          incremental.conflictCount += conflictCount
+
+          break
+        }
+
+        // empty: leave an already-translated field untouched.
+        if (fillEmptyOnly && !isEmpty(existingTarget)) {
+          break
+        }
+
+        // all (and incremental over an empty target, or non-lexical): copy the
+        // source tree and translate every text node.
+        siblingDataTranslated[field.name] = richTextDataFrom
 
         if (!isLexical) {
           break
@@ -249,7 +309,8 @@ export const traverseFields = ({
 
         if (root) {
           traverseRichText({
-            emptyOnly,
+            incremental,
+            mode,
             onText: (siblingData, key) => {
               valuesToTranslate.push({
                 onTranslate: (translated: string) => {
@@ -263,6 +324,18 @@ export const traverseFields = ({
             translatedData,
             valuesToTranslate,
           })
+
+          // Stamp every top-level node so a later incremental run has the
+          // content-addressed hashes to join on. Capture srcHash now (before the
+          // deferred onTranslate mutates the text) and outHash after.
+          if (Array.isArray(root.children)) {
+            for (const child of root.children as Record<string, unknown>[]) {
+              const srcHash = hashNode(child)
+              incremental.stamps.push(() =>
+                setNodeHashes(child, srcHash, hashText(nodePlainText(child))),
+              )
+            }
+          }
         }
 
         break
@@ -290,9 +363,10 @@ export const traverseFields = ({
 
           traverseFields({
             dataFrom,
-            emptyOnly,
             fields: tab.fields,
+            incremental,
             localizedParent: tab.localized,
+            mode,
             payloadConfig,
             siblingDataFrom: tabDataFrom,
             siblingDataTranslated: tabDataTranslated,
@@ -315,7 +389,7 @@ export const traverseFields = ({
         if (!(field.localized || localizedParent) || isEmpty(siblingDataFrom[field.name])) {
           break
         }
-        if (emptyOnly && siblingDataTranslated[field.name]) {
+        if (fillEmptyOnly && siblingDataTranslated[field.name]) {
           break
         }
 

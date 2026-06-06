@@ -4,6 +4,8 @@ import { getTranslation } from '@payloadcms/translations'
 import { Button, LoadingOverlay, Modal, Popup, PopupList, useTranslation } from '@payloadcms/ui'
 import { useState } from 'react'
 
+import type { TranslateMode } from '../../../translate/types.js'
+
 import { useTranslator } from '../../providers/Translator/context.js'
 import { LocaleLabel } from '../LocaleLabel/LocaleLabel.js'
 
@@ -25,9 +27,9 @@ export const TranslatorModal = () => {
 
   const [isTranslating, setIsTranslating] = useState(false)
 
-  async function onSubmit(emptyOnly: boolean) {
+  async function onSubmit(mode: TranslateMode) {
     setIsTranslating(true)
-    await submit({ emptyOnly })
+    await submit({ mode })
     setIsTranslating(false)
   }
 
@@ -105,10 +107,13 @@ export const TranslatorModal = () => {
                 </>
               ) : (
                 <>
-                  <Button onClick={() => onSubmit(false)}>
+                  <Button onClick={() => onSubmit('all')}>
                     {translatorT('submitButtonLabelFull')}
                   </Button>
-                  <Button buttonStyle="pill" onClick={() => onSubmit(true)}>
+                  <Button buttonStyle="pill" onClick={() => onSubmit('incremental')}>
+                    {translatorT('submitButtonLabelIncremental')}
+                  </Button>
+                  <Button buttonStyle="pill" onClick={() => onSubmit('empty')}>
                     {translatorT('submitButtonLabelEmpty')}
                   </Button>
                 </>

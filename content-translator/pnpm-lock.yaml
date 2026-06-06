@@ -54,9 +54,15 @@ importers:
         specifier: 19.2.6
         version: 19.2.6(react@19.2.6)
     devDependencies:
+      '@lexical/headless':
+        specifier: ^0.41.0
+        version: 0.41.0
       '@payloadcms/eslint-config':
         specifier: ^3.28.0
         version: 3.28.0(@typescript-eslint/eslint-plugin@8.59.3(@typescript-eslint/parser@8.59.3(eslint@9.39.4)(typescript@6.0.3))(eslint@9.39.4)(typescript@6.0.3))(ts-api-utils@2.5.0(typescript@6.0.3))
+      '@payloadcms/richtext-lexical':
+        specifier: ^3.84.1
+        version: 3.84.1(@faceless-ui/modal@3.0.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@faceless-ui/scroll-info@2.0.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@payloadcms/next@3.84.1(@types/react@19.2.14)(graphql@16.12.0)(monaco-editor@0.55.1)(next@16.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.77.4))(payload@3.84.1(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3))(@types/react@19.2.14)(monaco-editor@0.55.1)(next@16.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.77.4))(payload@3.84.1(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)(yjs@13.6.27)
       '@swc/cli':
         specifier: ^0.8.1
         version: 0.8.1(@swc/core@1.15.33)
@@ -78,6 +84,9 @@ importers:
       eslint:
         specifier: ^9.39.4
         version: 9.39.4
+      lexical:
+        specifier: ^0.41.0
+        version: 0.41.0
       prettier:
         specifier: ^3.8.3
         version: 3.8.3

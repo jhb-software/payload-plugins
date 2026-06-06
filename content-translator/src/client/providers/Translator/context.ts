@@ -2,6 +2,8 @@ import type { Locale } from 'payload'
 
 import { createContext, useContext } from 'react'
 
+import type { TranslateMode } from '../../../translate/types.js'
+
 export type TranslationKey =
   | 'buttonLabel'
   | 'errorMessage'
@@ -9,8 +11,10 @@ export type TranslationKey =
   | 'modalSourceLanguage'
   | 'modalTitle'
   | 'modalTranslating'
+  | 'reviewNeeded'
   | 'submitButtonLabelEmpty'
   | 'submitButtonLabelFull'
+  | 'submitButtonLabelIncremental'
   | 'successMessage'
 
 type TranslatorContextData = {
@@ -21,7 +25,7 @@ type TranslatorContextData = {
   openTranslator: () => void
   resolver: { key: string } | null
   setLocaleToTranslateFrom: (code: string) => void
-  submit: (args: { emptyOnly: boolean }) => Promise<void>
+  submit: (args: { mode: TranslateMode }) => Promise<void>
   translatorT: (key: TranslationKey) => string
 }
 

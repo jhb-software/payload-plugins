@@ -12,7 +12,7 @@ import {
 import { reduceFieldsToValues } from 'payload/shared'
 import { type ReactNode, useEffect, useState } from 'react'
 
-import type { TranslateArgs } from '../../../translate/types.js'
+import type { TranslateArgs, TranslateMode } from '../../../translate/types.js'
 import type { TranslatorClientConfig } from '../../../types.js'
 
 import { createClient } from '../../api/index.js'
@@ -74,7 +74,7 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
 
   const closeTranslator = () => modal.closeModal(modalSlug)
 
-  const submit = async ({ emptyOnly }: { emptyOnly: boolean }) => {
+  const submit = async ({ mode }: { mode: TranslateMode }) => {
     if (!resolver) {
       return
     }
@@ -83,10 +83,10 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
       id: id === null ? undefined : id,
       collectionSlug,
       data: reduceFieldsToValues(data, true),
-      emptyOnly,
       globalSlug,
       locale: locale.code,
       localeFrom: localeToTranslateFrom,
+      mode,
     }
 
     const result = await apiClient.translate(args)
@@ -120,7 +120,16 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
         })
 
         setModified(true)
-        toast.success(translatorT('successMessage'))
+
+        const reviewCount = result.reviewCount ?? 0
+        toast.success(
+          reviewCount > 0
+            ? `${translatorT('successMessage')} ${translatorT('reviewNeeded').replace(
+                '{{count}}',
+                String(reviewCount),
+              )}`
+            : translatorT('successMessage'),
+        )
       }
     } catch (e) {
       console.error(e)

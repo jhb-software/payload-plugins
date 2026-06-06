@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: add incremental richText translation ("Translate new & changed content") that translates only new or changed paragraphs, preserves existing translations and manual edits, and reports how many paragraphs need review when a source paragraph changed under a hand-edited translation
 - fix: skip fields and tabs named `__proto__`, `constructor`, or `prototype` during traversal to avoid prototype-polluting writes when a user-supplied Payload config contains such a name
 
 ## 0.2.0

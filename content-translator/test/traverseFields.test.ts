@@ -15,8 +15,8 @@ const runTraverse = (fields: Field[], dataFrom: Record<string, unknown>, emptyOn
 
   traverseFields({
     dataFrom,
-    emptyOnly,
     fields,
+    mode: emptyOnly ? 'empty' : 'all',
     payloadConfig,
     translatedData,
     valuesToTranslate,
@@ -207,8 +207,8 @@ describe('traverseFields - emptyOnly with missing target sub-objects (#137)', ()
 
     traverseFields({
       dataFrom: { meta: { title: 'Hello', description: 'World' } },
-      emptyOnly: true,
       fields,
+      mode: 'empty',
       payloadConfig,
       translatedData,
       valuesToTranslate,
