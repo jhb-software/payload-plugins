@@ -49,6 +49,7 @@ const runPass = (
   mode: 'all' | 'empty' | 'incremental',
   dataFrom: Record<string, unknown>,
   translatedData: Record<string, unknown>,
+  localeFrom = 'en',
 ) => {
   const valuesToTranslate: ValueToTranslate[] = []
   const incremental: IncrementalAccumulator = { conflictCount: 0, stamps: [] }
@@ -57,6 +58,7 @@ const runPass = (
     dataFrom,
     fields: contentFields,
     incremental,
+    localeFrom,
     mode,
     payloadConfig,
     translatedData,
@@ -75,10 +77,10 @@ const runPass = (
 }
 
 /** Produce a fully translated + stamped target tree from a source tree (initial "all" run). */
-const initialTranslate = (sourceChildren: LexNode[]) => {
+const initialTranslate = (sourceChildren: LexNode[], localeFrom = 'en') => {
   const dataFrom = { content: lex(sourceChildren) }
   const translatedData: Record<string, unknown> = {}
-  runPass('all', dataFrom, translatedData)
+  runPass('all', dataFrom, translatedData, localeFrom)
   return translatedData as { content: ReturnType<typeof lex> }
 }
 
@@ -165,6 +167,20 @@ describe('incremental richText translation', () => {
     assert.deepEqual(targetChildren(target).map(paraText), ['TRANSLATED:Stay'])
   })
 
+  test('a paragraph unchanged in one source locale is still reused after translating from a different source locale', () => {
+    // Target first translated from EN, stamping a per-EN source hash.
+    const target = initialTranslate([para('Hello world')], 'en')
+
+    // Then translated from DE (different source text) — retranslates and stamps a per-DE hash.
+    runPass('incremental', { content: lex([para('Hallo Welt')]) }, target, 'de')
+
+    // Re-running from EN with the EN source unchanged must reuse, not retranslate,
+    // because the per-locale srcHash for EN survived the DE run.
+    const result = runPass('incremental', { content: lex([para('Hello world')]) }, target, 'en')
+
+    assert.deepEqual(result.translatedValues, [])
+  })
+
   test('incremental from an empty target translates everything', () => {
     const target: Record<string, unknown> = {}
 
@@ -193,7 +209,7 @@ describe('incremental richText storage', () => {
     const nodes = getEnabledNodes({ editorConfig: sanitized as any })
     const editor = createHeadlessEditor({ nodes })
 
-    const nodeState = { 'translator-plugin': { outHash: 'def456', srcHash: 'abc123' } }
+    const nodeState = { 'translator-plugin': { outHash: 'def456', srcHash: { en: 'abc123' } } }
 
     const editorState = editor.parseEditorState(lex([para('Hallo Welt', { $: nodeState })]) as any)
     const roundTripped: any = editorState.toJSON()

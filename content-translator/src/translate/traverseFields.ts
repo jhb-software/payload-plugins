@@ -16,10 +16,24 @@ import { traverseRichText } from './traverseRichText.js'
 const isUnsafeKey = (key: string): boolean =>
   key === '__proto__' || key === 'constructor' || key === 'prototype'
 
+/**
+ * Write to a dynamic, config-derived key while refusing prototype-polluting
+ * keys. The loop already skips unsafe field names up front, so this is
+ * defense-in-depth that also keeps the assignment provably safe at each call
+ * site (and quiet to static analysis).
+ */
+const assignSafely = (target: Record<string, unknown>, key: string, value: unknown): void => {
+  if (isUnsafeKey(key)) {
+    return
+  }
+  target[key] = value
+}
+
 export const traverseFields = ({
   dataFrom,
   fields,
   incremental,
+  localeFrom,
   localizedParent,
   mode,
   payloadConfig,
@@ -31,6 +45,8 @@ export const traverseFields = ({
   dataFrom: Record<string, unknown>
   fields: Field[]
   incremental?: IncrementalAccumulator
+  /** Source locale of this run; selects which per-locale srcHash to read/write. */
+  localeFrom: string
   localizedParent?: boolean
   mode: TranslateMode
   payloadConfig: SanitizedConfig
@@ -92,6 +108,7 @@ export const traverseFields = ({
             dataFrom,
             fields: field.fields,
             incremental,
+            localeFrom,
             localizedParent: localizedParent ?? field.localized,
             mode,
             payloadConfig,
@@ -102,7 +119,7 @@ export const traverseFields = ({
           })
         })
 
-        siblingDataTranslated[field.name] = arrayDataTranslated
+        assignSafely(siblingDataTranslated, field.name, arrayDataTranslated)
 
         break
       }
@@ -161,6 +178,7 @@ export const traverseFields = ({
             dataFrom,
             fields: blockConfig.fields,
             incremental,
+            localeFrom,
             localizedParent: localizedParent ?? field.localized,
             mode,
             payloadConfig,
@@ -171,7 +189,7 @@ export const traverseFields = ({
           })
         })
 
-        siblingDataTranslated[field.name] = blocksDataTranslated
+        assignSafely(siblingDataTranslated, field.name, blocksDataTranslated)
 
         break
       }
@@ -187,7 +205,7 @@ export const traverseFields = ({
       case 'relationship':
       case 'select':
       case 'upload':
-        siblingDataTranslated[field.name] = siblingDataFrom[field.name]
+        assignSafely(siblingDataTranslated, field.name, siblingDataFrom[field.name])
 
         break
       case 'collapsible':
@@ -196,6 +214,7 @@ export const traverseFields = ({
           dataFrom,
           fields: field.fields,
           incremental,
+          localeFrom,
           localizedParent,
           mode,
           payloadConfig,
@@ -224,6 +243,7 @@ export const traverseFields = ({
           dataFrom,
           fields: field.fields,
           incremental,
+          localeFrom,
           localizedParent: field.localized,
           mode,
           payloadConfig,
@@ -233,7 +253,7 @@ export const traverseFields = ({
           valuesToTranslate,
         })
 
-        siblingDataTranslated[field.name] = groupDataTranslated
+        assignSafely(siblingDataTranslated, field.name, groupDataTranslated)
 
         break
       }
@@ -268,6 +288,7 @@ export const traverseFields = ({
             collectUnitTexts: (unitNode) => {
               traverseRichText({
                 incremental,
+                localeFrom,
                 mode: 'all',
                 onText: (siblingData, key) => {
                   valuesToTranslate.push({
@@ -283,14 +304,15 @@ export const traverseFields = ({
                 valuesToTranslate,
               })
             },
+            localeFrom,
             sourceChildren: (sourceRoot?.children as Record<string, unknown>[]) ?? [],
             targetChildren: (targetRoot?.children as Record<string, unknown>[]) ?? [],
           })
 
-          siblingDataTranslated[field.name] = {
+          assignSafely(siblingDataTranslated, field.name, {
             ...richTextDataFrom,
             root: { ...sourceRoot, children },
-          }
+          })
           incremental.stamps.push(...stamps)
           incremental.conflictCount += conflictCount
 
@@ -304,7 +326,7 @@ export const traverseFields = ({
 
         // all (and incremental over an empty target, or non-lexical): copy the
         // source tree and translate every text node.
-        siblingDataTranslated[field.name] = richTextDataFrom
+        assignSafely(siblingDataTranslated, field.name, richTextDataFrom)
 
         if (!isLexical) {
           break
@@ -318,6 +340,7 @@ export const traverseFields = ({
         if (root) {
           traverseRichText({
             incremental,
+            localeFrom,
             mode,
             onText: (siblingData, key) => {
               valuesToTranslate.push({
@@ -340,7 +363,7 @@ export const traverseFields = ({
             for (const child of root.children as Record<string, unknown>[]) {
               const srcHash = hashNode(child)
               incremental.stamps.push(() =>
-                setNodeHashes(child, srcHash, hashText(nodePlainText(child))),
+                setNodeHashes(child, localeFrom, srcHash, hashText(nodePlainText(child))),
               )
             }
           }
@@ -373,6 +396,7 @@ export const traverseFields = ({
             dataFrom,
             fields: tab.fields,
             incremental,
+            localeFrom,
             localizedParent: tab.localized,
             mode,
             payloadConfig,
@@ -383,7 +407,7 @@ export const traverseFields = ({
           })
 
           if (hasName) {
-            siblingDataTranslated[tab.name] = tabDataTranslated
+            assignSafely(siblingDataTranslated, tab.name, tabDataTranslated)
           }
         }
 
@@ -408,7 +432,7 @@ export const traverseFields = ({
 
         valuesToTranslate.push({
           onTranslate: (translated: string) => {
-            siblingDataTranslated[field.name] = translated
+            assignSafely(siblingDataTranslated, field.name, translated)
           },
           value: siblingDataFrom[field.name],
         })

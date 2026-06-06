@@ -1,5 +1,5 @@
 import { hashNode, hashText, nodePlainText } from './hashNode.js'
-import { getNodeHashes, setNodeHashes } from './nodeState.js'
+import { getNodeHashes, inheritSrcHashes, setNodeHashes } from './nodeState.js'
 
 type LexicalNode = Record<string, unknown>
 
@@ -17,9 +17,9 @@ export type ReconcileResult = {
  * translating only new or changed units and preserving everything else.
  *
  * Identity is content-addressed: each source unit hashes to `h`, and the target
- * nodes are indexed by the `srcHash` they were last translated from. A match
- * means the source is unchanged → the target node is reused as-is (manual edits
- * preserved, no translation). A miss means the source is new or changed:
+ * nodes are indexed by the `srcHash` they were translated from for this source
+ * locale. A match means the source is unchanged → the target node is reused
+ * as-is (manual edits preserved, no translation). A miss means new or changed:
  *
  * - if the paired prior target still holds untouched machine output → retranslate
  * - if it was hand-edited → leave it in place and count it as needing review
@@ -30,19 +30,23 @@ export type ReconcileResult = {
  */
 export const reconcileIncremental = ({
   collectUnitTexts,
+  localeFrom,
   sourceChildren,
   targetChildren,
 }: {
   /** Push the unit node's translatable text into valuesToTranslate (translated in place). */
   collectUnitTexts: (unitNode: LexicalNode) => void
+  /** Source locale of this run; selects which per-locale srcHash to join on. */
+  localeFrom: string
   sourceChildren: LexicalNode[]
   targetChildren: LexicalNode[]
 }): ReconcileResult => {
-  // Content-addressed index: stored srcHash -> queue of target nodes (queued so
-  // duplicate-text units are consumed in order rather than colliding).
+  // Content-addressed index: stored srcHash (for this source locale) -> queue of
+  // target nodes (queued so duplicate-text units are consumed in order rather
+  // than colliding).
   const targetsBySrcHash = new Map<string, LexicalNode[]>()
   for (const targetNode of targetChildren) {
-    const { srcHash } = getNodeHashes(targetNode)
+    const { srcHash } = getNodeHashes(targetNode, localeFrom)
     if (srcHash) {
       const queue = targetsBySrcHash.get(srcHash) ?? []
       queue.push(targetNode)
@@ -85,7 +89,7 @@ export const reconcileIncremental = ({
       leftoverIndex < leftoverTargets.length ? leftoverTargets[leftoverIndex++] : undefined
 
     if (prior) {
-      const { outHash } = getNodeHashes(prior)
+      const { outHash } = getNodeHashes(prior, localeFrom)
       const priorEdited = outHash !== undefined && outHash !== hashText(nodePlainText(prior))
 
       if (priorEdited) {
@@ -97,11 +101,18 @@ export const reconcileIncremental = ({
     }
 
     // New unit, or changed source over untouched machine output: translate a
-    // fresh clone of the source so its text is overwritten and re-stamped.
+    // fresh clone of the source so its text is overwritten and re-stamped. If it
+    // replaces a prior translation, inherit that node's per-locale source hashes
+    // so a later run from a different source locale can still reuse it.
     const clone = structuredClone(step.sourceNode)
     const srcHash = hashNode(clone)
     collectUnitTexts(clone)
-    stamps.push(() => setNodeHashes(clone, srcHash, hashText(nodePlainText(clone))))
+    stamps.push(() => {
+      if (prior) {
+        inheritSrcHashes(clone, prior)
+      }
+      setNodeHashes(clone, localeFrom, srcHash, hashText(nodePlainText(clone)))
+    })
     children.push(clone)
   }
 

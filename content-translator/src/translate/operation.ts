@@ -70,6 +70,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     dataFrom,
     fields: config.fields,
     incremental,
+    localeFrom: args.localeFrom,
     mode: args.mode ?? 'all',
     payloadConfig: req.payload.config,
     translatedData,

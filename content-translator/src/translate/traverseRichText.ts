@@ -6,6 +6,7 @@ import { traverseFields } from './traverseFields.js'
 
 export const traverseRichText = ({
   incremental,
+  localeFrom,
   mode,
   onText,
   payloadConfig,
@@ -15,6 +16,7 @@ export const traverseRichText = ({
   valuesToTranslate,
 }: {
   incremental?: IncrementalAccumulator
+  localeFrom: string
   mode: TranslateMode
   onText: (siblingData: Record<string, unknown>, key: string) => void
   payloadConfig: SanitizedConfig
@@ -49,6 +51,7 @@ export const traverseRichText = ({
           dataFrom: root,
           fields: blockConfig.fields,
           incremental,
+          localeFrom,
           localizedParent: false,
           mode,
           payloadConfig,
@@ -65,6 +68,7 @@ export const traverseRichText = ({
     for (const child of siblingData.children) {
       traverseRichText({
         incremental,
+        localeFrom,
         mode,
         onText,
         payloadConfig,
