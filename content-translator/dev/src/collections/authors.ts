@@ -5,6 +5,7 @@ export const authorsSchema: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
   },
+  versions: true,
   fields: [
     {
       name: 'name',
