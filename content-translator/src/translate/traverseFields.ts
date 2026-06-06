@@ -43,8 +43,16 @@ export const traverseFields = ({
   siblingDataTranslated = siblingDataTranslated ?? translatedData
   incremental = incremental ?? { conflictCount: 0, stamps: [] }
 
-  // `incremental` only changes richText behavior; everything else fills empty
-  // targets only, so existing (possibly hand-edited) translations are preserved.
+  // LIMITATION: change detection only works for lexical richText. `incremental`
+  // does node-level diffing of lexical paragraphs/blocks (see the richText case
+  // below); for every other field type it falls back to empty-only here. So a
+  // text/textarea/number/array/blocks value whose SOURCE changed after it was
+  // already translated is NOT retranslated in incremental mode — only fields
+  // that are still empty get filled. Catching edits on those would need a hash
+  // of the source stored per field (plain fields have no NodeState slot to carry
+  // it inline, unlike lexical nodes), i.e. the sidecar approach — out of scope
+  // here. Despite the "new & changed" label, "changed" currently means lexical
+  // content only.
   const fillEmptyOnly = mode !== 'all'
 
   for (const field of fields) {
