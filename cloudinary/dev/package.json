@@ -18,6 +18,7 @@
   "dependencies": {
     "@jhb.software/payload-cloudinary-plugin": "workspace:*",
     "@payloadcms/db-mongodb": "^3.84.1",
+    "@payloadcms/plugin-cloud-storage": "^3.84.1",
     "@payloadcms/next": "^3.84.1",
     "next": "16.2.6",
     "payload": "^3.84.1",

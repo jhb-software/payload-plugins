@@ -32,11 +32,11 @@
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
-    "@payloadcms/plugin-cloud-storage": "^3.84.1",
     "cloudinary": "^2.10.0"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
+    "@payloadcms/plugin-cloud-storage": "^3.84.1",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.33",
     "@types/react": "19.2.14",
@@ -49,6 +49,7 @@
     "vitest": "^4.1.6"
   },
   "peerDependencies": {
+    "@payloadcms/plugin-cloud-storage": "^3.84.1",
     "next": "^15.0.0 || ^16.0.0",
     "payload": "^3.84.1"
   },
