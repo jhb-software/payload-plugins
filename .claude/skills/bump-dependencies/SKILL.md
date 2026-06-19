@@ -1,6 +1,6 @@
 ---
 name: bump-dependencies
-description: Run the bundled bump-dependencies.sh to bump plugin dependencies, then walk every non-patch version change to surface breaking changes and apply any plugin-side updates needed. Use when the user says "bump dependencies", "upgrade dependencies", "update dependencies", or wants to refresh a single plugin's dependencies.
+description: Run the bundled bump-dependencies.sh to bump plugin dependencies, then walk every non-patch version change to surface breaking changes and apply any plugin-side updates needed. Also audits every workspace for security advisories (audit-dependencies.sh) and fixes them via override floors or direct-dependency pins. Use when the user says "bump dependencies", "upgrade dependencies", "update dependencies", "audit dependencies", "check for vulnerabilities", or wants to refresh a single plugin's dependencies.
 ---
 
 # Bump plugin dependencies and review breaking changes
@@ -93,6 +93,27 @@ The script bumps `package.json` and `pnpm-lock.yaml` but never touches the `over
    - natural resolution **< floor** → still load-bearing, keep it (removing it puts a below-floor version back in the lockfile).
 
    A downward drop after stripping is proof the floor does real work: the pre-strip lockfile held the forced safe version, so re-resolving lower means the natural range sits below the floor. A bump as large as a Payload minor rarely retires a floor — at the 3.84→3.85 bump, even `mongoose` (whose `@payloadcms/db-mongodb` consumer now requires `8.22.1` directly) still resolved `8.15.1` from another consumer, so every floor stayed. Restore the tree with `git stash` (not `git checkout -- .`, which is denied) once measured.
+
+## Audit for vulnerabilities and fix them
+
+A version bump is the natural moment to clear advisories. Each plugin is its own workspace, so audit per lockfile and consolidate.
+
+1. **Run the consolidated audit.** The helper next to this skill runs `pnpm audit` in every folder with its own `pnpm-lock.yaml` and prints one deduplicated table (one row per advisory, with the count of affected plugins) — what a per-folder loop can't show:
+
+   ```sh
+   ./.claude/skills/bump-dependencies/audit-dependencies.sh           # any advisory → exit 1
+   ./.claude/skills/bump-dependencies/audit-dependencies.sh high      # CI gate: only high+ fails
+   ```
+
+   The same advisory usually spans many plugins (shared Payload/tooling deps), so fix it once per package, not once per plugin.
+
+2. **Prefer the root-cause fix — update the owning dependency before reaching for an override.** Run `pnpm -C <plugin> why <pkg>` to find which direct/parent dependency pulls the vulnerable version. If a newer release of that owner requires the patched range, bumping the owner clears the advisory _and_ leaves no override behind — the cleanest fix, and it tracks upstream instead of pinning against it. The bump step (`bump-dependencies.sh` → `pnpm up --latest`) already does this for **direct** deps, so within the full flow the survivors are usually transitive-only with an already-current owner — those genuinely need step 3/4. Reach for an override only after confirming the owner can't move (already latest, or its range still spans the vulnerable version). An override is a forceful pin: it masks the real graph and accumulates, so it's the fallback, not the default.
+
+3. **Otherwise, fix with an override floor — the same mechanism as the security floors above.** For each advisory add (or raise) `pkg: '^<patched>'` in every plugin's `overrides:` block. Watch for a floor that _caps below_ the patched version: `esbuild: '^0.27.0'` excludes the `0.28.1` fix, so it has to move to `^0.28.1`, not just gain a sibling.
+
+4. **When the override won't move a transitive, pin it as a direct devDependency.** pnpm applies overrides during _fresh_ resolution but will not re-resolve an already-locked transitive to satisfy a changed override — `install`, `install --force`, `dedupe`, and `update <pkg>` all leave it in place (the lockfile even records the new override next to the old resolved version). The reliable escape hatch is to add the package as a direct `devDependency` at the patched range in the plugin that pulls it; a direct dep always resolves to its declared range, and the transitive consumer dedupes onto it. Example: `vite` (pulled by `vitest`, peer `^6 || ^7 || ^8`) stayed on the vulnerable line under a `vite: '^8.0.16'` override, so `"vite": "^8.0.16"` went into chat-agent and vercel-deployments `devDependencies` next to `vitest`.
+
+5. **Reinstall, re-audit to zero, then verify the toolchain.** Forcing a build-tool version is exactly where things break — `esbuild` minors (`0.x` = breaking by convention) and a `vite` major shift the transform/bundle path. After the fix, re-run the audit _and_ `typecheck` + `test` for every plugin, plus `build` for any plugin that uses the tool directly (e.g. astro's `esbuild` + `vite-plugin-dts`). Don't claim the advisories are cleared until the audit is empty and the suites are green.
 
 ## Heuristics for what to read carefully vs skim
 
