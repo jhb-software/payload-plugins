@@ -4,13 +4,16 @@ import type {
   CollectionOptions,
   GeneratedAdapter,
 } from '@payloadcms/plugin-cloud-storage/types'
-import type { Config, Field, Plugin } from 'payload'
+import type { CollectionBeforeChangeHook, Config, Field, Plugin } from 'payload'
 
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import { initClientUploads } from '@payloadcms/plugin-cloud-storage/utilities'
 import { v2 as cloudinary } from 'cloudinary'
 
-import type { CloudinaryClientUploadHandlerExtra } from './client/CloudinaryClientUploadHandler.js'
+import type {
+  ClientUploadContext,
+  CloudinaryClientUploadHandlerExtra,
+} from './client/CloudinaryClientUploadHandler.js'
 import type { CloudinaryStorageOptions } from './types.js'
 
 import { getGenerateUrl } from './generateURL.js'
@@ -122,9 +125,65 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       }),
     }
 
-    return cloudStoragePlugin({
+    const result = cloudStoragePlugin({
       collections: collectionsWithAdapter,
     })(config)
+
+    // The workarounds below only matter when client uploads are enabled; otherwise cloud-storage's
+    // own afterChange/handleUpload and static handler behave as this plugin expects.
+    if (!options.clientUploads) {
+      return result
+    }
+
+    // Since Payload 3.82, cloud-storage's afterChange skips handleUpload for files that carry a
+    // `clientUploadContext`. This plugin relied on handleUpload to persist `cloudinaryPublicId`/`url`
+    // from that context, so without this hook a client-uploaded document is saved without a usable URL.
+    const persistClientUploadContext: CollectionBeforeChangeHook = ({ data, req }) => {
+      const clientUploadContext = (req?.file as { clientUploadContext?: ClientUploadContext })
+        ?.clientUploadContext
+
+      if (clientUploadContext) {
+        data.cloudinaryPublicId = clientUploadContext.publicId
+        data.url = clientUploadContext.secureUrl
+      }
+
+      return data
+    }
+
+    result.collections = (result.collections || []).map((collection) => {
+      const collOptions = options.collections[collection.slug]
+      if (!collOptions) {
+        return collection
+      }
+
+      const existingHooks = collection.hooks || {}
+      const withHook = {
+        ...collection,
+        hooks: {
+          ...existingHooks,
+          beforeChange: [persistClientUploadContext, ...(existingHooks.beforeChange || [])],
+        },
+      }
+
+      // With `disablePayloadAccessControl: true`, cloud-storage only invokes the static handler when
+      // the request carries a `clientUploadContext`, so a plain admin GET of the file 404s with
+      // "missing on the disk". The plugin's static handler resolves the file by filename, so register
+      // it as the first handler for those collections. Other collections already get the static handler
+      // from cloud-storage unconditionally.
+      if (typeof collOptions !== 'object' || collOptions.disablePayloadAccessControl !== true) {
+        return withHook
+      }
+
+      const upload = typeof collection.upload === 'object' ? collection.upload : {}
+      const existingHandlers = Array.isArray(upload.handlers) ? upload.handlers : []
+
+      return {
+        ...withHook,
+        upload: { ...upload, handlers: [getStaticHandler(), ...existingHandlers] },
+      }
+    })
+
+    return result
   }
 
 function cloudinaryStorageAdapter(options: CloudinaryStorageOptions): Adapter {
