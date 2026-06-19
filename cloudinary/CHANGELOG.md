@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: restore client uploads on Payload 3.82+. Client-uploaded documents now keep a usable `url`/`cloudinaryPublicId`, and files served from `disablePayloadAccessControl` collections no longer fail with "missing on the disk".
 - fix: harden the client-upload signature endpoint (`/cloudinary-generate-signature`). The endpoint now only signs the `timestamp`, `folder`, and `public_id` parameters, only issues signatures for collections the plugin manages, enforces the configured upload folder, and rejects stale timestamps. The default access control now requires `create` access to the target upload collection instead of merely being authenticated.
 
 ## 0.3.4
