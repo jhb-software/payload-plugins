@@ -43,7 +43,13 @@ const maxTimestampSkewSeconds = 60 * 60
 const allowedParams = new Set(['folder', 'public_id', 'timestamp'])
 
 /** Strips leading and trailing slashes so folder values compare consistently. */
-const normalizeFolder = (value: string): string => value.replace(/^\/+|\/+$/g, '')
+const normalizeFolder = (value: string): string => {
+  let start = 0
+  let end = value.length
+  while (start < end && value[start] === '/') start++
+  while (end > start && value[end - 1] === '/') end--
+  return value.slice(start, end)
+}
 
 /**
  * This returns a Payload handler function that generates a signature of the file which the client can then sent to cloudinary together with the file.
