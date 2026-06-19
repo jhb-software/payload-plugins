@@ -136,6 +136,9 @@ jobs:
       - name: Run tests (astro-payload-richtext-lexical)
         run: cd astro-payload-richtext-lexical && pnpm test
 
+      - name: Run tests (cloudinary)
+        run: cd cloudinary && pnpm test
+
       - name: Run tests (content-translator)
         run: cd content-translator && pnpm test
 
