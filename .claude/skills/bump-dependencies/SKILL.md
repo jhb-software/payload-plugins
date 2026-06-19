@@ -69,6 +69,31 @@ Goal: bump the dependencies via the bundled script, then for every non-patch jum
 
    Don't commit. The user runs `git commit` themselves so they can review the diff.
 
+## Reconcile `pnpm-workspace.yaml` overrides
+
+The script bumps `package.json` and `pnpm-lock.yaml` but never touches the `overrides:` block in each plugin's `pnpm-workspace.yaml`. Overrides win during resolution, so any dependency pinned there is silently capped — `package.json` shows the new version while the lockfile keeps the old one. After the bump, audit the overrides:
+
+1. **Find the mismatch.** For every dependency that appears in both the bump diff and an `overrides:` block, compare declared vs resolved:
+
+   ```sh
+   grep -E "^  <dep>:" <plugin>/pnpm-workspace.yaml      # the pin
+   pnpm -C <plugin> list <dep>                            # what actually resolved
+   ```
+
+   An exact pin (`next: '16.2.6'`) caps the dep; a `^`-floor (`mongoose: '^8.22.1'`) only sets a minimum and won't block an upgrade.
+
+2. **Bump exact-pin dedup overrides; never remove them.** `next` is pinned to one exact version on purpose: it forces a single `next` (and therefore one React) across the plugin root, the `dev*/` apps, and the `@payloadcms/*` peers. Remove the pin and the `@payloadcms/*` multi-window peer range (`>=16.2.6 <17`) lets a transitive dep pull a second `next`, so the tree resolves two versions at once — the duplicate-deps Payload admin crash (`Cannot destructure property 'config' of useConfig()`; see the `fix-payload-duplicate-deps` skill). Bump the pin to match the new `package.json`, reinstall, and confirm one version remains:
+
+   ```sh
+   pnpm -C <plugin> list next | grep -oE 'next@[0-9.]+' | sort -u   # must be a single line
+   ```
+
+3. **Audit `^` security floors for redundancy.** A floor exists because some transitive dep once pulled a vulnerable version. Once that dep updates its own range, the floor is dead weight. Test it empirically: strip the floor lines (keep the dedup pins), reinstall every plugin, and compare each package's lowest resolved version to its floor.
+   - natural resolution **≥ floor** → redundant, drop the override.
+   - natural resolution **< floor** → still load-bearing, keep it (removing it puts a below-floor version back in the lockfile).
+
+   A downward drop after stripping is proof the floor does real work: the pre-strip lockfile held the forced safe version, so re-resolving lower means the natural range sits below the floor. A bump as large as a Payload minor rarely retires a floor — at the 3.84→3.85 bump, even `mongoose` (whose `@payloadcms/db-mongodb` consumer now requires `8.22.1` directly) still resolved `8.15.1` from another consumer, so every floor stayed. Restore the tree with `git stash` (not `git checkout -- .`, which is denied) once measured.
+
 ## Heuristics for what to read carefully vs skim
 
 - **Payload core (`payload`, `@payloadcms/*`)** — read every minor's release notes; this repo's plugins live or die by Payload API stability. Pay attention to field-config, plugin API, and admin component prop changes.
@@ -83,3 +108,4 @@ Goal: bump the dependencies via the bundled script, then for every non-patch jum
 - Script returns `FAILED` for any plugin → report and stop, don't try to fix it inline.
 - A breaking change requires an architectural decision (e.g. Payload removes a hook the plugin depends on) → write up the options and ask before picking one.
 - Peer-dependency range needs to widen or narrow to track upstream → confirm with the user; this changes the plugin's public install matrix.
+- An exact-pin override (e.g. `next`) needs to cross a major, or a security floor's removal can't be proven redundant by the strip-and-reinstall test → confirm with the user before changing the `overrides:` block.
