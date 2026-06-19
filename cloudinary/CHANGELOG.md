@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: harden the client-upload signature endpoint (`/cloudinary-generate-signature`). The endpoint now only signs the `timestamp`, `folder`, and `public_id` parameters, only issues signatures for collections the plugin manages, enforces the configured upload folder, and rejects stale timestamps. The default access control now requires `create` access to the target upload collection instead of merely being authenticated.
+
 ## 0.3.4
 
 - feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
