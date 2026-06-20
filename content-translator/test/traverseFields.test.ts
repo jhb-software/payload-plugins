@@ -226,9 +226,7 @@ describe('traverseFields - emptyOnly with missing target sub-objects (#137)', ()
 
 describe('traverseFields - hasMany text fields', () => {
   test('translates each element of a hasMany text field individually', () => {
-    const fields: Field[] = [
-      { name: 'keywords', type: 'text', hasMany: true, localized: true } as Field,
-    ]
+    const fields: Field[] = [{ name: 'keywords', type: 'text', hasMany: true, localized: true }]
 
     const translated = runTraverse(fields, { keywords: ['alpha', 'beta', 'gamma'] }, false)
 
@@ -240,9 +238,7 @@ describe('traverseFields - hasMany text fields', () => {
   })
 
   test('keeps non-string entries in place while translating the rest', () => {
-    const fields: Field[] = [
-      { name: 'keywords', type: 'text', hasMany: true, localized: true } as Field,
-    ]
+    const fields: Field[] = [{ name: 'keywords', type: 'text', hasMany: true, localized: true }]
 
     const translatedData: Record<string, unknown> = {}
     const valuesToTranslate: ValueToTranslate[] = []
@@ -267,9 +263,7 @@ describe('traverseFields - hasMany text fields', () => {
   })
 
   test('does not send the whole array as a single value', () => {
-    const fields: Field[] = [
-      { name: 'keywords', type: 'text', hasMany: true, localized: true } as Field,
-    ]
+    const fields: Field[] = [{ name: 'keywords', type: 'text', hasMany: true, localized: true }]
 
     const valuesToTranslate: ValueToTranslate[] = []
 

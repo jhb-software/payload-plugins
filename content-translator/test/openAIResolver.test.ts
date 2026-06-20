@@ -1,3 +1,5 @@
+import type { PayloadRequest } from 'payload'
+
 import assert from 'node:assert/strict'
 import { afterEach, describe, test } from 'node:test'
 
@@ -5,29 +7,21 @@ import { openAIResolver } from '../src/resolvers/openAI.ts'
 
 const originalFetch = globalThis.fetch
 
-const makeReq = () =>
-  ({
-    payload: {
-      logger: {
-        error: () => {},
-        info: () => {},
-        warn: () => {},
-      },
-    },
-  }) as any
+// The resolver only reads req.payload.logger; the rest of PayloadRequest is a
+// framework boundary we deliberately stub rather than construct.
+const noopLogger = { error() {}, info() {}, warn() {} }
+const req = { payload: { logger: noopLogger } } as unknown as PayloadRequest
 
 const stubFetch = (content: unknown, ok = true) => {
-  globalThis.fetch = (async () => ({
-    json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }),
-    ok,
-  })) as any
+  const body = JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] })
+  globalThis.fetch = async () => new Response(body, { status: ok ? 200 : 500 })
 }
 
 const resolve = (texts: string[]) =>
   openAIResolver({ apiKey: 'test' }).resolve({
     localeFrom: 'en',
     localeTo: 'de',
-    req: makeReq(),
+    req,
     texts,
   })
 
