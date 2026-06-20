@@ -230,7 +230,7 @@ describe('traverseFields - unnamed (presentational) groups', () => {
       {
         type: 'group',
         fields: [{ name: 'title', type: 'text', localized: true }],
-      } as Field,
+      },
     ]
 
     const translated = runTraverse(fields, { title: 'Hello' }, false)
@@ -238,17 +238,20 @@ describe('traverseFields - unnamed (presentational) groups', () => {
     assert.deepEqual(translated, { title: 'TRANSLATED:Hello' })
   })
 
-  test('propagates localizedParent into an unnamed group nested in a localized named group', () => {
+  test('propagates the localized context of a parent into a nested unnamed group', () => {
     const fields: Field[] = [
       {
+        // Localized named group acts as the parent that sets localizedParent.
         name: 'meta',
         type: 'group',
         localized: true,
         fields: [
           {
+            // Unnamed (presentational) group: its non-localized field must still
+            // be translated because the localized context is inherited.
             type: 'group',
             fields: [{ name: 'title', type: 'text' }],
-          } as Field,
+          },
         ],
       },
     ]
