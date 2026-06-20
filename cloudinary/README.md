@@ -2,6 +2,14 @@
 
 This package provides a Payload CMS Storage Adapter for [Cloudinary](https://cloudinary.com/) to seamlessly integrate Cloudinary with Payload CMS for media asset management.
 
+## Installation
+
+```sh
+pnpm add @jhb.software/payload-cloudinary-plugin @payloadcms/plugin-cloud-storage
+```
+
+`@payloadcms/plugin-cloud-storage` is a peer dependency and must be installed explicitly. Keep it on the same version as the rest of the Payload suite (`payload`, `@payloadcms/next`, …) so a single copy of `@payloadcms/ui` is resolved — a version mismatch installs a second copy and breaks the admin panel with React context errors.
+
 ## Usage
 
 - Configure the `collections` object to specify which collections should use the Cloudinary adapter. The slug _must_ match one of your existing collection slugs.

@@ -186,8 +186,21 @@ export const traverseFields = ({
         break
       case 'group': {
         if (!('name' in field)) {
-          // TODO: handle unnamed groups
-          throw new Error('Unnamed groups are currently not supported by this plugin.')
+          // Unnamed (presentational) groups have no own data key — their fields
+          // are stored on the sibling data directly, so traverse them in place
+          // like row/collapsible, propagating the parent's localization context.
+          traverseFields({
+            dataFrom,
+            emptyOnly,
+            fields: field.fields,
+            localizedParent,
+            payloadConfig,
+            siblingDataFrom,
+            siblingDataTranslated,
+            translatedData,
+            valuesToTranslate,
+          })
+          break
         }
 
         const groupDataFrom = siblingDataFrom[field.name] as Record<string, unknown>

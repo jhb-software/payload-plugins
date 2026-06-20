@@ -15,23 +15,23 @@
     "generate:importmap": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload generate:importmap"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.77",
-    "@ai-sdk/openai": "^3.0.63",
-    "@ai-sdk/react": "^3.0.182",
+    "@ai-sdk/anthropic": "^3.0.85",
+    "@ai-sdk/openai": "^3.0.73",
+    "@ai-sdk/react": "^3.0.210",
     "@jhb.software/payload-chat-agent": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.84.1",
-    "@payloadcms/next": "^3.84.1",
-    "@payloadcms/richtext-lexical": "^3.84.1",
-    "@payloadcms/ui": "^3.84.1",
-    "ai": "^6.0.180",
-    "next": "16.2.6",
-    "payload": "^3.84.1",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
+    "@payloadcms/db-mongodb": "^3.85.1",
+    "@payloadcms/next": "^3.85.1",
+    "@payloadcms/richtext-lexical": "^3.85.1",
+    "@payloadcms/ui": "^3.85.1",
+    "ai": "^6.0.208",
+    "next": "16.2.9",
+    "payload": "^3.85.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2"
@@ -39,5 +39,5 @@
   "engines": {
     "node": ">=22.12.0"
   },
-  "packageManager": "pnpm@11.1.1"
+  "packageManager": "pnpm@11.8.0"
 }
