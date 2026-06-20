@@ -39,6 +39,20 @@ export const pagesSchema: CollectionConfig = {
       ],
     },
     {
+      // Unnamed (presentational) group: its fields are stored on the document
+      // root, not under a key. Used here to demonstrate that the translator
+      // traverses into unnamed groups instead of throwing.
+      type: 'group',
+      label: 'Call to action',
+      fields: [
+        {
+          name: 'ctaLabel',
+          type: 'text',
+          localized: true,
+        },
+      ],
+    },
+    {
       type: 'tabs',
       tabs: [
         {
