@@ -224,6 +224,72 @@ describe('traverseFields - emptyOnly with missing target sub-objects (#137)', ()
   })
 })
 
+describe('traverseFields - hasMany text fields', () => {
+  test('translates each element of a hasMany text field individually', () => {
+    const fields: Field[] = [
+      { name: 'keywords', type: 'text', hasMany: true, localized: true } as Field,
+    ]
+
+    const translated = runTraverse(fields, { keywords: ['alpha', 'beta', 'gamma'] }, false)
+
+    assert.deepEqual(translated.keywords, [
+      'TRANSLATED:alpha',
+      'TRANSLATED:beta',
+      'TRANSLATED:gamma',
+    ])
+  })
+
+  test('keeps non-string entries in place while translating the rest', () => {
+    const fields: Field[] = [
+      { name: 'keywords', type: 'text', hasMany: true, localized: true } as Field,
+    ]
+
+    const translatedData: Record<string, unknown> = {}
+    const valuesToTranslate: ValueToTranslate[] = []
+
+    traverseFields({
+      dataFrom: { keywords: ['alpha', 42, 'gamma'] },
+      emptyOnly: false,
+      fields,
+      payloadConfig,
+      translatedData,
+      valuesToTranslate,
+    })
+
+    // Only the two strings are sent to the resolver; the non-string is left alone.
+    assert.equal(valuesToTranslate.length, 2)
+
+    for (const v of valuesToTranslate) {
+      v.onTranslate(`TRANSLATED:${v.value}`)
+    }
+
+    assert.deepEqual(translatedData.keywords, ['TRANSLATED:alpha', 42, 'TRANSLATED:gamma'])
+  })
+
+  test('does not send the whole array as a single value', () => {
+    const fields: Field[] = [
+      { name: 'keywords', type: 'text', hasMany: true, localized: true } as Field,
+    ]
+
+    const valuesToTranslate: ValueToTranslate[] = []
+
+    traverseFields({
+      dataFrom: { keywords: ['alpha', 'beta'] },
+      emptyOnly: false,
+      fields,
+      payloadConfig,
+      translatedData: {},
+      valuesToTranslate,
+    })
+
+    assert.equal(valuesToTranslate.length, 2)
+    assert.deepEqual(
+      valuesToTranslate.map((v) => v.value),
+      ['alpha', 'beta'],
+    )
+  })
+})
+
 describe('traverseFields - prototype pollution', () => {
   for (const unsafeName of ['__proto__', 'constructor', 'prototype']) {
     test(`ignores a field named "${unsafeName}" instead of writing to its key`, () => {
