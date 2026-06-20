@@ -224,6 +224,41 @@ describe('traverseFields - emptyOnly with missing target sub-objects (#137)', ()
   })
 })
 
+describe('traverseFields - unnamed (presentational) groups', () => {
+  test('translates a localized field inside an unnamed group stored in place', () => {
+    const fields: Field[] = [
+      {
+        type: 'group',
+        fields: [{ name: 'title', type: 'text', localized: true }],
+      } as Field,
+    ]
+
+    const translated = runTraverse(fields, { title: 'Hello' }, false)
+
+    assert.deepEqual(translated, { title: 'TRANSLATED:Hello' })
+  })
+
+  test('propagates localizedParent into an unnamed group nested in a localized named group', () => {
+    const fields: Field[] = [
+      {
+        name: 'meta',
+        type: 'group',
+        localized: true,
+        fields: [
+          {
+            type: 'group',
+            fields: [{ name: 'title', type: 'text' }],
+          } as Field,
+        ],
+      },
+    ]
+
+    const translated = runTraverse(fields, { meta: { title: 'Hello' } }, false)
+
+    assert.deepEqual(translated, { meta: { title: 'TRANSLATED:Hello' } })
+  })
+})
+
 describe('traverseFields - prototype pollution', () => {
   for (const unsafeName of ['__proto__', 'constructor', 'prototype']) {
     test(`ignores a field named "${unsafeName}" instead of writing to its key`, () => {
