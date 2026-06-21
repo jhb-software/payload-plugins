@@ -71,6 +71,7 @@ export const payloadAltTextPlugin =
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
+      maxBulkGenerateIds: incomingPluginConfig.maxBulkGenerateIds ?? 100,
       resolver: incomingPluginConfig.resolver,
     }
 

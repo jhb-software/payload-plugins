@@ -54,6 +54,20 @@ export const bulkGenerateAltTextsEndpoint =
 
       const concurrency = pluginConfig.maxBulkGenerateConcurrency
 
+      // De-duplicate so the same image is never generated (and billed) twice,
+      // then bound the batch so a single request cannot fan out into an
+      // unbounded number of paid resolver calls.
+      const uniqueIds = [...new Set(ids)]
+
+      if (uniqueIds.length > pluginConfig.maxBulkGenerateIds) {
+        return Response.json(
+          {
+            error: `Too many ids: ${uniqueIds.length} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`,
+          },
+          { status: 400 },
+        )
+      }
+
       // determine target locales based on config
       const locales = localesFromConfig(req.payload.config)
       const targetLocales = locales ?? [pluginConfig.locale!]
@@ -68,7 +82,7 @@ export const bulkGenerateAltTextsEndpoint =
       }
 
       await pMap(
-        ids,
+        uniqueIds,
         async (id) => {
           try {
             await generateAndUpdateAltText({
@@ -81,7 +95,7 @@ export const bulkGenerateAltTextsEndpoint =
             })
             updatedDocs++
             console.log(
-              `${updatedDocs}/${ids.length} updated (${Math.round((updatedDocs / ids.length) * 100)}%)`,
+              `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
             )
           } catch (error) {
             console.error(`Error generating alt text for ${id}:`, error)
@@ -97,7 +111,7 @@ export const bulkGenerateAltTextsEndpoint =
 
       return Response.json({
         erroredDocs,
-        totalDocs: ids.length,
+        totalDocs: uniqueIds.length,
         updatedDocs,
       })
     } catch (error) {
