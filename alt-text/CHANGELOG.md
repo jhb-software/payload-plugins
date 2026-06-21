@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: enforce collection access control in the generate and bulk-generate endpoints by running the Local API reads and writes under the requesting user (`overrideAccess: false`)
+
 ## 0.7.0
 
 - feat: add `baseUrl` option to `openAIResolver` for OpenAI-compatible providers (e.g. Nebius, Azure)
