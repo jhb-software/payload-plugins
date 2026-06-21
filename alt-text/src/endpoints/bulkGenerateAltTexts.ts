@@ -36,6 +36,18 @@ export const bulkGenerateAltTextsEndpoint =
         return Response.json({ error: 'Plugin config not found' }, { status: 500 })
       }
 
+      // Treat the configured collections as an allowlist. Reject any other
+      // collection before touching the Local API, so the endpoint can only ever
+      // operate on the upload collections the plugin manages.
+      const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
+
+      if (!collectionConfig) {
+        return Response.json(
+          { error: `Collection "${collection}" is not managed by the alt text plugin.` },
+          { status: 403 },
+        )
+      }
+
       if (!pluginConfig.resolver) {
         return Response.json({ error: 'No alt text resolver configured' }, { status: 500 })
       }
@@ -134,9 +146,11 @@ async function generateAndUpdateAltText({
   const mimeType =
     'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string' ? imageDoc.mimeType : undefined
 
-  const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
+  // The handler validates `collection` against the configured collections before
+  // reaching this helper, so a matching entry is guaranteed.
+  const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)!
 
-  if (mimeType && collectionConfig && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
+  if (mimeType && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
     throw new Error(
       `Alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection. Tracked types: ${collectionConfig.mimeTypes.join(', ')}.`,
     )
