@@ -100,6 +100,22 @@ export const generateAltTextEndpoint =
         )
       }
 
+      // When localization is enabled, the requested locale must be one of the
+      // configured locales. Reject anything else before it can be written to an
+      // unconfigured locale or interpolated into the resolver's prompt.
+      if (
+        locale != null &&
+        pluginConfig.locales.length > 0 &&
+        !pluginConfig.locales.includes(locale)
+      ) {
+        return Response.json(
+          {
+            error: `Locale "${locale}" is not configured. Configured locales: ${pluginConfig.locales.join(', ')}.`,
+          },
+          { status: 400 },
+        )
+      }
+
       // determine target locale
       const targetLocale = locale ?? pluginConfig.locale
       if (!targetLocale) {

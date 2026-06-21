@@ -8,6 +8,7 @@
 - fix: filter the alt text health report (endpoint and dashboard widget) to the collections the requesting user may read, so the aggregate no longer discloses counts and document IDs for collections their role cannot access
 - feat: `healthCheck` now accepts an access function that gates the health endpoint and hides the dashboard widget, letting the collection-wide report be restricted (e.g. to admins) separately from the generate endpoints
 - fix: respect update access in the admin UI — render the alt text field read-only and hide the single-document and bulk generate buttons for users without update access
+- fix: reject a generate request whose `locale` is not among the configured locales with `400`, so a write can't target an unconfigured locale and an arbitrary string can't be interpolated into the resolver's prompt
 
 ## 0.7.0
 
