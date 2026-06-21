@@ -28,6 +28,26 @@ export const generateAltTextEndpoint =
 
       const { id, collection, locale, update } = generateAltTextRequestSchema.parse(data)
 
+      const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
+        | AltTextPluginConfig
+        | undefined
+
+      if (!pluginConfig) {
+        return Response.json({ error: 'Plugin config not found' }, { status: 500 })
+      }
+
+      // Treat the configured collections as an allowlist. Reject any other
+      // collection before touching the Local API, so the endpoint can only ever
+      // operate on the upload collections the plugin manages.
+      const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
+
+      if (!collectionConfig) {
+        return Response.json(
+          { error: `Collection "${collection}" is not managed by the alt text plugin.` },
+          { status: 403 },
+        )
+      }
+
       const imageDoc = await req.payload.findByID({
         id,
         collection,
@@ -40,14 +60,6 @@ export const generateAltTextEndpoint =
 
       if (!imageDoc) {
         return Response.json({ error: 'Image not found' }, { status: 404 })
-      }
-
-      const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
-        | AltTextPluginConfig
-        | undefined
-
-      if (!pluginConfig) {
-        return Response.json({ error: 'Plugin config not found' }, { status: 500 })
       }
 
       if (!pluginConfig.getImageThumbnail) {
@@ -66,9 +78,7 @@ export const generateAltTextEndpoint =
           ? imageDoc.mimeType
           : undefined
 
-      const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
-
-      if (mimeType && collectionConfig && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
+      if (mimeType && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
         return Response.json(
           {
             error: `Alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection. Tracked types: ${collectionConfig.mimeTypes.join(', ')}.`,
