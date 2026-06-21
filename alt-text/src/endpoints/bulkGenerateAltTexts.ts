@@ -1,6 +1,7 @@
 import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
 
 import pMap from 'p-map'
+import { APIError, Forbidden } from 'payload'
 import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
@@ -98,6 +99,13 @@ export const bulkGenerateAltTextsEndpoint =
               `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
             )
           } catch (error) {
+            // A Forbidden means the user has no read/update access to the
+            // collection at all — it applies to every id, so fail the whole
+            // request with a real 403 instead of silently listing all ids as
+            // errored. Row-level NotFound stays a per-doc error (partial success).
+            if (error instanceof Forbidden) {
+              throw error
+            }
             console.error(`Error generating alt text for ${id}:`, error)
             erroredDocs.push(id)
           }
@@ -117,6 +125,11 @@ export const bulkGenerateAltTextsEndpoint =
     } catch (error) {
       if (error instanceof ZodError) {
         return Response.json(formatZodError(error), { status: 400 })
+      }
+      // Surface Payload access errors (Forbidden 403) with their real status so
+      // an agent gets an accurate, non-retryable signal instead of a 500.
+      if (error instanceof APIError) {
+        return Response.json({ error: error.message }, { status: error.status })
       }
       console.error('Error in bulk generation:', error)
       return Response.json(

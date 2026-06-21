@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 
+import { Forbidden } from 'payload'
 import { describe, test } from 'vitest'
 
 import type { PayloadRequest } from 'payload'
@@ -105,6 +106,30 @@ describe('generate endpoint access control', () => {
   })
 })
 
+describe('generate endpoint denial responses', () => {
+  test('returns 403 (not 500) when the user lacks read access to the document', async () => {
+    const { req } = buildRequest({ id: 'doc-1', collection: 'media', locale: null, update: false })
+    req.payload.findByID = async () => {
+      throw new Forbidden(req.t)
+    }
+
+    const response = await generateAltTextEndpoint(buildPluginConfig().access)(req)
+
+    assert.equal(response.status, 403)
+  })
+
+  test('returns 403 (not 500) when the user lacks update access to the document', async () => {
+    const { req } = buildRequest({ id: 'doc-1', collection: 'media', locale: null, update: true })
+    req.payload.update = async () => {
+      throw new Forbidden(req.t)
+    }
+
+    const response = await generateAltTextEndpoint(buildPluginConfig().access)(req)
+
+    assert.equal(response.status, 403)
+  })
+})
+
 describe('bulk generate endpoint access control', () => {
   test('reads each document under the requesting user, not with overridden access', async () => {
     const { findByIDCalls, req } = buildRequest({ collection: 'media', ids: ['doc-1'] })
@@ -124,5 +149,16 @@ describe('bulk generate endpoint access control', () => {
     assert.equal(updateCalls.length, 1)
     assert.equal(updateCalls[0].overrideAccess, false)
     assert.equal(updateCalls[0].user, user)
+  })
+
+  test('returns 403 (not 200 with errored ids) when the user lacks access to the collection', async () => {
+    const { req } = buildRequest({ collection: 'media', ids: ['doc-1', 'doc-2'] })
+    req.payload.findByID = async () => {
+      throw new Forbidden(req.t)
+    }
+
+    const response = await bulkGenerateAltTextsEndpoint(buildPluginConfig().access)(req)
+
+    assert.equal(response.status, 403)
   })
 })

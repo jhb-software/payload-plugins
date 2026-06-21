@@ -1,5 +1,6 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
+import { APIError } from 'payload'
 import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
@@ -151,6 +152,12 @@ export const generateAltTextEndpoint =
     } catch (error) {
       if (error instanceof ZodError) {
         return Response.json(formatZodError(error), { status: 400 })
+      }
+      // Surface Payload access errors (Forbidden 403 / NotFound 404) with their
+      // real status so an agent gets an accurate, non-retryable signal instead
+      // of a misleading 500.
+      if (error instanceof APIError) {
+        return Response.json({ error: error.message }, { status: error.status })
       }
       console.error('Error generating alt text:', error)
       return Response.json(
