@@ -282,6 +282,23 @@ export async function filterScanByReadAccess(
   return { ...scan, collections, errors }
 }
 
+/**
+ * Whether the requesting user may view the health report at all, per the
+ * configured `healthCheck` access gate. The dashboard widget uses this to hide
+ * itself, mirroring the gate enforced on the health endpoint.
+ */
+export async function canViewHealthReport(req: PayloadRequest): Promise<boolean> {
+  const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
+    | AltTextPluginConfig
+    | undefined
+
+  if (!pluginConfig) {
+    return false
+  }
+
+  return pluginConfig.healthCheckAccess({ req })
+}
+
 export function toWidgetData(scan: AltTextHealthScan): AltTextHealthWidgetData {
   return {
     collections: scan.collections,

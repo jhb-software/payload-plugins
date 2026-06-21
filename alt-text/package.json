@@ -27,7 +27,6 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "test": "vitest run",
-    "test:health": "vitest run test/altTextHealth.test.ts",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm clean && pnpm build"
   },

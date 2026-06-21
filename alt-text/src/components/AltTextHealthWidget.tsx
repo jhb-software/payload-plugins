@@ -6,7 +6,7 @@ import { formatAdminURL } from 'payload/shared'
 
 import type { PluginAltTextTranslationKeys } from '../translations/index.js'
 
-import { getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
+import { canViewHealthReport, getAltTextHealthWidgetData } from '../utilities/altTextHealth.js'
 import { getAltTextHealthWidgetDisplayState } from '../utilities/altTextHealthWidgetDisplay.js'
 import { getCollectionLabel } from '../utilities/getCollectionLabel.js'
 import { ArrowRightIcon } from './icons/ArrowRightIcon.js'
@@ -14,6 +14,11 @@ import { CheckIcon } from './icons/CheckIcon.js'
 import { ImageIcon } from './icons/ImageIcon.js'
 
 export async function AltTextHealthWidget({ req }: WidgetServerProps) {
+  // Hide the widget from users the health gate denies, matching the endpoint.
+  if (!(await canViewHealthReport(req))) {
+    return null
+  }
+
   const t = req.t as TFunction<PluginAltTextTranslationKeys>
   const { collections, errors, isLocalized, localeCount, totalDocs } =
     await getAltTextHealthWidgetData(req)
