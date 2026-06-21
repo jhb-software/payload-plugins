@@ -32,6 +32,10 @@ export const generateAltTextEndpoint =
         id,
         collection,
         depth: 0,
+        // Run under the requesting user's access, not Payload's default
+        // `overrideAccess: true`, so collection-level access control applies.
+        overrideAccess: false,
+        user: req.user,
       })
 
       if (!imageDoc) {
@@ -126,6 +130,10 @@ export const generateAltTextEndpoint =
             keywords: result.result.keywords,
           },
           locale: targetLocale,
+          // Run under the requesting user's access, not Payload's default
+          // `overrideAccess: true`, so collection-level access control applies.
+          overrideAccess: false,
+          user: req.user,
         })
       }
 

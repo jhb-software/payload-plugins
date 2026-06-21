@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- fix: enforce collection access control in the generate and bulk-generate endpoints by running the Local API reads and writes under the requesting user (`overrideAccess: false`)
+- fix: filter the alt text health report (endpoint and dashboard widget) to the collections the requesting user may read, so the aggregate no longer discloses counts and document IDs for collections their role cannot access
+
 ## 0.7.0
 
 - feat: add `baseUrl` option to `openAIResolver` for OpenAI-compatible providers (e.g. Nebius, Azure)
