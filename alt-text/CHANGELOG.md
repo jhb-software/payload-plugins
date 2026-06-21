@@ -5,6 +5,7 @@
 - fix: enforce collection access control in the generate and bulk-generate endpoints by running the Local API reads and writes under the requesting user (`overrideAccess: false`)
 - fix: filter the alt text health report (endpoint and dashboard widget) to the collections the requesting user may read, so the aggregate no longer discloses counts and document IDs for collections their role cannot access
 - feat: `healthCheck` now accepts an access function that gates the health endpoint and hides the dashboard widget, letting the collection-wide report be restricted (e.g. to admins) separately from the generate endpoints
+- fix: hide the single-document and bulk generate-alt-text buttons from users without update access to the document/collection
 
 ## 0.7.0
 
