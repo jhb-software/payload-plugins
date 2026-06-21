@@ -2,11 +2,10 @@ import assert from 'node:assert/strict'
 
 import { describe, test } from 'vitest'
 
-import type { PayloadRequest } from 'payload'
-
-import type { AltTextPluginConfig } from '../src/types/AltTextPluginConfig.ts'
+import type { AltTextResolver } from '../src/resolvers/types.ts'
 
 import { generateAltTextEndpoint } from '../src/endpoints/generateAltText.ts'
+import { buildEndpointRequest, buildPluginConfig } from './support/endpointHarness.ts'
 
 /**
  * When localization is enabled, the generate endpoint must reject a request
@@ -17,65 +16,38 @@ import { generateAltTextEndpoint } from '../src/endpoints/generateAltText.ts'
  * unvalidated locale is a prompt-injection surface.
  */
 
-const user = { id: 'low-priv-user', email: 'user@example.com', role: 'user' }
-
-type LocalApiCall = Record<string, unknown>
-
 type ResolveArgs = { locale: string }
 
-function buildPluginConfig(resolveCalls: ResolveArgs[]): AltTextPluginConfig {
-  return {
-    access: ({ req }: { req: PayloadRequest }) => !!req.user,
-    collections: [{ slug: 'media', mimeTypes: ['image/*'] }],
-    enabled: true,
-    getImageThumbnail: () => 'https://example.com/thumb.png',
-    healthCheck: true,
-    healthCheckAccess: ({ req }: { req: PayloadRequest }) => !!req.user,
+/**
+ * Builds a request with localization enabled (`en`/`de`) and a resolver that
+ * records the locale it was called with, so a test can assert whether an
+ * unconfigured locale ever reached the resolver.
+ */
+function buildRequest(body: unknown): {
+  req: ReturnType<typeof buildEndpointRequest>['req']
+  resolveCalls: ResolveArgs[]
+  updateCalls: ReturnType<typeof buildEndpointRequest>['updateCalls']
+} {
+  const resolveCalls: ResolveArgs[] = []
+  const resolve: AltTextResolver['resolve'] = async (args) => {
+    resolveCalls.push({ locale: args.locale })
+    return { success: true, result: { altText: 'generated alt', keywords: ['a', 'b'] } }
+  }
+
+  const pluginConfig = buildPluginConfig({
     // localization enabled: these are the only valid request locales
     locales: ['en', 'de'],
-    maxBulkGenerateConcurrency: 1,
     resolver: {
       key: 'mock',
-      resolve: async (args: ResolveArgs) => {
-        resolveCalls.push({ locale: args.locale })
-        return {
-          success: true,
-          result: { altText: 'generated alt', keywords: ['a', 'b'] },
-        }
-      },
+      resolve,
       resolveBulk: async () => ({
         success: true,
         results: { en: { altText: 'generated alt', keywords: ['a', 'b'] } },
       }),
     },
-  } as unknown as AltTextPluginConfig
-}
+  })
 
-function buildRequest(body: unknown): {
-  req: PayloadRequest
-  resolveCalls: ResolveArgs[]
-  updateCalls: LocalApiCall[]
-} {
-  const resolveCalls: ResolveArgs[] = []
-  const updateCalls: LocalApiCall[] = []
-  const pluginConfig = buildPluginConfig(resolveCalls)
-
-  const req = {
-    json: async () => body,
-    payload: {
-      config: { custom: { altTextPluginConfig: pluginConfig } },
-      findByID: async (args: LocalApiCall) => ({
-        id: args.id,
-        filename: 'photo.png',
-        mimeType: 'image/png',
-      }),
-      update: async (args: LocalApiCall) => {
-        updateCalls.push(args)
-        return { id: args.id }
-      },
-    },
-    user,
-  } as unknown as PayloadRequest
+  const { req, updateCalls } = buildEndpointRequest(body, { pluginConfig })
 
   return { req, resolveCalls, updateCalls }
 }
