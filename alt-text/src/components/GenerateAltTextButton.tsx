@@ -21,7 +21,7 @@ import { Spinner } from './icons/Spinner.js'
 
 export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTypes?: string[] }) {
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
-  const { id, collectionSlug } = useDocumentInfo()
+  const { id, collectionSlug, docPermissions } = useDocumentInfo()
   const locale = useLocale()
   const [isPending, startTransition] = useTransition()
   const {
@@ -37,6 +37,12 @@ export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTyp
 
   const isUnsupportedMimeType =
     !!mimeType && !!supportedMimeTypes && !supportedMimeTypes.includes(mimeType)
+
+  // Hide the generate button from users who cannot update the document — the
+  // generated alt text would not be persistable by them anyway.
+  if (!docPermissions?.update) {
+    return null
+  }
 
   const handleGenerateAltText = () => {
     if (!collectionSlug || !id) {
