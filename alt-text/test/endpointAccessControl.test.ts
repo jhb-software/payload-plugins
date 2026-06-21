@@ -28,6 +28,7 @@ function buildPluginConfig(): AltTextPluginConfig {
     enabled: true,
     getImageThumbnail: () => 'https://example.com/thumb.png',
     healthCheck: true,
+    healthCheckAccess: ({ req }) => !!req.user,
     locale: 'en',
     locales: [],
     maxBulkGenerateConcurrency: 1,
