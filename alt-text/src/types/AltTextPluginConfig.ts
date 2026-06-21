@@ -83,6 +83,17 @@ export type IncomingAltTextPluginConfig = {
    */
   maxBulkGenerateConcurrency?: number
 
+  /**
+   * Maximum number of image IDs accepted in a single bulk generate request.
+   * Requests exceeding this are rejected with `400`. Duplicate IDs are collapsed
+   * before the limit is applied, so each image counts once.
+   *
+   * Raise it for large libraries that need to process more images per request.
+   *
+   * @default 100
+   */
+  maxBulkGenerateIds?: number
+
   /** The resolver to use for generating alt text (e.g., openAIResolver) */
   resolver: AltTextResolver
 }
@@ -118,6 +129,9 @@ export type AltTextPluginConfig = {
 
   /** Maximum number of concurrent API requests for bulk generate operations. */
   maxBulkGenerateConcurrency: number
+
+  /** Maximum number of image IDs accepted per bulk generate request. */
+  maxBulkGenerateIds: number
 
   /** The resolver to use for generating alt text */
   resolver: AltTextResolver
