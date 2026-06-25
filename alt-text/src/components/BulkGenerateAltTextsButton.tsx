@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, toast, useConfig, useSelection, useTranslation } from '@payloadcms/ui'
+import { Button, toast, useAuth, useConfig, useSelection, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { useTransition } from 'react'
 
@@ -15,7 +15,10 @@ import { Spinner } from './icons/Spinner.js'
 export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug: string }) {
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
   const [isPending, startTransition] = useTransition()
+  const { permissions } = useAuth()
   const { selected, setSelection } = useSelection()
+
+  const canUpdateCollection = Boolean(permissions?.collections?.[collectionSlug]?.update)
   const {
     config: {
       routes: { api: apiRoute },
@@ -97,6 +100,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
   }
 
   return (
+    canUpdateCollection &&
     selectedIds.length > 0 && (
       <div className="m-0" style={{ display: 'flex', justifyContent: 'right' }}>
         <Button

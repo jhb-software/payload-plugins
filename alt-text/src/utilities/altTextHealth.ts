@@ -238,15 +238,68 @@ async function getAltTextHealthScan(req: PayloadRequest): Promise<AltTextHealthS
   return getCachedHealthScan()
 }
 
-export async function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthScan> {
-  return getAltTextHealthScan(req)
+/**
+ * Whether `req.user` is allowed to read the given collection at the collection
+ * level. The collection's `read` access is evaluated with the request; `false`
+ * denies, while `true` or a scoped `Where` constraint grants visibility of the
+ * collection's health aggregate. A thrown access function (e.g. `Forbidden`)
+ * counts as denied so a restricted collection never leaks.
+ */
+async function userCanReadCollection(req: PayloadRequest, slug: string): Promise<boolean> {
+  const readAccess = req.payload.collections?.[slug]?.config.access?.read
+
+  if (typeof readAccess !== 'function') {
+    return true
+  }
+
+  try {
+    return (await readAccess({ req })) !== false
+  } catch {
+    return false
+  }
 }
 
-export async function getAltTextHealthWidgetData(
+/**
+ * Filters a shared, elevated-access health scan down to the collections the
+ * requesting user may read. The scan is computed once with `overrideAccess: true`
+ * so it stays complete and cacheable; access is applied per request at
+ * collection granularity, matching the aggregate's altitude.
+ */
+export async function filterScanByReadAccess(
   req: PayloadRequest,
-): Promise<AltTextHealthWidgetData> {
-  const scan = await getAltTextHealthScan(req)
+  scan: AltTextHealthScan,
+): Promise<AltTextHealthScan> {
+  const visibility = await Promise.all(
+    scan.collections.map((collection) => userCanReadCollection(req, collection.collection)),
+  )
 
+  const collections = scan.collections.filter((_, index) => visibility[index])
+  const allowedSlugs = new Set(collections.map((collection) => collection.collection))
+  const errors = scan.errors.filter(
+    (error) => !error.collection || allowedSlugs.has(error.collection),
+  )
+
+  return { ...scan, collections, errors }
+}
+
+/**
+ * Whether the requesting user may view the health report at all, per the
+ * configured `healthCheck` access gate. The dashboard widget uses this to hide
+ * itself, mirroring the gate enforced on the health endpoint.
+ */
+export async function canViewHealthReport(req: PayloadRequest): Promise<boolean> {
+  const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
+    | AltTextPluginConfig
+    | undefined
+
+  if (!pluginConfig) {
+    return false
+  }
+
+  return pluginConfig.healthCheckAccess({ req })
+}
+
+export function toWidgetData(scan: AltTextHealthScan): AltTextHealthWidgetData {
   return {
     collections: scan.collections,
     errors: scan.errors,
@@ -254,4 +307,14 @@ export async function getAltTextHealthWidgetData(
     localeCount: scan.localeCodes.length,
     totalDocs: scan.collections.reduce((total, c) => total + c.totalDocs, 0),
   }
+}
+
+export async function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthScan> {
+  return filterScanByReadAccess(req, await getAltTextHealthScan(req))
+}
+
+export async function getAltTextHealthWidgetData(
+  req: PayloadRequest,
+): Promise<AltTextHealthWidgetData> {
+  return toWidgetData(await filterScanByReadAccess(req, await getAltTextHealthScan(req)))
 }

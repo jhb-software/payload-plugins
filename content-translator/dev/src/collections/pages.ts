@@ -24,6 +24,13 @@ export const pagesSchema: CollectionConfig = {
       localized: true,
     },
     {
+      // hasMany text field: each keyword is translated individually
+      name: 'keywords',
+      type: 'text',
+      hasMany: true,
+      localized: true,
+    },
+    {
       name: 'meta',
       type: 'group',
       fields: [
@@ -35,6 +42,20 @@ export const pagesSchema: CollectionConfig = {
         {
           name: 'description',
           type: 'textarea',
+          localized: true,
+        },
+      ],
+    },
+    {
+      // Unnamed (presentational) group: its fields are stored on the document
+      // root, not under a key. Used here to demonstrate that the translator
+      // traverses into unnamed groups instead of throwing.
+      type: 'group',
+      label: 'Call to action',
+      fields: [
+        {
+          name: 'ctaLabel',
+          type: 'text',
           localized: true,
         },
       ],

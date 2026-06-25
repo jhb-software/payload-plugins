@@ -77,16 +77,17 @@ This is also the recommended escape hatch if you hit Payload's Postgres SQL-buil
 
 ### Plugin Options
 
-| Option                       | Type                                  | Required | Description                                                                                                      |
-| ---------------------------- | ------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| `collections`                | `(CollectionSlug \| CollectionObj)[]` | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))            |
-| `resolver`                   | `AltTextResolver`                     | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                |
-| `getImageThumbnail`          | `Function`                            | Yes      | Function to get the thumbnail URL from an image document                                                         |
-| `enabled`                    | `boolean`                             | No       | Whether to enable the plugin                                                                                     |
-| `locale`                     | `string`                              | No       | Locale for alt text generation (required when localization is disabled)                                          |
-| `maxBulkGenerateConcurrency` | `number`                              | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                |
-| `fieldsOverride`             | `Function`                            | No       | Override the default fields inserted by the plugin                                                               |
-| `healthCheck`                | `boolean`                             | No       | Enable alt text health tracking: REST endpoint, cache revalidation hooks, and dashboard widget (default: `true`) |
+| Option                       | Type                                  | Required | Description                                                                                                                                                                                                                                                                                                               |
+| ---------------------------- | ------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collections`                | `(CollectionSlug \| CollectionObj)[]` | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))                                                                                                                                                                                                                     |
+| `resolver`                   | `AltTextResolver`                     | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                                                                                                                                                                                                                         |
+| `getImageThumbnail`          | `Function`                            | Yes      | Function to get the thumbnail URL from an image document                                                                                                                                                                                                                                                                  |
+| `enabled`                    | `boolean`                             | No       | Whether to enable the plugin                                                                                                                                                                                                                                                                                              |
+| `locale`                     | `string`                              | No       | Locale for alt text generation (required when localization is disabled)                                                                                                                                                                                                                                                   |
+| `maxBulkGenerateConcurrency` | `number`                              | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                                                                                                                                                                                                                         |
+| `maxBulkGenerateIds`         | `number`                              | No       | Maximum number of image IDs accepted per bulk generate request; larger requests are rejected with `400`. Duplicate IDs are collapsed before the limit is applied (default: 100)                                                                                                                                           |
+| `fieldsOverride`             | `Function`                            | No       | Override the default fields inserted by the plugin                                                                                                                                                                                                                                                                        |
+| `healthCheck`                | `boolean \| Function`                 | No       | Alt text health tracking (REST endpoint, cache revalidation hooks, dashboard widget). `false` disables it; `true` enables it gated by `access`; a `({ req }) => boolean` function enables it and gates both the endpoint and the widget — use it to restrict the collection-wide report, e.g. to admins (default: `true`) |
 
 ### Per-collection options
 
@@ -204,7 +205,7 @@ export const customResolver = (): AltTextResolver => ({
 
 ## REST API Endpoints
 
-The plugin registers the following REST API endpoints under `/api/alt-text-plugin/`. All endpoints require authentication by default (configurable via the `access` option).
+The plugin registers the following REST API endpoints under `/api/alt-text-plugin/`. All endpoints require authentication by default (configurable via the `access` option). Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections the requesting user can read (and can be gated separately via the `healthCheck` function).
 
 ### `POST /api/alt-text-plugin/generate`
 

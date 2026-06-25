@@ -9,6 +9,7 @@ interface AuthorSeedData {
 
 interface PageSeedData {
   content?: string[]
+  keywords: string[]
   slug: string
   title: string
 }
@@ -108,18 +109,22 @@ export const seed = async (payload: Payload) => {
         'Get in touch to learn how we can help your organisation.',
       ],
       slug: 'home',
+      keywords: ['welcome', 'home page', 'getting started'],
       title: 'Welcome to Our Website',
     },
     {
       slug: 'about',
+      keywords: ['company', 'team', 'our story'],
       title: 'About Our Company',
     },
     {
       slug: 'services',
+      keywords: ['services', 'solutions', 'consulting'],
       title: 'Our Services and Solutions',
     },
     {
       slug: 'contact',
+      keywords: ['contact', 'support', 'get in touch'],
       title: 'Get in Touch With Us',
     },
   ]
@@ -140,6 +145,7 @@ export const seed = async (payload: Payload) => {
         data: {
           slug: pageData.slug,
           title: pageData.title,
+          keywords: pageData.keywords,
           ...(pageData.content ? { content: lexical(pageData.content) } : {}),
         } as Record<string, unknown>,
       })

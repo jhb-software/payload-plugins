@@ -51,16 +51,27 @@ export const payloadAltTextPlugin =
 
     const normalizedCollections = normalizeCollectionsConfig(incomingPluginConfig.collections)
 
+    const access = incomingPluginConfig.access ?? (({ req }) => !!req.user)
+
+    // A function form of `healthCheck` doubles as the health report's access
+    // gate; otherwise it falls back to the shared `access`.
+    const healthCheckAccess =
+      typeof incomingPluginConfig.healthCheck === 'function'
+        ? incomingPluginConfig.healthCheck
+        : access
+
     const pluginConfig: AltTextPluginConfig = {
-      access: incomingPluginConfig.access ?? (({ req }) => !!req.user),
+      access,
       collections: normalizedCollections,
       enabled: incomingPluginConfig.enabled ?? true,
       fieldsOverride: incomingPluginConfig.fieldsOverride,
       getImageThumbnail: incomingPluginConfig.getImageThumbnail,
       healthCheck: enableHealthCheck,
+      healthCheckAccess,
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
+      maxBulkGenerateIds: incomingPluginConfig.maxBulkGenerateIds ?? 100,
       resolver: incomingPluginConfig.resolver,
     }
 
@@ -188,7 +199,7 @@ export const payloadAltTextPlugin =
         ...(enableHealthCheck
           ? [
               {
-                handler: altTextHealthEndpoint(pluginConfig.access),
+                handler: altTextHealthEndpoint(pluginConfig.healthCheckAccess),
                 method: 'get' as const,
                 path: '/alt-text-plugin/health',
               },

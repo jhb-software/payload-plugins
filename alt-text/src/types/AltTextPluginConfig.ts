@@ -53,12 +53,20 @@ export type IncomingAltTextPluginConfig = {
   getImageThumbnail: (doc: Record<string, unknown>) => string
 
   /**
-   * Enable alt text health tracking (REST endpoint, cache revalidation hooks, and dashboard widget).
-   * Set to `false` to disable the entire feature.
+   * Controls the alt text health feature (REST endpoint, cache revalidation hooks, and dashboard widget).
+   *
+   * - `false` disables the entire feature.
+   * - `true` enables it, gated by `access`.
+   * - A function enables it and gates both the endpoint and the dashboard widget
+   *   with that access check — use this to restrict the collection-wide report
+   *   more strictly than the per-document generate endpoints (e.g. to admins).
+   *
+   * Regardless of the gate, the report is always filtered to the collections the
+   * requesting user can read.
    *
    * @default true
    */
-  healthCheck?: boolean
+  healthCheck?: ((args: { req: PayloadRequest }) => boolean | Promise<boolean>) | boolean
 
   /**
    * The locale to generate alt texts in when localization is disabled.
@@ -74,6 +82,17 @@ export type IncomingAltTextPluginConfig = {
    * @default 16
    */
   maxBulkGenerateConcurrency?: number
+
+  /**
+   * Maximum number of image IDs accepted in a single bulk generate request.
+   * Requests exceeding this are rejected with `400`. Duplicate IDs are collapsed
+   * before the limit is applied, so each image counts once.
+   *
+   * Raise it for large libraries that need to process more images per request.
+   *
+   * @default 100
+   */
+  maxBulkGenerateIds?: number
 
   /** The resolver to use for generating alt text (e.g., openAIResolver) */
   resolver: AltTextResolver
@@ -99,6 +118,9 @@ export type AltTextPluginConfig = {
   /** Whether alt text health tracking is enabled. */
   healthCheck: boolean
 
+  /** Access control for the health endpoint. Defaults to `access`. */
+  healthCheckAccess: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+
   /** The locale to generate alt texts in when localization is disabled. */
   locale?: string
 
@@ -107,6 +129,9 @@ export type AltTextPluginConfig = {
 
   /** Maximum number of concurrent API requests for bulk generate operations. */
   maxBulkGenerateConcurrency: number
+
+  /** Maximum number of image IDs accepted per bulk generate request. */
+  maxBulkGenerateIds: number
 
   /** The resolver to use for generating alt text */
   resolver: AltTextResolver

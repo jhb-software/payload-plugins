@@ -1,5 +1,6 @@
 import type { PayloadHandler, PayloadRequest } from 'payload'
 
+import { APIError } from 'payload'
 import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
@@ -28,22 +29,38 @@ export const generateAltTextEndpoint =
 
       const { id, collection, locale, update } = generateAltTextRequestSchema.parse(data)
 
-      const imageDoc = await req.payload.findByID({
-        id,
-        collection,
-        depth: 0,
-      })
-
-      if (!imageDoc) {
-        return Response.json({ error: 'Image not found' }, { status: 404 })
-      }
-
       const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
         | AltTextPluginConfig
         | undefined
 
       if (!pluginConfig) {
         return Response.json({ error: 'Plugin config not found' }, { status: 500 })
+      }
+
+      // Treat the configured collections as an allowlist. Reject any other
+      // collection before touching the Local API, so the endpoint can only ever
+      // operate on the upload collections the plugin manages.
+      const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
+
+      if (!collectionConfig) {
+        return Response.json(
+          { error: `Collection "${collection}" is not managed by the alt text plugin.` },
+          { status: 403 },
+        )
+      }
+
+      const imageDoc = await req.payload.findByID({
+        id,
+        collection,
+        depth: 0,
+        // Run under the requesting user's access, not Payload's default
+        // `overrideAccess: true`, so collection-level access control applies.
+        overrideAccess: false,
+        user: req.user,
+      })
+
+      if (!imageDoc) {
+        return Response.json({ error: 'Image not found' }, { status: 404 })
       }
 
       if (!pluginConfig.getImageThumbnail) {
@@ -62,9 +79,7 @@ export const generateAltTextEndpoint =
           ? imageDoc.mimeType
           : undefined
 
-      const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
-
-      if (mimeType && collectionConfig && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
+      if (mimeType && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
         return Response.json(
           {
             error: `Alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection. Tracked types: ${collectionConfig.mimeTypes.join(', ')}.`,
@@ -81,6 +96,22 @@ export const generateAltTextEndpoint =
         return Response.json(
           {
             error: `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${pluginConfig.resolver.supportedMimeTypes.join(', ')}.`,
+          },
+          { status: 400 },
+        )
+      }
+
+      // When localization is enabled, the requested locale must be one of the
+      // configured locales. Reject anything else before it can be written to an
+      // unconfigured locale or interpolated into the resolver's prompt.
+      if (
+        locale != null &&
+        pluginConfig.locales.length > 0 &&
+        !pluginConfig.locales.includes(locale)
+      ) {
+        return Response.json(
+          {
+            error: `Locale "${locale}" is not configured. Configured locales: ${pluginConfig.locales.join(', ')}.`,
           },
           { status: 400 },
         )
@@ -126,6 +157,10 @@ export const generateAltTextEndpoint =
             keywords: result.result.keywords,
           },
           locale: targetLocale,
+          // Run under the requesting user's access, not Payload's default
+          // `overrideAccess: true`, so collection-level access control applies.
+          overrideAccess: false,
+          user: req.user,
         })
       }
 
@@ -133,6 +168,12 @@ export const generateAltTextEndpoint =
     } catch (error) {
       if (error instanceof ZodError) {
         return Response.json(formatZodError(error), { status: 400 })
+      }
+      // Surface Payload access errors (Forbidden 403 / NotFound 404) with their
+      // real status so an agent gets an accurate, non-retryable signal instead
+      // of a misleading 500.
+      if (error instanceof APIError) {
+        return Response.json({ error: error.message }, { status: error.status })
       }
       console.error('Error generating alt text:', error)
       return Response.json(

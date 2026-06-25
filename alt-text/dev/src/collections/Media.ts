@@ -9,6 +9,11 @@ export const Media: CollectionConfig = {
   upload: {
     mimeTypes: ['image/*', 'video/*'],
   },
+  access: {
+    // change the email in the next line to test if the 'generate alt text' buttons are correctly hidden
+    // and the alt text field is readonly
+    update: ({ req }) => req.user?.email === 'dev@payloadcms.com',
+  },
   fields: [
     // The plugin will automatically inject context, alt, and keywords fields
 

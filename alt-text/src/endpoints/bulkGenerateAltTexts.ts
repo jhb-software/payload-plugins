@@ -1,6 +1,7 @@
 import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
 
 import pMap from 'p-map'
+import { APIError, Forbidden } from 'payload'
 import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
@@ -36,11 +37,37 @@ export const bulkGenerateAltTextsEndpoint =
         return Response.json({ error: 'Plugin config not found' }, { status: 500 })
       }
 
+      // Treat the configured collections as an allowlist. Reject any other
+      // collection before touching the Local API, so the endpoint can only ever
+      // operate on the upload collections the plugin manages.
+      const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
+
+      if (!collectionConfig) {
+        return Response.json(
+          { error: `Collection "${collection}" is not managed by the alt text plugin.` },
+          { status: 403 },
+        )
+      }
+
       if (!pluginConfig.resolver) {
         return Response.json({ error: 'No alt text resolver configured' }, { status: 500 })
       }
 
       const concurrency = pluginConfig.maxBulkGenerateConcurrency
+
+      // De-duplicate so the same image is never generated (and billed) twice,
+      // then bound the batch so a single request cannot fan out into an
+      // unbounded number of paid resolver calls.
+      const uniqueIds = [...new Set(ids)]
+
+      if (uniqueIds.length > pluginConfig.maxBulkGenerateIds) {
+        return Response.json(
+          {
+            error: `Too many ids: ${uniqueIds.length} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`,
+          },
+          { status: 400 },
+        )
+      }
 
       // determine target locales based on config
       const locales = localesFromConfig(req.payload.config)
@@ -56,7 +83,7 @@ export const bulkGenerateAltTextsEndpoint =
       }
 
       await pMap(
-        ids,
+        uniqueIds,
         async (id) => {
           try {
             await generateAndUpdateAltText({
@@ -69,9 +96,16 @@ export const bulkGenerateAltTextsEndpoint =
             })
             updatedDocs++
             console.log(
-              `${updatedDocs}/${ids.length} updated (${Math.round((updatedDocs / ids.length) * 100)}%)`,
+              `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
             )
           } catch (error) {
+            // A Forbidden means the user has no read/update access to the
+            // collection at all — it applies to every id, so fail the whole
+            // request with a real 403 instead of silently listing all ids as
+            // errored. Row-level NotFound stays a per-doc error (partial success).
+            if (error instanceof Forbidden) {
+              throw error
+            }
             console.error(`Error generating alt text for ${id}:`, error)
             erroredDocs.push(id)
           }
@@ -85,12 +119,17 @@ export const bulkGenerateAltTextsEndpoint =
 
       return Response.json({
         erroredDocs,
-        totalDocs: ids.length,
+        totalDocs: uniqueIds.length,
         updatedDocs,
       })
     } catch (error) {
       if (error instanceof ZodError) {
         return Response.json(formatZodError(error), { status: 400 })
+      }
+      // Surface Payload access errors (Forbidden 403) with their real status so
+      // an agent gets an accurate, non-retryable signal instead of a 500.
+      if (error instanceof APIError) {
+        return Response.json({ error: error.message }, { status: error.status })
       }
       console.error('Error in bulk generation:', error)
       return Response.json(
@@ -121,6 +160,10 @@ async function generateAndUpdateAltText({
     id,
     collection,
     depth: 0,
+    // Run under the requesting user's access, not Payload's default
+    // `overrideAccess: true`, so collection-level access control applies.
+    overrideAccess: false,
+    user: req.user,
   })
 
   if (!imageDoc) {
@@ -130,9 +173,11 @@ async function generateAndUpdateAltText({
   const mimeType =
     'mimeType' in imageDoc && typeof imageDoc.mimeType === 'string' ? imageDoc.mimeType : undefined
 
-  const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
+  // The handler validates `collection` against the configured collections before
+  // reaching this helper, so a matching entry is guaranteed.
+  const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)!
 
-  if (mimeType && collectionConfig && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
+  if (mimeType && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
     throw new Error(
       `Alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection. Tracked types: ${collectionConfig.mimeTypes.join(', ')}.`,
     )
@@ -175,6 +220,10 @@ async function generateAndUpdateAltText({
           keywords: localeResult.keywords,
         },
         locale,
+        // Run under the requesting user's access, not Payload's default
+        // `overrideAccess: true`, so collection-level access control applies.
+        overrideAccess: false,
+        user: req.user,
       })
     }
   }

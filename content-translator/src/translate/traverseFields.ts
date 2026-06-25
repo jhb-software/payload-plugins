@@ -226,8 +226,23 @@ export const traverseFields = ({
         break
       case 'group': {
         if (!('name' in field)) {
-          // TODO: handle unnamed groups
-          throw new Error('Unnamed groups are currently not supported by this plugin.')
+          // Unnamed (presentational) groups have no own data key — their fields
+          // are stored on the sibling data directly, so traverse them in place
+          // like row/collapsible, propagating the parent's localization context.
+          traverseFields({
+            dataFrom,
+            fields: field.fields,
+            incremental,
+            localeFrom,
+            localizedParent,
+            mode,
+            payloadConfig,
+            siblingDataFrom,
+            siblingDataTranslated,
+            translatedData,
+            valuesToTranslate,
+          })
+          break
         }
 
         const groupDataFrom = siblingDataFrom[field.name] as Record<string, unknown>
@@ -290,14 +305,6 @@ export const traverseFields = ({
                 incremental,
                 localeFrom,
                 mode: 'all',
-                onText: (siblingData, key) => {
-                  valuesToTranslate.push({
-                    onTranslate: (translated: string) => {
-                      siblingData[key] = translated
-                    },
-                    value: siblingData[key],
-                  })
-                },
                 payloadConfig,
                 root: unitNode,
                 translatedData,
@@ -342,14 +349,6 @@ export const traverseFields = ({
             incremental,
             localeFrom,
             mode,
-            onText: (siblingData, key) => {
-              valuesToTranslate.push({
-                onTranslate: (translated: string) => {
-                  siblingData[key] = translated
-                },
-                value: siblingData[key],
-              })
-            },
             payloadConfig,
             root,
             translatedData,
@@ -413,7 +412,7 @@ export const traverseFields = ({
 
         break
       case 'text':
-      case 'textarea':
+      case 'textarea': {
         if (field.custom && typeof field.custom === 'object' && field.custom.translatorSkip) {
           break
         }
@@ -430,13 +429,43 @@ export const traverseFields = ({
           break
         }
 
+        const fieldValue = siblingDataFrom[field.name]
+
+        // `hasMany` text fields store an array of strings (e.g. keywords /
+        // tags). Translate each element individually - sending the whole
+        // array as a single value makes the resolver return a non-string,
+        // which then crashes in he.decode(...) ("e.replace is not a
+        // function"). Pre-seed the target with the originals and replace
+        // each entry in place as its translation resolves, so a skipped or
+        // failed element keeps its original text.
+        if (Array.isArray(fieldValue)) {
+          const translatedArray = [...fieldValue]
+          assignSafely(siblingDataTranslated, field.name, translatedArray)
+
+          fieldValue.forEach((item, itemIndex) => {
+            if (typeof item !== 'string' || isEmpty(item)) {
+              return
+            }
+
+            valuesToTranslate.push({
+              onTranslate: (translated) => {
+                translatedArray[itemIndex] = translated
+              },
+              value: item,
+            })
+          })
+
+          break
+        }
+
         valuesToTranslate.push({
           onTranslate: (translated: string) => {
             assignSafely(siblingDataTranslated, field.name, translated)
           },
-          value: siblingDataFrom[field.name],
+          value: fieldValue,
         })
         break
+      }
 
       default:
         break
