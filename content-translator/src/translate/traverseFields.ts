@@ -263,14 +263,6 @@ export const traverseFields = ({
         if (root) {
           traverseRichText({
             emptyOnly,
-            onText: (siblingData, key) => {
-              valuesToTranslate.push({
-                onTranslate: (translated: string) => {
-                  siblingData[key] = translated
-                },
-                value: siblingData[key],
-              })
-            },
             payloadConfig,
             root,
             translatedData,
