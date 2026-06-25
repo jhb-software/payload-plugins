@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: translate each entry of `hasMany` text fields individually so keyword/tag lists are translated instead of crashing
 - fix: translate fields inside unnamed (presentational) groups instead of throwing an "Unnamed groups are currently not supported" error
 - fix: skip fields and tabs named `__proto__`, `constructor`, or `prototype` during traversal to avoid prototype-polluting writes when a user-supplied Payload config contains such a name
 

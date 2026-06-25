@@ -23,6 +23,13 @@ export const pagesSchema: CollectionConfig = {
       localized: true,
     },
     {
+      // hasMany text field: each keyword is translated individually
+      name: 'keywords',
+      type: 'text',
+      hasMany: true,
+      localized: true,
+    },
+    {
       name: 'meta',
       type: 'group',
       fields: [
