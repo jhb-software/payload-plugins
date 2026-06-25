@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 export const pagesSchema: CollectionConfig = {
   slug: 'pages',
+  versions: true,
   fields: [
     {
       name: 'title',

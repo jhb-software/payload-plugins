@@ -2,7 +2,12 @@ import he from 'he'
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
 import type { TranslatorCustomConfig } from '../types.js'
-import type { TranslateArgs, TranslateResult, ValueToTranslate } from './types.js'
+import type {
+  IncrementalAccumulator,
+  TranslateArgs,
+  TranslateResult,
+  ValueToTranslate,
+} from './types.js'
 
 import { findEntityWithConfig } from './findEntityWithConfig.js'
 import { traverseFields } from './traverseFields.js'
@@ -44,6 +49,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
   }
 
   const valuesToTranslate: ValueToTranslate[] = []
+  const incremental: IncrementalAccumulator = { conflictCount: 0, stamps: [] }
 
   let translatedData = args.data
 
@@ -62,8 +68,10 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
 
   traverseFields({
     dataFrom,
-    emptyOnly: args.emptyOnly ?? false,
     fields: config.fields,
+    incremental,
+    localeFrom: args.localeFrom,
+    mode: args.mode ?? 'all',
     payloadConfig: req.payload.config,
     translatedData,
     valuesToTranslate,
@@ -106,6 +114,11 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
       valuesToTranslate[index].onTranslate(formattedValue)
     })
 
+    // Stamp content-addressed hashes now that the translated text is in place.
+    for (const stamp of incremental.stamps) {
+      stamp()
+    }
+
     if (args.update) {
       await updateEntity({
         id,
@@ -120,6 +133,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     }
 
     result = {
+      reviewCount: incremental.conflictCount,
       success: true,
       translatedData,
     }

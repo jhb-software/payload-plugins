@@ -2,6 +2,7 @@ import type { CollectionConfig, CollectionSlug } from 'payload'
 
 export const postsSchema: CollectionConfig = {
   slug: 'posts',
+  versions: true,
   fields: [
     {
       name: 'title',

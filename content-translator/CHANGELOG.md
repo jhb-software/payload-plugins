@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: add incremental richText translation ("Translate new & changed content") that translates only new or changed paragraphs, preserves existing translations and manual edits, and reports how many paragraphs need review when a source paragraph changed under a hand-edited translation
 - fix: translate rich text block-level elements as one unit using segment markers so inline formatting spans stay aligned and word order can change across languages
 - fix: reconstruct OpenAI translations by input index so a merged, dropped, or reordered entry no longer shifts later translations into the wrong fields; missing entries keep their original text
 - fix: abort a translation when the resolver returns a different number of texts than were sent, and guard against non-string values reaching `he.decode`

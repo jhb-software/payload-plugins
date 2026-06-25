@@ -5,19 +5,37 @@ import { tabHasName } from 'payload/shared'
 
 const ObjectID = typeof ObjectIDModule === 'function' ? ObjectIDModule : ObjectIDModule.default
 
-import type { ValueToTranslate } from './types.js'
+import type { IncrementalAccumulator, TranslateMode, ValueToTranslate } from './types.js'
 
 import { isEmpty } from '../utils/isEmpty.js'
+import { hashNode, hashText, nodePlainText } from './richtext/hashNode.js'
+import { setNodeHashes } from './richtext/nodeState.js'
+import { reconcileIncremental } from './richtext/reconcileIncremental.js'
 import { traverseRichText } from './traverseRichText.js'
 
 const isUnsafeKey = (key: string): boolean =>
   key === '__proto__' || key === 'constructor' || key === 'prototype'
 
+/**
+ * Write to a dynamic, config-derived key while refusing prototype-polluting
+ * keys. The loop already skips unsafe field names up front, so this is
+ * defense-in-depth that also keeps the assignment provably safe at each call
+ * site (and quiet to static analysis).
+ */
+const assignSafely = (target: Record<string, unknown>, key: string, value: unknown): void => {
+  if (isUnsafeKey(key)) {
+    return
+  }
+  target[key] = value
+}
+
 export const traverseFields = ({
   dataFrom,
-  emptyOnly,
   fields,
+  incremental,
+  localeFrom,
   localizedParent,
+  mode,
   payloadConfig,
   siblingDataFrom,
   siblingDataTranslated,
@@ -25,9 +43,12 @@ export const traverseFields = ({
   valuesToTranslate,
 }: {
   dataFrom: Record<string, unknown>
-  emptyOnly: boolean
   fields: Field[]
+  incremental?: IncrementalAccumulator
+  /** Source locale of this run; selects which per-locale srcHash to read/write. */
+  localeFrom: string
   localizedParent?: boolean
+  mode: TranslateMode
   payloadConfig: SanitizedConfig
   siblingDataFrom?: Record<string, unknown>
   siblingDataTranslated?: Record<string, unknown>
@@ -36,6 +57,19 @@ export const traverseFields = ({
 }) => {
   siblingDataFrom = siblingDataFrom ?? dataFrom
   siblingDataTranslated = siblingDataTranslated ?? translatedData
+  incremental = incremental ?? { conflictCount: 0, stamps: [] }
+
+  // LIMITATION: change detection only works for lexical richText. `incremental`
+  // does node-level diffing of lexical paragraphs/blocks (see the richText case
+  // below); for every other field type it falls back to empty-only here. So a
+  // text/textarea/number/array/blocks value whose SOURCE changed after it was
+  // already translated is NOT retranslated in incremental mode — only fields
+  // that are still empty get filled. Catching edits on those would need a hash
+  // of the source stored per field (plain fields have no NodeState slot to carry
+  // it inline, unlike lexical nodes), i.e. the sidecar approach — out of scope
+  // here. Despite the "new & changed" label, "changed" currently means lexical
+  // content only.
+  const fillEmptyOnly = mode !== 'all'
 
   for (const field of fields) {
     if ('virtual' in field && field.virtual) {
@@ -60,7 +94,7 @@ export const traverseFields = ({
           (siblingDataTranslated[field.name] as { id: number | string }[] | undefined) ?? []
 
         if (field.localized || localizedParent) {
-          if (arrayDataTranslated.length > 0 && emptyOnly) {
+          if (arrayDataTranslated.length > 0 && fillEmptyOnly) {
             break
           }
 
@@ -72,9 +106,11 @@ export const traverseFields = ({
         arrayDataTranslated.forEach((item, index) => {
           traverseFields({
             dataFrom,
-            emptyOnly,
             fields: field.fields,
+            incremental,
+            localeFrom,
             localizedParent: localizedParent ?? field.localized,
+            mode,
             payloadConfig,
             siblingDataFrom: arrayDataFrom[index],
             siblingDataTranslated: item,
@@ -83,7 +119,7 @@ export const traverseFields = ({
           })
         })
 
-        siblingDataTranslated[field.name] = arrayDataTranslated
+        assignSafely(siblingDataTranslated, field.name, arrayDataTranslated)
 
         break
       }
@@ -104,7 +140,7 @@ export const traverseFields = ({
             | undefined) ?? []
 
         if (field.localized || localizedParent) {
-          if (blocksDataTranslated.length > 0 && emptyOnly) {
+          if (blocksDataTranslated.length > 0 && fillEmptyOnly) {
             break
           }
 
@@ -140,9 +176,11 @@ export const traverseFields = ({
 
           traverseFields({
             dataFrom,
-            emptyOnly,
             fields: blockConfig.fields,
+            incremental,
+            localeFrom,
             localizedParent: localizedParent ?? field.localized,
+            mode,
             payloadConfig,
             siblingDataFrom: blocksDataFrom[index],
             siblingDataTranslated: item,
@@ -151,7 +189,7 @@ export const traverseFields = ({
           })
         })
 
-        siblingDataTranslated[field.name] = blocksDataTranslated
+        assignSafely(siblingDataTranslated, field.name, blocksDataTranslated)
 
         break
       }
@@ -167,16 +205,18 @@ export const traverseFields = ({
       case 'relationship':
       case 'select':
       case 'upload':
-        siblingDataTranslated[field.name] = siblingDataFrom[field.name]
+        assignSafely(siblingDataTranslated, field.name, siblingDataFrom[field.name])
 
         break
       case 'collapsible':
       case 'row':
         traverseFields({
           dataFrom,
-          emptyOnly,
           fields: field.fields,
+          incremental,
+          localeFrom,
           localizedParent,
+          mode,
           payloadConfig,
           siblingDataFrom,
           siblingDataTranslated,
@@ -191,9 +231,11 @@ export const traverseFields = ({
           // like row/collapsible, propagating the parent's localization context.
           traverseFields({
             dataFrom,
-            emptyOnly,
             fields: field.fields,
+            incremental,
+            localeFrom,
             localizedParent,
+            mode,
             payloadConfig,
             siblingDataFrom,
             siblingDataTranslated,
@@ -214,9 +256,11 @@ export const traverseFields = ({
 
         traverseFields({
           dataFrom,
-          emptyOnly,
           fields: field.fields,
+          incremental,
+          localeFrom,
           localizedParent: field.localized,
+          mode,
           payloadConfig,
           siblingDataFrom: groupDataFrom,
           siblingDataTranslated: groupDataTranslated,
@@ -224,7 +268,7 @@ export const traverseFields = ({
           valuesToTranslate,
         })
 
-        siblingDataTranslated[field.name] = groupDataTranslated
+        assignSafely(siblingDataTranslated, field.name, groupDataTranslated)
 
         break
       }
@@ -237,19 +281,59 @@ export const traverseFields = ({
           break
         }
 
-        if (emptyOnly && !isEmpty(siblingDataTranslated[field.name])) {
-          break
-        }
-
-        const richTextDataFrom = siblingDataFrom[field.name] as object
-
-        siblingDataTranslated[field.name] = richTextDataFrom
+        const richTextDataFrom = siblingDataFrom[field.name] as Record<string, unknown>
 
         if (!richTextDataFrom) {
           break
         }
 
         const isLexical = 'root' in richTextDataFrom
+        const existingTarget = siblingDataTranslated[field.name]
+
+        // Incremental: diff source against the existing translation at the
+        // paragraph/block level instead of skipping or wholesale-replacing.
+        if (mode === 'incremental' && isLexical && !isEmpty(existingTarget)) {
+          const sourceRoot = richTextDataFrom.root as Record<string, unknown>
+          const targetRoot = (existingTarget as Record<string, unknown>).root as Record<
+            string,
+            unknown
+          >
+
+          const { children, conflictCount, stamps } = reconcileIncremental({
+            collectUnitTexts: (unitNode) => {
+              traverseRichText({
+                incremental,
+                localeFrom,
+                mode: 'all',
+                payloadConfig,
+                root: unitNode,
+                translatedData,
+                valuesToTranslate,
+              })
+            },
+            localeFrom,
+            sourceChildren: (sourceRoot?.children as Record<string, unknown>[]) ?? [],
+            targetChildren: (targetRoot?.children as Record<string, unknown>[]) ?? [],
+          })
+
+          assignSafely(siblingDataTranslated, field.name, {
+            ...richTextDataFrom,
+            root: { ...sourceRoot, children },
+          })
+          incremental.stamps.push(...stamps)
+          incremental.conflictCount += conflictCount
+
+          break
+        }
+
+        // empty: leave an already-translated field untouched.
+        if (fillEmptyOnly && !isEmpty(existingTarget)) {
+          break
+        }
+
+        // all (and incremental over an empty target, or non-lexical): copy the
+        // source tree and translate every text node.
+        assignSafely(siblingDataTranslated, field.name, richTextDataFrom)
 
         if (!isLexical) {
           break
@@ -262,12 +346,26 @@ export const traverseFields = ({
 
         if (root) {
           traverseRichText({
-            emptyOnly,
+            incremental,
+            localeFrom,
+            mode,
             payloadConfig,
             root,
             translatedData,
             valuesToTranslate,
           })
+
+          // Stamp every top-level node so a later incremental run has the
+          // content-addressed hashes to join on. Capture srcHash now (before the
+          // deferred onTranslate mutates the text) and outHash after.
+          if (Array.isArray(root.children)) {
+            for (const child of root.children as Record<string, unknown>[]) {
+              const srcHash = hashNode(child)
+              incremental.stamps.push(() =>
+                setNodeHashes(child, localeFrom, srcHash, hashText(nodePlainText(child))),
+              )
+            }
+          }
         }
 
         break
@@ -295,9 +393,11 @@ export const traverseFields = ({
 
           traverseFields({
             dataFrom,
-            emptyOnly,
             fields: tab.fields,
+            incremental,
+            localeFrom,
             localizedParent: tab.localized,
+            mode,
             payloadConfig,
             siblingDataFrom: tabDataFrom,
             siblingDataTranslated: tabDataTranslated,
@@ -306,7 +406,7 @@ export const traverseFields = ({
           })
 
           if (hasName) {
-            siblingDataTranslated[tab.name] = tabDataTranslated
+            assignSafely(siblingDataTranslated, tab.name, tabDataTranslated)
           }
         }
 
@@ -320,7 +420,7 @@ export const traverseFields = ({
         if (!(field.localized || localizedParent) || isEmpty(siblingDataFrom[field.name])) {
           break
         }
-        if (emptyOnly && siblingDataTranslated[field.name]) {
+        if (fillEmptyOnly && siblingDataTranslated[field.name]) {
           break
         }
 
@@ -340,7 +440,7 @@ export const traverseFields = ({
         // failed element keeps its original text.
         if (Array.isArray(fieldValue)) {
           const translatedArray = [...fieldValue]
-          siblingDataTranslated[field.name] = translatedArray
+          assignSafely(siblingDataTranslated, field.name, translatedArray)
 
           fieldValue.forEach((item, itemIndex) => {
             if (typeof item !== 'string' || isEmpty(item)) {
@@ -359,8 +459,8 @@ export const traverseFields = ({
         }
 
         valuesToTranslate.push({
-          onTranslate: (translated) => {
-            siblingDataTranslated[field.name] = translated
+          onTranslate: (translated: string) => {
+            assignSafely(siblingDataTranslated, field.name, translated)
           },
           value: fieldValue,
         })

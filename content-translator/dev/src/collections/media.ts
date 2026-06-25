@@ -7,6 +7,7 @@ const dirname = path.dirname(filename)
 
 export const mediaSchema: CollectionConfig = {
   slug: 'media',
+  versions: true,
   fields: [],
   upload: {
     staticDir: path.resolve(dirname, '../media'),

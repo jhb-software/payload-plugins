@@ -1,6 +1,6 @@
 import type { FlattenedBlock, SanitizedConfig } from 'payload'
 
-import type { ValueToTranslate } from './types.js'
+import type { IncrementalAccumulator, TranslateMode, ValueToTranslate } from './types.js'
 
 import { traverseFields } from './traverseFields.js'
 
@@ -85,14 +85,18 @@ const pushTextRun = (run: Record<string, any>[], valuesToTranslate: ValueToTrans
 }
 
 export const traverseRichText = ({
-  emptyOnly,
+  incremental,
+  localeFrom,
+  mode,
   payloadConfig,
   root,
   siblingData,
   translatedData,
   valuesToTranslate,
 }: {
-  emptyOnly: boolean
+  incremental?: IncrementalAccumulator
+  localeFrom: string
+  mode: TranslateMode
   payloadConfig: SanitizedConfig
   root: Record<string, unknown>
   siblingData?: Record<string, unknown>
@@ -119,9 +123,11 @@ export const traverseRichText = ({
         // Traverse the fields of the block
         traverseFields({
           dataFrom: root,
-          emptyOnly,
           fields: blockConfig.fields,
+          incremental,
+          localeFrom,
           localizedParent: false,
+          mode,
           payloadConfig,
           siblingDataFrom: blockData,
           siblingDataTranslated: blockData,
@@ -159,7 +165,9 @@ export const traverseRichText = ({
       pushTextRun(run, valuesToTranslate)
     } else {
       traverseRichText({
-        emptyOnly,
+        incremental,
+        localeFrom,
+        mode,
         payloadConfig,
         root,
         siblingData: child,

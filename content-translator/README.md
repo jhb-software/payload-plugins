@@ -42,6 +42,31 @@ export default buildConfig({
 })
 ```
 
+## Translation modes
+
+The translator modal offers three actions:
+
+- **Translate all fields** — retranslates every field, discarding existing target content.
+- **Translate new & changed content** — incremental mode (see below).
+- **Translate only empty fields** — fills target fields that have no value yet, leaving the rest untouched.
+
+### Incremental mode
+
+Incremental mode translates only what actually changed and preserves existing translations, which matters most for `richText`. For a lexical field it diffs the source against the existing translation at the **paragraph / block level**:
+
+- a paragraph whose source text is unchanged keeps its current translation (including any manual edits) and is not retranslated;
+- a new or edited source paragraph is translated and placed in source order, so inserts and reorders land in the right position;
+- a paragraph removed from the source is removed from the translation;
+- if a source paragraph changed **and** its translation had been hand-edited, the human's version is left in place and counted — the success toast reports how many paragraphs need review, so machine accuracy never silently overwrites manual work.
+
+**Limitation:** change detection currently applies to lexical `richText` only. Every other field type (`text`, `textarea`, `number`, `array`, `blocks`, non-lexical `richText`) behaves like "translate only empty fields" in incremental mode — an empty target is filled, but a field whose source changed _after_ it was already translated is **not** retranslated. Detecting edits on those would require storing a source hash per field (plain fields have no inline NodeState slot like lexical nodes do).
+
+Paragraph identity is content-addressed: a hash of the source text and a hash of the machine output are stored inline on the translated node using Lexical's [NodeState](https://lexical.dev/docs/concepts/node-state) slot (`$`), under a single namespaced key — `"$": { "translator-plugin": { "srcHash": { "<sourceLocale>": … }, "outHash": … } }`. These pass through Payload saves and admin-editor edits untouched (covered by a regression test). Because identity comes from content rather than position, the diff survives inserts, deletes and reorders.
+
+The source language is whatever the editor selects in the modal (it defaults to your `defaultLocale`), so `srcHash` is keyed **by source locale**: translating a target from EN vs. DE are tracked independently, and a paragraph translated from one source isn't mistaken for content from another. The `outHash` is a single value — it hashes the target's own text, independent of which source produced it.
+
+The first incremental run on a field translated by an older version (no stored hashes) retranslates it once and then stamps the hashes; subsequent runs are incremental. If a future lexical/Payload release ever stopped preserving the `$` slot, the same merge can fall back to a sidecar field keyed by field path — the algorithm is identical, only the read/write of the hash changes.
+
 ## Configuration
 
 ### Plugin Options

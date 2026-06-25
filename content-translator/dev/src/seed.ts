@@ -8,10 +8,33 @@ interface AuthorSeedData {
 }
 
 interface PageSeedData {
+  content?: string[]
   keywords: string[]
   slug: string
   title: string
 }
+
+/** Build a minimal lexical richText value from plain-text paragraphs. */
+const lexical = (paragraphs: string[]) => ({
+  root: {
+    type: 'root',
+    children: paragraphs.map((text) => ({
+      type: 'paragraph',
+      children: [
+        { type: 'text', detail: 0, format: 0, mode: 'normal', style: '', text, version: 1 },
+      ],
+      direction: 'ltr',
+      format: '',
+      indent: 0,
+      textFormat: 0,
+      version: 1,
+    })),
+    direction: 'ltr',
+    format: '',
+    indent: 0,
+    version: 1,
+  },
+})
 
 interface PostSeedData {
   slug: string
@@ -73,6 +96,18 @@ export const seed = async (payload: Payload) => {
 
   const pages: PageSeedData[] = [
     {
+      // Source content for trying incremental richText translation. To see each
+      // case of the classification table:
+      //   1. open this page, switch to the German locale, "Translate all fields"
+      //   2. switch back to English, add / edit / reorder / delete a paragraph
+      //   3. switch to German, "Translate new & changed content" — only the
+      //      changed paragraph is translated; the rest (incl. any manual edits
+      //      you made to the German text) are preserved
+      content: [
+        'Welcome to our company. We build software that helps teams move faster.',
+        'Our mission is to make complex workflows feel simple and reliable.',
+        'Get in touch to learn how we can help your organisation.',
+      ],
       slug: 'home',
       keywords: ['welcome', 'home page', 'getting started'],
       title: 'Welcome to Our Website',
@@ -95,15 +130,31 @@ export const seed = async (payload: Payload) => {
   ]
 
   for (const pageData of pages) {
-    const { totalDocs: existingPage } = await payload.count({
+    const { docs } = await payload.find({
       collection: 'pages' as CollectionSlug,
+      depth: 0,
+      limit: 1,
       where: { slug: { equals: pageData.slug } },
     })
+
+    const existingPage = docs[0] as { content?: unknown; id: number | string } | undefined
 
     if (!existingPage) {
       await payload.create({
         collection: 'pages' as CollectionSlug,
-        data: pageData,
+        data: {
+          slug: pageData.slug,
+          title: pageData.title,
+          keywords: pageData.keywords,
+          ...(pageData.content ? { content: lexical(pageData.content) } : {}),
+        } as Record<string, unknown>,
+      })
+    } else if (pageData.content && !existingPage.content) {
+      // Backfill demo content onto a page seeded before it had any.
+      await payload.update({
+        collection: 'pages' as CollectionSlug,
+        id: existingPage.id,
+        data: { content: lexical(pageData.content) } as Record<string, unknown>,
       })
     }
   }
