@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- fix: translate rich text block-level elements as one unit using segment markers so inline formatting spans stay aligned and word order can change across languages
+- fix: reconstruct OpenAI translations by input index so a merged, dropped, or reordered entry no longer shifts later translations into the wrong fields; missing entries keep their original text
+- fix: abort a translation when the resolver returns a different number of texts than were sent, and guard against non-string values reaching `he.decode`
 - fix: translate fields inside unnamed (presentational) groups instead of throwing an "Unnamed groups are currently not supported" error
 - fix: skip fields and tabs named `__proto__`, `constructor`, or `prototype` during traversal to avoid prototype-polluting writes when a user-supplied Payload config contains such a name
 

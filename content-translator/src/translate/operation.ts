@@ -82,9 +82,26 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     result = {
       success: false,
     }
+  } else if (resolveResult.translatedTexts.length !== valuesToTranslate.length) {
+    // Defense in depth: the resolver must return exactly one translation per
+    // input value, in order. A count mismatch means index-based write-back
+    // would shift translations into the wrong fields, so fail instead.
+    req.payload.logger.error({
+      inputCount: valuesToTranslate.length,
+      message: 'Translation aborted: resolver returned a different number of texts than were sent',
+      outputCount: resolveResult.translatedTexts.length,
+    })
+
+    result = {
+      success: false,
+    }
   } else {
     resolveResult.translatedTexts.forEach((translated, index) => {
-      const formattedValue = he.decode(translated)
+      // he.decode() calls String.prototype.replace internally, so a
+      // non-string value (e.g. an array slipping through from a hasMany
+      // field) would throw "e.replace is not a function". Guard against it
+      // and pass non-strings through untouched.
+      const formattedValue = typeof translated === 'string' ? he.decode(translated) : translated
 
       valuesToTranslate[index].onTranslate(formattedValue)
     })
