@@ -8,6 +8,7 @@ interface AuthorSeedData {
 }
 
 interface PageSeedData {
+  keywords: string[]
   slug: string
   title: string
 }
@@ -73,18 +74,22 @@ export const seed = async (payload: Payload) => {
   const pages: PageSeedData[] = [
     {
       slug: 'home',
+      keywords: ['welcome', 'home page', 'getting started'],
       title: 'Welcome to Our Website',
     },
     {
       slug: 'about',
+      keywords: ['company', 'team', 'our story'],
       title: 'About Our Company',
     },
     {
       slug: 'services',
+      keywords: ['services', 'solutions', 'consulting'],
       title: 'Our Services and Solutions',
     },
     {
       slug: 'contact',
+      keywords: ['contact', 'support', 'get in touch'],
       title: 'Get in Touch With Us',
     },
   ]

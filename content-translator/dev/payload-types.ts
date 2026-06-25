@@ -146,6 +146,7 @@ export interface Page {
     };
     [k: string]: unknown;
   } | null;
+  keywords?: string[] | null;
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -332,6 +333,7 @@ export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
   content?: T;
+  keywords?: T;
   meta?:
     | T
     | {

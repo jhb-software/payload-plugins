@@ -320,7 +320,7 @@ export const traverseFields = ({
 
         break
       case 'text':
-      case 'textarea':
+      case 'textarea': {
         if (field.custom && typeof field.custom === 'object' && field.custom.translatorSkip) {
           break
         }
@@ -337,13 +337,43 @@ export const traverseFields = ({
           break
         }
 
+        const fieldValue = siblingDataFrom[field.name]
+
+        // `hasMany` text fields store an array of strings (e.g. keywords /
+        // tags). Translate each element individually - sending the whole
+        // array as a single value makes the resolver return a non-string,
+        // which then crashes in he.decode(...) ("e.replace is not a
+        // function"). Pre-seed the target with the originals and replace
+        // each entry in place as its translation resolves, so a skipped or
+        // failed element keeps its original text.
+        if (Array.isArray(fieldValue)) {
+          const translatedArray = [...fieldValue]
+          siblingDataTranslated[field.name] = translatedArray
+
+          fieldValue.forEach((item, itemIndex) => {
+            if (typeof item !== 'string' || isEmpty(item)) {
+              return
+            }
+
+            valuesToTranslate.push({
+              onTranslate: (translated) => {
+                translatedArray[itemIndex] = translated
+              },
+              value: item,
+            })
+          })
+
+          break
+        }
+
         valuesToTranslate.push({
-          onTranslate: (translated: string) => {
+          onTranslate: (translated) => {
             siblingDataTranslated[field.name] = translated
           },
-          value: siblingDataFrom[field.name],
+          value: fieldValue,
         })
         break
+      }
 
       default:
         break
