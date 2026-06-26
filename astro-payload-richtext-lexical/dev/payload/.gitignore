@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Local SQLite database
+*.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+._*
