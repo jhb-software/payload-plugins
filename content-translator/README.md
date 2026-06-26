@@ -53,6 +53,105 @@ export default buildConfig({
 | `resolver`    | `TranslateResolver` | Yes      | Translation resolver to use           |
 | `enabled`     | `boolean`           | No       | Whether to enable the plugin.         |
 
+### Per-field control
+
+Any field can declare how the translator should treat it through a
+`content-translator` entry in its `custom` config. This is field-local and
+provider-agnostic: a field opts into special handling regardless of its name or
+type. The config is fully typed via module augmentation of Payload's
+`FieldCustom`, so the keys below autocomplete.
+
+| Key               | Type                                | Description                                                                                                                   |
+| ----------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `skip`            | `boolean`                           | Exclude the field from the resolver — its value is not translated. Use alone to let the app own it, or with `afterTranslate`. |
+| `beforeTranslate` | `(args) => string`                  | Transform the source string right before it is sent to the resolver. The translated result is written back as usual.          |
+| `afterTranslate`  | `(args) => unknown \| Promise<...>` | Post-process the field _after_ the rest of the document is translated. Runs independently of `skip`.                          |
+
+The three keys are orthogonal: `skip` decides whether the field is translated,
+`beforeTranslate` pre-processes what is sent, and `afterTranslate` post-processes
+the result (or derives a value from translated siblings).
+
+#### Translating slug fields
+
+A slug must never be stored with the raw output of an LLM — it has to stay
+URL-safe. There are two strategies, depending on whether the slug should mirror
+the title:
+
+```ts
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^\w]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+```
+
+**Derive from the title** — the slug always follows the title, so skip
+translation and re-slugify the already-translated title (e.g. "Travel Tips" →
+`reisetipps`):
+
+```ts
+{
+  name: 'slug',
+  type: 'text',
+  localized: true,
+  custom: {
+    'content-translator': {
+      skip: true,
+      afterTranslate: ({ siblingData }) => slugify(String(siblingData.title ?? '')),
+    },
+  },
+}
+```
+
+**Translate, then normalize** — for a slug intentionally different from the
+title, translate the slug text and then slugify it to strip any special
+characters the translation introduced:
+
+```ts
+{
+  name: 'slug',
+  type: 'text',
+  localized: true,
+  custom: {
+    'content-translator': {
+      // No `skip`: the slug is translated, then cleaned.
+      afterTranslate: ({ value }) => slugify(String(value ?? '')),
+    },
+  },
+}
+```
+
+`afterTranslate` receives the field's own (translated) `value`, the translated
+`siblingData`, the full translated `data`, `sourceValue`, `localeFrom`/`localeTo`,
+and `req`. Because it is field-local, this works for any derived or normalized
+field under any name — slugs, URL paths, computed keys.
+
+#### With the Pages plugin's slug field
+
+The [Pages plugin](https://www.npmjs.com/package/@jhb.software/payload-pages-plugin)
+ships a localized `slug` field. Spread its config and attach the translator
+handling so translating a document produces a localized slug:
+
+```ts
+import { slugField } from '@jhb.software/payload-pages-plugin'
+
+const slug = slugField({ fallbackField: 'title' })
+
+export const translatableSlug = {
+  ...slug,
+  custom: {
+    ...slug.custom,
+    'content-translator': {
+      // Derive the slug from the translated title rather than translating it.
+      // Use the same slugify rules the slug field validates against so the
+      // result is accepted.
+      skip: true,
+      afterTranslate: ({ siblingData }) => slugify(String(siblingData.title ?? '')),
+    },
+  },
+}
+```
+
 ### Resolvers
 
 This plugin is designed to work seamlessly with various translation services by accepting a customizable translation resolver as a configuration option.

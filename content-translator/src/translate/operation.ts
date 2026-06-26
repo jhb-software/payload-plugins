@@ -2,7 +2,12 @@ import he from 'he'
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
 import type { TranslatorCustomConfig } from '../types.js'
-import type { TranslateArgs, TranslateResult, ValueToTranslate } from './types.js'
+import type {
+  AfterTranslateHook,
+  TranslateArgs,
+  TranslateResult,
+  ValueToTranslate,
+} from './types.js'
 
 import { findEntityWithConfig } from './findEntityWithConfig.js'
 import { traverseFields } from './traverseFields.js'
@@ -44,6 +49,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
   }
 
   const valuesToTranslate: ValueToTranslate[] = []
+  const afterTranslateHooks: AfterTranslateHook[] = []
 
   let translatedData = args.data
 
@@ -61,10 +67,14 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
   }
 
   traverseFields({
+    afterTranslateHooks,
     dataFrom,
     emptyOnly: args.emptyOnly ?? false,
     fields: config.fields,
+    localeFrom: args.localeFrom,
+    localeTo: args.locale,
     payloadConfig: req.payload.config,
+    req,
     translatedData,
     valuesToTranslate,
   })
@@ -105,6 +115,17 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
 
       valuesToTranslate[index].onTranslate(formattedValue)
     })
+
+    // Derived fields (e.g. slugs) run after every translated sibling value has
+    // been written back, so they can read the final translated document.
+    for (const hook of afterTranslateHooks) {
+      await hook.apply({
+        data: translatedData,
+        localeFrom: args.localeFrom,
+        localeTo: args.locale,
+        req,
+      })
+    }
 
     if (args.update) {
       await updateEntity({
