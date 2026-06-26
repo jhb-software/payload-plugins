@@ -45,7 +45,7 @@
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
     "@swc/cli": "^0.8.1",
-    "@swc/core": "^1.15.41",
+    "@swc/core": "^1.15.43",
     "@types/he": "^1.2.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

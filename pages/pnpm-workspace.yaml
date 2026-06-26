@@ -15,7 +15,7 @@ overrides:
   uuid: '^11.1.1'
   mongoose: '^8.22.1'
   esbuild: '^0.28.1'
-  vite: '^8.0.16'
+  vite: '^8.1.0'
   next: '16.2.9'
   '@typescript-eslint/utils': '^8.59.3'
   '@typescript-eslint/eslint-plugin': '^8.59.3'

@@ -580,11 +580,16 @@ describe('runAgent prompt caching', () => {
       },
     ]
     const result = await prepareStep!({
-      experimental_context: undefined,
+      initialInstructions: undefined,
+      initialMessages: [],
+      instructions: undefined,
       messages: stepMessages,
       model: {} as unknown as Parameters<NonNullable<typeof prepareStep>>[0]['model'],
+      responseMessages: [],
+      runtimeContext: {},
       stepNumber: 1,
       steps: [],
+      toolsContext: undefined as never,
     })
 
     const out = (result as { messages: typeof stepMessages }).messages

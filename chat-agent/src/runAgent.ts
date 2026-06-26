@@ -70,7 +70,7 @@ export interface RunAgentOptions {
 }
 
 /** Result mirrors `streamText`'s handle so callers choose how to consume it. */
-export type RunAgentResult = StreamTextResult<ToolSet, never>
+export type RunAgentResult = StreamTextResult<ToolSet, Record<string, unknown>, never>
 
 /**
  * Thrown when a consumer-supplied `tools` factory throws. Lets the HTTP

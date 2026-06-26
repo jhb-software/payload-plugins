@@ -97,7 +97,7 @@ describe('buildTools', () => {
         sort: '-createdAt',
         where: { status: { equals: 'published' } },
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -120,7 +120,7 @@ describe('buildTools', () => {
 
     await tools.find.execute(
       { collection: 'posts' },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({ depth: 0 }))
@@ -132,7 +132,7 @@ describe('buildTools', () => {
 
     await tools.findByID.execute(
       { id: 'abc-123', collection: 'posts', depth: 2 },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.findByID).toHaveBeenCalledWith(
@@ -153,7 +153,7 @@ describe('buildTools', () => {
 
     await tools.create.execute(
       { collection: 'posts', data, locale: 'en' },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.create).toHaveBeenCalledWith(
@@ -174,7 +174,7 @@ describe('buildTools', () => {
 
     await tools.update.execute(
       { id: 'abc-123', collection: 'posts', data: { title: 'Updated' } },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.update).toHaveBeenCalledWith(
@@ -195,7 +195,7 @@ describe('buildTools', () => {
 
     await tools.delete.execute(
       { id: 'abc-123', collection: 'posts' },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.delete).toHaveBeenCalledWith(
@@ -219,7 +219,7 @@ describe('buildTools', () => {
         data: { status: 'published' },
         where: { status: { equals: 'draft' } },
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.update).toHaveBeenCalledWith(
@@ -247,7 +247,7 @@ describe('buildTools', () => {
         limit: 10,
         where: { status: { equals: 'draft' } },
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.update).toHaveBeenCalledWith(expect.objectContaining({ limit: 10 }))
@@ -262,7 +262,7 @@ describe('buildTools', () => {
         collection: 'posts',
         where: { status: { equals: 'draft' } },
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.delete).toHaveBeenCalledWith(
@@ -310,7 +310,7 @@ describe('buildTools', () => {
 
     await tools.count.execute(
       { collection: 'posts', where: { status: { equals: 'published' } } },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.count).toHaveBeenCalledWith(
@@ -329,7 +329,7 @@ describe('buildTools', () => {
 
     await tools.findGlobal.execute(
       { slug: 'settings' },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.findGlobal).toHaveBeenCalledWith(
@@ -348,7 +348,7 @@ describe('buildTools', () => {
 
     await tools.updateGlobal.execute(
       { slug: 'settings', data: { siteName: 'New Name' } },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.updateGlobal).toHaveBeenCalledWith(
@@ -372,7 +372,7 @@ describe('buildTools', () => {
         populate: { author: true },
         select: { slug: true, title: true },
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -394,7 +394,7 @@ describe('buildTools', () => {
         fallbackLocale: 'en',
         locale: 'de',
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -411,6 +411,7 @@ describe('buildTools', () => {
     const tools = buildTools(payload, mockUser)
     const ctx = {
       abortSignal: undefined,
+      context: undefined,
       messages: [],
       toolCallId: '1',
     }
@@ -591,6 +592,7 @@ describe('callEndpoint tool', () => {
   const mockUser = { id: 'u1' } as unknown as TypedUser
   const ctx = {
     abortSignal: undefined,
+    context: undefined,
     messages: [],
     toolCallId: '1',
   }
@@ -910,7 +912,7 @@ describe('schema inspection tools', () => {
     updateGlobal: vi.fn(),
   }
   const mockUser = { id: 'u1' } as unknown as TypedUser
-  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+  const ctx = { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' }
 
   it('are not registered when config is not passed', () => {
     const tools = buildTools(mockPayload, mockUser)
@@ -1182,7 +1184,7 @@ describe('block schema tools', () => {
     updateGlobal: vi.fn(),
   }
   const mockUser = { id: 'u1' } as unknown as TypedUser
-  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+  const ctx = { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' }
 
   it('are not registered when config is not passed', () => {
     const tools = buildTools(mockPayload, mockUser)
@@ -1392,7 +1394,7 @@ describe('listEndpoints', () => {
     updateGlobal: vi.fn(),
   }
   const mockUser = { id: 'u1' } as unknown as TypedUser
-  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+  const ctx = { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' }
 
   it('is not registered when no custom endpoints exist', () => {
     const tools = buildTools(mockPayload, mockUser, false, asReq({}), [])

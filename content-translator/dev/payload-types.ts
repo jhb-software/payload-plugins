@@ -151,6 +151,7 @@ export interface Page {
     title?: string | null;
     description?: string | null;
   };
+  ctaLabel?: string | null;
   seo?: {
     ogTitle?: string | null;
     ogDescription?: string | null;
@@ -340,6 +341,7 @@ export interface PagesSelect<T extends boolean = true> {
         title?: T;
         description?: T;
       };
+  ctaLabel?: T;
   seo?:
     | T
     | {
