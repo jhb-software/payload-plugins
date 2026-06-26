@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: render table cells as `<th>`/`<td>` per cell `headerState` instead of forcing the first row to headers, and emit `colspan`/`rowspan`
+
 ## 0.3.2
 
 - fix: throw an error instead of building an invalid href for invalid URLs in custom links
