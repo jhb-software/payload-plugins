@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - fix: translate rich text block-level elements as one unit using segment markers so inline formatting spans stay aligned and word order can change across languages
 - fix: reconstruct OpenAI translations by input index so a merged, dropped, or reordered entry no longer shifts later translations into the wrong fields; missing entries keep their original text
