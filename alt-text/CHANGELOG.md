@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- fix: serve the generate, bulk-generate, and health endpoints under `/api/alt-text/` (previously `/api/alt-text-plugin/`) so the endpoint prefix matches the plugin slug
+- **BREAKING**: serve the generate, bulk-generate, and health endpoints under `/api/alt-text/` (previously `/api/alt-text-plugin/`) so the endpoint prefix matches the plugin slug. Any API client calling the old paths must be updated.
 
 ## 0.8.0
 
