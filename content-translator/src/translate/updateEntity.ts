@@ -6,6 +6,7 @@ type Args = {
   collectionSlug?: string
   data: Record<string, any>
   depth?: number
+  draft?: boolean
   globalSlug?: string
   id?: number | string
   locale: string
@@ -18,6 +19,7 @@ export const updateEntity = ({
   collectionSlug,
   data,
   depth: incomingDepth,
+  draft,
   globalSlug,
   locale,
   overrideAccess,
@@ -40,6 +42,7 @@ export const updateEntity = ({
         slug: globalSlug,
         data,
         depth,
+        draft,
         locale: locale as any,
         overrideAccess,
         req,
@@ -49,6 +52,7 @@ export const updateEntity = ({
         collection: collectionSlug as CollectionSlug,
         data,
         depth,
+        draft,
         locale: locale as any,
         overrideAccess,
         req,

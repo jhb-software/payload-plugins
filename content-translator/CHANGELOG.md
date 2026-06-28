@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: the translate endpoint can now persist results via an `update` flag (and optional `draft` flag), enabling programmatic/agent translation over the REST API instead of only returning the translated data
+
 ## 0.3.0
 
 - fix: translate rich text block-level elements as one unit using segment markers so inline formatting spans stay aligned and word order can change across languages
