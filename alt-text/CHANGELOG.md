@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: serve the generate, bulk-generate, and health endpoints under `/api/alt-text/` (previously `/api/alt-text-plugin/`) so the endpoint prefix matches the plugin slug
+
 ## 0.8.0
 
 - feat: bound and de-duplicate the bulk-generate `ids` array — duplicate IDs are collapsed and requests above the new `maxBulkGenerateIds` option (default 100) are rejected with `400`, so a single request can no longer fan out into an unbounded number of paid resolver calls

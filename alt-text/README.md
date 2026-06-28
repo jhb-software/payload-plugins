@@ -205,9 +205,9 @@ export const customResolver = (): AltTextResolver => ({
 
 ## REST API Endpoints
 
-The plugin registers the following REST API endpoints under `/api/alt-text-plugin/`. All endpoints require authentication by default (configurable via the `access` option). Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections the requesting user can read (and can be gated separately via the `healthCheck` function).
+The plugin registers the following REST API endpoints under `/api/alt-text/`. All endpoints require authentication by default (configurable via the `access` option). Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections the requesting user can read (and can be gated separately via the `healthCheck` function).
 
-### `POST /api/alt-text-plugin/generate`
+### `POST /api/alt-text/generate`
 
 Generates alt text for a single image. By default, returns the result without saving it (preview mode). Pass `update: true` to also persist the generated alt text and keywords to the document.
 
@@ -231,7 +231,7 @@ Generates alt text for a single image. By default, returns the result without sa
 }
 ```
 
-### `POST /api/alt-text-plugin/generate/bulk`
+### `POST /api/alt-text/generate/bulk`
 
 Generates and persists alt text for multiple images across all configured locales.
 
@@ -252,7 +252,7 @@ Generates and persists alt text for multiple images across all configured locale
 }
 ```
 
-### `GET /api/alt-text-plugin/health`
+### `GET /api/alt-text/health`
 
 Returns alt text coverage statistics across all configured collections. Only available when `healthCheck` is enabled.
 
