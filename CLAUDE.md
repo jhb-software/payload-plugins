@@ -64,6 +64,15 @@ Every shipped `fix` or `feat` gets **one** line in the affected plugin's `CHANGE
 
 If there is no section for the upcoming version yet, add an `## Unreleased` heading at the top and list changes under it. When a version is released, the `## Unreleased` heading is replaced with the version number by the release workflow.
 
+## Breaking Changes
+
+A change that alters or removes existing public behavior — a renamed or removed endpoint path, a changed option name or default, an altered response shape, a removed or renamed export — is **breaking** and must ship with **all** of the following:
+
+- **Conventional Commits marker**: append `!` after the type/scope (e.g. `fix(alt-text)!: ...`) and/or add a `BREAKING CHANGE: <description>` footer, per the [Conventional Commits](https://www.conventionalcommits.org/) spec. The PR title carries the same marker.
+- **README notice**: document the change and its migration path in the affected plugin's `README.md` (old → new endpoint path, renamed option, etc.) so a user upgrading can adapt without reading the diff.
+- **Changelog notice**: prefix the `CHANGELOG.md` entry with `**BREAKING**:` and state what changed and what callers must update.
+- **Version bump**: pick the bump Semantic Versioning assigns to a breaking change — `major` once the plugin is `>= 1.0.0`, or `minor` while it is still pre-1.0 (`0.x`). The bump happens through the `Release` workflow dispatch (see Publishing); do not hand-edit `package.json`.
+
 ## Dev App Demonstrations
 
 Every new feature added to a plugin **must** be demonstrated in that plugin's `dev/` app with a minimal, runnable use case. Tests prove correctness; the dev app proves usability. The plugin author needs to be able to click through the feature in the admin panel (or trigger it via the dev app's runtime, depending on the feature) without writing extra code.
