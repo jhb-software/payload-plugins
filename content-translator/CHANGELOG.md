@@ -3,6 +3,7 @@
 ## Unreleased
 
 - feat: the translate endpoint can now persist results via an `update` flag (and optional `draft` flag), enabling programmatic/agent translation over the REST API instead of only returning the translated data
+- feat: the `access` function now receives the parsed request body (e.g. `update`, `collectionSlug`), so persisting can be authorized separately from returning translations
 
 ## 0.3.0
 

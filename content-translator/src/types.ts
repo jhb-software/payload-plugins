@@ -1,15 +1,21 @@
-import type { CollectionSlug, GlobalSlug, PayloadRequest } from 'payload'
+import type { CollectionSlug, GlobalSlug } from 'payload'
 
 import type { TranslateResolver } from './resolvers/types.js'
+import type { TranslateAccess } from './translate/types.js'
 
 export type TranslatorConfig = {
   /**
-   * Custom access control for the translate endpoint.
-   * Return `true` to allow access, `false` to deny.
+   * Custom access control for the translate endpoint. Receives the request and
+   * the parsed args (`update`, `collectionSlug`, `locale`, …), so access can be
+   * decided per request — e.g. allow returning translations to any user but
+   * restrict persisting (`update: true`) to a role. Return `true` to allow,
+   * `false` to deny.
+   *
+   * Treat the args as untrusted: grant on `req.user`, restrict on the args.
    *
    * @default ({ req }) => !!req.user — requires authentication
    */
-  access?: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+  access?: TranslateAccess
 
   /**
    * Collections with the enabled translator in the admin UI
