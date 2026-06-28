@@ -5,6 +5,7 @@
 - feat: add a per-field `custom['content-translator']` config (typed via module augmentation) with orthogonal `skip`, `beforeTranslate`, and `afterTranslate` hooks, so a slug can either be derived from the translated title (skip + derive) or translated and then slugified (translate + normalize)
 - feat: the translate endpoint can now persist results via an `update` flag (and optional `draft` flag), enabling programmatic/agent translation over the REST API instead of only returning the translated data
 - feat: the `access` function now receives the parsed request body (e.g. `update`, `collectionSlug`), so persisting can be authorized separately from returning translations
+- fix: enforce the requesting user's read access on the source document during translation; previously the source read bypassed access control, so a user could translate and receive content from a document they could not read
 - **BREAKING**: the `custom.translatorSkip` flag is removed — move it to `custom: { 'content-translator': { skip: true } }`
 - **BREAKING**: serve the translate endpoint at `/api/content-translator/translate` (previously `/api/translator/translate`) so the endpoint prefix matches the plugin slug. Any API client calling the old path must be updated.
 
