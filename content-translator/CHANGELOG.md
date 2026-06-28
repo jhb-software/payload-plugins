@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: serve the translate endpoint at `/api/content-translator/translate` (previously `/api/translator/translate`) so the endpoint prefix matches the plugin slug
+
 ## 0.3.0
 
 - fix: translate rich text block-level elements as one unit using segment markers so inline formatting spans stay aligned and word order can change across languages
