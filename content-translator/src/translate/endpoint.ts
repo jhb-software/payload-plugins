@@ -21,19 +21,21 @@ export const translateEndpoint =
 
     const args: TranslateEndpointArgs = await req.json()
 
-    const { id, collectionSlug, data, emptyOnly, globalSlug, locale, localeFrom } = args
+    const { id, collectionSlug, data, draft, emptyOnly, globalSlug, locale, localeFrom, update } =
+      args
 
     const result = await translateOperation({
       id,
       collectionSlug,
       data,
+      draft: draft ?? false,
       emptyOnly,
       globalSlug,
       locale,
       localeFrom,
       overrideAccess: false,
       req,
-      update: false,
+      update: update ?? false,
     })
 
     return Response.json(result)

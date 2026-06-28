@@ -151,11 +151,44 @@ openAIResolver({
 
 ## API Endpoint
 
-The plugin registers a single REST endpoint that the admin UI calls to translate a document or global. It computes the translated values and returns them in the response — it never writes to the database, so changes still go through Payload's normal save/publish flow.
+The plugin registers a single REST endpoint that the admin UI calls to translate a document or global. By default it computes the translated values and returns them in the response without writing to the database, so changes go through Payload's normal save/publish flow. Programmatic callers (e.g. an agent) can opt in to persisting the result with the `update` flag.
 
 | Method | Path                                | Description                                                          |
 | ------ | ----------------------------------- | -------------------------------------------------------------------- |
 | `POST` | `/api/content-translator/translate` | Translates the given entity's fields and returns the translated data |
+
+#### Request body
+
+| Field            | Type               | Description                                                                                 |
+| ---------------- | ------------------ | ------------------------------------------------------------------------------------------- |
+| `collectionSlug` | `string`           | Slug of the collection to translate (omit for globals)                                      |
+| `globalSlug`     | `string`           | Slug of the global to translate (omit for collections)                                      |
+| `id`             | `string \| number` | Document id (required for collections)                                                      |
+| `locale`         | `string`           | Target locale to translate into                                                             |
+| `localeFrom`     | `string`           | Source locale to translate from                                                             |
+| `emptyOnly`      | `boolean`          | Only translate fields that are still empty in the target locale (default `false`)           |
+| `update`         | `boolean`          | Persist the translation to the target locale instead of only returning it (default `false`) |
+| `draft`          | `boolean`          | When `update` is `true`, save as a draft version instead of publishing (default `false`)    |
+
+#### Persisting translations (agents)
+
+With `update: true` the endpoint writes the translation to the target locale and returns the same payload. The write runs with `overrideAccess: false`, so the authenticated user (typically an API key) must hold `update` access on the target collection/global. Add `draft: true` to save as a draft for human review instead of publishing.
+
+```bash
+curl -X POST https://example.com/api/translator/translate \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: users API-Key <your-api-key>' \
+  -d '{
+    "collectionSlug": "pages",
+    "id": "123",
+    "localeFrom": "en",
+    "locale": "de",
+    "update": true,
+    "draft": true
+  }'
+```
+
+Source content is always read from the latest draft, so translations cover unpublished work-in-progress. Saving with `update: true` and `draft: false` therefore publishes content derived from the current draft — use `draft: true` if a review step before publishing is required.
 
 ### Authentication
 

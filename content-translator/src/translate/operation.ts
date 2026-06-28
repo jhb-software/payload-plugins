@@ -133,6 +133,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
         collectionSlug,
         data: translatedData,
         depth: 0,
+        draft: args.draft,
         globalSlug,
         locale,
         overrideAccess,
