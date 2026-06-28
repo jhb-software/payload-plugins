@@ -35,7 +35,10 @@ export default buildConfig({
     mediaSchema,
     {
       slug: 'users',
-      auth: true,
+      // API keys enabled so the agent translate-and-save flow
+      // (POST /api/translator/translate with `update: true`) can be exercised
+      // with `Authorization: users API-Key <key>`, the way an agent would.
+      auth: { useAPIKey: true },
       fields: [],
     },
   ],
@@ -61,22 +64,43 @@ export default buildConfig({
   },
 
   async onInit(payload) {
-    const existingUsers = await payload.find({
+    // Fixed dev API key so the agent translate-and-save curl below is runnable
+    // without copying a freshly generated key out of the admin panel each time.
+    const devApiKey = '00000000-0000-4000-8000-000000000000'
+
+    const { docs: existingUsers } = await payload.find({
       collection: 'users',
       limit: 1,
+      where: { email: { equals: 'dev@payloadcms.com' } },
     })
 
-    if (existingUsers.docs.length === 0) {
+    if (existingUsers.length === 0) {
       await payload.create({
         collection: 'users',
         data: {
+          apiKey: devApiKey,
           email: 'dev@payloadcms.com',
+          enableAPIKey: true,
           password: 'test',
         },
+      })
+    } else {
+      await payload.update({
+        id: existingUsers[0].id,
+        collection: 'users',
+        data: { apiKey: devApiKey, enableAPIKey: true },
       })
     }
 
     await seed(payload)
+
+    payload.logger.info(
+      'Try the agent translate-and-save flow:\n' +
+        `  curl -X POST http://localhost:3000/api/translator/translate \\\n` +
+        `    -H 'Content-Type: application/json' \\\n` +
+        `    -H 'Authorization: users API-Key ${devApiKey}' \\\n` +
+        `    -d '{"collectionSlug":"pages","id":"<page-id>","localeFrom":"en","locale":"de","update":true}'`,
+    )
   },
 
   plugins: [
