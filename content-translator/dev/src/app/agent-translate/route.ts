@@ -1,19 +1,19 @@
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
-import { translateOperation } from '@jhb.software/payload-content-translator-plugin'
-
 /**
- * Demonstrates the agent/programmatic translate-and-save flow that the REST
- * endpoint `POST /api/translator/translate` exposes via the `update` flag.
+ * Exercises the agent/programmatic translate-and-save flow end-to-end by calling
+ * the real REST endpoint `POST /api/translator/translate` with `update: true`,
+ * rather than the operation directly — so the endpoint's flag parsing, auth gate
+ * and write path are all covered.
+ *
+ * The dev app auto-logs-in, so a browser visiting this route already has a
+ * Payload session cookie, which is forwarded to the endpoint as the agent's auth.
  *
  * Visit:
- *   /agent-translate                  → translate the "home" page en → de and publish it
- *   /agent-translate?draft=true       → save the translation as a draft instead
- *   /agent-translate?slug=about       → pick a different seeded page
- *
- * Returns the German title before and after so the persisted result is visible
- * without opening the admin panel.
+ *   /agent-translate              → translate the "home" page en → de and publish it
+ *   /agent-translate?draft=true   → save the translation as a draft instead
+ *   /agent-translate?slug=about   → pick a different seeded page
  */
 export const GET = async (request: Request) => {
   const payload = await getPayload({ config: configPromise })
@@ -35,24 +35,32 @@ export const GET = async (request: Request) => {
     return Response.json({ error: `No page found with slug "${slug}"` }, { status: 404 })
   }
 
-  const before = await payload.findByID({
-    id: page.id,
-    collection: 'pages',
-    draft: true,
-    locale: 'de',
+  // Call the actual endpoint, forwarding the browser's session cookie as auth.
+  const endpointResponse = await fetch(`${url.origin}/api/translator/translate`, {
+    body: JSON.stringify({
+      collectionSlug: 'pages',
+      draft,
+      id: page.id,
+      locale: 'de',
+      localeFrom: 'en',
+      update: true,
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+      cookie: request.headers.get('cookie') ?? '',
+    },
+    method: 'POST',
   })
 
-  await translateOperation({
-    id: page.id,
-    collectionSlug: 'pages',
-    draft,
-    locale: 'de',
-    localeFrom: 'en',
-    payload,
-    update: true,
-  })
+  if (!endpointResponse.ok) {
+    return Response.json(
+      { endpointStatus: endpointResponse.status, error: await endpointResponse.text() },
+      { status: endpointResponse.status },
+    )
+  }
 
-  const after = await payload.findByID({
+  // Read back the persisted German title to prove the endpoint wrote it.
+  const persisted = await payload.findByID({
     id: page.id,
     collection: 'pages',
     draft: true,
@@ -61,8 +69,7 @@ export const GET = async (request: Request) => {
 
   return Response.json({
     draft,
+    persistedGermanTitle: persisted.title,
     slug,
-    titleAfter: after.title,
-    titleBefore: before.title,
   })
 }
