@@ -19,7 +19,12 @@ const allowAll = () => true
 
 type UpdateCall = Record<string, unknown>
 
-function buildReq(body: unknown): { req: PayloadRequest; updateCalls: UpdateCall[] } {
+function buildReq(body: unknown): {
+  findByIDCalls: UpdateCall[]
+  req: PayloadRequest
+  updateCalls: UpdateCall[]
+} {
+  const findByIDCalls: UpdateCall[] = []
   const updateCalls: UpdateCall[] = []
 
   const resolver = {
@@ -45,7 +50,10 @@ function buildReq(body: unknown): { req: PayloadRequest; updateCalls: UpdateCall
     json: async () => body,
     payload: {
       config,
-      findByID: async () => ({ id: 'post-1', title: 'Hello' }),
+      findByID: async (args: UpdateCall) => {
+        findByIDCalls.push(args)
+        return { id: 'post-1', title: 'Hello' }
+      },
       logger: { error: () => {} },
       update: async (args: UpdateCall) => {
         updateCalls.push(args)
@@ -55,7 +63,7 @@ function buildReq(body: unknown): { req: PayloadRequest; updateCalls: UpdateCall
     user: { id: 'agent', email: 'agent@example.com' },
   } as unknown as PayloadRequest
 
-  return { req, updateCalls }
+  return { findByIDCalls, req, updateCalls }
 }
 
 const baseBody = {
@@ -159,6 +167,32 @@ describe('translate endpoint access control', () => {
     assert.equal(received?.draft, true)
     assert.equal(received?.collectionSlug, 'posts')
     assert.ok(received?.req)
+  })
+
+  test('reads the source document with overrideAccess false so source access is enforced', async () => {
+    // baseBody supplies `data`, so only the source (localeFrom) read happens
+    const { findByIDCalls, req } = buildReq({ ...baseBody })
+
+    await translateEndpoint(allowAll)(req)
+
+    assert.equal(findByIDCalls.length, 1)
+    assert.equal(findByIDCalls[0].overrideAccess, false)
+  })
+
+  test('reads source and target with overrideAccess false when data is not supplied', async () => {
+    const { findByIDCalls, req } = buildReq({
+      collectionSlug: 'posts',
+      id: 'post-1',
+      locale: 'de',
+      localeFrom: 'en',
+    })
+
+    await translateEndpoint(allowAll)(req)
+
+    assert.equal(findByIDCalls.length, 2)
+    for (const call of findByIDCalls) {
+      assert.equal(call.overrideAccess, false)
+    }
   })
 
   test('returns 400 when the request body is not valid JSON', async () => {

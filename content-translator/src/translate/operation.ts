@@ -33,6 +33,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     collectionSlug,
     globalSlug,
     locale: localeFrom,
+    overrideAccess,
     req,
   })
 
