@@ -90,13 +90,8 @@ The endpoint requires an authenticated request and responds with `401` otherwise
 Override this with the `access` option to restrict who may translate content:
 
 ```ts
-payloadContentTranslatorPlugin({
-  collections: ['pages', 'posts'],
-  globals: ['settings'],
-  resolver: openAIResolver({ apiKey: process.env.OPENAI_API_KEY }),
-  // Only allow admins to use the translate endpoint
-  access: ({ req }) => req.user?.role === 'admin',
-})
+// Only allow admins to use the translate endpoint
+access: ({ req }) => req.user?.role === 'admin'
 ```
 
 Beyond this gate, the endpoint reads the source and target documents with `overrideAccess: false`, so each collection's and global's own access control still applies — a user can only translate entities they are allowed to read.
