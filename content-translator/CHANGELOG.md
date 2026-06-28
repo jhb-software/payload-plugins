@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- fix: serve the translate endpoint at `/api/content-translator/translate` (previously `/api/translator/translate`) so the endpoint prefix matches the plugin slug
+- **BREAKING**: serve the translate endpoint at `/api/content-translator/translate` (previously `/api/translator/translate`) so the endpoint prefix matches the plugin slug. Any API client calling the old path must be updated.
 
 ## 0.3.0
 
