@@ -21,6 +21,7 @@ import { z } from 'zod'
 import type { PayloadConfigForPrompt, RawBlock } from './schema.js'
 import type { AgentMode } from './types.js'
 
+import { PLUGIN_SLUG } from './constants.js'
 import { extractFields, normalizeLabel } from './schema.js'
 
 // ---------------------------------------------------------------------------
@@ -163,8 +164,8 @@ export function discoverEndpoints(config: SanitizedConfig): DiscoverableEndpoint
   const endpoints: DiscoverableEndpoint[] = []
 
   for (const ep of config.endpoints ?? []) {
-    // Skip our own chat plugin endpoints
-    if (typeof ep.path === 'string' && ep.path.startsWith('/chat-agent/')) {
+    // Skip the chat plugin's own endpoints
+    if (typeof ep.path === 'string' && ep.path.startsWith(`/${PLUGIN_SLUG}/`)) {
       continue
     }
     if (ep.custom?.description) {

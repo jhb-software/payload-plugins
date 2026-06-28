@@ -14,6 +14,7 @@ import { useChat as useAIChat } from '@ai-sdk/react'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { type AgentMode, type MessageMetadata, messageMetadataSchema } from '../types.js'
 
 export type ChatMessageUI = UIMessage<MessageMetadata>
@@ -82,7 +83,7 @@ function titleFromMessages(messages: UIMessage[]): string {
 
 export function useChat(options?: string | UseChatOptions) {
   const endpointUrl =
-    typeof options === 'string' ? options : (options?.endpointUrl ?? '/api/chat-agent/chat')
+    typeof options === 'string' ? options : (options?.endpointUrl ?? `/api/${PLUGIN_SLUG}/chat`)
   const model = typeof options === 'object' ? options?.model : undefined
   const mode = typeof options === 'object' ? options?.mode : undefined
   const chatId = typeof options === 'object' ? options?.chatId : undefined
