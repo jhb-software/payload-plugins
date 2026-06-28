@@ -3,6 +3,8 @@ import { describe, test } from 'node:test'
 
 import type { PayloadRequest } from 'payload'
 
+import { APIError } from 'payload'
+
 import { translateEndpoint } from '../src/translate/endpoint.ts'
 
 /**
@@ -110,5 +112,64 @@ describe('translate endpoint persistence', () => {
     await translateEndpoint(allowAll)(req)
 
     assert.equal(updateCalls[0].draft, true)
+  })
+})
+
+describe('translate endpoint access control', () => {
+  test('ignores overrideAccess in the request body so access cannot be bypassed', async () => {
+    const { req, updateCalls } = buildReq({ ...baseBody, overrideAccess: true, update: true })
+
+    await translateEndpoint(allowAll)(req)
+
+    assert.equal(updateCalls.length, 1)
+    assert.equal(updateCalls[0].overrideAccess, false)
+  })
+
+  test('lets the access function allow return-only but deny persisting', async () => {
+    const returnOnly = ({ update }: { update?: boolean }) => !update
+
+    // update: true is denied and nothing is written
+    const denied = buildReq({ ...baseBody, update: true })
+    await assert.rejects(
+      () => translateEndpoint(returnOnly)(denied.req),
+      (err) => err instanceof APIError && err.status === 401,
+    )
+    assert.equal(denied.updateCalls.length, 0)
+
+    // the same caller may still translate-and-return
+    const allowed = buildReq({ ...baseBody })
+    const response = await translateEndpoint(returnOnly)(allowed.req)
+    const result = await response.json()
+    assert.equal(result.success, true)
+    assert.equal(allowed.updateCalls.length, 0)
+  })
+
+  test('passes the parsed request args to the access function', async () => {
+    let received: Record<string, unknown> | undefined
+    const capture = (args: Record<string, unknown>) => {
+      received = args
+      return true
+    }
+
+    const { req } = buildReq({ ...baseBody, draft: true, update: true })
+
+    await translateEndpoint(capture)(req)
+
+    assert.equal(received?.update, true)
+    assert.equal(received?.draft, true)
+    assert.equal(received?.collectionSlug, 'posts')
+    assert.ok(received?.req)
+  })
+
+  test('returns 400 when the request body is not valid JSON', async () => {
+    const { req } = buildReq(undefined)
+    req.json = async () => {
+      throw new SyntaxError('Unexpected token')
+    }
+
+    await assert.rejects(
+      () => translateEndpoint(allowAll)(req),
+      (err) => err instanceof APIError && err.status === 400,
+    )
   })
 })

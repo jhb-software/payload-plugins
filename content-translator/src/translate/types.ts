@@ -56,3 +56,18 @@ export type TranslateResult =
  * the endpoint always reads and writes with `overrideAccess: false`.
  */
 export type TranslateEndpointArgs = Omit<TranslateArgs, 'overrideAccess'>
+
+/**
+ * Access control for the translate endpoint. Receives the requesting `req`
+ * together with the parsed request args (`update`, `collectionSlug`, `locale`,
+ * …) so access can be decided per request.
+ *
+ * Security: every field other than `req`/`req.user` is attacker-controlled.
+ * Grant access based on `req.user` and use the args only to further *restrict*
+ * (e.g. require a role for `update: true`); never *widen* access based on a
+ * value the caller supplied. Writes always run with `overrideAccess: false`, so
+ * the collection's/global's own access control remains the authoritative gate.
+ */
+export type TranslateAccess = (
+  args: { req: PayloadRequest } & TranslateEndpointArgs,
+) => boolean | Promise<boolean>

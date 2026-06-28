@@ -46,13 +46,13 @@ export default buildConfig({
 
 ### Plugin Options
 
-| Option        | Type                                             | Required | Description                                                                                                |
-| ------------- | ------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------- |
-| `collections` | `CollectionSlug[]`                               | Yes      | Collections to enable translation for                                                                      |
-| `globals`     | `GlobalSlug[]`                                   | Yes      | Globals to enable translation for                                                                          |
-| `resolver`    | `TranslateResolver`                              | Yes      | Translation resolver to use                                                                                |
-| `enabled`     | `boolean`                                        | No       | Whether to enable the plugin.                                                                              |
-| `access`      | `(args: { req }) => boolean \| Promise<boolean>` | No       | Access control for the translate endpoint. Defaults to `({ req }) => !!req.user` (any authenticated user). |
+| Option        | Type                                                    | Required | Description                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `collections` | `CollectionSlug[]`                                      | Yes      | Collections to enable translation for                                                                                                                                                      |
+| `globals`     | `GlobalSlug[]`                                          | Yes      | Globals to enable translation for                                                                                                                                                          |
+| `resolver`    | `TranslateResolver`                                     | Yes      | Translation resolver to use                                                                                                                                                                |
+| `enabled`     | `boolean`                                               | No       | Whether to enable the plugin.                                                                                                                                                              |
+| `access`      | `(args: { req } & body) => boolean \| Promise<boolean>` | No       | Access control for the translate endpoint. Receives the request plus the parsed body args (`update`, `collectionSlug`, …). Defaults to `({ req }) => !!req.user` (any authenticated user). |
 
 ### Per-field control
 
@@ -205,7 +205,16 @@ Override this with the `access` option to restrict who may translate content:
 access: ({ req }) => req.user?.role === 'admin'
 ```
 
-Beyond this gate, the endpoint reads the source and target documents with `overrideAccess: false`, so each collection's and global's own access control still applies — a user can only translate entities they are allowed to read.
+The access function also receives the parsed request body, so persisting (`update: true`) can be gated separately from returning translations:
+
+```ts
+// Anyone signed in may translate-and-return; only editors may persist
+access: ({ req, update }) => (update ? req.user?.role === 'editor' : !!req.user)
+```
+
+> **Security:** every field other than `req`/`req.user` is supplied by the caller. Grant access based on `req.user` and use the body args only to _restrict_ further (e.g. require a role for `update`); never _widen_ access based on a value the caller sent.
+
+Beyond this gate, the endpoint always reads and writes with `overrideAccess: false`, so each collection's and global's own access control still applies — a user can only translate entities they may read, and `update: true` only persists when they have update access. The endpoint never honors an `overrideAccess` value sent in the request body.
 
 ## Custom Resolver
 
