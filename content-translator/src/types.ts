@@ -56,7 +56,7 @@ export type ContentTranslatorFieldConfig = {
    * - Translate, then normalize: leave `skip` unset so the field is translated,
    *   then clean up the translated `value` (e.g. slugify a free-form slug).
    */
-  afterTranslate?: (args: AfterTranslateArgs) => unknown
+  afterTranslate?: (args: AfterTranslateArgs) => Promise<unknown> | unknown
   /**
    * Transform the source value just before it is sent to the resolver (e.g.
    * strip a template prefix). The resolver translates the returned string and
