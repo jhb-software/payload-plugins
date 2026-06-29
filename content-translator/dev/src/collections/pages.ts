@@ -1,5 +1,12 @@
 import type { CollectionConfig } from 'payload'
 
+/** Minimal slugifier for the demo (lowercase, non-word runs → hyphens). */
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^\w]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
 export const pagesSchema: CollectionConfig = {
   slug: 'pages',
   fields: [
@@ -10,11 +17,20 @@ export const pagesSchema: CollectionConfig = {
       localized: true,
     },
     {
+      // Slug derived from the title: skip translation entirely and re-slugify
+      // the already-translated title, so translating an English page produces a
+      // localized German slug (e.g. "Travel Tips" → "reisetipps").
       name: 'slug',
       type: 'text',
-      required: true,
-      unique: true,
+      custom: {
+        'content-translator': {
+          afterTranslate: ({ siblingData }) => slugify(String(siblingData.title ?? '')),
+          skip: true,
+        },
+      },
       index: true,
+      localized: true,
+      required: true,
     },
     {
       name: 'content',

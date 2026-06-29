@@ -1,6 +1,21 @@
+import type { PayloadRequest } from 'payload'
+
 export type ValueToTranslate = {
   onTranslate: (translatedValue: any) => void
   value: any
+}
+
+/**
+ * A deferred field transform collected during traversal and run once the whole
+ * document has been translated (so it can read translated sibling values).
+ */
+export type AfterTranslateHook = {
+  apply: (ctx: {
+    data: Record<string, any>
+    localeFrom: string
+    localeTo: string
+    req: PayloadRequest
+  }) => Promise<void> | void
 }
 
 export type TranslateArgs = {

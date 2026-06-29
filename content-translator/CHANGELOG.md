@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- feat: add a per-field `custom['content-translator']` config (typed via module augmentation) with orthogonal `skip`, `beforeTranslate`, and `afterTranslate` hooks, so a slug can either be derived from the translated title (skip + derive) or translated and then slugified (translate + normalize)
+- **BREAKING**: the `custom.translatorSkip` flag is removed — move it to `custom: { 'content-translator': { skip: true } }`
+
 ## 0.3.0
 
 - fix: translate rich text block-level elements as one unit using segment markers so inline formatting spans stay aligned and word order can change across languages
