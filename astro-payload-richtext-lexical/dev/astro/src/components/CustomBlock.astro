@@ -13,7 +13,7 @@ const fields = node.fields
 {
   inline ? (
     <span class="custom-inline-block">
-      <strong>[{fields.blockType}]</strong> {fields.blockName || 'Inline Block'}
+      <strong>[{fields.blockType}]</strong> {fields.label || fields.blockName || 'Inline Block'}
     </span>
   ) : (
     <div class="custom-block">

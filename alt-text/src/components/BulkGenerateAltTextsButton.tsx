@@ -9,6 +9,7 @@ import type {
   PluginAltTextTranslations,
 } from '../translations/index.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 
@@ -39,16 +40,13 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
       }
 
       try {
-        const response = await fetch(
-          `${serverURL ?? ''}${apiRoute}/alt-text-plugin/generate/bulk`,
-          {
-            body: JSON.stringify({
-              collection: collectionSlug,
-              ids: selectedIds,
-            }),
-            method: 'POST',
-          },
-        )
+        const response = await fetch(`${serverURL ?? ''}${apiRoute}/${PLUGIN_SLUG}/generate/bulk`, {
+          body: JSON.stringify({
+            collection: collectionSlug,
+            ids: selectedIds,
+          }),
+          method: 'POST',
+        })
 
         if (!response.ok) {
           toast.error(t('@jhb.software/payload-alt-text-plugin:failedToGenerate'))

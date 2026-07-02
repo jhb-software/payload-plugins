@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import type { AgentMode, EmptyStateConfig, MessageMetadata, ModelOption } from '../types.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { ChatHeader } from './ChatHeader.js'
 import { ChatInput } from './ChatInput.js'
 import './ChatView.css'
@@ -68,7 +69,7 @@ export default function ChatView({
   initialMode,
   initialModel,
 }: ChatViewProps) {
-  const endpointUrl = '/api/chat-agent/chat'
+  const endpointUrl = `/api/${PLUGIN_SLUG}/chat`
   const [chatId, setChatId] = useState(conversationId)
   const resolveMode = useCallback(
     (candidate: unknown): AgentMode => {
