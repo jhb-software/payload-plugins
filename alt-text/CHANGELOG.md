@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: `openAIResolver` now builds its OpenAI client lazily, so a plugin disabled via `enabled: !!process.env.OPENAI_API_KEY` no longer throws at config load when the key is absent
+
 ## 0.8.0
 
 - feat: bound and de-duplicate the bulk-generate `ids` array — duplicate IDs are collapsed and requests above the new `maxBulkGenerateIds` option (default 100) are rejected with `400`, so a single request can no longer fan out into an unbounded number of paid resolver calls
