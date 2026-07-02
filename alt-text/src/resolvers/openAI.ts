@@ -79,7 +79,15 @@ function zodResponseFormat<ZodInput extends z.ZodType>(
  */
 export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver => {
   const { apiKey, baseUrl, model = 'gpt-4.1-nano' } = config
-  const openai = new OpenAI({ apiKey, baseURL: baseUrl })
+
+  // Construct the OpenAI client lazily on first use rather than eagerly here.
+  // The `resolver` argument is evaluated even when the plugin is passed
+  // `enabled: false`, so building the client up front would throw "Missing
+  // credentials" and break the whole Payload config on machines without a key
+  // (e.g. `enabled: !!process.env.OPENAI_API_KEY`). Deferring construction lets
+  // a disabled plugin discard the resolver without ever touching the SDK.
+  let openai: OpenAI | undefined
+  const getClient = (): OpenAI => (openai ??= new OpenAI({ apiKey, baseURL: baseUrl }))
 
   return {
     key: 'openai',
@@ -94,7 +102,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           keywords: z.array(z.string()).describe('Keywords that describe the content of the image'),
         })
 
-        const response = await openai.chat.completions.parse({
+        const response = await getClient().chat.completions.parse({
           max_completion_tokens: 150,
           messages: [
             {
@@ -171,7 +179,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           ),
         )
 
-        const response = await openai.chat.completions.parse({
+        const response = await getClient().chat.completions.parse({
           max_completion_tokens: 300,
           messages: [
             {
