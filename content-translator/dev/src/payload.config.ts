@@ -2,6 +2,7 @@ import {
   openAIResolver,
   payloadContentTranslatorPlugin,
 } from '@jhb.software/payload-content-translator-plugin'
+import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -11,9 +12,11 @@ import { en } from 'payload/i18n/en'
 import { fileURLToPath } from 'url'
 
 import { authorsSchema } from './collections/authors'
+import { docsSchema } from './collections/docs'
 import { mediaSchema } from './collections/media'
 import { pagesSchema } from './collections/pages'
 import { postsSchema } from './collections/posts'
+import { makeSlugTranslatable } from './helpers/makeSlugTranslatable'
 import { mockResolver } from './resolvers/mockResolver'
 import { seed } from './seed'
 
@@ -30,6 +33,7 @@ export default buildConfig({
   },
   collections: [
     pagesSchema,
+    docsSchema,
     postsSchema,
     authorsSchema,
     mediaSchema,
@@ -80,8 +84,18 @@ export default buildConfig({
   },
 
   plugins: [
+    payloadPagesPlugin({
+      generatePageURL: ({ path, preview }) =>
+        path && process.env.NEXT_PUBLIC_FRONTEND_URL
+          ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
+          : null,
+    }),
+    // Attach translator handling to the pages-plugin-injected slug field so it
+    // derives a normalized slug from the translated title. Must run after
+    // payloadPagesPlugin, which injects the slug field.
+    makeSlugTranslatable(['pages']),
     payloadContentTranslatorPlugin({
-      collections: ['pages', 'posts', 'authors'],
+      collections: ['pages', 'docs', 'posts', 'authors'],
       globals: [],
       // resolver: mockResolver(), // custom resolver for testing
       resolver: openAIResolver({

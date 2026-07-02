@@ -1,13 +1,60 @@
-import type { Field, SanitizedConfig } from 'payload'
+import type { Field, PayloadRequest, SanitizedConfig } from 'payload'
 
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
-import type { ValueToTranslate } from '../src/translate/types.ts'
+import type { AfterTranslateHook, ValueToTranslate } from '../src/translate/types.ts'
 
 import { traverseFields } from '../src/translate/traverseFields.ts'
 
 const payloadConfig = {} as SanitizedConfig
+
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^\w]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+/**
+ * Like `runTraverse`, but also collects the `afterTranslate` hooks and returns
+ * a `runHooks()` that applies them the way the operation does (after every
+ * translated value has been written back).
+ */
+const runTraverseWithHooks = (
+  fields: Field[],
+  dataFrom: Record<string, unknown>,
+  emptyOnly: boolean,
+  translatedData: Record<string, unknown> = {},
+) => {
+  const valuesToTranslate: ValueToTranslate[] = []
+  const afterTranslateHooks: AfterTranslateHook[] = []
+  const req = {} as PayloadRequest
+
+  traverseFields({
+    afterTranslateHooks,
+    dataFrom,
+    emptyOnly,
+    fields,
+    localeFrom: 'en',
+    localeTo: 'de',
+    payloadConfig,
+    req,
+    translatedData,
+    valuesToTranslate,
+  })
+
+  for (const v of valuesToTranslate) {
+    v.onTranslate(`TRANSLATED:${v.value}`)
+  }
+
+  const runHooks = async () => {
+    for (const hook of afterTranslateHooks) {
+      await hook.apply({ data: translatedData, localeFrom: 'en', localeTo: 'de', req })
+    }
+  }
+
+  return { runHooks, translatedData, valuesToTranslate }
+}
 
 const runTraverse = (fields: Field[], dataFrom: Record<string, unknown>, emptyOnly: boolean) => {
   const translatedData: Record<string, unknown> = {}
@@ -319,6 +366,210 @@ describe('traverseFields - unnamed (presentational) groups', () => {
     const translated = runTraverse(fields, { meta: { title: 'Hello' } }, false)
 
     assert.deepEqual(translated, { meta: { title: 'TRANSLATED:Hello' } })
+  })
+})
+
+describe('traverseFields - content-translator field namespace', () => {
+  test('skip excludes a field from translation', () => {
+    const fields: Field[] = [
+      { name: 'title', type: 'text', localized: true },
+      {
+        name: 'secret',
+        type: 'text',
+        custom: { 'content-translator': { skip: true } },
+        localized: true,
+      },
+    ]
+
+    const { translatedData, valuesToTranslate } = runTraverseWithHooks(
+      fields,
+      { secret: 'do not touch', title: 'Hello' },
+      false,
+    )
+
+    assert.deepEqual(
+      valuesToTranslate.map((v) => v.value),
+      ['Hello'],
+    )
+    assert.equal(translatedData.title, 'TRANSLATED:Hello')
+    assert.equal('secret' in translatedData, false)
+  })
+
+  test('the removed custom.translatorSkip flag no longer excludes a field', () => {
+    const fields: Field[] = [
+      { name: 'title', type: 'text', custom: { translatorSkip: true }, localized: true },
+    ]
+
+    const { valuesToTranslate } = runTraverseWithHooks(fields, { title: 'Hello' }, false)
+
+    // The legacy flag is ignored; the field is translated like any other.
+    assert.deepEqual(
+      valuesToTranslate.map((v) => v.value),
+      ['Hello'],
+    )
+  })
+
+  test('skip + afterTranslate derives a slug from the translated title without translating the slug', async () => {
+    const fields: Field[] = [
+      { name: 'title', type: 'text', localized: true },
+      {
+        name: 'slug',
+        type: 'text',
+        custom: {
+          'content-translator': {
+            afterTranslate: ({ siblingData }) => slugify(String(siblingData.title)),
+            skip: true,
+          },
+        },
+        localized: true,
+      },
+    ]
+
+    const { runHooks, translatedData, valuesToTranslate } = runTraverseWithHooks(
+      fields,
+      { slug: 'hello-world', title: 'Hello World' },
+      false,
+    )
+
+    // The slug is skipped, so it is never sent to the resolver.
+    assert.deepEqual(
+      valuesToTranslate.map((v) => v.value),
+      ['Hello World'],
+    )
+
+    await runHooks()
+
+    // Re-slugified from the translated title, not from the original slug.
+    assert.equal(translatedData.title, 'TRANSLATED:Hello World')
+    assert.equal(translatedData.slug, 'translated-hello-world')
+  })
+
+  test('afterTranslate without skip normalizes the field’s own translated value', async () => {
+    const fields: Field[] = [
+      {
+        name: 'slug',
+        type: 'text',
+        custom: {
+          'content-translator': {
+            afterTranslate: ({ value }) => slugify(String(value)),
+          },
+        },
+        localized: true,
+      },
+    ]
+
+    const { runHooks, translatedData, valuesToTranslate } = runTraverseWithHooks(
+      fields,
+      { slug: 'My Custom Slug' },
+      false,
+    )
+
+    // No skip: the slug is translated like any other text field.
+    assert.deepEqual(
+      valuesToTranslate.map((v) => v.value),
+      ['My Custom Slug'],
+    )
+
+    await runHooks()
+
+    // The translated value is slugified (proving it was translated first).
+    assert.equal(translatedData.slug, 'translated-my-custom-slug')
+  })
+
+  test('afterTranslate reads the sibling within its own array item', async () => {
+    const fields: Field[] = [
+      {
+        name: 'items',
+        type: 'array',
+        fields: [
+          { name: 'label', type: 'text' },
+          {
+            name: 'key',
+            type: 'text',
+            custom: {
+              'content-translator': {
+                afterTranslate: ({ siblingData }) =>
+                  Promise.resolve(slugify(String(siblingData.label))),
+                skip: true,
+              },
+            },
+          },
+        ],
+        localized: true,
+      },
+    ]
+
+    const { runHooks, translatedData } = runTraverseWithHooks(
+      fields,
+      {
+        items: [
+          { id: '1', key: 'one', label: 'First' },
+          { id: '2', key: 'two', label: 'Second' },
+        ],
+      },
+      false,
+    )
+
+    await runHooks()
+
+    const items = translatedData.items as Array<{ key: string; label: string }>
+    assert.equal(items[0].key, 'translated-first')
+    assert.equal(items[1].key, 'translated-second')
+  })
+
+  test('afterTranslate does not overwrite an existing value when emptyOnly is true', async () => {
+    const fields: Field[] = [
+      { name: 'title', type: 'text', localized: true },
+      {
+        name: 'slug',
+        type: 'text',
+        custom: {
+          'content-translator': {
+            afterTranslate: ({ siblingData }) => slugify(String(siblingData.title)),
+            skip: true,
+          },
+        },
+        localized: true,
+      },
+    ]
+
+    const { runHooks, translatedData } = runTraverseWithHooks(
+      fields,
+      { slug: 'hello', title: 'Hello' },
+      true,
+      { slug: 'bestehender-slug' },
+    )
+
+    await runHooks()
+
+    assert.equal(translatedData.slug, 'bestehender-slug')
+  })
+
+  test('beforeTranslate preprocesses the source string before it is sent', () => {
+    const fields: Field[] = [
+      {
+        name: 'title',
+        type: 'text',
+        custom: {
+          'content-translator': {
+            beforeTranslate: ({ value }) => value.replace(/^DRAFT: /, ''),
+          },
+        },
+        localized: true,
+      },
+    ]
+
+    const { translatedData, valuesToTranslate } = runTraverseWithHooks(
+      fields,
+      { title: 'DRAFT: Hello' },
+      false,
+    )
+
+    assert.deepEqual(
+      valuesToTranslate.map((v) => v.value),
+      ['Hello'],
+    )
+    assert.equal(translatedData.title, 'TRANSLATED:Hello')
   })
 })
 

@@ -1,6 +1,9 @@
 packages:
   - '.'
   - 'dev'
+  # Sibling plugin, linked so the dev app can demonstrate pages + content-translator
+  # together. Shares this workspace's payload/react to avoid duplicate-dep crashes.
+  - '../pages'
 
 allowBuilds:
   '@swc/core': true

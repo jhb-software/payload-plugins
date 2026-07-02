@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- feat: add a per-field `custom['content-translator']` config (typed via module augmentation) with orthogonal `skip`, `beforeTranslate`, and `afterTranslate` hooks, so a slug can either be derived from the translated title (skip + derive) or translated and then slugified (translate + normalize)
+- **BREAKING**: the `custom.translatorSkip` flag is removed — move it to `custom: { 'content-translator': { skip: true } }`
 - **BREAKING**: serve the translate endpoint at `/api/content-translator/translate` (previously `/api/translator/translate`) so the endpoint prefix matches the plugin slug. Any API client calling the old path must be updated.
 
 ## 0.3.0

@@ -54,6 +54,84 @@ export default buildConfig({
 | `enabled`     | `boolean`                                        | No       | Whether to enable the plugin.                                                                              |
 | `access`      | `(args: { req }) => boolean \| Promise<boolean>` | No       | Access control for the translate endpoint. Defaults to `({ req }) => !!req.user` (any authenticated user). |
 
+### Per-field control
+
+Any field can declare how the translator should treat it through a
+`content-translator` entry in its `custom` config. This is field-local and
+provider-agnostic: a field opts into special handling regardless of its name or
+type. The config is fully typed via module augmentation of Payload's
+`FieldCustom`, so the keys below autocomplete.
+
+| Key               | Type                                | Description                                                                                                                   |
+| ----------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `skip`            | `boolean`                           | Exclude the field from the resolver — its value is not translated. Use alone to let the app own it, or with `afterTranslate`. |
+| `beforeTranslate` | `(args) => string`                  | Transform the source string right before it is sent to the resolver. The translated result is written back as usual.          |
+| `afterTranslate`  | `(args) => unknown \| Promise<...>` | Post-process the field _after_ the rest of the document is translated. Runs independently of `skip`.                          |
+
+The three keys are orthogonal: `skip` decides whether the field is translated,
+`beforeTranslate` pre-processes what is sent, and `afterTranslate` post-processes
+the result (or derives a value from translated siblings).
+
+#### Translating slug fields
+
+A slug must never be stored with the raw output of an LLM — it has to stay
+URL-safe. There are two strategies, depending on whether the slug should mirror
+the title:
+
+**Derive from the title** — the slug always follows the title, so skip
+translation and re-slugify the already-translated title (e.g. "Travel Tips" →
+`reisetipps`):
+
+```ts
+{
+  name: 'slug',
+  type: 'text',
+  localized: true,
+  custom: {
+    'content-translator': {
+      skip: true,
+      afterTranslate: ({ siblingData }) => slugify(siblingData.title),
+    },
+  },
+  // validation and other field options...
+}
+```
+
+**Translate, then normalize** — for a slug intentionally different from the
+title, translate the slug text and then slugify it to strip any special
+characters the translation introduced:
+
+```ts
+{
+  name: 'slug',
+  type: 'text',
+  localized: true,
+  custom: {
+    'content-translator': {
+      // No `skip`: the slug is translated, then cleaned.
+      afterTranslate: ({ value }) => slugify(value),
+    },
+  },
+  // validation and other field options...
+}
+```
+
+`afterTranslate` receives the field's own (translated) `value`, the translated
+`siblingData`, the full translated `data`, `sourceValue`, `localeFrom`/`localeTo`,
+and `req`. Because it is field-local, this works for any derived or normalized
+field under any name — slugs, URL paths, computed keys.
+
+#### With the Pages plugin
+
+The [Pages plugin](https://www.npmjs.com/package/@jhb.software/payload-pages-plugin)
+injects the `slug` field into its page collections, so you attach the config with
+a small plugin that runs after `payloadPagesPlugin` and derives the slug from the
+translated title — normalized with the pages plugin's `formatSlug`, the same rule
+the slug field validates against, so the result is always accepted.
+
+See the runnable example: [`makeSlugTranslatable`](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/helpers/makeSlugTranslatable.ts)
+and [its wiring](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/payload.config.ts) in the dev app.
+
 ### Resolvers
 
 This plugin is designed to work seamlessly with various translation services by accepting a customizable translation resolver as a configuration option.
@@ -75,9 +153,9 @@ openAIResolver({
 
 The plugin registers a single REST endpoint that the admin UI calls to translate a document or global. It computes the translated values and returns them in the response — it never writes to the database, so changes still go through Payload's normal save/publish flow.
 
-| Method | Path                        | Description                                                          |
-| ------ | --------------------------- | -------------------------------------------------------------------- |
-| `POST` | `/api/translator/translate` | Translates the given entity's fields and returns the translated data |
+| Method | Path                                | Description                                                          |
+| ------ | ----------------------------------- | -------------------------------------------------------------------- |
+| `POST` | `/api/content-translator/translate` | Translates the given entity's fields and returns the translated data |
 
 ### Authentication
 

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@jhb.software/payload-content-translator-plugin": "workspace:*",
+    "@jhb.software/payload-pages-plugin": "workspace:*",
     "@payloadcms/db-mongodb": "^3.85.1",
     "@payloadcms/next": "^3.85.1",
     "@payloadcms/richtext-lexical": "^3.85.1",
