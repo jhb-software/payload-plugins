@@ -79,7 +79,12 @@ function zodResponseFormat<ZodInput extends z.ZodType>(
  */
 export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver => {
   const { apiKey, baseUrl, model = 'gpt-4.1-nano' } = config
-  const openai = new OpenAI({ apiKey, baseURL: baseUrl })
+
+  // Build the client lazily (once, on first use): the `resolver` argument is
+  // evaluated even when the plugin is disabled, so eager construction would
+  // throw on a keyless `enabled: !!process.env.OPENAI_API_KEY` setup.
+  let openai: OpenAI | undefined
+  const getClient = (): OpenAI => (openai ??= new OpenAI({ apiKey, baseURL: baseUrl }))
 
   return {
     key: 'openai',
@@ -94,7 +99,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           keywords: z.array(z.string()).describe('Keywords that describe the content of the image'),
         })
 
-        const response = await openai.chat.completions.parse({
+        const response = await getClient().chat.completions.parse({
           max_completion_tokens: 150,
           messages: [
             {
@@ -171,7 +176,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           ),
         )
 
-        const response = await openai.chat.completions.parse({
+        const response = await getClient().chat.completions.parse({
           max_completion_tokens: 300,
           messages: [
             {
