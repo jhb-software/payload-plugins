@@ -80,12 +80,9 @@ function zodResponseFormat<ZodInput extends z.ZodType>(
 export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver => {
   const { apiKey, baseUrl, model = 'gpt-4.1-nano' } = config
 
-  // Construct the OpenAI client lazily on first use rather than eagerly here.
-  // The `resolver` argument is evaluated even when the plugin is passed
-  // `enabled: false`, so building the client up front would throw "Missing
-  // credentials" and break the whole Payload config on machines without a key
-  // (e.g. `enabled: !!process.env.OPENAI_API_KEY`). Deferring construction lets
-  // a disabled plugin discard the resolver without ever touching the SDK.
+  // Build the client lazily (once, on first use): the `resolver` argument is
+  // evaluated even when the plugin is disabled, so eager construction would
+  // throw on a keyless `enabled: !!process.env.OPENAI_API_KEY` setup.
   let openai: OpenAI | undefined
   const getClient = (): OpenAI => (openai ??= new OpenAI({ apiKey, baseURL: baseUrl }))
 
