@@ -7,8 +7,13 @@ interface AuthorSeedData {
   bio: string
 }
 
-interface PageSeedData {
+interface DocSeedData {
   keywords: string[]
+  slug: string
+  title: string
+}
+
+interface PageSeedData {
   slug: string
   title: string
 }
@@ -71,7 +76,9 @@ export const seed = async (payload: Payload) => {
     }
   }
 
-  const pages: PageSeedData[] = [
+  // `docs` is the hand-rolled collection: it owns the keyword-rich content that
+  // exercises the translator across hasMany, groups, tabs and rich text.
+  const docs: DocSeedData[] = [
     {
       slug: 'home',
       keywords: ['welcome', 'home page', 'getting started'],
@@ -94,9 +101,40 @@ export const seed = async (payload: Payload) => {
     },
   ]
 
+  for (const docData of docs) {
+    // slug is localized: match against the default locale the seed writes to
+    // (via find, which honors `locale` — count does not), otherwise the query
+    // never matches and the seed is not idempotent.
+    const { totalDocs: existingDoc } = await payload.find({
+      collection: 'docs' as CollectionSlug,
+      depth: 0,
+      limit: 1,
+      locale: 'en',
+      where: { slug: { equals: docData.slug } },
+    })
+
+    if (!existingDoc) {
+      await payload.create({
+        collection: 'docs' as CollectionSlug,
+        data: docData,
+      })
+    }
+  }
+
+  // `pages` is managed by the Pages plugin: its slug field is injected, and
+  // `makeSlugTranslatable` derives the slug from the translated title. Seed a
+  // couple of entries so the slug-on-translate behavior is clickable.
+  const pages: PageSeedData[] = [
+    { slug: 'travel-tips', title: 'Travel Tips' },
+    { slug: 'our-mission', title: 'Our Mission' },
+  ]
+
   for (const pageData of pages) {
-    const { totalDocs: existingPage } = await payload.count({
+    const { totalDocs: existingPage } = await payload.find({
       collection: 'pages' as CollectionSlug,
+      depth: 0,
+      limit: 1,
+      locale: 'en',
       where: { slug: { equals: pageData.slug } },
     })
 
@@ -127,8 +165,11 @@ export const seed = async (payload: Payload) => {
   ]
 
   for (const postData of posts) {
-    const { totalDocs: existingPost } = await payload.count({
+    const { totalDocs: existingPost } = await payload.find({
       collection: 'posts' as CollectionSlug,
+      depth: 0,
+      limit: 1,
+      locale: 'en',
       where: { slug: { equals: postData.slug } },
     })
 
@@ -142,6 +183,6 @@ export const seed = async (payload: Payload) => {
 
   console.log('✅ Seed data created successfully!')
   console.log(
-    `📊 Created ${authors.length} authors, ${pages.length} pages, and ${posts.length} posts`,
+    `📊 Created ${authors.length} authors, ${docs.length} docs, ${pages.length} pages, and ${posts.length} posts`,
   )
 }
