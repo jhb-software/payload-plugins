@@ -1,5 +1,6 @@
 export { alternatePathsField } from './fields/alternatePathsField.js'
 export { slugField } from './fields/slugField.js'
+export { formatSlug } from './hooks/validateSlug.js'
 export { payloadPagesPlugin } from './plugin.js'
 export type { IncomingPageCollectionConfig as PageCollectionConfig } from './types/PageCollectionConfig.js'
 export type {

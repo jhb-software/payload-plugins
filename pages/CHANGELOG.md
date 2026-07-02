@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: export `formatSlug`, the slug normalizer the slug field validates against
+
 ## 0.8.0
 
 - feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
