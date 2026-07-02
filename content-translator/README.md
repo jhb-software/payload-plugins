@@ -127,7 +127,7 @@ ships a localized `slug` field. Spread its config and attach the translator
 handling so translating a document produces a localized slug:
 
 ```ts
-import { slugField } from '@jhb.software/payload-pages-plugin'
+import { formatSlug, slugField } from '@jhb.software/payload-pages-plugin'
 
 const slug = slugField({ fallbackField: 'title' })
 
@@ -137,10 +137,10 @@ export const translatableSlug = {
     ...slug.custom,
     'content-translator': {
       // Derive the slug from the translated title rather than translating it.
-      // Use the same slugify rules the slug field validates against so the
-      // result is accepted.
+      // `formatSlug` is the same normalizer the slug field validates against,
+      // so the derived value is guaranteed to be accepted on save.
       skip: true,
-      afterTranslate: ({ siblingData }) => slugify(siblingData.title),
+      afterTranslate: ({ siblingData }) => formatSlug(siblingData.title),
     },
   },
 }
