@@ -6,6 +6,7 @@ import { describe, test } from 'vitest'
 
 import type { IncomingAltTextPluginConfig } from '../src/types/AltTextPluginConfig.ts'
 
+import { PLUGIN_SLUG } from '../src/constants.ts'
 import { payloadAltTextPlugin } from '../src/plugin.ts'
 import { canViewHealthReport } from '../src/utilities/altTextHealth.ts'
 
@@ -38,7 +39,7 @@ function buildPluginConfig(
 
 function healthHandler(incoming: IncomingAltTextPluginConfig) {
   const config = payloadAltTextPlugin(incoming)(baseConfig)
-  const endpoint = config.endpoints?.find((e) => e.path === '/alt-text-plugin/health')
+  const endpoint = config.endpoints?.find((e) => e.path === `/${PLUGIN_SLUG}/health`)
   assert.ok(endpoint, 'health endpoint should be registered')
   return endpoint.handler
 }

@@ -16,6 +16,7 @@ import type {
   PluginAltTextTranslations,
 } from '../translations/index.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 
@@ -52,7 +53,7 @@ export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTyp
 
     startTransition(async () => {
       try {
-        const response = await fetch(`${serverURL ?? ''}${apiRoute}/alt-text-plugin/generate`, {
+        const response = await fetch(`${serverURL ?? ''}${apiRoute}/${PLUGIN_SLUG}/generate`, {
           body: JSON.stringify({
             id: id as string,
             collection: collectionSlug,

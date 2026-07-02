@@ -26,6 +26,7 @@ import type { PayloadRequest } from 'payload'
 import type { AgentMode, ChatAgentPluginOptions, EmptyStateConfig } from './types.js'
 
 import { isPluginAccessAllowed } from './access.js'
+import { PLUGIN_SLUG } from './constants.js'
 import { conversationEndpoints, conversationsCollection } from './conversations.js'
 import {
   getDefaultMode,
@@ -191,7 +192,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             })
           },
           method: 'get',
-          path: '/chat-agent/modes',
+          path: `/${PLUGIN_SLUG}/modes`,
         },
 
         // --- GET /chat-agent/chat/models ------------------------------------
@@ -206,7 +207,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             })
           },
           method: 'get',
-          path: '/chat-agent/chat/models',
+          path: `/${PLUGIN_SLUG}/chat/models`,
         },
 
         // --- POST /chat-agent/chat ------------------------------------------
@@ -345,7 +346,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             })
           },
           method: 'post',
-          path: '/chat-agent/chat',
+          path: `/${PLUGIN_SLUG}/chat`,
         },
 
         // --- GET /chat-agent/budget -----------------------------------------
@@ -363,7 +364,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                   return Response.json({ remaining: r })
                 },
                 method: 'get' as const,
-                path: '/chat-agent/budget',
+                path: `/${PLUGIN_SLUG}/budget`,
               },
             ]
           : []),

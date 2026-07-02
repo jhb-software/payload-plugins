@@ -1,9 +1,11 @@
 import type { TranslateEndpointArgs, TranslateResult } from '../../translate/types.js'
 
+import { PLUGIN_SLUG } from '../../constants.js'
+
 export const createClient = ({ api, serverURL }: { api: string; serverURL: string }) => {
   const translate = async (args: TranslateEndpointArgs): Promise<TranslateResult> => {
     try {
-      const response = await fetch(`${serverURL}${api}/translator/translate`, {
+      const response = await fetch(`${serverURL}${api}/${PLUGIN_SLUG}/translate`, {
         body: JSON.stringify(args),
         credentials: 'include',
         headers: {

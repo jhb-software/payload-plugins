@@ -7,6 +7,8 @@ import React, { createContext, use, useCallback, useEffect, useRef, useState } f
 import type { DeploymentsInfo } from '../endpoints/getDeployments.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
+
 const IDLE_INTERVAL = 2 * 60 * 1000 // 2 minutes
 const ACTIVE_INTERVAL = 5 * 1000 // 5 seconds
 
@@ -34,7 +36,7 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
       serverURL,
     },
   } = useConfig()
-  const deploymentsEndpoint = `${serverURL ?? ''}${apiRoute}/vercel-deployments`
+  const deploymentsEndpoint = `${serverURL ?? ''}${apiRoute}/${PLUGIN_SLUG}`
   const intervalRef = useRef<null | ReturnType<typeof setInterval>>(null)
   const activeDeploymentIdRef = useRef<null | string>(null)
   const [isBuilding, setIsBuilding] = useState(false)

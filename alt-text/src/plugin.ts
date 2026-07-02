@@ -5,6 +5,7 @@ import type {
   IncomingAltTextPluginConfig,
 } from './types/AltTextPluginConfig.js'
 
+import { PLUGIN_SLUG } from './constants.js'
 import { altTextHealthEndpoint } from './endpoints/altTextHealth.js'
 import { bulkGenerateAltTextsEndpoint } from './endpoints/bulkGenerateAltTexts.js'
 import { generateAltTextEndpoint } from './endpoints/generateAltText.js'
@@ -189,19 +190,19 @@ export const payloadAltTextPlugin =
         {
           handler: generateAltTextEndpoint(pluginConfig.access),
           method: 'post',
-          path: '/alt-text-plugin/generate',
+          path: `/${PLUGIN_SLUG}/generate`,
         },
         {
           handler: bulkGenerateAltTextsEndpoint(pluginConfig.access),
           method: 'post',
-          path: '/alt-text-plugin/generate/bulk',
+          path: `/${PLUGIN_SLUG}/generate/bulk`,
         },
         ...(enableHealthCheck
           ? [
               {
                 handler: altTextHealthEndpoint(pluginConfig.healthCheckAccess),
                 method: 'get' as const,
-                path: '/alt-text-plugin/health',
+                path: `/${PLUGIN_SLUG}/health`,
               },
             ]
           : []),
