@@ -121,31 +121,16 @@ characters the translation introduced:
 and `req`. Because it is field-local, this works for any derived or normalized
 field under any name — slugs, URL paths, computed keys.
 
-#### With the Pages plugin's slug field
+#### With the Pages plugin
 
 The [Pages plugin](https://www.npmjs.com/package/@jhb.software/payload-pages-plugin)
-ships a localized `slug` field. Spread its config and attach the translator
-handling so translating a document produces a localized slug:
+injects the `slug` field into its page collections, so you attach the config with
+a small plugin that runs after `payloadPagesPlugin` and derives the slug from the
+translated title — normalized with the pages plugin's `formatSlug`, the same rule
+the slug field validates against, so the result is always accepted.
 
-```ts
-import { formatSlug, slugField } from '@jhb.software/payload-pages-plugin'
-
-const slug = slugField({ fallbackField: 'title' })
-
-export const translatableSlug = {
-  ...slug,
-  custom: {
-    ...slug.custom,
-    'content-translator': {
-      // Derive the slug from the translated title rather than translating it.
-      // `formatSlug` is the same normalizer the slug field validates against,
-      // so the derived value is guaranteed to be accepted on save.
-      skip: true,
-      afterTranslate: ({ siblingData }) => formatSlug(siblingData.title),
-    },
-  },
-}
-```
+See the runnable example: [`makeSlugTranslatable`](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/helpers/makeSlugTranslatable.ts)
+and [its wiring](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/payload.config.ts) in the dev app.
 
 ### Resolvers
 
