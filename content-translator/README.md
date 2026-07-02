@@ -77,14 +77,6 @@ A slug must never be stored with the raw output of an LLM — it has to stay
 URL-safe. There are two strategies, depending on whether the slug should mirror
 the title:
 
-```ts
-const slugify = (value: string): string =>
-  value
-    .toLowerCase()
-    .replace(/[^\w]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-```
-
 **Derive from the title** — the slug always follows the title, so skip
 translation and re-slugify the already-translated title (e.g. "Travel Tips" →
 `reisetipps`):
@@ -97,9 +89,10 @@ translation and re-slugify the already-translated title (e.g. "Travel Tips" →
   custom: {
     'content-translator': {
       skip: true,
-      afterTranslate: ({ siblingData }) => slugify(String(siblingData.title ?? '')),
+      afterTranslate: ({ siblingData }) => slugify(siblingData.title),
     },
   },
+  // validation and other field options...
 }
 ```
 
@@ -115,9 +108,10 @@ characters the translation introduced:
   custom: {
     'content-translator': {
       // No `skip`: the slug is translated, then cleaned.
-      afterTranslate: ({ value }) => slugify(String(value ?? '')),
+      afterTranslate: ({ value }) => slugify(value),
     },
   },
+  // validation and other field options...
 }
 ```
 
@@ -146,7 +140,7 @@ export const translatableSlug = {
       // Use the same slugify rules the slug field validates against so the
       // result is accepted.
       skip: true,
-      afterTranslate: ({ siblingData }) => slugify(String(siblingData.title ?? '')),
+      afterTranslate: ({ siblingData }) => slugify(siblingData.title),
     },
   },
 }
