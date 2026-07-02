@@ -1,11 +1,10 @@
 import type { Config } from 'payload'
 
 import assert from 'node:assert/strict'
-import { describe, expect, test } from 'vitest'
+import { describe, test } from 'vitest'
 
 import type { IncomingAltTextPluginConfig } from '../src/types/AltTextPluginConfig.ts'
 
-import { PLUGIN_SLUG } from '../src/constants.ts'
 import { payloadAltTextPlugin } from '../src/plugin.ts'
 
 const baseConfig = {
@@ -23,19 +22,11 @@ const pluginConfig: IncomingAltTextPluginConfig = {
   },
 }
 
-describe('alt text endpoint paths', () => {
-  test('registers generate, bulk, and health endpoints under the plugin slug prefix', () => {
+describe('alt text REST endpoints', () => {
+  test('are served under the /api/alt-text prefix', () => {
     const config = payloadAltTextPlugin(pluginConfig)(baseConfig)
-    const paths = config.endpoints?.map((e) => e.path) ?? []
+    const paths = (config.endpoints?.map((e) => e.path) ?? []).sort()
 
-    assert.ok(paths.includes(`/${PLUGIN_SLUG}/generate`))
-    assert.ok(paths.includes(`/${PLUGIN_SLUG}/generate/bulk`))
-    assert.ok(paths.includes(`/${PLUGIN_SLUG}/health`))
-
-    // Pin the concrete prefix so the slug rename is not silently reverted.
-    expect(paths).toEqual(
-      expect.arrayContaining(['/alt-text/generate', '/alt-text/generate/bulk', '/alt-text/health']),
-    )
-    assert.ok(!paths.some((p) => p?.startsWith('/alt-text-plugin/')))
+    assert.deepEqual(paths, ['/alt-text/generate', '/alt-text/generate/bulk', '/alt-text/health'])
   })
 })
