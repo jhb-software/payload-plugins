@@ -8,10 +8,6 @@ overrides:
   dompurify: ^3.4.0
   '@eslint/plugin-kit': ^0.3.4
   postcss: ^8.5.10
-  uuid: ^11.1.1
-  mongoose: ^8.22.1
-  esbuild: ^0.28.1
-  vite: ^8.0.16
   next: 16.2.9
   '@typescript-eslint/utils': ^8.59.3
   '@typescript-eslint/eslint-plugin': ^8.59.3
@@ -24,9 +20,6 @@ overrides:
   typescript-eslint: ^8.59.3
   eslint: ^9.39.4
   '@eslint/js': ^9.39.4
-  undici: ^7.28.0
-  ws: ^8.21.0
-  js-yaml: ^4.1.2
 
 importers:
 
@@ -87,7 +80,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
-        specifier: ^8.0.16
+        specifier: ^8.1.3
         version: 8.1.3(@types/node@26.1.0)(esbuild@0.28.1)(sass@1.77.4)(tsx@4.22.4)
       vitest:
         specifier: ^4.1.9
@@ -1407,7 +1400,7 @@ packages:
     resolution: {integrity: sha512-EVkXzBjrPGM+cK8/ANWgBrkUCfJfb38/EfTSO8h7pWvKkyPkpWxvR7BkD2MyItMF62C97zAEoqdpUixwR/e+Rw==}
     peerDependencies:
       msw: ^2.4.9
-      vite: ^8.0.16
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       msw:
         optional: true
@@ -2914,14 +2907,14 @@ packages:
     resolution: {integrity: sha512-8chOqpVE3bcoWT2pIgcJeIZlXaOfQCavZgQZF4qytUtjRBqsNMyzUoR16qdw9XL2kC478N8iA8z0AA+NSS0d1A==}
     engines: {node: '>=16.20.1'}
     peerDependencies:
-      mongoose: ^8.22.1
+      mongoose: '>=5.11.10'
 
   mongoose-paginate-v2@1.9.4:
     resolution: {integrity: sha512-0LOsVEQmjrbJKVDi/IvFEhIezmuRjUE4loGgslv57j9nK/NMC+mbKT0QnaPSPpib4lByKVBcy3VbDa1TvlHZjA==}
     engines: {node: '>=4.0.0'}
 
-  mongoose@8.24.1:
-    resolution: {integrity: sha512-UpHBA0l5kHyKJQFjmBaFYQFo5sgz1DK0TRqDkOyBLYbqiIbKKhIvBpHWBXqeo0rgW4kGI1UhhAw+kTQZoj1BdA==}
+  mongoose@8.22.1:
+    resolution: {integrity: sha512-c0bzt7ElI1CwWiyFSgg9bfhlFcblAoPwr+gmDcLCryClyKaeixWhP9KDGnr13kRPE8KPAuUN3ZZ3jSDxSPvoTg==}
     engines: {node: '>=16.20.1'}
 
   mpath@0.8.4:
@@ -3797,8 +3790,8 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@11.1.1:
-    resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
+  uuid@13.0.2:
+    resolution: {integrity: sha512-vzi9uRZ926x4XV73S/4qQaTwPXM2JBj6/6lI/byHH1jOpCzb0zDbfytgA9LcN/hzb2l7WQSQnxITOVx5un/wGw==}
     hasBin: true
 
   vite@8.1.3:
@@ -3808,7 +3801,7 @@ packages:
     peerDependencies:
       '@types/node': ^20.19.0 || >=22.12.0
       '@vitejs/devtools': ^0.3.0
-      esbuild: ^0.28.1
+      esbuild: ^0.27.0 || ^0.28.0
       jiti: '>=1.21.0'
       less: ^4.0.0
       sass: ^1.70.0
@@ -3860,7 +3853,7 @@ packages:
       '@vitest/ui': 4.1.9
       happy-dom: '*'
       jsdom: '*'
-      vite: ^8.0.16
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -4758,11 +4751,11 @@ snapshots:
 
   '@payloadcms/db-mongodb@3.85.2(payload@3.85.2(graphql@16.14.0)(typescript@6.0.3))':
     dependencies:
-      mongoose: 8.24.1
-      mongoose-paginate-v2: 1.9.4(mongoose@8.24.1)
+      mongoose: 8.22.1
+      mongoose-paginate-v2: 1.9.4(mongoose@8.22.1)
       payload: 3.85.2(graphql@16.14.0)(typescript@6.0.3)
       prompts: 2.4.2
-      uuid: 11.1.1
+      uuid: 13.0.2
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
       - '@mongodb-js/zstd'
@@ -4865,7 +4858,7 @@ snapshots:
       payload: 3.85.2(graphql@16.14.0)(typescript@6.0.3)
       qs-esm: 8.0.1
       sass: 1.77.4
-      uuid: 11.1.1
+      uuid: 13.0.2
     transitivePeerDependencies:
       - '@types/react'
       - monaco-editor
@@ -4906,7 +4899,7 @@ snapshots:
       sonner: 1.7.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       ts-essentials: 10.0.3(typescript@6.0.3)
       use-context-selector: 2.0.0(react@19.2.7)(scheduler@0.25.0)
-      uuid: 11.1.1
+      uuid: 13.0.2
     transitivePeerDependencies:
       - '@types/react'
       - monaco-editor
@@ -6991,18 +6984,18 @@ snapshots:
       bson: 6.10.4
       mongodb-connection-string-url: 3.0.2
 
-  mongoose-lean-virtuals@1.1.1(mongoose@8.24.1):
+  mongoose-lean-virtuals@1.1.1(mongoose@8.22.1):
     dependencies:
-      mongoose: 8.24.1
+      mongoose: 8.22.1
       mpath: 0.8.4
 
-  mongoose-paginate-v2@1.9.4(mongoose@8.24.1):
+  mongoose-paginate-v2@1.9.4(mongoose@8.22.1):
     dependencies:
-      mongoose-lean-virtuals: 1.1.1(mongoose@8.24.1)
+      mongoose-lean-virtuals: 1.1.1(mongoose@8.22.1)
     transitivePeerDependencies:
       - mongoose
 
-  mongoose@8.24.1:
+  mongoose@8.22.1:
     dependencies:
       bson: 6.10.4
       kareem: 2.6.3
@@ -7242,7 +7235,7 @@ snapshots:
       ts-essentials: 10.0.3(typescript@6.0.3)
       tsx: 4.22.4
       undici: 7.28.0
-      uuid: 11.1.1
+      uuid: 13.0.2
       ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
@@ -8010,7 +8003,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@11.1.1: {}
+  uuid@13.0.2: {}
 
   vite@8.1.3(@types/node@26.1.0)(esbuild@0.28.1)(sass@1.77.4)(tsx@4.22.4):
     dependencies:
