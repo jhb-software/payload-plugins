@@ -24,7 +24,8 @@ import { buildPathCacheKey, type PathCacheEntry } from './pathCache.js'
  *    path segment, and the computed path of each candidate is compared against the requested
  *    path. A successful resolution is written back to the cache.
  *
- * Only published documents are resolved unless `draft: true` is passed. Draft and published
+ * Only published documents are resolved unless `draft: true` is passed (a page that exists
+ * only as a never-published draft is not resolved by a published lookup). Draft and published
  * lookups are cached under separate keys, so an unpublished change can never leak into a
  * published lookup (and vice versa). The cache only maps a path to a document id — the
  * document itself is re-fetched on every lookup, so a content change to a draft is always
