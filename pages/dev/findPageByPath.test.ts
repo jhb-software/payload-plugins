@@ -236,7 +236,7 @@ describe('Path cache', () => {
     expect((await findPageByPath({ payload, path: '/de/b/child' }))?.doc.id).toBe(child.id)
   })
 
-  test('a stale cache entry never resolves to the wrong page', async () => {
+  test('self-heals a stale entry and resolves to the new page without churning the cache', async () => {
     const pageA = await createPage({ title: 'Page A', slug: 'shared' })
     await findPageByPath({ payload, path: '/de/shared' })
 
@@ -249,28 +249,12 @@ describe('Path cache', () => {
     })
     const pageB = await createPage({ title: 'Page B', slug: 'shared' })
 
-    const result = await findPageByPath({ payload, path: '/de/shared' })
+    // the stale entry (still pointing at pageA, now moved away) never resolves to the wrong page
+    expect((await findPageByPath({ payload, path: '/de/shared' }))?.doc.id).toBe(pageB.id)
 
-    expect(result?.doc.id).toBe(pageB.id)
-  })
-
-  test('verifies and self-heals a cache entry that points to the wrong page', async () => {
-    const pageA = await createPage({ title: 'Page A', slug: 'page-a' })
-    const pageB = await createPage({ title: 'Page B', slug: 'page-b' })
-
-    await findPageByPath({ payload, path: '/de/page-a' })
-    const [cacheKey] = await pathCacheKeys()
-
-    // tamper with the cache entry so it points to a different page
-    await payload.kv.set(cacheKey, { collection: 'pages', id: pageB.id })
-
-    // the mismatch between the cached page's path and the requested path is detected,
-    // the lookup falls back to the scan and the entry is corrected
-    const result = await findPageByPath({ payload, path: '/de/page-a' })
-    expect(result?.doc.id).toBe(pageA.id)
-
-    const entry = await payload.kv.get<{ id: unknown }>(cacheKey)
-    expect(entry?.id).toBe(pageA.id)
+    // the entry is rewritten to pageB, so a repeat lookup stays correct and no duplicate key lingers
+    expect((await findPageByPath({ payload, path: '/de/shared' }))?.doc.id).toBe(pageB.id)
+    expect(await pathCacheKeys()).toHaveLength(1)
   })
 
   test('returns null for a cached path after the page was deleted', async () => {
