@@ -96,7 +96,7 @@ export async function queryPageByPath<TDoc extends PageDocument>(
   }
 
   const pluginConfig = candidates[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
-  const cacheEnabled = args.cache ?? pluginConfig?.pathCache ?? true
+  const cacheEnabled = args.cache ?? true
 
   // The plugin's `baseFilter` scopes every page query (e.g. to a tenant), so it must scope the
   // path lookup too — otherwise a lookup could resolve to a page of the wrong tenant. It is

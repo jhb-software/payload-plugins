@@ -5,7 +5,7 @@ import { queryPageByPath } from './queryPageByPath.js'
 /**
  * Finds the page document for a given path across all page collections.
  *
- * Uses the KV path cache (see the `pathCache` plugin config option) to avoid scanning
+ * Uses the KV path cache (toggle per call via the `cache` argument) to avoid scanning
  * the page collections on repeated lookups. Cached mappings are verified against the
  * requested path on every read, so a stale mapping is never returned.
  *

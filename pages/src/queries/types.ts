@@ -18,7 +18,7 @@ export type PagePathQueryArgs = {
   /**
    * Whether to use the KV path cache for this call.
    *
-   * Overrides the `pathCache` plugin config option.
+   * @default true
    */
   cache?: boolean
 

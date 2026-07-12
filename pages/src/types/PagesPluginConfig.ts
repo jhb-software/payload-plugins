@@ -35,22 +35,6 @@ export type PagesPluginConfig = {
   }) => (null | string) | Promise<null | string>
 
   /**
-   * Whether `findPageByPath` caches path→document-id mappings in Payload's KV store
-   * (`payload.kv`).
-   *
-   * A cache hit replaces the scan across all page collections with a single fetch by id.
-   * Every cached mapping is verified against the requested path on read, so a stale entry
-   * (page renamed, moved, unpublished or deleted in the meantime) is never returned — it is
-   * deleted and the lookup falls back to the scan. Draft and published lookups are cached
-   * under separate keys and never leak into each other.
-   *
-   * Can be overridden per call via the `cache` argument.
-   *
-   * @default true
-   */
-  pathCache?: boolean
-
-  /**
    * Whether to prevent deletion of parent documents that have child documents referencing them.
    *
    * When enabled (default), the plugin will check for child documents before allowing deletion

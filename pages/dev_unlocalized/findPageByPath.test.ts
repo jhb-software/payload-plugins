@@ -108,23 +108,23 @@ describe('findPageByPath in an unlocalized config', () => {
   })
 })
 
-describe('Path cache disabled via the pathCache plugin config option', () => {
-  test('does not write cache entries by default', async () => {
+describe('Path cache', () => {
+  test('caches a successful lookup by default', async () => {
     await createPage({ title: 'Parent', slug: 'parent' })
 
     const result = await findPageByPath({ payload, path: '/parent' })
 
     expect(result).not.toBeNull()
-    expect(await pathCacheKeys()).toHaveLength(0)
+    expect(await pathCacheKeys()).toHaveLength(1)
   })
 
-  test('the per-call cache argument overrides the plugin config', async () => {
+  test('does not write to the cache when disabled per call', async () => {
     await createPage({ title: 'Parent', slug: 'parent' })
 
-    const result = await findPageByPath({ payload, path: '/parent', cache: true })
+    const result = await findPageByPath({ payload, path: '/parent', cache: false })
 
     expect(result).not.toBeNull()
-    expect(await pathCacheKeys()).toHaveLength(1)
+    expect(await pathCacheKeys()).toHaveLength(0)
   })
 })
 

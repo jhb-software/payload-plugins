@@ -265,15 +265,9 @@ The cache never requires manual invalidation: every cached mapping is verified a
 
 Draft and published lookups (`draft: true`) are cached under separate keys, so an unpublished change never leaks into a published lookup and vice versa. Because the cache only maps a path to a document id and the document is re-fetched on every lookup, draft content changes are always reflected without invalidating the cached path — so a preview that re-renders on every edit still benefits from the cache as long as the page's path stays the same.
 
-Caching is enabled by default and can be disabled globally via the plugin config or per call:
+Caching is enabled by default and can be disabled per call:
 
 ```ts
-payloadPagesPlugin({
-  // ...
-  pathCache: false,
-})
-
-// or per call:
 await findPageByPath({ payload, path, cache: false })
 ```
 
