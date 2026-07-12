@@ -251,8 +251,10 @@ Both functions accept either a `payload` instance or a `req` (which forwards the
 - `locale`: The locale to resolve the path in. Defaults to the locale prefix of the path (e.g. `/de/...`), falling back to the default locale.
 - `draft`: Whether to resolve draft documents (default `false`). Published lookups never return unpublished pages.
 - `collections`: The page collections to search, in the given order. Defaults to all page collections.
-- `where`: An additional filter, e.g. to scope the lookup to a tenant in multi-tenant setups. The filtered fields must be queryable on every searched collection — restrict the search via `collections` otherwise.
+- `where`: An additional filter applied on top of the plugin's configured `baseFilter`. The filtered fields must be queryable on every searched collection — restrict the search via `collections` otherwise.
 - `overrideAccess` / `cache`: See below.
+
+The plugin's [`baseFilter`](#multi-tenant-support) is applied to the lookup automatically, so multi-tenant setups are scoped to the correct tenant without passing `where`. Because `baseFilter` is evaluated against the request, such setups must call these functions with `req` (rather than `payload`); a lookup without `req` throws when a `baseFilter` is configured. Both the base filter and `where` are part of the cache key, so differently scoped lookups never share cache entries.
 
 ### Path lookup caching
 

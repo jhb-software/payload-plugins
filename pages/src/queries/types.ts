@@ -58,19 +58,27 @@ export type PagePathQueryArgs = {
   /** The path of the page to resolve (e.g. `/de/blog/my-post`). Must start with `/`. */
   path: string
 
-  /** The Payload instance. Required unless `req` is provided. */
+  /**
+   * The Payload instance. Required unless `req` is provided.
+   *
+   * When the plugin is configured with a `baseFilter` (e.g. a multi-tenant setup), `req` is
+   * required instead, as the base filter is evaluated against the request.
+   */
   payload?: Payload
 
   /**
    * The Payload request. Passing it forwards the active transaction, user and
    * request-scoped caches to all queries.
+   *
+   * Required when the plugin is configured with a `baseFilter`, so the filter (e.g. the
+   * active tenant) can be evaluated against the request.
    */
   req?: PayloadRequest
 
   /**
-   * An additional filter applied to all queries, e.g. to scope the lookup to a tenant
-   * in multi-tenant setups. The filter is part of the cache key, so differently scoped
-   * lookups never share cache entries.
+   * An additional filter applied to all queries, on top of the plugin's configured
+   * `baseFilter` (which scopes every lookup automatically, e.g. to a tenant). Both are part
+   * of the cache key, so differently scoped lookups never share cache entries.
    *
    * The filtered fields must be queryable on every searched collection — restrict the
    * search via `collections` when the filter only applies to some page collections.

@@ -13,26 +13,28 @@ export type PathCacheEntry = {
 
 /** Builds the KV key for a path lookup. */
 export function buildPathCacheKey({
+  baseFilter,
   draft,
   locale,
   path,
   where,
 }: {
+  baseFilter: undefined | Where
   draft: boolean
   locale: Locale | undefined
   path: string
   where: undefined | Where
 }): string {
-  // The `where` filter scopes the lookup (e.g. to a tenant), so it must scope the cache
-  // entry as well. A hash keeps the key short; a hash collision cannot yield a wrong
-  // result because every cached id is re-fetched with the actual filter applied.
-  const whereHash = where ? fnv1aHash(JSON.stringify(where)) : '-'
+  // The `baseFilter` (e.g. tenant scoping) and the caller's `where` scope the lookup, so they
+  // must scope the cache entry as well. A hash keeps the key short; a hash collision cannot
+  // yield a wrong result because every cached id is re-fetched with the actual filters applied.
+  const scopeHash = baseFilter || where ? fnv1aHash(JSON.stringify({ baseFilter, where })) : '-'
 
   // Draft and published lookups can resolve the same path to different documents, so they
   // must never share a cache slot.
   const status = draft ? 'draft' : 'published'
 
-  return `${PATH_CACHE_KEY_PREFIX}:${status}:${locale ?? '-'}:${whereHash}:${path}`
+  return `${PATH_CACHE_KEY_PREFIX}:${status}:${locale ?? '-'}:${scopeHash}:${path}`
 }
 
 /**

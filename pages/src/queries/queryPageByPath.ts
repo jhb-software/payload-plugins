@@ -97,11 +97,29 @@ export async function queryPageByPath<TDoc extends PageDocument>(
 
   const pluginConfig = candidates[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
   const cacheEnabled = args.cache ?? pluginConfig?.pathCache ?? true
-  const cacheKey = buildPathCacheKey({ draft, locale, path, where: args.where })
 
-  /** Combines the given condition with the caller's filter and the published-only constraint. */
+  // The plugin's `baseFilter` scopes every page query (e.g. to a tenant), so it must scope the
+  // path lookup too — otherwise a lookup could resolve to a page of the wrong tenant. It is
+  // evaluated from the request (e.g. the active tenant), so a `req` is required whenever a
+  // `baseFilter` is configured.
+  let baseFilter: undefined | Where
+  if (pluginConfig?.baseFilter) {
+    if (!args.req) {
+      throw new Error(
+        'Resolving a page by path requires `req` when the plugin is configured with a `baseFilter` (e.g. a multi-tenant setup), so the filter can be evaluated against the request.',
+      )
+    }
+    baseFilter = pluginConfig.baseFilter({ req: args.req })
+  }
+
+  const cacheKey = buildPathCacheKey({ baseFilter, draft, locale, path, where: args.where })
+
+  /** Combines the given condition with the base filter, the caller's filter and the published-only constraint. */
   const buildWhere = (condition: Where, collection: PageCollectionConfig): Where => {
     const and: Where[] = [condition]
+    if (baseFilter) {
+      and.push(baseFilter)
+    }
     if (args.where) {
       and.push(args.where)
     }
@@ -175,7 +193,9 @@ export async function queryPageByPath<TDoc extends PageDocument>(
     // Fetch the full document before caching, so a match that the richer fetch filters out
     // (e.g. via access control) never leaves behind an entry the next read would delete.
     const doc = await fetchDocument(collection, match.id)
-    if (!doc) {
+    // Re-verify the path against the full fetch: the lean scan and the fetch are two separate
+    // reads (unless a `req` transaction is shared), so the page could have moved in between.
+    if (!doc || doc.path !== path) {
       return null
     }
 
