@@ -20,21 +20,21 @@
   "dependencies": {
     "@jhb.software/payload-content-translator-plugin": "workspace:*",
     "@jhb.software/payload-pages-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.85.1",
-    "@payloadcms/next": "^3.85.1",
-    "@payloadcms/richtext-lexical": "^3.85.1",
-    "@payloadcms/translations": "^3.85.1",
-    "@payloadcms/ui": "^3.85.1",
-    "next": "16.2.9",
-    "openai": "^6.44.0",
-    "payload": "^3.85.1",
+    "@payloadcms/db-mongodb": "^3.85.2",
+    "@payloadcms/next": "^3.85.2",
+    "@payloadcms/richtext-lexical": "^3.85.2",
+    "@payloadcms/translations": "^3.85.2",
+    "@payloadcms/ui": "^3.85.2",
+    "next": "16.2.10",
+    "openai": "^6.45.0",
+    "payload": "^3.85.2",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
-    "tsx": "^4.22.4"
+    "tsx": "^4.23.0"
   },
   "engines": {
     "node": ">=22.12.0"
