@@ -232,21 +232,22 @@ Therefore it is highly recommended to specify the [defaultPopulate](https://payl
 
 ## Fetching pages by path
 
-Because the `path` field is virtual, it cannot be queried in the database directly. The plugin exports two functions that resolve a path to the page it belongs to across all page collections:
+Because the `path` field is virtual, it cannot be queried in the database directly. The plugin exports `findPageByPath`, which resolves a path to the page it belongs to across all page collections:
 
 ```ts
-import { findPageByPath, resolvePagePath } from '@jhb.software/payload-pages-plugin'
+import { findPageByPath } from '@jhb.software/payload-pages-plugin'
 
 // Returns the full page document (e.g. for rendering a frontend page):
 const result = await findPageByPath({ payload, path: '/de/blog/my-post', depth: 1 })
 // result: { collection: 'blogposts', doc: { id: '...', path: '/de/blog/my-post', ... } } | null
 
-// Returns only the identity of the page (e.g. for a lightweight page-props endpoint):
-const resolved = await resolvePagePath({ payload, path: '/de/blog/my-post' })
-// resolved: { collection: 'blogposts', id: '...', path: '/de/blog/my-post' } | null
+// Identity only (e.g. for a page-props endpoint whose caller fetches the document itself,
+// via GraphQL or a different field selection): pass depth 0 and an empty select.
+const identity = await findPageByPath({ payload, path: '/de/blog/my-post', depth: 0, select: {} })
+// identity: { collection: 'blogposts', doc: { id: '...', path: '/de/blog/my-post' } } | null
 ```
 
-Both functions accept either a `payload` instance or a `req` (which forwards the active transaction and user), the query options `depth`, `select` and `populate` (`findPageByPath` only), and:
+`findPageByPath` accepts either a `payload` instance or a `req` (which forwards the active transaction and user), the query options `depth`, `select` and `populate`, and:
 
 - `locale`: The locale to resolve the path in. Defaults to the locale prefix of the path (e.g. `/de/...`), falling back to the default locale.
 - `draft`: Whether to resolve draft documents (default `false`). Published lookups never return unpublished pages.
@@ -254,11 +255,11 @@ Both functions accept either a `payload` instance or a `req` (which forwards the
 - `where`: An additional filter applied on top of the plugin's configured `baseFilter`. The filtered fields must be queryable on every searched collection — restrict the search via `collections` otherwise.
 - `overrideAccess` / `cache`: See below.
 
-The plugin's [`baseFilter`](#multi-tenant-support) is applied to the lookup automatically, so multi-tenant setups are scoped to the correct tenant without passing `where`. Because `baseFilter` is evaluated against the request, such setups must call these functions with `req` (rather than `payload`); a lookup without `req` throws when a `baseFilter` is configured. Both the base filter and `where` are part of the cache key, so differently scoped lookups never share cache entries.
+The plugin's [`baseFilter`](#multi-tenant-support) is applied to the lookup automatically, so multi-tenant setups are scoped to the correct tenant without passing `where`. Because `baseFilter` is evaluated against the request, such setups must call `findPageByPath` with `req` (rather than `payload`); a lookup without `req` throws when a `baseFilter` is configured. Both the base filter and `where` are part of the cache key, so differently scoped lookups never share cache entries.
 
 ### Path lookup caching
 
-Resolving a path requires scanning the page collections for documents whose slug matches the last path segment and comparing their computed paths. To avoid this scan on repeated lookups, both functions cache successful path→document-id resolutions in [Payload's KV store](https://payloadcms.com/docs/kv-store/overview) (`payload.kv`). A cache hit replaces the scan with a single fetch by id.
+Resolving a path requires scanning the page collections for documents whose slug matches the last path segment and comparing their computed paths. To avoid this scan on repeated lookups, `findPageByPath` caches successful path→document-id resolutions in [Payload's KV store](https://payloadcms.com/docs/kv-store/overview) (`payload.kv`). A cache hit replaces the scan with a single fetch by id.
 
 The cache never requires manual invalidation: every cached mapping is verified against the requested path on read. If the page was renamed, moved, unpublished or deleted in the meantime, the stale entry is deleted and the lookup transparently falls back to the scan.
 

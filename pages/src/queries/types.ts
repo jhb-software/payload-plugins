@@ -97,18 +97,8 @@ export type FindPageByPathArgs = {
   select?: SelectType
 } & PagePathQueryArgs
 
-/** Arguments for {@link resolvePagePath}. */
-export type ResolvePagePathArgs = PagePathQueryArgs
-
 /** The result of {@link findPageByPath}. */
 export type PageDocumentResult<TDoc extends PageDocument = PageDocument> = {
   collection: CollectionSlug
   doc: TDoc
-}
-
-/** The result of {@link resolvePagePath}. */
-export type ResolvedPagePath = {
-  collection: CollectionSlug
-  id: DefaultDocumentIDType
-  path: string
 }

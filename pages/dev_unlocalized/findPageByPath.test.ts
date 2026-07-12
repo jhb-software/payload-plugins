@@ -1,6 +1,6 @@
 import payload, { CollectionSlug } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
-import { clearPathCache, findPageByPath, resolvePagePath } from '@jhb.software/payload-pages-plugin'
+import { clearPathCache, findPageByPath } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 
@@ -95,14 +95,16 @@ describe('findPageByPath in an unlocalized config', () => {
     expect(await findPageByPath({ payload, path: '/unknown' })).toBeNull()
   })
 
-  test('resolvePagePath returns the collection, id and path of the page', async () => {
+  test('resolves identity only via depth 0 and an empty select', async () => {
     const page = await createPage({ title: 'Parent', slug: 'parent' })
 
-    expect(await resolvePagePath({ payload, path: '/parent' })).toEqual({
-      collection: 'pages',
-      id: page.id,
-      path: '/parent',
-    })
+    // The recommended identity-only usage: only the id and the (always-included) path are fetched.
+    const result = await findPageByPath({ payload, path: '/parent', depth: 0, select: {} })
+
+    expect(result?.collection).toBe('pages')
+    expect(result?.doc.id).toBe(page.id)
+    expect(result?.doc.path).toBe('/parent')
+    expect(result?.doc.content).toBeUndefined()
   })
 })
 

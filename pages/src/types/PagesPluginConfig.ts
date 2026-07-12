@@ -35,8 +35,8 @@ export type PagesPluginConfig = {
   }) => (null | string) | Promise<null | string>
 
   /**
-   * Whether `findPageByPath` and `resolvePagePath` cache path→document-id mappings in
-   * Payload's KV store (`payload.kv`).
+   * Whether `findPageByPath` caches path→document-id mappings in Payload's KV store
+   * (`payload.kv`).
    *
    * A cache hit replaces the scan across all page collections with a single fetch by id.
    * Every cached mapping is verified against the requested path on read, so a stale entry

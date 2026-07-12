@@ -1,6 +1,6 @@
 import payload, { CollectionSlug, SanitizedConfig } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
-import { clearPathCache, findPageByPath, resolvePagePath } from '@jhb.software/payload-pages-plugin'
+import { clearPathCache, findPageByPath } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 
@@ -228,24 +228,6 @@ describe('findPageByPath query options', () => {
 
   test('rejects an empty collections option', async () => {
     await expect(findPageByPath({ payload, path: '/de/parent', collections: [] })).rejects.toThrow()
-  })
-})
-
-describe('resolvePagePath', () => {
-  test('resolves a path to the collection, id and path of the page', async () => {
-    const page = await createPage({ title: 'Parent', slug: 'parent' })
-
-    const resolved = await resolvePagePath({ payload, path: '/de/parent' })
-
-    expect(resolved).toEqual({
-      collection: 'pages',
-      id: page.id,
-      path: '/de/parent',
-    })
-  })
-
-  test('returns null for an unknown path', async () => {
-    expect(await resolvePagePath({ payload, path: '/de/unknown' })).toBeNull()
   })
 })
 
