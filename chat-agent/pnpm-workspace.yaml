@@ -14,7 +14,7 @@ overrides:
   mongoose: '^8.22.1'
   esbuild: '^0.28.1'
   vite: '^8.0.16'
-  next: '16.2.9'
+  next: '16.2.10'
   '@typescript-eslint/utils': '^8.59.3'
   '@typescript-eslint/eslint-plugin': '^8.59.3'
   '@typescript-eslint/parser': '^8.59.3'
