@@ -580,12 +580,11 @@ describe('runAgent prompt caching', () => {
       },
     ]
     const result = await prepareStep!({
-      experimental_context: undefined,
       messages: stepMessages,
       model: {} as unknown as Parameters<NonNullable<typeof prepareStep>>[0]['model'],
       stepNumber: 1,
       steps: [],
-    })
+    } as unknown as Parameters<NonNullable<typeof prepareStep>>[0])
 
     const out = (result as { messages: typeof stepMessages }).messages
     expect(out[0].providerOptions).toBeUndefined()

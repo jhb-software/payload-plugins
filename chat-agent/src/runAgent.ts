@@ -4,7 +4,7 @@
  * the agent off-HTTP. See the `runAgent` JSDoc below for the public contract.
  */
 
-import type { ModelMessage, StreamTextResult, Tool, ToolSet, UIMessage } from 'ai'
+import type { ModelMessage, Tool, ToolSet, UIMessage } from 'ai'
 import type { PayloadRequest } from 'payload'
 
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
@@ -70,7 +70,7 @@ export interface RunAgentOptions {
 }
 
 /** Result mirrors `streamText`'s handle so callers choose how to consume it. */
-export type RunAgentResult = StreamTextResult<ToolSet, never>
+export type RunAgentResult = ReturnType<typeof streamText<ToolSet>>
 
 /**
  * Thrown when a consumer-supplied `tools` factory throws. Lets the HTTP
