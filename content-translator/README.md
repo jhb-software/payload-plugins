@@ -175,7 +175,7 @@ The plugin registers a single REST endpoint that the admin UI calls to translate
 With `update: true` the endpoint writes the translation to the target locale and returns the same payload. The write runs with `overrideAccess: false`, so the authenticated user (typically an API key) must hold `update` access on the target collection/global. Add `draft: true` to save as a draft for human review instead of publishing.
 
 ```bash
-curl -X POST https://example.com/api/translator/translate \
+curl -X POST https://example.com/api/content-translator/translate \
   -H 'Content-Type: application/json' \
   -H 'Authorization: users API-Key <your-api-key>' \
   -d '{

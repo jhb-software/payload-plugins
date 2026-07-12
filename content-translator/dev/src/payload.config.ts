@@ -40,7 +40,7 @@ export default buildConfig({
     {
       slug: 'users',
       // API keys enabled so the agent translate-and-save flow
-      // (POST /api/translator/translate with `update: true`) can be exercised
+      // (POST /api/content-translator/translate with `update: true`) can be exercised
       // with `Authorization: users API-Key <key>`, the way an agent would.
       auth: { useAPIKey: true },
       fields: [],
@@ -100,7 +100,7 @@ export default buildConfig({
 
     payload.logger.info(
       'Try the agent translate-and-save flow:\n' +
-        `  curl -X POST http://localhost:3000/api/translator/translate \\\n` +
+        `  curl -X POST http://localhost:3000/api/content-translator/translate \\\n` +
         `    -H 'Content-Type: application/json' \\\n` +
         `    -H 'Authorization: users API-Key ${devApiKey}' \\\n` +
         `    -d '{"collectionSlug":"pages","id":"<page-id>","localeFrom":"en","locale":"de","update":true}'`,

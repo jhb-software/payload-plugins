@@ -9,7 +9,7 @@ import { translateEndpoint } from '../src/translate/endpoint.ts'
 
 /**
  * These tests protect the REST write path used by programmatic/agent callers:
- * `POST /api/translator/translate` only persists the translation when the
+ * `POST /api/content-translator/translate` only persists the translation when the
  * request opts in with `update: true`, and the `draft` flag controls whether
  * the write lands as a draft. Writes must always run with `overrideAccess:
  * false` so the requesting user's collection access still gates the mutation.
