@@ -48,28 +48,12 @@ export async function queryPageByPath<TDoc extends PageDocument>(
   const draft = args.draft ?? false
   const path = normalizePath(args.path)
 
-  const pageCollections = payload.config.collections.filter((collection) =>
+  let candidates = payload.config.collections.filter((collection) =>
     isPageCollectionConfig(collection),
   ) as PageCollectionConfig[]
 
-  if (pageCollections.length === 0) {
+  if (candidates.length === 0) {
     throw new Error('The Payload config does not contain any page collections.')
-  }
-
-  let candidates: PageCollectionConfig[]
-  if (args.collections) {
-    if (args.collections.length === 0) {
-      throw new Error('The `collections` option must contain at least one page collection.')
-    }
-    candidates = args.collections.map((slug) => {
-      const collection = pageCollections.find((pageCollection) => pageCollection.slug === slug)
-      if (!collection) {
-        throw new Error(`The collection "${slug}" is not a page collection.`)
-      }
-      return collection
-    })
-  } else {
-    candidates = pageCollections
   }
 
   // Determine the locale and the slug of the last path segment
@@ -89,7 +73,7 @@ export async function queryPageByPath<TDoc extends PageDocument>(
   const slug = slugSegments.at(-1) ?? ROOT_PAGE_SLUG
 
   // Short paths usually belong to the root collection, so scanning it first saves queries.
-  if (!args.collections && slugSegments.length <= 1) {
+  if (slugSegments.length <= 1) {
     candidates = [...candidates].sort(
       (a, b) => Number(b.page.isRootCollection ?? false) - Number(a.page.isRootCollection ?? false),
     )

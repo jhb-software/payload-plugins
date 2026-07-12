@@ -23,13 +23,6 @@ export type PagePathQueryArgs = {
   cache?: boolean
 
   /**
-   * The page collections to search, in the given order.
-   *
-   * Defaults to all page collections registered with the plugin.
-   */
-  collections?: CollectionSlug[]
-
-  /**
    * Whether to resolve draft documents.
    *
    * Draft and published lookups are cached under separate keys and never leak into each other.
@@ -80,8 +73,7 @@ export type PagePathQueryArgs = {
    * `baseFilter` (which scopes every lookup automatically, e.g. to a tenant). Both are part
    * of the cache key, so differently scoped lookups never share cache entries.
    *
-   * The filtered fields must be queryable on every searched collection — restrict the
-   * search via `collections` when the filter only applies to some page collections.
+   * The filtered fields must be queryable on every page collection.
    */
   where?: Where
 }

@@ -173,61 +173,20 @@ describe('findPageByPath query options', () => {
   test('applies an additional where filter', async () => {
     const page = await createPage({ title: 'Parent', slug: 'parent' })
 
-    // restricted to the pages collection since `title` is not queryable on all page collections
+    // `slug` is queryable on every page collection, so no collection scoping is required
     const scoped = await findPageByPath({
       payload,
       path: '/de/parent',
-      collections: ['pages'],
-      where: { title: { equals: 'Parent' } },
+      where: { slug: { equals: 'parent' } },
     })
     const excluded = await findPageByPath({
       payload,
       path: '/de/parent',
-      collections: ['pages'],
-      where: { title: { equals: 'Other' } },
+      where: { slug: { equals: 'other' } },
     })
 
     expect(scoped?.doc.id).toBe(page.id)
     expect(excluded).toBeNull()
-  })
-
-  test('only searches the given collections', async () => {
-    const parent = await createPage({ title: 'Autoren', slug: 'autoren' })
-    await payload.create({
-      collection: 'authors',
-      locale: 'de',
-      data: {
-        name: 'Max Mustermann',
-        content: 'Bio',
-        slug: 'max-mustermann',
-        parent: parent.id,
-        ...virtualFields,
-      },
-    })
-
-    const found = await findPageByPath({
-      payload,
-      path: '/de/autoren/max-mustermann',
-      collections: ['authors'],
-    })
-    const notFound = await findPageByPath({
-      payload,
-      path: '/de/autoren/max-mustermann',
-      collections: ['pages'],
-    })
-
-    expect(found?.collection).toBe('authors')
-    expect(notFound).toBeNull()
-  })
-
-  test('rejects a collections option that contains a non-page collection', async () => {
-    await expect(
-      findPageByPath({ payload, path: '/de/parent', collections: ['users'] }),
-    ).rejects.toThrow()
-  })
-
-  test('rejects an empty collections option', async () => {
-    await expect(findPageByPath({ payload, path: '/de/parent', collections: [] })).rejects.toThrow()
   })
 })
 
