@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+BREAKING CHANGES:
+
+- fix!: bump the bundled `ai` dependency to v7 and `@ai-sdk/react` to v4. Not a peer dependency, so most installs are unaffected; if your app also imports `ai`/`@ai-sdk/*` directly (e.g. to build custom tools passed via `options.tools`), bump those to matching versions to avoid duplicate-package type conflicts.
+
+OTHER CHANGES:
+
 - fix: drop the UI-only `toolbarInline` and `toolbarFixed` feature keys from a `richText` field's `lexical.features`
 
 ## 0.1.0-beta.8
