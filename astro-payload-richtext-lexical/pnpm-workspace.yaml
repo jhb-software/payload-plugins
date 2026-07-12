@@ -8,6 +8,7 @@ allowBuilds:
   '@swc/core': true
 
 overrides:
+  prettier: '3.8.4'
   next: '16.2.9'
   dompurify: '^3.4.0'
   '@eslint/plugin-kit': '^0.3.4'

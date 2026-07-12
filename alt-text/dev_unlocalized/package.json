@@ -18,11 +18,11 @@
   },
   "dependencies": {
     "@jhb.software/payload-alt-text-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.85.1",
-    "@payloadcms/next": "^3.85.1",
-    "@payloadcms/ui": "^3.85.1",
-    "next": "16.2.9",
-    "payload": "^3.85.1",
+    "@payloadcms/db-mongodb": "^3.86.0",
+    "@payloadcms/next": "^3.86.0",
+    "@payloadcms/ui": "^3.86.0",
+    "next": "16.2.10",
+    "payload": "^3.86.0",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
