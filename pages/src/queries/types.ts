@@ -10,17 +10,20 @@ import type {
 
 import type { Locale } from '../types/Locale.js'
 
-/** A page document returned by the path queries. */
+/** A page document returned by {@link findPageByPath}. */
 export type PageDocument = { id: DefaultDocumentIDType } & Record<string, unknown>
 
-/** Arguments shared by all path query functions. */
-export type PagePathQueryArgs = {
+/** Arguments for {@link findPageByPath}. */
+export type FindPageByPathArgs = {
   /**
    * Whether to use the KV path cache for this call.
    *
    * @default true
    */
   cache?: boolean
+
+  /** The depth to which related documents are populated in the resolved document. */
+  depth?: number
 
   /**
    * Whether to resolve draft documents.
@@ -59,6 +62,9 @@ export type PagePathQueryArgs = {
    */
   payload?: Payload
 
+  /** How related documents are populated in the resolved document. */
+  populate?: PopulateType
+
   /**
    * The Payload request. Passing it forwards the active transaction, user and
    * request-scoped caches to all queries.
@@ -69,6 +75,12 @@ export type PagePathQueryArgs = {
   req?: PayloadRequest
 
   /**
+   * The fields to select. The virtual `path` field is always included, as it is required
+   * to verify the resolved document.
+   */
+  select?: SelectType
+
+  /**
    * An additional filter applied to all queries, on top of the plugin's configured
    * `baseFilter` (which scopes every lookup automatically, e.g. to a tenant). Both are part
    * of the cache key, so differently scoped lookups never share cache entries.
@@ -77,17 +89,6 @@ export type PagePathQueryArgs = {
    */
   where?: Where
 }
-
-/** Arguments for {@link findPageByPath}. */
-export type FindPageByPathArgs = {
-  depth?: number
-  populate?: PopulateType
-  /**
-   * The fields to select. The virtual `path` field is always included, as it is required
-   * to verify the resolved document.
-   */
-  select?: SelectType
-} & PagePathQueryArgs
 
 /** The result of {@link findPageByPath}. */
 export type PageDocumentResult<TDoc extends PageDocument = PageDocument> = {
