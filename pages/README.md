@@ -230,6 +230,52 @@ For example, when querying for a page and selecting only the `path` field, the p
 
 Therefore it is highly recommended to specify the [defaultPopulate](https://payloadcms.com/docs/queries/select#defaultpopulate-collection-config-property) property on all of your page collections.
 
+## Fetching pages by path
+
+Because the `path` field is virtual, it cannot be queried in the database directly. The plugin exports two functions that resolve a path to the page it belongs to across all page collections:
+
+```ts
+import { findPageByPath, resolvePagePath } from '@jhb.software/payload-pages-plugin'
+
+// Returns the full page document (e.g. for rendering a frontend page):
+const result = await findPageByPath({ payload, path: '/de/blog/my-post', depth: 1 })
+// result: { collection: 'blogposts', doc: { id: '...', path: '/de/blog/my-post', ... } } | null
+
+// Returns only the identity of the page (e.g. for a lightweight page-props endpoint):
+const resolved = await resolvePagePath({ payload, path: '/de/blog/my-post' })
+// resolved: { collection: 'blogposts', id: '...', path: '/de/blog/my-post' } | null
+```
+
+Both functions accept either a `payload` instance or a `req` (which forwards the active transaction and user), the query options `depth`, `select` and `populate` (`findPageByPath` only), and:
+
+- `locale`: The locale to resolve the path in. Defaults to the locale prefix of the path (e.g. `/de/...`), falling back to the default locale.
+- `draft`: Whether to resolve draft documents (default `false`). Published lookups never return unpublished pages.
+- `collections`: The page collections to search, in the given order. Defaults to all page collections.
+- `where`: An additional filter, e.g. to scope the lookup to a tenant in multi-tenant setups. The filtered fields must be queryable on every searched collection — restrict the search via `collections` otherwise.
+- `overrideAccess` / `cache`: See below.
+
+### Path lookup caching
+
+Resolving a path requires scanning the page collections for documents whose slug matches the last path segment and comparing their computed paths. To avoid this scan on repeated lookups, both functions cache successful path→document-id resolutions in [Payload's KV store](https://payloadcms.com/docs/kv-store/overview) (`payload.kv`). A cache hit replaces the scan with a single fetch by id.
+
+The cache never requires manual invalidation: every cached mapping is verified against the requested path on read. If the page was renamed, moved, unpublished or deleted in the meantime, the stale entry is deleted and the lookup transparently falls back to the scan.
+
+Draft and published lookups (`draft: true`) are cached under separate keys, so an unpublished change never leaks into a published lookup and vice versa. Because the cache only maps a path to a document id and the document is re-fetched on every lookup, draft content changes are always reflected without invalidating the cached path — so a preview that re-renders on every edit still benefits from the cache as long as the page's path stays the same.
+
+Caching is enabled by default and can be disabled globally via the plugin config or per call:
+
+```ts
+payloadPagesPlugin({
+  // ...
+  pathCache: false,
+})
+
+// or per call:
+await findPageByPath({ payload, path, cache: false })
+```
+
+After bulk operations which change many paths at once (e.g. imports or migrations), the cache can be reset with `clearPathCache(payload)` — this is an optimization, not a correctness requirement, as stale entries heal themselves on read.
+
 ## About this plugin
 
 This plugin streamlines website development with Payload CMS by providing enhanced document nesting capabilities. While the official [Nested Docs plugin](https://payloadcms.com/docs/plugins/nested-docs) only supports nesting within a single collection, this plugin enables nesting documents across multiple collections. Another major difference is that this plugin uses virtual fields for the paths and breadcrumbs, ensuring these computed values stay automatically synchronized with your content structure.

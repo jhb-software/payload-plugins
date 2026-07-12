@@ -49,6 +49,8 @@ export default buildConfig({
         path && process.env.NEXT_PUBLIC_FRONTEND_URL
           ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
           : null,
+      // Disable the KV cache for findPageByPath/resolvePagePath lookups
+      pathCache: false,
     }),
   ],
   async onInit(payload) {

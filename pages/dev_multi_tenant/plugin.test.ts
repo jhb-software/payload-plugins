@@ -1,5 +1,6 @@
 import payload, { CollectionSlug } from 'payload'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { findPageByPath } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Page, Tenant, Config } from 'payload/generated-types'
 
@@ -395,6 +396,53 @@ describe('Multi-tenant baseFilter functionality', () => {
 
       expect(backwardsRedirectTenant2.sourcePath).toBe('/page-b')
       expect((backwardsRedirectTenant2.tenant as Tenant).id).toBe(tenant2Id)
+    })
+  })
+
+  describe('findPageByPath with a tenant-scoped where filter', () => {
+    test('resolves the same path to the page of the requested tenant', async () => {
+      const page1 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Pricing - Tenant 1',
+          slug: 'pricing',
+          content: 'Pricing tenant 1',
+          tenant: tenant1Id,
+          _status: 'published',
+          ...virtualFields,
+        },
+      })
+
+      const page2 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Pricing - Tenant 2',
+          slug: 'pricing',
+          content: 'Pricing tenant 2',
+          tenant: tenant2Id,
+          _status: 'published',
+          ...virtualFields,
+        },
+      })
+
+      // Resolve twice per tenant: the first call populates the KV path cache, the
+      // second is served from it. The tenant filter is part of the cache key, so the
+      // cached entries of the two tenants must not collide.
+      for (let i = 0; i < 2; i++) {
+        const result1 = await findPageByPath({
+          payload,
+          path: '/pricing',
+          where: { tenant: { equals: tenant1Id } },
+        })
+        const result2 = await findPageByPath({
+          payload,
+          path: '/pricing',
+          where: { tenant: { equals: tenant2Id } },
+        })
+
+        expect(result1?.doc.id).toBe(page1.id)
+        expect(result2?.doc.id).toBe(page2.id)
+      }
     })
   })
 })

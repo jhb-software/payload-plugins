@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: add `findPageByPath` and `resolvePagePath` functions that resolve a path to its page document across all page collections, with a self-verifying KV path cache covering both published and draft lookups (configurable via the `pathCache` plugin option, resettable via `clearPathCache`)
 - feat: export `formatSlug`, the slug normalizer the slug field validates against
 
 ## 0.8.0
