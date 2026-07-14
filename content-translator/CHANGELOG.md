@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - feat: add a per-field `custom['content-translator']` config (typed via module augmentation) with orthogonal `skip`, `beforeTranslate`, and `afterTranslate` hooks, so a slug can either be derived from the translated title (skip + derive) or translated and then slugified (translate + normalize)
 - feat: the translate endpoint can now persist results via an `update` flag (and optional `draft` flag), enabling programmatic/agent translation over the REST API instead of only returning the translated data

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.3
 
 - fix: render table cells as `<th>`/`<td>` per cell `headerState` instead of forcing the first row to headers, and emit `colspan`/`rowspan`
 
