@@ -93,7 +93,15 @@ jobs:
           git push origin main
 
       - name: Publish to npm
-        run: cd ${{ inputs.plugin }} && pnpm publish --no-git-checks --provenance --access public
+        run: |
+          cd ${{ inputs.plugin }}
+          # Beta prereleases (e.g. 0.1.0-beta.9) publish under the `beta` dist-tag
+          # so they don't move `latest`. Stable versions use latest.
+          if [[ "${{ steps.version.outputs.version }}" == *-beta.* ]]; then
+            pnpm publish --no-git-checks --provenance --access public --tag beta
+          else
+            pnpm publish --no-git-checks --provenance --access public
+          fi
 
       # Tag and GitHub release happen after npm publish so the tag
       # only exists when the package is actually on the registry.
