@@ -13,6 +13,6 @@ export default defineConfig(() => {
         fileName: (format) => (format === 'es' ? `${name}.mjs` : `${name}.js`),
       },
     },
-    plugins: [dts({ entryRoot: 'src', outDir: 'dist/types' })],
+    plugins: [dts({ entryRoot: 'src' })],
   }
 })

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4
+
+- fix: point `types` and `exports["."].types` at `./dist/index.d.ts`, the path the build actually emits, so TypeScript consumers get working type declarations again (0.3.3 pointed at a stale `./dist/types/index.d.ts`, leaving all imports typed as `any`)
+
 ## 0.3.3
 
 - fix: render table cells as `<th>`/`<td>` per cell `headerState` instead of forcing the first row to headers, and emit `colspan`/`rowspan`
