@@ -60,7 +60,15 @@ jobs:
         run: |
           cd ${{ inputs.plugin }}
           if [ "${{ inputs.bump }}" = "beta" ]; then
-            npm version prerelease --preid=beta --no-git-tag-version
+            CURRENT=$(node -p "require('./package.json').version")
+            # Starting a beta series from a stable release opens the next minor
+            # (0.8.0 -> 0.9.0-beta.0); a beta on top of an existing prerelease
+            # just increments the prerelease counter (0.9.0-beta.0 -> 0.9.0-beta.1).
+            if [[ "$CURRENT" == *-* ]]; then
+              npm version prerelease --preid=beta --no-git-tag-version
+            else
+              npm version preminor --preid=beta --no-git-tag-version
+            fi
           elif [ "${{ inputs.bump }}" != "none" ]; then
             npm version ${{ inputs.bump }} --no-git-tag-version
           fi
@@ -93,7 +101,18 @@ jobs:
           git push origin main
 
       - name: Publish to npm
-        run: cd ${{ inputs.plugin }} && pnpm publish --no-git-checks --provenance --access public
+        run: |
+          cd ${{ inputs.plugin }}
+          # Prerelease versions (e.g. 0.9.0-beta.0) go to a dist-tag matching their
+          # prerelease identifier (`beta`, `rc`, ...) so a plain install keeps getting
+          # the stable `latest`. Stable versions publish to `latest` as usual.
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" == *-* ]]; then
+            TAG=$(echo "$VERSION" | sed -E 's/^[^-]+-([a-z]+).*/\1/')
+          else
+            TAG="latest"
+          fi
+          pnpm publish --no-git-checks --provenance --access public --tag "$TAG"
 
       # Tag and GitHub release happen after npm publish so the tag
       # only exists when the package is actually on the registry.
