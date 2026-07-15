@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/astro-payload-richtext-lexical",
-  "version": "0.3.2",
+  "version": "0.3.4",
   "description": "Renders Payload CMS Lexical rich text content to Astro elements.",
   "keywords": [
     "payload",
@@ -17,14 +17,14 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs"
     },
     "./RichTextLexical.astro": "./src/RichTextLexical.astro"
   },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/types/index.d.ts",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "src"

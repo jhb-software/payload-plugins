@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.9.1
+
+- fix: also export `getAltTextHealth` from the package root. Importing it from `/server` pulled the admin widget's `@payloadcms/ui` styles into the config graph and crashed `payload generate:*` (`ERR_UNKNOWN_FILE_EXTENSION`); import it from the package root in code loaded outside a bundler (custom endpoints, MCP tools).
+
+## 0.9.0
 
 - **BREAKING**: serve the generate, bulk-generate, and health endpoints under `/api/alt-text/` (previously `/api/alt-text-plugin/`) so the endpoint prefix matches the plugin slug. Any API client calling the old paths must be updated.
 - fix: `openAIResolver` now builds its OpenAI client lazily, so a plugin disabled via `enabled: !!process.env.OPENAI_API_KEY` no longer throws at config load when the key is absent
