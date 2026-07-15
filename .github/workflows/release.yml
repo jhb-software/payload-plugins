@@ -60,7 +60,15 @@ jobs:
         run: |
           cd ${{ inputs.plugin }}
           if [ "${{ inputs.bump }}" = "beta" ]; then
-            npm version prerelease --preid=beta --no-git-tag-version
+            CURRENT=$(node -p "require('./package.json').version")
+            # Starting a beta series from a stable release opens the next minor
+            # (0.8.0 -> 0.9.0-beta.0); a beta on top of an existing prerelease
+            # just increments the prerelease counter (0.9.0-beta.0 -> 0.9.0-beta.1).
+            if [[ "$CURRENT" == *-* ]]; then
+              npm version prerelease --preid=beta --no-git-tag-version
+            else
+              npm version preminor --preid=beta --no-git-tag-version
+            fi
           elif [ "${{ inputs.bump }}" != "none" ]; then
             npm version ${{ inputs.bump }} --no-git-tag-version
           fi

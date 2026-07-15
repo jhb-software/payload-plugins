@@ -1,4 +1,4 @@
-import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+import { findPageByPath, payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -58,6 +58,33 @@ export default buildConfig({
           ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
           : null,
     }),
+  ],
+  endpoints: [
+    {
+      // Demonstrates findPageByPath, e.g. http://localhost:3000/api/resolve-page?path=/de/blog
+      // Add `&draft=true` to resolve draft pages.
+      path: '/resolve-page',
+      method: 'get',
+      handler: async (req) => {
+        const path = typeof req.query.path === 'string' ? req.query.path : undefined
+
+        if (!path) {
+          return Response.json({ error: 'Missing `path` query parameter' }, { status: 400 })
+        }
+
+        const result = await findPageByPath({
+          draft: req.query.draft === 'true',
+          path,
+          req,
+        })
+
+        if (!result) {
+          return Response.json({ error: `No page found for path ${path}` }, { status: 404 })
+        }
+
+        return Response.json(result)
+      },
+    },
   ],
   async onInit(payload) {
     const existingUsers = await payload.find({

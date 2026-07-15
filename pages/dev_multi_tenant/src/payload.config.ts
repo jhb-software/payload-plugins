@@ -1,4 +1,4 @@
-import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+import { findPageByPath, payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import path from 'path'
 import { buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
@@ -88,6 +88,32 @@ export default buildConfig({
       },
       userHasAccessToAllTenants: (user) => user.email === 'dev@payloadcms.com',
     }),
+  ],
+  endpoints: [
+    {
+      // Demonstrates that findPageByPath is scoped by the plugin's tenant baseFilter:
+      // select a tenant in the admin (sets the `payload-tenant` cookie), then open e.g.
+      // http://localhost:3000/api/resolve-page?path=/pricing — the resolved page belongs to
+      // the selected tenant. The same path resolves to a different page for another tenant.
+      path: '/resolve-page',
+      method: 'get',
+      handler: async (req) => {
+        const path = typeof req.query.path === 'string' ? req.query.path : undefined
+
+        if (!path) {
+          return Response.json({ error: 'Missing `path` query parameter' }, { status: 400 })
+        }
+
+        // `req` carries the selected tenant, which the baseFilter reads — no explicit filter needed.
+        const result = await findPageByPath({ path, req })
+
+        if (!result) {
+          return Response.json({ error: `No page found for path ${path}` }, { status: 404 })
+        }
+
+        return Response.json(result)
+      },
+    },
   ],
   async onInit(payload) {
     const existingUsers = await payload.find({

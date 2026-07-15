@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.9.0-beta.0
 
+- feat: add **experimental** `findPageByPath`, which resolves a path to its page document across all page collections, scoped by the plugin's `baseFilter` (e.g. multi-tenant), with a self-verifying KV path cache covering both published and draft lookups (toggle per call via the `cache` argument, resettable via `clearPathCache`). The API may still change while it is stabilized.
 - feat: export `formatSlug`, the slug normalizer the slug field validates against
 
 ## 0.8.0

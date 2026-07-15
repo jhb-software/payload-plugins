@@ -1,5 +1,6 @@
-import payload, { CollectionSlug } from 'payload'
+import payload, { CollectionSlug, createLocalReq } from 'payload'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { findPageByPath } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Page, Tenant, Config } from 'payload/generated-types'
 
@@ -395,6 +396,59 @@ describe('Multi-tenant baseFilter functionality', () => {
 
       expect(backwardsRedirectTenant2.sourcePath).toBe('/page-b')
       expect((backwardsRedirectTenant2.tenant as Tenant).id).toBe(tenant2Id)
+    })
+  })
+
+  describe('findPageByPath is scoped by the plugin baseFilter', () => {
+    /** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
+    const tenantReq = async (tenantId: DefaultIDType) => {
+      const req = await createLocalReq({}, payload)
+      req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
+      return req
+    }
+
+    test('resolves the same path to the page of the requesting tenant, without an explicit where', async () => {
+      const page1 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Pricing - Tenant 1',
+          slug: 'pricing',
+          content: 'Pricing tenant 1',
+          tenant: tenant1Id,
+          _status: 'published',
+          ...virtualFields,
+        },
+      })
+
+      const page2 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Pricing - Tenant 2',
+          slug: 'pricing',
+          content: 'Pricing tenant 2',
+          tenant: tenant2Id,
+          _status: 'published',
+          ...virtualFields,
+        },
+      })
+
+      const req1 = await tenantReq(tenant1Id)
+      const req2 = await tenantReq(tenant2Id)
+
+      // Resolve twice per tenant: the first call populates the KV path cache, the second is
+      // served from it. The baseFilter result is part of the cache key, so the cached entries
+      // of the two tenants must not collide.
+      for (let i = 0; i < 2; i++) {
+        const result1 = await findPageByPath({ req: req1, path: '/pricing' })
+        const result2 = await findPageByPath({ req: req2, path: '/pricing' })
+
+        expect(result1?.doc.id).toBe(page1.id)
+        expect(result2?.doc.id).toBe(page2.id)
+      }
+    })
+
+    test('throws when called without req while a baseFilter is configured', async () => {
+      await expect(findPageByPath({ payload, path: '/pricing' })).rejects.toThrow()
     })
   })
 })
