@@ -13,6 +13,10 @@ import { buildPathCacheKey, type PathCacheEntry } from './pathCache.js'
 /**
  * Finds the page document for a given path across all page collections.
  *
+ * @experimental This API is experimental and may change or be removed in a future minor
+ * release without a breaking-change bump. It needs more real-world testing before it is
+ * marked stable.
+ *
  * Because the `path` field is virtual, a path cannot be queried directly in the database.
  * Instead, the path is resolved in two ways:
  *
