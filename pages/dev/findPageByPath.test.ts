@@ -1,6 +1,10 @@
 import payload, { CollectionSlug, SanitizedConfig } from 'payload'
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
-import { clearPathCache, findPageByPath } from '@jhb.software/payload-pages-plugin'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  clearPathCache,
+  findPageByPath,
+  type PathCacheLookupResult,
+} from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 
@@ -266,13 +270,113 @@ describe('Path cache', () => {
     expect(await findPageByPath({ payload, path: '/de/page' })).toBeNull()
   })
 
-  test('does not write to the cache when disabled per call', async () => {
+  test('does not write to the cache or report a cache result when disabled per call', async () => {
     await createPage({ title: 'Parent', slug: 'parent' })
+    const cacheResults: PathCacheLookupResult[] = []
 
-    const result = await findPageByPath({ payload, path: '/de/parent', cache: false })
+    const result = await findPageByPath({
+      payload,
+      path: '/de/parent',
+      cache: false,
+      onCacheResult: (r) => cacheResults.push(r),
+    })
 
     expect(result).not.toBeNull()
     expect(await pathCacheKeys()).toHaveLength(0)
+    expect(cacheResults).toHaveLength(0)
+  })
+
+  test('reports a miss, a hit and a stale lookup via onCacheResult', async () => {
+    const page = await createPage({ title: 'Page', slug: 'page' })
+    const cacheResults: PathCacheLookupResult[] = []
+    const lookup = () =>
+      findPageByPath({ payload, path: '/de/page', onCacheResult: (r) => cacheResults.push(r) })
+
+    await lookup() // cold cache
+    await lookup() // served from the entry written by the first lookup
+
+    // renaming the page leaves the entry pointing at a document whose path no longer matches
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale: 'de',
+      data: { slug: 'renamed' },
+    })
+    await lookup()
+
+    expect(cacheResults.map((r) => r.status)).toEqual(['miss', 'hit', 'stale'])
+    expect(cacheResults[0].path).toBe('/de/page')
+    // all three lookups are the same query, so they share one cache key
+    expect(new Set(cacheResults.map((r) => r.cacheKey)).size).toBe(1)
+  })
+
+  test('defers the cache write-back via waitUntil and still serves the next lookup as a hit', async () => {
+    const page = await createPage({ title: 'Parent', slug: 'parent' })
+    const deferred: Promise<unknown>[] = []
+
+    const result = await findPageByPath({
+      payload,
+      path: '/de/parent',
+      waitUntil: (promise) => deferred.push(promise),
+    })
+
+    expect(result?.doc.id).toBe(page.id)
+    expect(deferred.length).toBeGreaterThan(0)
+
+    await Promise.all(deferred)
+
+    const cacheResults: PathCacheLookupResult[] = []
+    const second = await findPageByPath({
+      payload,
+      path: '/de/parent',
+      onCacheResult: (r) => cacheResults.push(r),
+    })
+    expect(second?.doc.id).toBe(page.id)
+    expect(cacheResults.map((r) => r.status)).toEqual(['hit'])
+  })
+
+  test('a failed deferred stale-entry delete neither rejects the deferred promise nor drops the write-back', async () => {
+    // Warm the cache for /de/shared with pageA, then let pageB take over the path,
+    // so the next lookup hits a stale entry (delete) followed by a write-back (set).
+    const pageA = await createPage({ title: 'Page A', slug: 'shared' })
+    await findPageByPath({ payload, path: '/de/shared' })
+    await payload.update({
+      collection: 'pages',
+      id: pageA.id,
+      locale: 'de',
+      data: { slug: 'moved-away' },
+    })
+    const pageB = await createPage({ title: 'Page B', slug: 'shared' })
+
+    const deferred: Promise<unknown>[] = []
+    const deleteSpy = vi
+      .spyOn(payload.kv, 'delete')
+      .mockRejectedValueOnce(new Error('KV unavailable'))
+
+    try {
+      const result = await findPageByPath({
+        payload,
+        path: '/de/shared',
+        waitUntil: (promise) => deferred.push(promise),
+      })
+      expect(result?.doc.id).toBe(pageB.id)
+
+      // deferred promises must never reject — on serverless runtimes an unhandled
+      // rejection handed to the platform scheduler would surface as a crash
+      await Promise.all(deferred)
+    } finally {
+      deleteSpy.mockRestore()
+    }
+
+    // the write-back landed despite the failed delete, so the next lookup is a hit on pageB
+    const cacheResults: PathCacheLookupResult[] = []
+    const second = await findPageByPath({
+      payload,
+      path: '/de/shared',
+      onCacheResult: (r) => cacheResults.push(r),
+    })
+    expect(second?.doc.id).toBe(pageB.id)
+    expect(cacheResults.map((r) => r.status)).toEqual(['hit'])
   })
 
   test('clearPathCache removes all cached path entries', async () => {

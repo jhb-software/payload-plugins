@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: add `waitUntil` and `onCacheResult` arguments to `findPageByPath` — defer cache maintenance writes off the critical path (e.g. via `waitUntil` from `@vercel/functions` or Cloudflare's `ctx.waitUntil`) and observe the cache lookup status (`hit` / `stale` / `miss`)
+
 ## 0.9.0-beta.0
 
 - feat: add **experimental** `findPageByPath`, which resolves a path to its page document across all page collections, scoped by the plugin's `baseFilter` (e.g. multi-tenant), with a self-verifying KV path cache covering both published and draft lookups (toggle per call via the `cache` argument, resettable via `clearPathCache`). The API may still change while it is stabilized.

@@ -252,7 +252,7 @@ const identity = await findPageByPath({ payload, path: '/de/blog/my-post', depth
 - `locale`: The locale to resolve the path in. Defaults to the locale prefix of the path (e.g. `/de/...`), falling back to the default locale.
 - `draft`: Whether to resolve draft documents (default `false`). Published lookups never return unpublished pages.
 - `where`: An additional filter applied on top of the plugin's configured `baseFilter`. The filtered fields must be queryable on every page collection.
-- `overrideAccess` / `cache`: See below.
+- `overrideAccess` / `cache` / `waitUntil` / `onCacheResult`: See below.
 
 The plugin's [`baseFilter`](#multi-tenant-support) is applied to the lookup automatically, so multi-tenant setups are scoped to the correct tenant without passing `where`. Because `baseFilter` is evaluated against the request, such setups must call `findPageByPath` with `req` (rather than `payload`); a lookup without `req` throws when a `baseFilter` is configured. Both the base filter and `where` are part of the cache key, so differently scoped lookups never share cache entries.
 
@@ -268,6 +268,21 @@ Caching is enabled by default and can be disabled per call:
 
 ```ts
 await findPageByPath({ payload, path, cache: false })
+```
+
+Cache maintenance writes (the write-back after a scan, the deletion of stale entries) never affect the resolved document, but by default the lookup waits for them. Pass `waitUntil` to defer them off the critical path — on serverless runtimes, pass the platform's scheduler (`waitUntil` from `@vercel/functions` on Vercel, `ctx.waitUntil.bind(ctx)` on Cloudflare Workers) so deferred writes aren't cancelled when the response ends. Failures of deferred writes are swallowed; a lost write only means the next lookup falls back to the scan.
+
+To log or count cache effectiveness, pass `onCacheResult` — called once per lookup with the `status` (`hit`, `stale` or `miss`), the normalized `path` and the `cacheKey` (never called with `cache: false`):
+
+```ts
+import { waitUntil } from '@vercel/functions'
+
+await findPageByPath({
+  payload,
+  path,
+  waitUntil,
+  onCacheResult: ({ status, path }) => console.log(`path cache ${status}: ${path}`),
+})
 ```
 
 After bulk operations which change many paths at once (e.g. imports or migrations), the cache can be reset with `clearPathCache(payload)` — this is an optimization, not a correctness requirement, as stale entries heal themselves on read.

@@ -4,7 +4,12 @@ export { formatSlug } from './hooks/validateSlug.js'
 export { payloadPagesPlugin } from './plugin.js'
 export { findPageByPath } from './queries/findPageByPath.js'
 export { clearPathCache } from './queries/pathCache.js'
-export type { FindPageByPathArgs, PageDocument, PageDocumentResult } from './queries/types.js'
+export type {
+  FindPageByPathArgs,
+  PageDocument,
+  PageDocumentResult,
+  PathCacheLookupResult,
+} from './queries/types.js'
 export type { IncomingPageCollectionConfig as PageCollectionConfig } from './types/PageCollectionConfig.js'
 export type {
   IncomingPageCollectionConfigAttributes as PageCollectionIncomingConfigAttributes,

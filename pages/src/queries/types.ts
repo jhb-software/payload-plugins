@@ -10,6 +10,21 @@ import type {
 
 import type { Locale } from '../types/Locale.js'
 
+/** The result of a path cache lookup, reported via {@link FindPageByPathArgs.onCacheResult}. */
+export type PathCacheLookupResult = {
+  /** The KV key the lookup used. */
+  cacheKey: string
+  /** The normalized path that was looked up. */
+  path: string
+  /**
+   * - `hit` — the cached entry resolved and verified against the requested path.
+   * - `stale` — an entry existed but no longer resolved (page renamed, moved, unpublished,
+   *   deleted, or an unusable entry); the lookup fell back to the scan.
+   * - `miss` — no entry existed for the key.
+   */
+  status: 'hit' | 'miss' | 'stale'
+}
+
 /** A page document returned by {@link findPageByPath}. */
 export type PageDocument = { id: DefaultDocumentIDType } & Record<string, unknown>
 
@@ -41,6 +56,12 @@ export type FindPageByPathArgs = {
    * default locale of the Payload config. Ignored for unlocalized configs.
    */
   locale?: Locale
+
+  /**
+   * Called with the status of the path cache lookup (`hit` / `stale` / `miss`), e.g. to log
+   * or count cache effectiveness. Not called when the cache is disabled via `cache: false`.
+   */
+  onCacheResult?: (result: PathCacheLookupResult) => void
 
   /**
    * Whether to bypass access control.
@@ -79,6 +100,18 @@ export type FindPageByPathArgs = {
    * to verify the resolved document.
    */
   select?: SelectType
+
+  /**
+   * Defers cache maintenance writes (the write-back after a scan and the deletion of stale
+   * entries) instead of blocking the lookup on them. KV writes can be slow (hundreds of
+   * milliseconds on some stores), and the resolved document never depends on them.
+   *
+   * On serverless runtimes a deferred promise must be registered with the platform or it may
+   * be cancelled when the response ends — pass the runtime's scheduler here: `waitUntil` from
+   * `@vercel/functions` on Vercel, or `ctx.waitUntil` (bound to its context) on Cloudflare
+   * Workers. Without it, writes stay on the critical path.
+   */
+  waitUntil?: (promise: Promise<unknown>) => void
 
   /**
    * An additional filter applied to all queries, on top of the plugin's configured

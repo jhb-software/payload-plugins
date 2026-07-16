@@ -62,7 +62,8 @@ export default buildConfig({
   endpoints: [
     {
       // Demonstrates findPageByPath, e.g. http://localhost:3000/api/resolve-page?path=/de/blog
-      // Add `&draft=true` to resolve draft pages.
+      // Add `&draft=true` to resolve draft pages. The response includes the path cache status
+      // (`hit` on repeated lookups, `stale` after renaming/moving the page in the admin panel).
       path: '/resolve-page',
       method: 'get',
       handler: async (req) => {
@@ -72,17 +73,28 @@ export default buildConfig({
           return Response.json({ error: 'Missing `path` query parameter' }, { status: 400 })
         }
 
+        let cacheStatus: string | undefined
         const result = await findPageByPath({
           draft: req.query.draft === 'true',
           path,
           req,
+          onCacheResult: ({ status }) => {
+            cacheStatus = status
+          },
+          // Defers cache maintenance writes off the critical path. The long-running dev server
+          // completes them anyway; on serverless runtimes pass the platform scheduler instead
+          // (e.g. `waitUntil` from `@vercel/functions`).
+          waitUntil: (promise) => void promise,
         })
 
         if (!result) {
-          return Response.json({ error: `No page found for path ${path}` }, { status: 404 })
+          return Response.json(
+            { cache: cacheStatus, error: `No page found for path ${path}` },
+            { status: 404 },
+          )
         }
 
-        return Response.json(result)
+        return Response.json({ cache: cacheStatus, ...result })
       },
     },
   ],

@@ -104,6 +104,24 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
 
   const cacheKey = buildPathCacheKey({ baseFilter, draft, locale, path, where: args.where })
 
+  /**
+   * Runs a cache maintenance write. Deferred via `args.waitUntil` when provided (the lookup
+   * result never depends on these writes), otherwise awaited. Deferred failures are swallowed:
+   * a lost write only means the next lookup falls back to the scan. Within a lookup, writes
+   * are chained so a deferred stale-entry delete can never land after (and wipe) the
+   * write-back that follows — and the chain recovers from a failed write, so a failed delete
+   * does not drop the write-back.
+   */
+  let pendingCacheWrite: Promise<unknown> = Promise.resolve()
+  const runCacheWrite = async (write: () => Promise<unknown>): Promise<void> => {
+    pendingCacheWrite = pendingCacheWrite.then(write, write)
+    if (args.waitUntil) {
+      args.waitUntil(pendingCacheWrite.catch(() => {}))
+    } else {
+      await pendingCacheWrite
+    }
+  }
+
   /** Combines the given condition with the base filter, the caller's filter and the published-only constraint. */
   const buildWhere = (condition: Where, collection: PageCollectionConfig): Where => {
     const and: Where[] = [condition]
@@ -152,12 +170,19 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       const doc = await fetchDocument(collection, entry.id)
 
       if (doc && doc.path === path) {
+        args.onCacheResult?.({ cacheKey, path, status: 'hit' })
         return { collection: collection.slug, doc }
       }
+    }
 
-      // The entry is stale (page renamed, moved, unpublished or deleted) — delete it
-      // and fall through to the scan.
-      await payload.kv.delete(cacheKey)
+    if (entry) {
+      // The entry is stale — either it no longer resolves (page renamed, moved, unpublished
+      // or deleted) or it is unusable (collection removed, unparsed KV value). Delete it and
+      // fall through to the scan.
+      args.onCacheResult?.({ cacheKey, path, status: 'stale' })
+      await runCacheWrite(() => payload.kv.delete(cacheKey))
+    } else {
+      args.onCacheResult?.({ cacheKey, path, status: 'miss' })
     }
   }
 
@@ -190,10 +215,12 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     }
 
     if (cacheEnabled) {
-      await payload.kv.set(cacheKey, {
-        id: match.id,
-        collection: collection.slug,
-      } satisfies PathCacheEntry)
+      await runCacheWrite(() =>
+        payload.kv.set(cacheKey, {
+          id: match.id,
+          collection: collection.slug,
+        } satisfies PathCacheEntry),
+      )
     }
 
     return { collection: collection.slug, doc }
