@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0-beta.1
 
 - feat: add `waitUntil` and `onCacheResult` arguments to `findPageByPath` — defer cache maintenance writes off the critical path (e.g. via `waitUntil` from `@vercel/functions` or Cloudflare's `ctx.waitUntil`) and observe the cache lookup status (`hit` / `stale` / `miss`)
 
