@@ -9,12 +9,12 @@ allowBuilds:
   sharp: true
 
 overrides:
-  prettier: '3.8.4'
+  prettier: '3.9.5'
   dompurify: '^3.4.0'
   '@eslint/plugin-kit': '^0.3.4'
   postcss: '^8.5.10'
   esbuild: '^0.28.1'
-  next: '16.2.9'
+  next: '16.2.10'
   '@typescript-eslint/utils': '^8.59.3'
   '@typescript-eslint/eslint-plugin': '^8.59.3'
   '@typescript-eslint/parser': '^8.59.3'
