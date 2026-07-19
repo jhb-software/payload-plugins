@@ -16,7 +16,7 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   context,
   operation,
 }) => {
-  // Store the draft arg on the context so downstream hooks (e.g. getBreadcrumbs → findByIDCached)
+  // Store the draft arg on the context so downstream hooks (e.g. getBreadcrumbs → loadAncestor)
   // can pass it when fetching parent documents.
   if ('draft' in args) {
     context.draft = args.draft

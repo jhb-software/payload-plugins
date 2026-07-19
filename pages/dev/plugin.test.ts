@@ -19,6 +19,15 @@ const virtualFields = {
   path: '',
 }
 
+/**
+ * Returns the ids of a batched ancestor lookup (`where: { id: { in: [...] } }` with a lean
+ * select including the slug) issued by the plugin during breadcrumb computation, or an empty
+ * array if the call is not an ancestor lookup. The select check distinguishes ancestor lookups
+ * from Payload's own dataloader queries that populate relationship fields by id.
+ */
+const batchedAncestorIds = (args: any): (number | string)[] =>
+  Array.isArray(args?.where?.id?.in) && args?.select?.slug === true ? args.where.id.in : []
+
 beforeAll(async () => {
   await payload.init({
     config: config,
@@ -2426,7 +2435,7 @@ describe('Request-scoped ancestor caching', () => {
   })
 
   test('shared parent is only fetched once when listing siblings', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+    const findSpy = vi.spyOn(payload, 'find')
 
     await payload.find({
       collection: 'pages',
@@ -2434,14 +2443,14 @@ describe('Request-scoped ancestor caching', () => {
       where: { parent: { equals: parent.id } },
     })
 
-    const parentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === parent.id && call[0].collection === 'pages',
+    const parentFetches = findSpy.mock.calls.filter((call) =>
+      batchedAncestorIds(call[0]).includes(parent.id),
     )
     expect(parentFetches).toHaveLength(1)
   })
 
   test('shared grandparent is only fetched once when listing siblings', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+    const findSpy = vi.spyOn(payload, 'find')
 
     await payload.find({
       collection: 'pages',
@@ -2449,10 +2458,10 @@ describe('Request-scoped ancestor caching', () => {
       where: { parent: { equals: parent.id } },
     })
 
-    // Each child fetches the parent, which in turn fetches the grandparent for its breadcrumbs.
+    // Each child resolves the parent, which in turn requires the grandparent for its breadcrumbs.
     // The grandparent should be fetched only once because the cache is passed through via req.context.
-    const grandparentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === grandparent.id && call[0].collection === 'pages',
+    const grandparentFetches = findSpy.mock.calls.filter((call) =>
+      batchedAncestorIds(call[0]).includes(grandparent.id),
     )
     expect(grandparentFetches).toHaveLength(1)
   })
@@ -2491,7 +2500,7 @@ describe('Request-scoped ancestor caching', () => {
       },
     })
 
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+    const findSpy = vi.spyOn(payload, 'find')
 
     // Fetch children with locale 'all' — this fetches the parent once per locale
     await payload.find({
@@ -2501,14 +2510,105 @@ describe('Request-scoped ancestor caching', () => {
     })
 
     // The parent should be fetched once for locale 'all' (not once per child)
-    const parentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === parent.id && call[0].collection === 'pages',
+    const parentFetches = findSpy.mock.calls.filter((call) =>
+      batchedAncestorIds(call[0]).includes(parent.id),
     )
     expect(parentFetches).toHaveLength(1)
   })
 })
 
-describe('Request context is forwarded to nested findByID calls during breadcrumb computation', () => {
+describe('Batched ancestor loading', () => {
+  let root: { id: DefaultIDType }
+  let parentA: { id: DefaultIDType }
+  let parentB: { id: DefaultIDType }
+  let parentC: { id: DefaultIDType }
+
+  beforeAll(async () => {
+    await deleteCollection('pages')
+
+    root = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Batch Root',
+        slug: 'batch-root',
+        content: 'root',
+        ...virtualFields,
+      },
+    })
+
+    const createParent = (slug: string) =>
+      payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: slug,
+          slug,
+          content: slug,
+          parent: root.id,
+          ...virtualFields,
+        },
+      })
+
+    parentA = await createParent('batch-parent-a')
+    parentB = await createParent('batch-parent-b')
+    parentC = await createParent('batch-parent-c')
+
+    for (const [slug, parent] of [
+      ['batch-child-a', parentA],
+      ['batch-child-b', parentB],
+      ['batch-child-c', parentC],
+    ] as const) {
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: slug,
+          slug,
+          content: slug,
+          parent: parent.id,
+          ...virtualFields,
+        },
+      })
+    }
+  })
+
+  test('distinct parents of listed pages are fetched in one batched query per tree level', async () => {
+    const findSpy = vi.spyOn(payload, 'find')
+    const findByIDSpy = vi.spyOn(payload, 'findByID')
+
+    const result = await payload.find({
+      collection: 'pages',
+      locale: 'de',
+      sort: 'slug',
+      where: { slug: { in: ['batch-child-a', 'batch-child-b', 'batch-child-c'] } },
+    })
+
+    expect(result.docs.map((doc) => doc.path)).toEqual([
+      '/de/batch-root/batch-parent-a/batch-child-a',
+      '/de/batch-root/batch-parent-b/batch-child-b',
+      '/de/batch-root/batch-parent-c/batch-child-c',
+    ])
+
+    // All three distinct parents are resolved with a single batched query, followed by a
+    // single query for the shared root — instead of one query per distinct ancestor.
+    const ancestorFetches = findSpy.mock.calls
+      .map((call) => batchedAncestorIds(call[0]))
+      .filter((ids) => ids.length > 0)
+
+    expect(ancestorFetches).toHaveLength(2)
+    expect([...ancestorFetches[0]].sort()).toEqual([parentA.id, parentB.id, parentC.id].sort())
+    expect(ancestorFetches[1]).toEqual([root.id])
+
+    // Ancestors are no longer fetched one-by-one.
+    const ancestorFindByIDs = findByIDSpy.mock.calls.filter((call) =>
+      [root.id, parentA.id, parentB.id, parentC.id].includes(call[0].id as never),
+    )
+    expect(ancestorFindByIDs).toHaveLength(0)
+  })
+})
+
+describe('Request context is forwarded to nested ancestor lookups during breadcrumb computation', () => {
   let parentPage: { id: DefaultIDType }
 
   beforeAll(async () => {
@@ -2526,8 +2626,8 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
     })
   })
 
-  test('nested findByID receives the full req including user and context', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('nested ancestor lookup receives the full req including user and context', async () => {
+    const findSpy = vi.spyOn(payload, 'find')
 
     await payload.create({
       collection: 'pages',
@@ -2541,9 +2641,9 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
       },
     })
 
-    // Find the nested findByID call that fetches the parent during breadcrumb computation
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
+    // Find the nested lookup that fetches the parent during breadcrumb computation
+    const parentFetch = findSpy.mock.calls.find((call) =>
+      batchedAncestorIds(call[0]).includes(parentPage.id),
     )
 
     expect(parentFetch).toBeDefined()
@@ -2558,8 +2658,8 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
     expect(reqArg!.context).toBeDefined()
   })
 
-  test('custom req.context properties are preserved in nested findByID calls', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('custom req.context properties are preserved in nested ancestor lookups', async () => {
+    const findSpy = vi.spyOn(payload, 'find')
 
     // Use payload.find with a custom context property
     await payload.find({
@@ -2569,9 +2669,9 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
       context: { customProperty: 'test-value' },
     })
 
-    // Find the nested findByID call for the parent
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
+    // Find the nested lookup for the parent
+    const parentFetch = findSpy.mock.calls.find((call) =>
+      batchedAncestorIds(call[0]).includes(parentPage.id),
     )
 
     expect(parentFetch).toBeDefined()

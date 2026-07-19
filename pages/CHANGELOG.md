@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- perf: speed up virtual path/breadcrumb computation — ancestors are now resolved iteratively with lean selects (no recursive per-level virtual-field computation) and distinct ancestors requested concurrently (e.g. when listing pages for a sitemap) are fetched in a single batched query per collection and tree level
+
 ## 0.9.0-beta.1
 
 - feat: add `waitUntil` and `onCacheResult` arguments to `findPageByPath` — defer cache maintenance writes off the critical path (e.g. via `waitUntil` from `@vercel/functions` or Cloudflare's `ctx.waitUntil`) and observe the cache lookup status (`hit` / `stale` / `miss`)
