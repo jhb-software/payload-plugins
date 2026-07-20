@@ -74,6 +74,13 @@ export default buildConfig({
   plugins: [
     adminSearchPlugin({ headerSearchComponentStyle: 'bar' }),
     searchPlugin({
+      // The `search` collection defaults to public read (`read: () => true`). This dev
+      // app restricts it to authenticated users; set access to match your app's needs.
+      searchOverrides: {
+        access: {
+          read: ({ req }) => Boolean(req.user),
+        },
+      },
       beforeSync: ({ originalDoc, searchDoc }) => {
         return {
           ...searchDoc,
