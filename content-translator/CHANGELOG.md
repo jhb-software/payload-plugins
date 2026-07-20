@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: restrict the translate endpoint to the collections and globals configured in the plugin options; requests targeting any other entity are now rejected with a 400 before any document is read or written or sent to the resolver
+
 ## 0.4.0
 
 - feat: add a per-field `custom['content-translator']` config (typed via module augmentation) with orthogonal `skip`, `beforeTranslate`, and `afterTranslate` hooks, so a slug can either be derived from the translated title (skip + derive) or translated and then slugified (translate + normalize)

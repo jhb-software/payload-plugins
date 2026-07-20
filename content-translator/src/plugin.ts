@@ -67,6 +67,7 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
         {
           handler: translateEndpoint(
             pluginConfig.access ?? (({ req }: { req: PayloadRequest }) => !!req.user),
+            { collections: pluginConfig.collections, globals: pluginConfig.globals },
           ),
           method: 'post',
           path: `/${PLUGIN_SLUG}/translate`,
