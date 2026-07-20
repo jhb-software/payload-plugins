@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: validate the `id` query parameter on the deployments endpoint and encode it before building the Vercel API request path, so only well-formed deployment ids are accepted
+
 ## 0.3.1
 
 - fix: stop the deployment widget skeleton from flashing again right after load — the first background poll no longer triggers a redundant refresh of already-rendered data

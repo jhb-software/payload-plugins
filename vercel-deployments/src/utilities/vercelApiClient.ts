@@ -112,9 +112,10 @@ export class VercelApiClient {
       searchParams.teamId = params.teamId
     }
 
-    return this.request<VercelDeployment>(`/v13/deployments/${params.idOrUrl}`, {
-      searchParams,
-    })
+    return this.request<VercelDeployment>(
+      `/v13/deployments/${encodeURIComponent(params.idOrUrl)}`,
+      { searchParams },
+    )
   }
 
   /**
