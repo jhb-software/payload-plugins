@@ -51,14 +51,15 @@ export default buildConfig({
 
 ### Plugin Options
 
-| Option             | Type          | Required | Description                                 |
-| ------------------ | ------------- | -------- | ------------------------------------------- |
-| `vercel.apiToken`  | `string`      | Yes      | Vercel API Bearer Token                     |
-| `vercel.projectId` | `string`      | Yes      | Vercel Project ID to monitor                |
-| `vercel.teamId`    | `string`      | No       | Vercel Team ID (required for team projects) |
-| `widget.minWidth`  | `WidgetWidth` | No       | Minimum widget width (default: 'medium')    |
-| `widget.maxWidth`  | `WidgetWidth` | No       | Maximum widget width (default: 'full')      |
-| `enabled`          | `boolean`     | No       | Enable/disable the plugin (default: true)   |
+| Option             | Type                                       | Required | Description                                                                                                                                           |
+| ------------------ | ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vercel.apiToken`  | `string`                                   | Yes      | Vercel API Bearer Token                                                                                                                               |
+| `vercel.projectId` | `string`                                   | Yes      | Vercel Project ID to monitor                                                                                                                          |
+| `vercel.teamId`    | `string`                                   | No       | Vercel Team ID (required for team projects)                                                                                                           |
+| `widget.minWidth`  | `WidgetWidth`                              | No       | Minimum widget width (default: 'medium')                                                                                                              |
+| `widget.maxWidth`  | `WidgetWidth`                              | No       | Maximum widget width (default: 'full')                                                                                                                |
+| `enabled`          | `boolean`                                  | No       | Enable/disable the plugin (default: true)                                                                                                             |
+| `access`           | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's API endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication) |
 
 ### WidgetWidth Values
 
@@ -66,13 +67,33 @@ export default buildConfig({
 
 ## API Endpoints
 
-All endpoints require authentication (Payload admin user session or API key).
-
 | Method | Path                              | Description                                                                |
 | ------ | --------------------------------- | -------------------------------------------------------------------------- |
 | `GET`  | `/api/vercel-deployments`         | Returns the active (latest READY) and latest production deployment         |
 | `GET`  | `/api/vercel-deployments?id=<id>` | Returns the status of a specific deployment                                |
 | `POST` | `/api/vercel-deployments`         | Triggers a new production deployment by redeploying the latest READY build |
+
+### Authentication
+
+The endpoints require an authenticated request and respond with `401` otherwise. By default any authenticated Payload user (admin session or API key) is allowed:
+
+```ts
+;({ req }) => !!req.user
+```
+
+That default fits a setup where every Payload user is trusted staff. `POST /api/vercel-deployments` triggers a **production deployment**, so projects with public sign-up, customer-facing accounts, or editors who should not be able to publish the site must narrow it via the `access` option:
+
+```ts
+vercelDeploymentsPlugin({
+  // Only allow admins to trigger and monitor deployments
+  access: ({ req }) => req.user?.role === 'admin',
+  vercel: {
+    /* … */
+  },
+})
+```
+
+The same gate applies to the dashboard widget, which calls these endpoints.
 
 ### Example: Trigger a deployment via API
 

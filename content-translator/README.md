@@ -198,7 +198,7 @@ The endpoint requires an authenticated request and responds with `401` otherwise
 ;({ req }) => !!req.user
 ```
 
-Override this with the `access` option to restrict who may translate content:
+That default fits a setup where every Payload user is trusted staff. Translating spends money at the configured provider, so projects with public sign-up, customer-facing accounts, or any user tier that should not incur provider cost must narrow it. Override the `access` option to restrict who may translate content:
 
 ```ts
 // Only allow admins to use the translate endpoint

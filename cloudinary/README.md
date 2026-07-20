@@ -52,6 +52,21 @@ export default buildConfig({
 
 The plugin automatically adds a `cloudinaryPublicId` field to your upload collections. This can be used to directly access the uploaded file from Cloudinary.
 
+## Authentication
+
+With `clientUploads` enabled the plugin registers a signature endpoint that mints Cloudinary upload signatures for the browser. A user may only request a signature for a collection they are allowed to create documents in.
+
+Because the default derives from collection access, an upload collection with a permissive `access.create` also opens signature minting. Projects with public sign-up or customer-facing accounts should verify what `access.create` on their upload collections actually grants, and override `clientUploads.access` when the signature endpoint needs a stricter rule than the collection:
+
+```ts
+cloudinaryStorage({
+  clientUploads: {
+    access: ({ collectionSlug, req }) => req.user?.role === 'admin',
+  },
+  // …
+})
+```
+
 ## Roadmap
 
 > ⚠️ **Warning**: This plugin is actively evolving and may undergo significant changes. While it is functional, please thoroughly test before using in production environments.
