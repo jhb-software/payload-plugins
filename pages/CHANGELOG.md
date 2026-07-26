@@ -51,17 +51,11 @@ import { createPageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 
 const Pages: CollectionConfig = createPageCollectionConfig({
   slug: 'pages',
-  page: {
-    /* config */
-  },
-  fields: [
-    /* fields */
-  ],
+  page: {/* config */},
+  fields: [/* fields */],
 })
 
-const Redirects = createRedirectsCollectionConfig({
-  /* config */
-})
+const Redirects = createRedirectsCollectionConfig({/* config */})
 ```
 
 **Creating a page/redirects collection [After]:**
@@ -88,9 +82,7 @@ const Redirects: RedirectsCollectionConfig = {
 ```ts
 import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 
-payloadPagesPlugin({
-  /* config */
-})
+payloadPagesPlugin({/* config */})
 ```
 
 **Initializing the plugin [After]:**

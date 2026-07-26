@@ -17,8 +17,7 @@ export const ALT_TEXT_HEALTH_CACHE_TTL = 3600
 export const ALT_TEXT_HEALTH_GLOBAL_TAG = 'alt-text-health'
 
 export type AltTextHealthErrorCode =
-  | 'ALT_TEXT_COLLECTION_READ_FAILED'
-  | 'ALT_TEXT_PLUGIN_CONFIG_MISSING'
+  'ALT_TEXT_COLLECTION_READ_FAILED' | 'ALT_TEXT_PLUGIN_CONFIG_MISSING'
 
 export type AltTextHealthError = {
   code: AltTextHealthErrorCode
@@ -289,8 +288,7 @@ export async function filterScanByReadAccess(
  */
 export async function canViewHealthReport(req: PayloadRequest): Promise<boolean> {
   const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
-    | AltTextPluginConfig
-    | undefined
+    AltTextPluginConfig | undefined
 
   if (!pluginConfig) {
     return false

@@ -96,8 +96,7 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
     })
 
     const nextParentValue = (parent as Record<string, unknown>)?.[parentFieldName] as
-      | DefaultDocumentIDType
-      | undefined
+      DefaultDocumentIDType | undefined
     cursor = nextParentValue ? nextParentValue : undefined
   }
 
