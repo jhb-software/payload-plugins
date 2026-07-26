@@ -87,9 +87,7 @@ That default fits a setup where every Payload user is trusted staff. `POST /api/
 vercelDeploymentsPlugin({
   // Only allow admins to trigger and monitor deployments
   access: ({ req }) => req.user?.role === 'admin',
-  vercel: {
-    /* … */
-  },
+  vercel: {/* … */},
 })
 ```
 

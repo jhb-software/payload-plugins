@@ -160,9 +160,7 @@ export const Pages: PageCollectionConfig = {
       unique: true,
     },
   ],
-  fields: [
-    /* your fields */
-  ],
+  fields: [/* your fields */],
 }
 ```
 

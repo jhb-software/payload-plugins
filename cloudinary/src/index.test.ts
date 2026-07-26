@@ -35,8 +35,7 @@ async function runBeforeChange(
   for (const hook of collection.hooks?.beforeChange ?? []) {
     data =
       ((await hook({ data, operation: 'create', req } as never)) as
-        | Record<string, unknown>
-        | undefined) ?? data
+        Record<string, unknown> | undefined) ?? data
   }
   return data
 }

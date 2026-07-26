@@ -20,10 +20,10 @@
     "@payloadcms/db-mongodb": "^3.86.0",
     "@payloadcms/next": "^3.86.0",
     "@payloadcms/plugin-cloud-storage": "^3.86.0",
-    "next": "16.2.10",
+    "next": "16.2.11",
     "payload": "^3.86.0",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "copyfiles": "^2.4.1",

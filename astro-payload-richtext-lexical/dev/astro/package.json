@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@jhb.software/astro-payload-richtext-lexical": "workspace:*",
-    "@payloadcms/live-preview": "^3.85.1",
-    "astro": "^6.4.8"
+    "@payloadcms/live-preview": "^3.86.0",
+    "astro": "^7.1.3"
   },
   "engines": {
     "node": ">=22.12.0"
