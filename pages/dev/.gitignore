@@ -370,4 +370,5 @@ $RECYCLE.BIN/
 /media
 *.db
 tsconfig.tsbuildinfo
-/distbench-results.txt
+/dist
+bench-results.txt
