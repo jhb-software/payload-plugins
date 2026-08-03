@@ -1,4 +1,6 @@
 export { payloadAltTextPlugin } from './plugin.js'
+export { mistralResolver } from './resolvers/mistral.js'
+export type { MistralResolverConfig } from './resolvers/mistral.js'
 export { openAIResolver } from './resolvers/openAI.js'
 export * from './resolvers/types.js'
 export type {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.0
+
+- feat: add `mistralResolver`, a resolver for Mistral's vision models (default `mistral-medium-latest`). It downloads the image and sends the bytes instead of passing the thumbnail URL to the provider: Mistral's fetcher requires a publicly reachable file — never true in local development, not true for private buckets — and some hosts refuse it with `File could not be fetched from url` (error 3310). All requested locales are generated in a single request.
+
 ## 0.9.1
 
 - fix: also export `getAltTextHealth` from the package root. Importing it from `/server` pulled the admin widget's `@payloadcms/ui` styles into the config graph and crashed `payload generate:*` (`ERR_UNKNOWN_FILE_EXTENSION`); import it from the package root in code loaded outside a bundler (custom endpoints, MCP tools).
