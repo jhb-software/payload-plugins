@@ -5,7 +5,7 @@ import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
-import { matchesMimeType } from '../utilities/mimeTypes.js'
+import { getUnsupportedSourceMimeTypeError, matchesMimeType } from '../utilities/mimeTypes.js'
 import { formatZodError, generateAltTextRequestSchema } from './schemas.js'
 
 /**
@@ -88,22 +88,13 @@ export const generateAltTextEndpoint =
         )
       }
 
-      // The resolver receives the bytes served at `imageThumbnailUrl`, not the
-      // stored file. When the collection declares the format `getImageThumbnail`
-      // delivers, that declaration (validated against the resolver at config load)
-      // settles support and the source format is irrelevant.
-      if (
-        !collectionConfig.imageThumbnailMimeType &&
-        mimeType &&
-        pluginConfig.resolver.supportedMimeTypes &&
-        !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
-      ) {
-        return Response.json(
-          {
-            error: `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${pluginConfig.resolver.supportedMimeTypes.join(', ')}.`,
-          },
-          { status: 400 },
-        )
+      const unsupportedSourceError = getUnsupportedSourceMimeTypeError({
+        declaredThumbnailMimeType: collectionConfig.imageThumbnailMimeType,
+        mimeType,
+        supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
+      })
+      if (unsupportedSourceError) {
+        return Response.json({ error: unsupportedSourceError }, { status: 400 })
       }
 
       // When localization is enabled, the requested locale must be one of the
@@ -134,13 +125,14 @@ export const generateAltTextEndpoint =
         )
       }
 
-      const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc, { collection, req })
+      const imageThumbnailUrl = await pluginConfig.getImageThumbnail(imageDoc, { collection, req })
 
       const result = await pluginConfig.resolver.resolve({
         filename:
           'filename' in imageDoc && typeof imageDoc.filename === 'string'
             ? imageDoc.filename
             : undefined,
+        imageThumbnailMimeType: collectionConfig.imageThumbnailMimeType,
         imageThumbnailUrl,
         locale: targetLocale,
         req,

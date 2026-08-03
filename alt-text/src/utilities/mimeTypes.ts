@@ -92,7 +92,9 @@ export function normalizeCollectionsConfig(
       return {
         slug: entry,
         mimeTypes: [...DEFAULT_TRACKED_MIME_TYPES],
-        ...(defaultThumbnailMimeType && { imageThumbnailMimeType: defaultThumbnailMimeType }),
+        ...(typeof defaultThumbnailMimeType === 'string' && {
+          imageThumbnailMimeType: defaultThumbnailMimeType,
+        }),
       }
     }
 
@@ -107,7 +109,10 @@ export function normalizeCollectionsConfig(
       entry.imageThumbnailMimeType !== undefined
         ? entry.imageThumbnailMimeType
         : defaultThumbnailMimeType
-    if (thumbnailMimeType) {
+    // Only `null` (opt-out) and an absent declaration drop the key. An empty
+    // string is kept so config-load validation rejects it, rather than it
+    // silently degrading into "nothing declared".
+    if (typeof thumbnailMimeType === 'string') {
       normalized.imageThumbnailMimeType = thumbnailMimeType
     }
 
@@ -116,6 +121,49 @@ export function normalizeCollectionsConfig(
     }
     return normalized
   })
+}
+
+/** `type/subtype`, per RFC 6838's restricted-name grammar, lowercase. */
+const MIME_TYPE_PATTERN = /^[a-z]+\/[a-z0-9][a-z0-9!#$&^_.+-]*$/
+
+/**
+ * Whether a declared `imageThumbnailMimeType` is a syntactically valid MIME type.
+ *
+ * Checked at config load independently of the resolver's `supportedMimeTypes`,
+ * because declaring a type switches off the per-document source check: a typo
+ * that boots cleanly would remove the guard while meaning nothing.
+ */
+export function isValidMimeType(value: string): boolean {
+  return MIME_TYPE_PATTERN.test(value)
+}
+
+/**
+ * Whether a document's stored `mimeType` blocks alt text generation.
+ *
+ * Returns an error message when it does, `null` when generation may proceed.
+ * The stored type is only a proxy: the resolver receives the bytes served at the
+ * thumbnail URL, not the stored file. When the collection declares what that URL
+ * delivers (validated against the resolver at config load), the declaration
+ * settles support and the source format is irrelevant.
+ */
+export function getUnsupportedSourceMimeTypeError({
+  declaredThumbnailMimeType,
+  mimeType,
+  supportedMimeTypes,
+}: {
+  declaredThumbnailMimeType?: string
+  mimeType?: string
+  supportedMimeTypes?: readonly string[]
+}): null | string {
+  if (declaredThumbnailMimeType || !mimeType || !supportedMimeTypes) {
+    return null
+  }
+
+  if (supportedMimeTypes.includes(mimeType)) {
+    return null
+  }
+
+  return `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${supportedMimeTypes.join(', ')}.`
 }
 
 // Payload stores upload mimeType values as the lowercase MIME string (e.g. `image/png`).

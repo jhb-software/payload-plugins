@@ -12,6 +12,9 @@ export type { AltTextCollectionConfig, NormalizedAltTextCollectionConfig }
 /**
  * Builds the publicly accessible thumbnail URL that is sent to the resolver.
  *
+ * May be async, so the URL can be signed on demand (S3 presigning, signed CDN
+ * URLs, short-lived tokens).
+ *
  * @param doc The upload document to build the URL for.
  * @param args.collection The slug of the collection `doc` belongs to — use it to
  * build different URLs per collection (e.g. a Cloudinary transformation for one
@@ -21,7 +24,7 @@ export type { AltTextCollectionConfig, NormalizedAltTextCollectionConfig }
 export type GetImageThumbnail = (
   doc: Record<string, unknown>,
   args: { collection: CollectionSlug; req: PayloadRequest },
-) => string
+) => Promise<string> | string
 
 /** Configuration options for the alt text plugin. */
 export type IncomingAltTextPluginConfig = {

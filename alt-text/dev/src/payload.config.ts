@@ -18,6 +18,16 @@ const dirname = path.dirname(filename)
 
 const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 
+/**
+ * Stands in for the async work a signed CDN URL needs (S3 presigning, minting a
+ * short-lived token). The dev CDN route ignores the signature; the point is that
+ * `getImageThumbnail` is allowed to await.
+ */
+async function signThumbnailUrl(url: string): Promise<string> {
+  const expires = Date.now() + 60_000
+  return await Promise.resolve(`${url}?expires=${expires}`)
+}
+
 export default buildConfig({
   admin: {
     autoLogin: {
@@ -104,7 +114,9 @@ export default buildConfig({
       // enabled and generation succeeds, even though the OpenAI resolver
       // rejects those source formats.
       imageThumbnailMimeType: 'image/webp',
-      getImageThumbnail: (doc, { collection }) => {
+      // Async because real CDNs usually want a signed URL. `signThumbnailUrl`
+      // stands in for S3 presigning or a signed-CDN token here.
+      getImageThumbnail: async (doc, { collection }) => {
         // The `collection` argument lets one function build a different URL per
         // collection — here, the CDN for the website's images and the raw
         // origin url for the collection that does not sit behind it.
@@ -112,7 +124,7 @@ export default buildConfig({
           return doc.url as string
         }
 
-        return `${serverURL}/api/image-cdn/${collection}/${doc.id}`
+        return await signThumbnailUrl(`${serverURL}/api/image-cdn/${collection}/${doc.id}`)
       },
     }),
   ],

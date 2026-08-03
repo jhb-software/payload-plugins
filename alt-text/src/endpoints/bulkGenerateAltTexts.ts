@@ -7,7 +7,7 @@ import { ZodError } from 'zod'
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { localesFromConfig } from '../utilities/localesFromConfig.js'
-import { matchesMimeType } from '../utilities/mimeTypes.js'
+import { getUnsupportedSourceMimeTypeError, matchesMimeType } from '../utilities/mimeTypes.js'
 import { bulkGenerateAltTextsRequestSchema, formatZodError } from './schemas.js'
 
 /**
@@ -183,28 +183,23 @@ async function generateAndUpdateAltText({
     )
   }
 
-  // The resolver receives the bytes served at `imageThumbnailUrl`, not the stored
-  // file. When the collection declares the format `getImageThumbnail` delivers,
-  // that declaration (validated against the resolver at config load) settles
-  // support and the source format is irrelevant.
-  if (
-    !collectionConfig.imageThumbnailMimeType &&
-    mimeType &&
-    pluginConfig.resolver.supportedMimeTypes &&
-    !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
-  ) {
-    throw new Error(
-      `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${pluginConfig.resolver.supportedMimeTypes.join(', ')}.`,
-    )
+  const unsupportedSourceError = getUnsupportedSourceMimeTypeError({
+    declaredThumbnailMimeType: collectionConfig.imageThumbnailMimeType,
+    mimeType,
+    supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
+  })
+  if (unsupportedSourceError) {
+    throw new Error(unsupportedSourceError)
   }
 
-  const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc, { collection, req })
+  const imageThumbnailUrl = await pluginConfig.getImageThumbnail(imageDoc, { collection, req })
 
   const result = await pluginConfig.resolver.resolveBulk({
     filename:
       'filename' in imageDoc && typeof imageDoc.filename === 'string'
         ? imageDoc.filename
         : undefined,
+    imageThumbnailMimeType: collectionConfig.imageThumbnailMimeType,
     imageThumbnailUrl,
     locales,
     req,

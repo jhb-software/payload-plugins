@@ -16,6 +16,16 @@ export type AltTextResult = {
 export type AltTextResolverArgs = {
   /** Optional filename for additional context */
   filename?: string
+  /**
+   * The format served at `imageThumbnailUrl`, when the collection declares one
+   * via `imageThumbnailMimeType`.
+   *
+   * Resolvers that pass the URL to the provider can ignore this. Resolvers that
+   * inline the bytes need it: Anthropic image blocks require an explicit
+   * `media_type` and Gemini's `inline_data` requires a `mime_type`, neither of
+   * which can be sniffed from a URL. Undefined when nothing was declared.
+   */
+  imageThumbnailMimeType?: string
   /** URL of the image thumbnail (must be publicly accessible) */
   imageThumbnailUrl: string
   /** Target locale for the generated alt text */
@@ -30,6 +40,11 @@ export type AltTextResolverArgs = {
 export type AltTextBulkResolverArgs = {
   /** Optional filename for additional context */
   filename?: string
+  /**
+   * The format served at `imageThumbnailUrl`, when the collection declares one
+   * via `imageThumbnailMimeType`. See {@link AltTextResolverArgs.imageThumbnailMimeType}.
+   */
+  imageThumbnailMimeType?: string
   /** URL of the image thumbnail (must be publicly accessible) */
   imageThumbnailUrl: string
   /** Target locales for the generated alt texts */

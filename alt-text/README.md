@@ -98,6 +98,12 @@ getImageThumbnail: (doc, { collection }) =>
   collection === 'media' ? cloudinaryThumbnail(doc) : String(doc.url)
 ```
 
+It may also be async, so the URL can be signed on demand:
+
+```ts
+getImageThumbnail: async (doc, { req }) => await presignThumbnailUrl(String(doc.url), req)
+```
+
 ### Per-collection options
 
 Each entry in `collections` may be either a bare collection slug (shorthand, defaults to `['image/*']` for `mimeTypes`) or an object with the following fields:
@@ -227,12 +233,14 @@ openAIResolver({
 
 You can create your own resolver by implementing the `AltTextResolver` interface.
 
+Alongside `imageThumbnailUrl`, the resolver receives `imageThumbnailMimeType` — the format served at that URL, when the collection declares one via [`imageThumbnailMimeType`](#transcoding-thumbnails). Resolvers that hand the URL to the provider can ignore it. Resolvers that inline the bytes need it, because an explicit media type cannot be sniffed from a URL: Anthropic image blocks require `media_type` and Gemini's `inline_data` requires `mime_type`. It is `undefined` when nothing was declared.
+
 ```ts
 import type { AltTextResolver } from '@jhb.software/payload-alt-text-plugin'
 
 export const customResolver = (): AltTextResolver => ({
   key: 'custom',
-  resolve: async ({ imageThumbnailUrl, filename, locale, req }) => {
+  resolve: async ({ imageThumbnailUrl, imageThumbnailMimeType, filename, locale, req }) => {
     // Your custom alt text generation logic here
     const altText = await generateAltText(imageThumbnailUrl, filename, locale, req)
 

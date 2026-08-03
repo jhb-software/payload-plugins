@@ -124,7 +124,7 @@ describe('imageThumbnailMimeType — config load validation', () => {
     )
   })
 
-  test('accepts any declared type when the resolver declares no supported types', () => {
+  test('accepts any well-formed declared type when the resolver declares no supported types', () => {
     assert.doesNotThrow(() =>
       payloadAltTextPlugin(
         pluginConfig({
@@ -132,6 +132,36 @@ describe('imageThumbnailMimeType — config load validation', () => {
           resolver: { ...resolver, supportedMimeTypes: undefined },
         }),
       )(baseConfig()),
+    )
+  })
+
+  // Declaring a type switches off the per-document source check, so a typo that
+  // boots cleanly is the worst outcome: the guard is gone and the declaration
+  // silently means nothing. The shape check has to run even when there is no
+  // resolver list to compare against.
+  test('rejects a malformed type even when the resolver declares no supported types', () => {
+    assert.throws(
+      () =>
+        payloadAltTextPlugin(
+          pluginConfig({
+            imageThumbnailMimeType: 'image-webp',
+            resolver: { ...resolver, supportedMimeTypes: undefined },
+          }),
+        )(baseConfig()),
+      /is not a valid MIME type/,
+    )
+  })
+
+  test('rejects an empty declared type rather than silently ignoring it', () => {
+    assert.throws(
+      () =>
+        payloadAltTextPlugin(
+          pluginConfig({
+            collections: [{ slug: 'media', imageThumbnailMimeType: '' }],
+            resolver: { ...resolver, supportedMimeTypes: undefined },
+          }),
+        )(baseConfig()),
+      /is not a valid MIME type/,
     )
   })
 })

@@ -16,7 +16,7 @@ import {
   createRevalidateAltTextHealthAfterDeleteHook,
 } from './hooks/revalidateAltTextHealth.js'
 import { translations } from './translations/index.js'
-import { normalizeCollectionsConfig } from './utilities/mimeTypes.js'
+import { isValidMimeType, normalizeCollectionsConfig } from './utilities/mimeTypes.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
 const altTextHealthWidgetDefinition = {
@@ -55,20 +55,32 @@ export const payloadAltTextPlugin =
     })
 
     // A declared thumbnail MIME type replaces the per-document source check, so it
-    // has to be right. Validating it here turns a transform into a format the
-    // resolver cannot handle into a boot error instead of a 500 per image.
+    // has to be right. Validating it here turns both a typo and a transform into a
+    // format the resolver cannot handle into a boot error instead of a silently
+    // missing guard or a 500 per image.
     const supportedMimeTypes = incomingPluginConfig.resolver.supportedMimeTypes
-    if (supportedMimeTypes) {
-      for (const collection of normalizedCollections) {
-        const declared = collection.imageThumbnailMimeType
-        if (declared && !supportedMimeTypes.includes(declared)) {
-          throw new Error(
-            `The alt-text plugin is configured with imageThumbnailMimeType "${declared}" for the "${collection.slug}" collection, ` +
-              `but the "${incomingPluginConfig.resolver.key}" resolver does not support it. ` +
-              `Supported types: ${supportedMimeTypes.join(', ')}. ` +
-              "Either change the transformation in getImageThumbnail, or remove the declaration to fall back to checking each document's own mime type.",
-          )
-        }
+    for (const collection of normalizedCollections) {
+      const declared = collection.imageThumbnailMimeType
+      if (declared === undefined) {
+        continue
+      }
+
+      // Runs even without a resolver list to compare against: an unnoticed typo
+      // would switch off the source check while declaring nothing.
+      if (!isValidMimeType(declared)) {
+        throw new Error(
+          `The alt-text plugin is configured with imageThumbnailMimeType "${declared}" for the "${collection.slug}" collection, ` +
+            'but that is not a valid MIME type. Expected something like "image/webp".',
+        )
+      }
+
+      if (supportedMimeTypes && !supportedMimeTypes.includes(declared)) {
+        throw new Error(
+          `The alt-text plugin is configured with imageThumbnailMimeType "${declared}" for the "${collection.slug}" collection, ` +
+            `but the "${incomingPluginConfig.resolver.key}" resolver does not support it. ` +
+            `Supported types: ${supportedMimeTypes.join(', ')}. ` +
+            "Either change the transformation in getImageThumbnail, or remove the declaration to fall back to checking each document's own mime type.",
+        )
       }
     }
 

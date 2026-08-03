@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- feat: add the `imageThumbnailMimeType` plugin option (overridable per collection, `null` to opt out) declaring the format `getImageThumbnail` delivers. A resolver only ever sees the bytes at the thumbnail URL, so projects whose thumbnail transform transcodes (e.g. a Cloudinary `f_webp` transformation) no longer have generation rejected on the stored format — AVIF and HEIC uploads now work. The declaration is validated against the resolver's `supportedMimeTypes` at config load, so an unsupported transform fails at boot rather than once per image, and the admin Generate button is no longer disabled on the source mime type for those collections
-- feat: `getImageThumbnail` now receives `{ collection, req }` as a second argument, so one function can build different URLs per collection without sniffing the document shape. Existing single-argument functions are unaffected
+- feat: add the `imageThumbnailMimeType` plugin option (overridable per collection, `null` to opt out) declaring the format `getImageThumbnail` delivers. A resolver only sees the bytes at the thumbnail URL, so a transcoding thumbnail (e.g. a Cloudinary `f_webp` transformation) no longer has AVIF and HEIC uploads rejected on their stored format. Validated at config load, so an unsupported or malformed declaration fails at boot rather than once per image
+- feat: resolvers now receive `imageThumbnailMimeType` alongside `imageThumbnailUrl`, for providers that inline image bytes and need an explicit media type
+- feat: `getImageThumbnail` receives `{ collection, req }` as a second argument and may be async, for per-collection URLs and on-demand signing. Existing sync single-argument functions are unaffected
 - feat: add a `supportedMimeTypes` option to `openAIResolver`, so a `baseUrl` pointing at another OpenAI-compatible provider can declare the formats that provider accepts instead of inheriting OpenAI's list
 
 ## 0.9.1
