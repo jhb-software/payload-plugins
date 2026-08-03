@@ -10,10 +10,10 @@ import type {
 export type { AltTextCollectionConfig, NormalizedAltTextCollectionConfig }
 
 /**
- * Builds the publicly accessible thumbnail URL that is sent to the resolver.
+ * Builds the thumbnail URL the resolver fetches. Must be publicly reachable.
  *
- * May be async, so the URL can be signed on demand (S3 presigning, signed CDN
- * URLs, short-lived tokens).
+ * May be async, so the URL can be signed on demand (S3 presigning, short-lived
+ * CDN tokens).
  *
  * @param doc The upload document to build the URL for.
  * @param args.collection The slug of the collection `doc` belongs to — use it to
@@ -60,13 +60,11 @@ export type IncomingAltTextPluginConfig = {
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
   /**
-   * Function to get the thumbnail URL of an image document.
-   * This URL will be sent to the LLM for analysis.
+   * Builds the image URL sent to the resolver. See {@link GetImageThumbnail}.
    *
    * @remarks
-   * - The URL must be publicly accessible so the LLM can fetch it
-   * - Use a thumbnail/preview version of the image when possible (e.g. from the sizes field)
-   * - When the URL transcodes the image, declare the delivered format via
+   * - Prefer a thumbnail/preview size over the original (e.g. from the sizes field)
+   * - When the URL transcodes, declare the delivered format via
    *   `imageThumbnailMimeType` so source formats the resolver does not accept are
    *   not rejected
    */
@@ -91,14 +89,10 @@ export type IncomingAltTextPluginConfig = {
   /**
    * The MIME type `getImageThumbnail` delivers, for every configured collection.
    *
-   * Declaring it makes the stored `mimeType` of a document irrelevant to whether
-   * alt text can be generated — see the per-collection option of the same name for
-   * the full rationale and the `f_auto` caveat. Individual collections may override
-   * it, or opt out with `null`.
-   *
-   * Validated against the resolver's `supportedMimeTypes` at config load, so a
-   * transform into a format the resolver cannot handle fails at boot rather than
-   * per image.
+   * Declaring it takes a document's stored `mimeType` out of the decision of
+   * whether alt text can be generated. Collections may override it or opt out with
+   * `null` — see {@link AltTextCollectionConfig.imageThumbnailMimeType} for the
+   * rationale and the `f_auto` caveat.
    *
    * @example 'image/webp'
    */

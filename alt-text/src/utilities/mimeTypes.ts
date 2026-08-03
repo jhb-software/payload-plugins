@@ -6,24 +6,23 @@ export type AltTextCollectionConfig = {
   /**
    * The MIME type `getImageThumbnail` delivers for documents in this collection.
    *
-   * The resolver never sees the stored file — it only receives the URL returned by
-   * `getImageThumbnail`. When that function transcodes (e.g. a Cloudinary `f_webp`
-   * transformation), the stored `mimeType` says nothing about what the resolver
-   * actually receives, and source formats the provider does not accept (AVIF, HEIC)
-   * are rejected even though the delivered bytes would have been fine.
+   * The resolver only receives the bytes at that URL, never the stored file. When
+   * the URL transcodes (e.g. a Cloudinary `f_webp` transformation), the stored
+   * `mimeType` says nothing about what arrives, so AVIF and HEIC uploads are
+   * rejected on their source format even though the delivered bytes are fine.
    *
-   * Declare the delivered format here to make the source format irrelevant: the
-   * declaration is validated against the resolver's `supportedMimeTypes` once at
-   * config load, and the per-document source check is skipped. Which source
-   * formats get alt text at all remains governed by `mimeTypes`.
+   * Declaring the delivered format replaces that per-document source check, and
+   * passes the type to the resolver as `imageThumbnailMimeType`. Which source
+   * formats get alt text at all is still governed by `mimeTypes`.
    *
-   * Only declare a format your transform always produces. A `f_auto`-style
-   * transformation negotiates the format via the fetching client's `Accept` header
-   * and may well deliver the source format back — leave this unset there so the
-   * conservative source check applies.
+   * Only declare a format the transform *always* produces. An `f_auto`-style
+   * transformation negotiates via the client's `Accept` header and may return the
+   * source format, so leave this unset there.
    *
-   * Falls back to the plugin-level `imageThumbnailMimeType`. Set to `null` to opt
-   * this collection out of a plugin-level default (e.g. a collection served raw).
+   * Validated at config load — for syntax, and against the resolver's
+   * `supportedMimeTypes` when it declares any.
+   *
+   * Falls back to the plugin-level option of the same name; `null` opts out of it.
    *
    * @example 'image/webp'
    */
@@ -69,7 +68,7 @@ export type AltTextCollectionConfig = {
 
 export type NormalizedAltTextCollectionConfig = {
   /**
-   * The effective delivered thumbnail MIME type for this collection, after the
+   * The delivered thumbnail MIME type in effect for this collection, after the
    * plugin-level default has been applied. Absent when the collection opted out
    * (`null`) or neither level declared one.
    */
@@ -127,24 +126,23 @@ export function normalizeCollectionsConfig(
 const MIME_TYPE_PATTERN = /^[a-z]+\/[a-z0-9][a-z0-9!#$&^_.+-]*$/
 
 /**
- * Whether a declared `imageThumbnailMimeType` is a syntactically valid MIME type.
+ * Whether a declared `imageThumbnailMimeType` is syntactically a MIME type.
  *
- * Checked at config load independently of the resolver's `supportedMimeTypes`,
- * because declaring a type switches off the per-document source check: a typo
- * that boots cleanly would remove the guard while meaning nothing.
+ * Checked independently of the resolver's `supportedMimeTypes`: declaring a type
+ * switches off the per-document source check, so a typo that booted cleanly would
+ * remove the guard while declaring nothing.
  */
 export function isValidMimeType(value: string): boolean {
   return MIME_TYPE_PATTERN.test(value)
 }
 
 /**
- * Whether a document's stored `mimeType` blocks alt text generation.
+ * Whether a document's stored `mimeType` blocks alt text generation. Returns the
+ * error message when it does, `null` when generation may proceed.
  *
- * Returns an error message when it does, `null` when generation may proceed.
- * The stored type is only a proxy: the resolver receives the bytes served at the
- * thumbnail URL, not the stored file. When the collection declares what that URL
- * delivers (validated against the resolver at config load), the declaration
- * settles support and the source format is irrelevant.
+ * The stored type is only a proxy — the resolver receives the bytes at the
+ * thumbnail URL, not the stored file. A collection that declares what its URL
+ * delivers settles support at config load, making the source format irrelevant.
  */
 export function getUnsupportedSourceMimeTypeError({
   declaredThumbnailMimeType,

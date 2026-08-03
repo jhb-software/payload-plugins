@@ -54,10 +54,9 @@ export const payloadAltTextPlugin =
       imageThumbnailMimeType: incomingPluginConfig.imageThumbnailMimeType,
     })
 
-    // A declared thumbnail MIME type replaces the per-document source check, so it
-    // has to be right. Validating it here turns both a typo and a transform into a
-    // format the resolver cannot handle into a boot error instead of a silently
-    // missing guard or a 500 per image.
+    // A declared thumbnail MIME type replaces the per-document source check, so a
+    // wrong one fails at boot rather than as a silently missing guard or a 500 per
+    // image.
     const supportedMimeTypes = incomingPluginConfig.resolver.supportedMimeTypes
     for (const collection of normalizedCollections) {
       const declared = collection.imageThumbnailMimeType
@@ -65,8 +64,6 @@ export const payloadAltTextPlugin =
         continue
       }
 
-      // Runs even without a resolver list to compare against: an unnoticed typo
-      // would switch off the source check while declaring nothing.
       if (!isValidMimeType(declared)) {
         throw new Error(
           `The alt-text plugin is configured with imageThumbnailMimeType "${declared}" for the "${collection.slug}" collection, ` +

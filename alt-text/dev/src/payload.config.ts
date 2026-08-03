@@ -43,7 +43,7 @@ export default buildConfig({
   localization: {
     locales: ['en', 'de'],
     defaultLocale: 'en',
-    // `fallback: false` lets us reproduce the folder-move scenario from #95:
+    // `fallback: false` reproduces the folder-move scenario from #95:
     // a doc with alt text only in `en` truly has empty alt in `de`, so the
     // pre-fix validator rejected folder moves that didn't touch the alt field.
     fallback: false,

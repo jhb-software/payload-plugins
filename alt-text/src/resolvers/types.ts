@@ -18,12 +18,12 @@ export type AltTextResolverArgs = {
   filename?: string
   /**
    * The format served at `imageThumbnailUrl`, when the collection declares one
-   * via `imageThumbnailMimeType`.
+   * via the plugin's `imageThumbnailMimeType` option. Undefined otherwise.
    *
-   * Resolvers that pass the URL to the provider can ignore this. Resolvers that
-   * inline the bytes need it: Anthropic image blocks require an explicit
-   * `media_type` and Gemini's `inline_data` requires a `mime_type`, neither of
-   * which can be sniffed from a URL. Undefined when nothing was declared.
+   * Resolvers that hand the URL to the provider can ignore this. Resolvers that
+   * inline the bytes need it — Anthropic image blocks require `media_type`,
+   * Gemini's `inline_data` requires `mime_type`, and neither can be sniffed from
+   * a URL.
    */
   imageThumbnailMimeType?: string
   /** URL of the image thumbnail (must be publicly accessible) */
@@ -79,14 +79,13 @@ export type AltTextResolver = {
   /** Generate alt text for a single image in multiple locales (bulk operation) */
   resolveBulk: (args: AltTextBulkResolverArgs) => Promise<AltTextBulkResolverResponse>
   /**
-   * MIME types this resolver can process, i.e. the formats the provider accepts
-   * for the bytes served at `imageThumbnailUrl`.
+   * Formats the provider accepts for the bytes served at `imageThumbnailUrl`.
    *
    * When set, the endpoints reject documents whose stored `mimeType` is not in
    * this list — a conservative proxy, since the resolver never sees the stored
-   * file. Projects whose `getImageThumbnail` transcodes should declare the
+   * file. A project whose `getImageThumbnail` transcodes should declare the
    * delivered format via the plugin's `imageThumbnailMimeType` option, which
-   * replaces that proxy check with a one-time validation against this list.
+   * replaces the proxy with a one-time check against this list at config load.
    */
   supportedMimeTypes?: string[]
 }
