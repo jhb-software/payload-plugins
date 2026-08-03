@@ -30,7 +30,8 @@ export const bulkGenerateAltTextsEndpoint =
 
       // Get plugin config from payload config
       const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
-        AltTextPluginConfig | undefined
+        | AltTextPluginConfig
+        | undefined
 
       if (!pluginConfig) {
         return Response.json({ error: 'Plugin config not found' }, { status: 500 })
@@ -182,7 +183,12 @@ async function generateAndUpdateAltText({
     )
   }
 
+  // The resolver receives the bytes served at `imageThumbnailUrl`, not the stored
+  // file. When the collection declares the format `getImageThumbnail` delivers,
+  // that declaration (validated against the resolver at config load) settles
+  // support and the source format is irrelevant.
   if (
+    !collectionConfig.imageThumbnailMimeType &&
     mimeType &&
     pluginConfig.resolver.supportedMimeTypes &&
     !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
@@ -192,7 +198,7 @@ async function generateAndUpdateAltText({
     )
   }
 
-  const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc)
+  const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc, { collection, req })
 
   const result = await pluginConfig.resolver.resolveBulk({
     filename:

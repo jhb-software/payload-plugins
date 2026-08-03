@@ -4,6 +4,31 @@ export const DEFAULT_TRACKED_MIME_TYPES: readonly string[] = ['image/*']
 
 export type AltTextCollectionConfig = {
   /**
+   * The MIME type `getImageThumbnail` delivers for documents in this collection.
+   *
+   * The resolver never sees the stored file — it only receives the URL returned by
+   * `getImageThumbnail`. When that function transcodes (e.g. a Cloudinary `f_webp`
+   * transformation), the stored `mimeType` says nothing about what the resolver
+   * actually receives, and source formats the provider does not accept (AVIF, HEIC)
+   * are rejected even though the delivered bytes would have been fine.
+   *
+   * Declare the delivered format here to make the source format irrelevant: the
+   * declaration is validated against the resolver's `supportedMimeTypes` once at
+   * config load, and the per-document source check is skipped. Which source
+   * formats get alt text at all remains governed by `mimeTypes`.
+   *
+   * Only declare a format your transform always produces. A `f_auto`-style
+   * transformation negotiates the format via the fetching client's `Accept` header
+   * and may well deliver the source format back — leave this unset there so the
+   * conservative source check applies.
+   *
+   * Falls back to the plugin-level `imageThumbnailMimeType`. Set to `null` to opt
+   * this collection out of a plugin-level default (e.g. a collection served raw).
+   *
+   * @example 'image/webp'
+   */
+  imageThumbnailMimeType?: null | string
+  /**
    * MIME types for which alt text is tracked, validated, and generated in this collection.
    *
    * Accepts exact MIME types (e.g. `image/png`) or wildcards (e.g. `image/*`).
@@ -43,6 +68,12 @@ export type AltTextCollectionConfig = {
 }
 
 export type NormalizedAltTextCollectionConfig = {
+  /**
+   * The effective delivered thumbnail MIME type for this collection, after the
+   * plugin-level default has been applied. Absent when the collection opted out
+   * (`null`) or neither level declared one.
+   */
+  imageThumbnailMimeType?: string
   mimeTypes: string[]
   slug: CollectionSlug
   validate?: TextareaFieldValidation
@@ -52,16 +83,34 @@ export type IncomingCollectionsConfig = (AltTextCollectionConfig | CollectionSlu
 
 export function normalizeCollectionsConfig(
   incoming: IncomingCollectionsConfig,
+  defaults?: { imageThumbnailMimeType?: string },
 ): NormalizedAltTextCollectionConfig[] {
+  const defaultThumbnailMimeType = defaults?.imageThumbnailMimeType
+
   return incoming.map((entry) => {
     if (typeof entry === 'string') {
-      return { slug: entry, mimeTypes: [...DEFAULT_TRACKED_MIME_TYPES] }
+      return {
+        slug: entry,
+        mimeTypes: [...DEFAULT_TRACKED_MIME_TYPES],
+        ...(defaultThumbnailMimeType && { imageThumbnailMimeType: defaultThumbnailMimeType }),
+      }
     }
 
     const normalized: NormalizedAltTextCollectionConfig = {
       slug: entry.slug,
       mimeTypes: entry.mimeTypes ? [...entry.mimeTypes] : [...DEFAULT_TRACKED_MIME_TYPES],
     }
+
+    // `undefined` inherits the plugin-level default, `null` explicitly opts out of
+    // it. Resolving with `??` would silently collapse those two into "inherit".
+    const thumbnailMimeType =
+      entry.imageThumbnailMimeType !== undefined
+        ? entry.imageThumbnailMimeType
+        : defaultThumbnailMimeType
+    if (thumbnailMimeType) {
+      normalized.imageThumbnailMimeType = thumbnailMimeType
+    }
+
     if (entry.validate) {
       normalized.validate = entry.validate
     }

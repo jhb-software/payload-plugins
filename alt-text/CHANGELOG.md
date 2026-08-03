@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- feat: add the `imageThumbnailMimeType` plugin option (overridable per collection, `null` to opt out) declaring the format `getImageThumbnail` delivers. A resolver only ever sees the bytes at the thumbnail URL, so projects whose thumbnail transform transcodes (e.g. a Cloudinary `f_webp` transformation) no longer have generation rejected on the stored format — AVIF and HEIC uploads now work. The declaration is validated against the resolver's `supportedMimeTypes` at config load, so an unsupported transform fails at boot rather than once per image, and the admin Generate button is no longer disabled on the source mime type for those collections
+- feat: `getImageThumbnail` now receives `{ collection, req }` as a second argument, so one function can build different URLs per collection without sniffing the document shape. Existing single-argument functions are unaffected
+- feat: add a `supportedMimeTypes` option to `openAIResolver`, so a `baseUrl` pointing at another OpenAI-compatible provider can declare the formats that provider accepts instead of inheriting OpenAI's list
+
 ## 0.9.1
 
 - fix: also export `getAltTextHealth` from the package root. Importing it from `/server` pulled the admin widget's `@payloadcms/ui` styles into the config graph and crashed `payload generate:*` (`ERR_UNKNOWN_FILE_EXTENSION`); import it from the package root in code loaded outside a bundler (custom endpoints, MCP tools).

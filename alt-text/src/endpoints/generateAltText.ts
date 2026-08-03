@@ -30,7 +30,8 @@ export const generateAltTextEndpoint =
       const { id, collection, locale, update } = generateAltTextRequestSchema.parse(data)
 
       const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
-        AltTextPluginConfig | undefined
+        | AltTextPluginConfig
+        | undefined
 
       if (!pluginConfig) {
         return Response.json({ error: 'Plugin config not found' }, { status: 500 })
@@ -87,7 +88,12 @@ export const generateAltTextEndpoint =
         )
       }
 
+      // The resolver receives the bytes served at `imageThumbnailUrl`, not the
+      // stored file. When the collection declares the format `getImageThumbnail`
+      // delivers, that declaration (validated against the resolver at config load)
+      // settles support and the source format is irrelevant.
       if (
+        !collectionConfig.imageThumbnailMimeType &&
         mimeType &&
         pluginConfig.resolver.supportedMimeTypes &&
         !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
@@ -128,7 +134,7 @@ export const generateAltTextEndpoint =
         )
       }
 
-      const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc)
+      const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc, { collection, req })
 
       const result = await pluginConfig.resolver.resolve({
         filename:

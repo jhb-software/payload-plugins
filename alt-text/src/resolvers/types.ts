@@ -42,13 +42,15 @@ export type AltTextBulkResolverArgs = {
  * Response from single image alt text generation.
  */
 export type AltTextResolverResponse =
-  { error?: string; success: false } | { result: AltTextResult; success: true }
+  | { error?: string; success: false }
+  | { result: AltTextResult; success: true }
 
 /**
  * Response from bulk/multi-locale alt text generation.
  */
 export type AltTextBulkResolverResponse =
-  { error?: string; success: false } | { results: Record<string, AltTextResult>; success: true }
+  | { error?: string; success: false }
+  | { results: Record<string, AltTextResult>; success: true }
 
 /**
  * Alt text resolver interface.
@@ -61,6 +63,15 @@ export type AltTextResolver = {
   resolve: (args: AltTextResolverArgs) => Promise<AltTextResolverResponse>
   /** Generate alt text for a single image in multiple locales (bulk operation) */
   resolveBulk: (args: AltTextBulkResolverArgs) => Promise<AltTextBulkResolverResponse>
-  /** MIME types this resolver can process. When set, the endpoint rejects files whose mimeType is not in this list. */
+  /**
+   * MIME types this resolver can process, i.e. the formats the provider accepts
+   * for the bytes served at `imageThumbnailUrl`.
+   *
+   * When set, the endpoints reject documents whose stored `mimeType` is not in
+   * this list — a conservative proxy, since the resolver never sees the stored
+   * file. Projects whose `getImageThumbnail` transcodes should declare the
+   * delivered format via the plugin's `imageThumbnailMimeType` option, which
+   * replaces that proxy check with a one-time validation against this list.
+   */
   supportedMimeTypes?: string[]
 }
