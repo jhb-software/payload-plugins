@@ -149,6 +149,85 @@ openAIResolver({
 })
 ```
 
+##### Customizing the instructions
+
+The texts are sent as the user message and the instructions as the system prompt, so customizing the instructions can never alter or drop the content to translate.
+
+The `instructions` option receives the `defaultInstructions` — the rules the plugin depends on — plus `localeFrom` and `localeTo`, and returns the instructions to send. It may be async, e.g. to load protected terms from the database.
+
+Appending protected terms, e.g. product names built from everyday words that would otherwise be translated:
+
+```ts
+openAIResolver({
+  apiKey: process.env.OPENAI_API_KEY,
+  instructions: ({ defaultInstructions }) =>
+    `${defaultInstructions}\n\nNever translate the following product names, keep them exactly as written in English: "Northern Light", "First Steps".`,
+})
+```
+
+Instructions that depend on the target locale:
+
+```ts
+openAIResolver({
+  apiKey: process.env.OPENAI_API_KEY,
+  instructions: ({ defaultInstructions, localeTo }) =>
+    `${defaultInstructions}\n\n${localeTo === 'de' ? 'Use the informal "du" form.' : 'Use a neutral, formal tone.'}`,
+})
+```
+
+The function is called once per translation, not once per chunk, and is available on any resolver built with [`createPromptResolver`](#custom-resolvers).
+
+When replacing the default instructions instead of extending them, keep their rules on segment markers and on translating each value independently — see [Custom Resolvers](#custom-resolvers). The resolver's response format instructions are appended either way, so a replacement cannot break the provider contract.
+
+#### Custom Resolvers
+
+For a prompt-based provider (any LLM), `createPromptResolver` builds the resolver from a single `generate` function, handling chunking, the instructions, the serialized texts and the reconstruction of the response:
+
+```ts
+import { createPromptResolver } from '@jhb.software/payload-content-translator-plugin'
+
+export const myResolver = ({ instructions }: { instructions?: TranslateInstructions } = {}) =>
+  createPromptResolver({
+    key: 'my-llm',
+    // Send the instructions as the system prompt and the input as the user
+    // message. Return the chunk's translations keyed by input index:
+    // { "0": "eins", "1": "zwei" }. Throwing fails the translation.
+    generate: async ({ input, instructions }) => await callTheModel({ input, instructions }),
+    instructions,
+  })
+```
+
+| Option                      | Type                              | Description                                                                                                                                  |
+| --------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                       | `string`                          | Identifies the resolver in the admin UI                                                                                                      |
+| `generate`                  | `(args) => GeneratedTranslations` | Sends one chunk to the provider and returns its translations. Receives `instructions`, `input`, `localeFrom`, `localeTo`, `texts` and `req`. |
+| `instructions`              | `TranslateInstructions`           | Pass through your own `instructions` option so users can customize the instructions as described above                                       |
+| `chunkLength`               | `number`                          | How many texts to include into 1 request (default `100`)                                                                                     |
+| `responseFormatInstruction` | `string`                          | How the provider should format the response. Appended after any customization. Omit it when the provider guarantees the shape.               |
+
+[`aiSdkResolver.ts`](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/resolvers/aiSdkResolver.ts) is a ready-made example built on the [Vercel AI SDK](https://ai-sdk.dev), usable with any provider it supports. Copy it into your project (it needs `ai`, `zod` and a provider package such as `@ai-sdk/openai`) and configure it from your Payload config — the file itself does not need to be edited.
+
+##### Implementing `TranslateResolver` directly
+
+A provider that translates without a prompt (e.g. DeepL) implements the interface itself — any object with a `key` and a `resolve` function:
+
+```ts
+import type { TranslateResolver } from '@jhb.software/payload-content-translator-plugin'
+
+export const myResolver = (): TranslateResolver => ({
+  key: 'my-service',
+  resolve: async ({ localeFrom, localeTo, req, texts }) => ({
+    success: true,
+    translatedTexts: await translate(texts, localeFrom, localeTo),
+  }),
+})
+```
+
+Two rules the plugin relies on, regardless of the provider (both handled by `createPromptResolver`):
+
+- **Same length and same order.** `resolve` must return exactly one translation per input text, since each value is written back to the field it came from. The plugin aborts the translation otherwise.
+- **Preserve `⟦n⟧` segment markers.** Rich text arrives as one text per block, with markers such as `⟦0⟧`, `⟦1⟧` separating inline formatting spans. Each marker must survive exactly once, unchanged, in front of the words belonging to its span. Words may move across markers when grammar requires it.
+
 ## API Endpoint
 
 The plugin registers a single REST endpoint that the admin UI calls to translate a document or global. By default it computes the translated values and returns them in the response without writing to the database, so changes go through Payload's normal save/publish flow. Programmatic callers (e.g. an agent) can opt in to persisting the result with the `update` flag.
@@ -215,26 +294,6 @@ access: ({ req, update }) => (update ? req.user?.role === 'editor' : !!req.user)
 > **Security:** every field other than `req`/`req.user` is supplied by the caller. Grant access based on `req.user` and use the body args only to _restrict_ further (e.g. require a role for `update`); never _widen_ access based on a value the caller sent.
 
 Beyond this gate, the endpoint always reads and writes with `overrideAccess: false`, so each collection's and global's own access control still applies — a user can only translate entities they may read, and `update: true` only persists when they have update access. The endpoint never honors an `overrideAccess` value sent in the request body.
-
-## Custom Resolver
-
-You can create your own resolver by implementing the `TranslateResolver` interface.
-
-```ts
-import type { TranslateResolver } from '@jhb.software/payload-content-translator-plugin'
-
-export const customResolver = (): TranslateResolver => ({
-  key: 'custom',
-  resolve: ({ localeTo, texts }) => {
-    const translatedTexts = texts.map((text) => {
-      /* your custom translation logic here */
-      return text
-    })
-
-    return { success: true, translatedTexts }
-  },
-})
-```
 
 ## Acknowledgements
 

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- feat: export `createPromptResolver`, which builds a resolver for any LLM provider from a single `generate` function
+- feat: the OpenAI resolver's new `instructions` option appends project-specific rules (e.g. protected brand names) to the built-in ones, and may be async. The texts are sent as the user message, so customized instructions cannot alter them.
+- **BREAKING**: the OpenAI resolver's `prompt` option is replaced by `instructions`, which returns the instructions without the texts: `instructions: ({ defaultInstructions, localeFrom, localeTo }) => ...`. `OpenAIPrompt` is replaced by `TranslateInstructions`.
 - fix: restrict the translate endpoint to the collections and globals configured in the plugin options; requests targeting any other entity are now rejected with a 400 before any document is read or written or sent to the resolver
 
 ## 0.4.0
