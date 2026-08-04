@@ -30,8 +30,7 @@ export const bulkGenerateAltTextsEndpoint =
 
       // Get plugin config from payload config
       const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
-        | AltTextPluginConfig
-        | undefined
+        AltTextPluginConfig | undefined
 
       if (!pluginConfig) {
         return Response.json({ error: 'Plugin config not found' }, { status: 500 })

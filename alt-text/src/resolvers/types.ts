@@ -57,15 +57,13 @@ export type AltTextBulkResolverArgs = {
  * Response from single image alt text generation.
  */
 export type AltTextResolverResponse =
-  | { error?: string; success: false }
-  | { result: AltTextResult; success: true }
+  { error?: string; success: false } | { result: AltTextResult; success: true }
 
 /**
  * Response from bulk/multi-locale alt text generation.
  */
 export type AltTextBulkResolverResponse =
-  | { error?: string; success: false }
-  | { results: Record<string, AltTextResult>; success: true }
+  { error?: string; success: false } | { results: Record<string, AltTextResult>; success: true }
 
 /**
  * Alt text resolver interface.
