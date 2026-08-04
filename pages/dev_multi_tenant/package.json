@@ -27,7 +27,7 @@
     "@payloadcms/next": "^3.86.0",
     "@payloadcms/plugin-multi-tenant": "^3.86.0",
     "@payloadcms/ui": "^3.86.0",
-    "next": "16.2.11",
+    "next": "16.2.12",
     "payload": "^3.86.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -37,7 +37,7 @@
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "typescript": "6.0.3",
-    "vite": "^8.1.5",
+    "vite": "^8.2.0",
     "vitest": "^4.1.10"
   },
   "engines": {

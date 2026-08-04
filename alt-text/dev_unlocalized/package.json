@@ -21,7 +21,7 @@
     "@payloadcms/db-mongodb": "^3.86.0",
     "@payloadcms/next": "^3.86.0",
     "@payloadcms/ui": "^3.86.0",
-    "next": "16.2.11",
+    "next": "16.2.12",
     "payload": "^3.86.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"

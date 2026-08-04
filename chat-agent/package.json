@@ -31,8 +31,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/react": "^4.0.38",
-    "ai": "^7.0.35",
+    "@ai-sdk/react": "^4.0.45",
+    "ai": "^7.0.42",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "zod": "^4.4.3"
@@ -48,17 +48,17 @@
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
     "@swc/cli": "^0.8.1",
-    "@swc/core": "^1.15.46",
+    "@swc/core": "^1.15.47",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "copyfiles": "^2.4.1",
     "eslint": "^9.39.4",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "prettier": "3.9.6",
     "rimraf": "^6.1.3",
     "typescript": "^6.0.3",
-    "vite": "^8.1.5",
+    "vite": "^8.2.0",
     "vitest": "^4.1.10"
   },
   "files": [
