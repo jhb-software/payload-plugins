@@ -470,6 +470,40 @@ describe('Draft pages', () => {
   })
 })
 
+describe('findPageByPath query cost', () => {
+  test('reads each ancestor only once when called without a request', async () => {
+    const grandparent = await createPage({ title: 'A', slug: 'a' })
+    const parent = await createPage({ title: 'B', slug: 'b', parent: grandparent.id })
+    await createPage({ title: 'C', slug: 'c', parent: parent.id })
+
+    // The virtual `path` is computed by walking the ancestor chain, and every ancestor is read
+    // via findByID, so each ancestor read reaches the database as a `findOne` on the collection.
+    const ancestorReads: string[] = []
+    const findOne = payload.db.findOne.bind(payload.db)
+    const spy = vi
+      .spyOn(payload.db, 'findOne')
+      .mockImplementation(async (args: Parameters<typeof findOne>[0]) => {
+        if (args.collection === 'pages') {
+          ancestorReads.push(JSON.stringify(args.where))
+        }
+        return findOne(args)
+      })
+
+    try {
+      // `cache: false` forces the scan, so the lookup both scans and fetches the document
+      const result = await findPageByPath({ payload, path: '/de/a/b/c', cache: false })
+      expect(result?.doc.path).toBe('/de/a/b/c')
+    } finally {
+      spy.mockRestore()
+    }
+
+    expect(ancestorReads.length).toBeGreaterThan(0)
+    // Both the scan and the document fetch walk the same chain, so without a shared request the
+    // same ancestor is read twice.
+    expect(ancestorReads).toHaveLength(new Set(ancestorReads).size)
+  })
+})
+
 /**
  * Helper function to delete all documents from a collection.
  */
