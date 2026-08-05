@@ -109,5 +109,25 @@ export default buildConfig({
         },
       })
     }
+
+    // Seeding a plugin-managed collection from `onInit` runs the plugin's
+    // `afterChange` hook — and with it the health cache revalidation — while
+    // the admin route is rendering. Deliberately no `disableRevalidate` in the
+    // context: this exercises the `after()`-deferred revalidation that keeps
+    // render-time writes from crashing with `revalidateTag … during render`.
+    const existingMedia = await payload.find({
+      collection: 'media',
+      limit: 1,
+    })
+
+    if (existingMedia.docs.length === 0) {
+      await payload.create({
+        collection: 'media',
+        data: {
+          alt: 'Sample image seeded from onInit',
+        },
+        filePath: path.resolve(dirname, '../seed/sample-image.png'),
+      })
+    }
   },
 })
