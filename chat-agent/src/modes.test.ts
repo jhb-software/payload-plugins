@@ -22,9 +22,9 @@ describe('resolveAvailableModes', () => {
     expect(modes).toEqual(['read', 'ask', 'read-write'])
   })
 
-  it('always includes read even if access function returns false', async () => {
+  it('excludes read when access function returns false', async () => {
     const modes = await resolveAvailableModes({ access: { read: () => false } }, mockReq)
-    expect(modes).toContain('read')
+    expect(modes).not.toContain('read')
   })
 
   it('excludes superuser when no access function configured', async () => {

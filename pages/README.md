@@ -160,9 +160,7 @@ export const Pages: PageCollectionConfig = {
       unique: true,
     },
   ],
-  fields: [
-    /* your fields */
-  ],
+  fields: [/* your fields */],
 }
 ```
 
@@ -229,6 +227,74 @@ When using the [Payload Select API](https://payloadcms.com/docs/queries/select),
 For example, when querying for a page and selecting only the `path` field, the plugin will also select the `slug`, `parent` and `title` fields as theses fields are required to generate the virtual `path` field.
 
 Therefore it is highly recommended to specify the [defaultPopulate](https://payloadcms.com/docs/queries/select#defaultpopulate-collection-config-property) property on all of your page collections.
+
+## Fetching pages by path
+
+Because the `path` field is virtual, it cannot be queried in the database directly. The plugin exports `findPageByPath`, which resolves a path to the page it belongs to across all page collections:
+
+```ts
+import { findPageByPath } from '@jhb.software/payload-pages-plugin'
+
+// Returns the full page document (e.g. for rendering a frontend page):
+const result = await findPageByPath({ payload, path: '/de/blog/my-post', depth: 1 })
+// result: { collection: 'blogposts', doc: { id: '...', path: '/de/blog/my-post', ... } } | null
+
+// Identity only (e.g. for a page-props endpoint whose caller fetches the document itself,
+// via GraphQL or a different field selection): pass depth 0 and an empty select.
+const identity = await findPageByPath({ payload, path: '/de/blog/my-post', depth: 0, select: {} })
+// identity: { collection: 'blogposts', doc: { id: '...', path: '/de/blog/my-post' } } | null
+```
+
+`findPageByPath` accepts either a `payload` instance or a `req` (which forwards the active transaction and user), the query options `depth`, `select` and `populate`, and:
+
+- `locale`: The locale to resolve the path in. Defaults to the locale prefix of the path (e.g. `/de/...`), falling back to the default locale.
+- `draft`: Whether to resolve draft documents (default `false`). Published lookups never return unpublished pages.
+- `where`: An additional filter applied on top of the plugin's configured `baseFilter`. The filtered fields must be queryable on every page collection.
+- `overrideAccess` / `cache` / `waitUntil` / `onCacheResult`: See below.
+
+The plugin's [`baseFilter`](#multi-tenant-support) is applied to the lookup automatically, so multi-tenant setups are scoped to the correct tenant without passing `where`. Because `baseFilter` is evaluated against the request, such setups must call `findPageByPath` with `req` (rather than `payload`); a lookup without `req` throws when a `baseFilter` is configured. Both the base filter and `where` are part of the cache key, so differently scoped lookups never share cache entries.
+
+### Path lookup caching
+
+Resolving a path requires scanning the page collections for documents whose slug matches the last path segment and comparing their computed paths. To avoid this scan on repeated lookups, `findPageByPath` caches successful path→document-id resolutions in [Payload's KV store](https://payloadcms.com/docs/kv-store/overview) (`payload.kv`). A cache hit replaces the scan with a single fetch by id.
+
+Note that the KV store's default adapter (`databaseKVAdapter`) stores its entries in a `payload-kv` collection, so reading the cache is itself a database round trip — a hit saves the scan, but not the trip to the database. Frontends which resolve a path on every request should configure a faster adapter through the `kv` option of the Payload config, e.g. `redisKVAdapter` from `@payloadcms/kv-redis`, or `inMemoryKVAdapter` from `payload` for a single long-lived process:
+
+```ts
+import { redisKVAdapter } from '@payloadcms/kv-redis'
+
+export default buildConfig({
+  // ...
+  kv: redisKVAdapter({ redisURL: process.env.REDIS_URL }),
+})
+```
+
+The cache never requires manual invalidation: every cached mapping is verified against the requested path on read. If the page was renamed, moved, unpublished or deleted in the meantime, the stale entry is deleted and the lookup transparently falls back to the scan.
+
+Draft and published lookups (`draft: true`) are cached under separate keys, so an unpublished change never leaks into a published lookup and vice versa. Because the cache only maps a path to a document id and the document is re-fetched on every lookup, draft content changes are always reflected without invalidating the cached path — so a preview that re-renders on every edit still benefits from the cache as long as the page's path stays the same.
+
+Caching is enabled by default and can be disabled per call:
+
+```ts
+await findPageByPath({ payload, path, cache: false })
+```
+
+Cache maintenance writes (the write-back after a scan, the deletion of stale entries) never affect the resolved document, but by default the lookup waits for them. Pass `waitUntil` to defer them off the critical path — on serverless runtimes, pass the platform's scheduler (`waitUntil` from `@vercel/functions` on Vercel, `ctx.waitUntil.bind(ctx)` on Cloudflare Workers) so deferred writes aren't cancelled when the response ends. Failures of deferred writes are swallowed; a lost write only means the next lookup falls back to the scan.
+
+To log or count cache effectiveness, pass `onCacheResult` — called once per lookup with the `status` (`hit`, `stale` or `miss`), the normalized `path` and the `cacheKey` (never called with `cache: false`):
+
+```ts
+import { waitUntil } from '@vercel/functions'
+
+await findPageByPath({
+  payload,
+  path,
+  waitUntil,
+  onCacheResult: ({ status, path }) => console.log(`path cache ${status}: ${path}`),
+})
+```
+
+After bulk operations which change many paths at once (e.g. imports or migrations), the cache can be reset with `clearPathCache(payload)` — this is an optimization, not a correctness requirement, as stale entries heal themselves on read.
 
 ## About this plugin
 

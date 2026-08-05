@@ -5,6 +5,7 @@ import type {
   IncomingAltTextPluginConfig,
 } from './types/AltTextPluginConfig.js'
 
+import { PLUGIN_SLUG } from './constants.js'
 import { altTextHealthEndpoint } from './endpoints/altTextHealth.js'
 import { bulkGenerateAltTextsEndpoint } from './endpoints/bulkGenerateAltTexts.js'
 import { generateAltTextEndpoint } from './endpoints/generateAltText.js'
@@ -51,16 +52,27 @@ export const payloadAltTextPlugin =
 
     const normalizedCollections = normalizeCollectionsConfig(incomingPluginConfig.collections)
 
+    const access = incomingPluginConfig.access ?? (({ req }) => !!req.user)
+
+    // A function form of `healthCheck` doubles as the health report's access
+    // gate; otherwise it falls back to the shared `access`.
+    const healthCheckAccess =
+      typeof incomingPluginConfig.healthCheck === 'function'
+        ? incomingPluginConfig.healthCheck
+        : access
+
     const pluginConfig: AltTextPluginConfig = {
-      access: incomingPluginConfig.access ?? (({ req }) => !!req.user),
+      access,
       collections: normalizedCollections,
       enabled: incomingPluginConfig.enabled ?? true,
       fieldsOverride: incomingPluginConfig.fieldsOverride,
       getImageThumbnail: incomingPluginConfig.getImageThumbnail,
       healthCheck: enableHealthCheck,
+      healthCheckAccess,
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
+      maxBulkGenerateIds: incomingPluginConfig.maxBulkGenerateIds ?? 100,
       resolver: incomingPluginConfig.resolver,
     }
 
@@ -178,19 +190,19 @@ export const payloadAltTextPlugin =
         {
           handler: generateAltTextEndpoint(pluginConfig.access),
           method: 'post',
-          path: '/alt-text-plugin/generate',
+          path: `/${PLUGIN_SLUG}/generate`,
         },
         {
           handler: bulkGenerateAltTextsEndpoint(pluginConfig.access),
           method: 'post',
-          path: '/alt-text-plugin/generate/bulk',
+          path: `/${PLUGIN_SLUG}/generate/bulk`,
         },
         ...(enableHealthCheck
           ? [
               {
-                handler: altTextHealthEndpoint(pluginConfig.access),
+                handler: altTextHealthEndpoint(pluginConfig.healthCheckAccess),
                 method: 'get' as const,
-                path: '/alt-text-plugin/health',
+                path: `/${PLUGIN_SLUG}/health`,
               },
             ]
           : []),

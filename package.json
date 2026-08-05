@@ -53,11 +53,12 @@
     "install:geocoding": "cd ./geocoding && pnpm install --frozen-lockfile",
     "install:pages": "cd ./pages && pnpm install --frozen-lockfile",
     "install:vercel-deployments": "cd ./vercel-deployments && pnpm install --frozen-lockfile",
-    "test:all": "pnpm test:admin-search && pnpm test:alt-text && pnpm test:astro-payload-richtext-lexical && pnpm test:chat-agent && pnpm test:content-translator && pnpm test:pages && pnpm test:vercel-deployments",
+    "test:all": "pnpm test:admin-search && pnpm test:alt-text && pnpm test:astro-payload-richtext-lexical && pnpm test:chat-agent && pnpm test:cloudinary && pnpm test:content-translator && pnpm test:pages && pnpm test:vercel-deployments",
     "test:admin-search": "cd ./admin-search && pnpm test",
     "test:alt-text": "cd ./alt-text && pnpm test",
     "test:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm test",
     "test:chat-agent": "cd ./chat-agent && pnpm test",
+    "test:cloudinary": "cd ./cloudinary && pnpm test",
     "test:content-translator": "cd ./content-translator && pnpm test",
     "test:pages": "cd ./pages && pnpm test",
     "test:vercel-deployments": "cd ./vercel-deployments && pnpm test",
@@ -67,10 +68,23 @@
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.8.1",
+    "prettier": "3.9.6",
     "prettier-plugin-astro": "^0.14.1"
   },
   "lint-staged": {
+    "admin-search/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir admin-search exec eslint --fix",
+    "alt-text/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir alt-text exec eslint --fix",
+    "astro-payload-richtext-lexical/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir astro-payload-richtext-lexical exec eslint --fix",
+    "chat-agent/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir chat-agent exec eslint --fix",
+    "cloudinary/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir cloudinary exec eslint --fix",
+    "content-translator/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir content-translator exec eslint --fix",
+    "geocoding/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir geocoding exec eslint --fix",
+    "pages/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir pages exec eslint --fix",
+    "vercel-deployments/src/**/*.{js,jsx,ts,tsx}": "pnpm --dir vercel-deployments exec eslint --fix",
     "*.{js,jsx,ts,tsx,json,css,md,yaml,yml}": "prettier --write"
-  }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.8.0"
 }

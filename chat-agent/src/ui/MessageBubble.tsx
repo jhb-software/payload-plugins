@@ -2,7 +2,7 @@
 
 import { Button } from '@payloadcms/ui'
 import { getToolName, isToolUIPart, type UIMessage } from 'ai'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { MessageMetadata } from '../types.js'
 
@@ -78,7 +78,60 @@ const STATUS_LABELS: Record<ToolStatus, null | string> = {
   completed: null,
   denied: 'Denied',
   failed: 'Failed',
-  running: 'Running\u2026',
+  // Running's trailing ellipsis is rendered as three CSS-animated dots in the
+  // running branch below, so the static label is just the verb.
+  running: 'Running',
+}
+
+/**
+ * Three CSS-animated dots rendered after the "Running" label. Visual-only \u2014
+ * `aria-hidden` so screen readers say "Running, 3s" instead of "Running dot
+ * dot dot 3s". The motion reinforces "still going" in the text the way the
+ * pulsing colored dot does in the icon.
+ */
+function RunningDots() {
+  return (
+    <span aria-hidden className="chat-agent-running-dots">
+      <span>.</span>
+      <span>.</span>
+      <span>.</span>
+    </span>
+  )
+}
+
+/**
+ * Tracks how long the part has been in the `running` status. The timer pins to
+ * the moment the part *first* entered running and clears when it leaves, so a
+ * tool that completes and is re-rendered without a state change doesn't
+ * resurface a stale duration. Returns elapsed whole seconds, or `null` while
+ * either not running or still under one second (a flash of "0s" reads as noise
+ * for fast tools — only surface the counter once it's actually informative).
+ */
+function useRunningElapsedSeconds(isRunning: boolean): null | number {
+  const startedAtRef = useRef<null | number>(null)
+  const [seconds, setSeconds] = useState<null | number>(null)
+
+  useEffect(() => {
+    if (!isRunning) {
+      startedAtRef.current = null
+      setSeconds(null)
+      return
+    }
+    startedAtRef.current = Date.now()
+    setSeconds(null)
+    const tick = () => {
+      const startedAt = startedAtRef.current
+      if (startedAt === null) {
+        return
+      }
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
+      setSeconds(elapsed >= 1 ? elapsed : null)
+    }
+    const interval = setInterval(tick, 250)
+    return () => clearInterval(interval)
+  }, [isRunning])
+
+  return seconds
 }
 
 function ToolCallIndicator({
@@ -92,6 +145,8 @@ function ToolCallIndicator({
   const status = toolStatusFromState(part.state)
   const statusLabel = STATUS_LABELS[status]
   const statusColor = STATUS_COLORS[status]
+  const isRunning = status === 'running'
+  const elapsedSeconds = useRunningElapsedSeconds(isRunning)
 
   const hasOutput = status === 'completed' && part.output !== undefined
   const hasErrorText =
@@ -150,12 +205,15 @@ function ToolCallIndicator({
         }}
       >
         <span
+          className={isRunning ? 'chat-agent-tool-dot--running' : undefined}
+          data-chat-agent-tool-dot=""
+          data-running={isRunning ? 'true' : 'false'}
           style={{
             background: statusColor,
             borderRadius: '50%',
             flexShrink: 0,
-            height: '6px',
-            width: '6px',
+            height: '8px',
+            width: '8px',
           }}
         />
         <span
@@ -177,12 +235,19 @@ function ToolCallIndicator({
               color: status === 'failed' ? 'var(--theme-error-500, #e53935)' : undefined,
               flexShrink: 0,
               fontSize: '11px',
-              fontStyle: status === 'running' ? 'italic' : undefined,
+              fontVariantNumeric: 'tabular-nums',
               fontWeight: status === 'failed' ? 600 : 400,
-              opacity: status === 'running' ? 0.7 : 1,
             }}
           >
-            {statusLabel}
+            {isRunning ? (
+              <>
+                {statusLabel}
+                <RunningDots />
+                {elapsedSeconds !== null ? ` ${elapsedSeconds}s` : null}
+              </>
+            ) : (
+              statusLabel
+            )}
           </span>
         ) : null}
         {expandable ? (

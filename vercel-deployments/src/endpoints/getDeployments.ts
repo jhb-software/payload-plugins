@@ -36,8 +36,7 @@ const defaultAccess: NonNullable<VercelDeploymentsPluginConfig['access']> = ({ r
 
 export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest) => {
   const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
-    | undefined
-    | VercelDeploymentsPluginConfig
+    undefined | VercelDeploymentsPluginConfig
 
   if (!pluginConfig) {
     return Response.json({ error: 'Plugin config not found' }, { status: 500 })
@@ -50,6 +49,13 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
 
   const url = new URL(req.url!)
   const id = url.searchParams.get('id')
+
+  // A Vercel deployment id is an opaque token (e.g. `dpl_…`). Reject anything
+  // that isn't, so a caller cannot pass path separators or `../` segments that
+  // would change which upstream Vercel API path gets requested.
+  if (id !== null && !/^[\w-]+$/.test(id)) {
+    return Response.json({ error: 'Invalid deployment id' }, { status: 400 })
+  }
 
   try {
     const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)

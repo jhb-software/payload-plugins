@@ -1,3 +1,27 @@
 packages:
   - './' # Plugin at the root
   - 'dev/' # Testing environment
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
+  sharp: true
+
+overrides:
+  sharp: '^0.35.0'
+  js-yaml: '^4.3.0'
+  prettier: '3.9.6'
+  '@eslint/plugin-kit': '^0.3.4'
+  postcss: '^8.5.18'
+  mongoose: '^8.24.1'
+  next: '16.2.12'
+  '@typescript-eslint/utils': '^8.59.3'
+  '@typescript-eslint/eslint-plugin': '^8.59.3'
+  '@typescript-eslint/parser': '^8.59.3'
+  '@typescript-eslint/type-utils': '^8.59.3'
+  '@typescript-eslint/scope-manager': '^8.59.3'
+  '@typescript-eslint/types': '^8.59.3'
+  '@typescript-eslint/typescript-estree': '^8.59.3'
+  '@typescript-eslint/visitor-keys': '^8.59.3'
+  typescript-eslint: '^8.59.3'
+  eslint: '^9.39.4'
+  '@eslint/js': '^9.39.4'

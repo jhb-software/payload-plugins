@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { UIMessage } from 'ai'
 
-import { act, cleanup, renderHook } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MessageMetadata } from '../types.js'
@@ -12,12 +12,27 @@ const message = (
   id: string,
   role: 'assistant' | 'user',
   text: string,
-): UIMessage<MessageMetadata> =>
+): UIMessage<MessageMetadata> => ({
+  id,
+  parts: [{ type: 'text' as const, text }],
+  role,
+})
+
+const approvalRespondedMessage = (): UIMessage<MessageMetadata> =>
   ({
-    id,
-    parts: [{ type: 'text' as const, text }],
-    role,
-  }) as UIMessage<MessageMetadata>
+    id: 'asst-approval',
+    parts: [
+      {
+        type: 'dynamic-tool',
+        approval: { id: 'approval-1', approved: true },
+        input: { collection: 'posts', data: { title: 'Approved' } },
+        state: 'approval-responded',
+        toolCallId: 'tool-1',
+        toolName: 'create',
+      },
+    ],
+    role: 'assistant',
+  }) as unknown as UIMessage<MessageMetadata>
 
 /** Minimal UIMessageChunk SSE payload that completes a single assistant turn. */
 function sseStream(): string {
@@ -73,7 +88,7 @@ describe('useChat', () => {
     const { rerender, result } = renderHook(
       ({ chatId }: { chatId: string | undefined }) =>
         useChat({ chatId, endpointUrl: '/api/chat-agent/chat' }),
-      { initialProps: { chatId: 'convo-a' as string | undefined } },
+      { initialProps: { chatId: 'convo-a' } },
     )
 
     act(() => {
@@ -125,7 +140,7 @@ describe('useChat', () => {
       const { rerender, result } = renderHook(
         ({ chatId }: { chatId: string | undefined }) =>
           useChat({ chatId, endpointUrl: '/api/chat-agent/chat' }),
-        { initialProps: { chatId: 'convo-a' as string | undefined } },
+        { initialProps: { chatId: 'convo-a' } },
       )
 
       rerender({ chatId: 'convo-b' })
@@ -142,6 +157,70 @@ describe('useChat', () => {
         expect(url).toContain('/convo-b')
         expect(url).not.toContain('/convo-a')
       }
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('resubmits a reload-restored tool approval response once', async () => {
+    const asUrl = (input: RequestInfo | URL): string =>
+      typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    const initialMessages = [
+      message('user-1', 'user', 'Create the post'),
+      approvalRespondedMessage(),
+    ]
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = asUrl(input)
+      if (url === '/api/chat-agent/chat') {
+        return Promise.resolve(
+          new Response(sseStream(), {
+            headers: { 'Content-Type': 'text/event-stream' },
+          }),
+        )
+      }
+      if (init?.method === 'PATCH' || init?.method === 'POST') {
+        const id = url.split('/').pop() ?? 'new'
+        return Promise.resolve(
+          new Response(JSON.stringify({ id }), {
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }
+      throw new Error(`Unexpected fetch: ${init?.method ?? 'GET'} ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    try {
+      const { rerender } = renderHook(
+        ({ chatId }: { chatId: string }) =>
+          useChat({
+            chatId,
+            endpointUrl: '/api/chat-agent/chat',
+            initialMessages,
+          }),
+        { initialProps: { chatId: 'convo-approval' } },
+      )
+
+      await waitFor(() => {
+        expect(
+          fetchMock.mock.calls.some(([input]) => asUrl(input) === '/api/chat-agent/chat'),
+        ).toBe(true)
+      })
+
+      const chatCalls = fetchMock.mock.calls.filter(
+        ([input]) => asUrl(input) === '/api/chat-agent/chat',
+      )
+      expect(chatCalls).toHaveLength(1)
+      const rawBody = chatCalls[0]?.[1]?.body
+      expect(typeof rawBody).toBe('string')
+      const body = JSON.parse(rawBody as string)
+      expect(body.messages).toHaveLength(2)
+      expect(body.messages[1].parts[0].state).toBe('approval-responded')
+
+      rerender({ chatId: 'convo-approval' })
+      expect(
+        fetchMock.mock.calls.filter(([input]) => asUrl(input) === '/api/chat-agent/chat'),
+      ).toHaveLength(1)
     } finally {
       vi.unstubAllGlobals()
     }

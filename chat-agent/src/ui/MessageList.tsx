@@ -5,29 +5,37 @@ import type { UIMessage } from 'ai'
 import { Button, ShimmerEffect } from '@payloadcms/ui'
 import { useLayoutEffect, useRef, useState } from 'react'
 
-import type { MessageMetadata } from '../types.js'
+import type { EmptyStateConfig, MessageMetadata } from '../types.js'
 
 import { useScrollToBottom } from './hooks/useScrollToBottom.js'
 import { ChevronDownIcon } from './icons/ChevronDownIcon.js'
+import { MarkdownContent } from './MarkdownContent.js'
 import { MessageBubble } from './MessageBubble.js'
 
 // ---------------------------------------------------------------------------
-// Suggested prompts (empty state)
+// Empty state (title, optional markdown description, suggested prompt chips)
 // ---------------------------------------------------------------------------
 
-const defaultSuggestions = [
+const DEFAULT_TITLE = 'What can I help you with?'
+
+const DEFAULT_SUGGESTIONS = [
   'Show me the 5 most recent posts',
   'Create a new draft post',
   'Find and fix any pages with an empty meta description',
 ]
 
-function SuggestedPrompts({
+function EmptyState({
+  config,
   onSelect,
-  suggestions,
 }: {
+  config?: EmptyStateConfig
   onSelect: (text: string) => void
-  suggestions: string[]
 }) {
+  const title = config?.title ?? DEFAULT_TITLE
+  const description = config?.description
+  // `undefined` means "not configured" — fall back to the built-in defaults.
+  // An explicit `[]` means "no chips, please" and is the documented opt-out.
+  const suggestions = config?.starterPrompts ?? DEFAULT_SUGGESTIONS
   return (
     <div
       style={{
@@ -44,11 +52,24 @@ function SuggestedPrompts({
           color: 'var(--theme-elevation-500)',
           fontSize: '16px',
           fontWeight: 500,
-          marginBottom: '20px',
+          marginBottom: description ? '12px' : '20px',
         }}
       >
-        What can I help you with?
+        {title}
       </div>
+      {description ? (
+        <div
+          style={{
+            color: 'var(--theme-elevation-500)',
+            fontSize: '14px',
+            marginBottom: '20px',
+            maxWidth: '480px',
+            textAlign: 'center',
+          }}
+        >
+          <MarkdownContent>{description}</MarkdownContent>
+        </div>
+      ) : null}
       <div
         style={{
           display: 'flex',
@@ -137,6 +158,7 @@ function MessageSkeleton() {
 // ---------------------------------------------------------------------------
 
 export function MessageList({
+  emptyState,
   isLoading,
   isLoadingMessages,
   messages,
@@ -145,8 +167,8 @@ export function MessageList({
   onSendSuggestion,
   onToolApprove,
   onToolDeny,
-  suggestedPrompts,
 }: {
+  emptyState?: EmptyStateConfig
   isLoading?: boolean
   /** Conversation messages are being fetched (initial load or sidebar switch). */
   isLoadingMessages?: boolean
@@ -156,7 +178,6 @@ export function MessageList({
   onSendSuggestion?: (text: string) => void
   onToolApprove?: (approvalId: string) => void
   onToolDeny?: (approvalId: string) => void
-  suggestedPrompts?: string[]
 }) {
   const { containerRef, isAtBottom, scrollToBottom } = useScrollToBottom()
   const hasPinnedInitialRef = useRef(false)
@@ -217,12 +238,7 @@ export function MessageList({
   // load — otherwise the user would see "What can I help you with?" flash
   // between clicking a conversation and its messages arriving.
   if (messages.length === 0 && !isLoadingMessages) {
-    return (
-      <SuggestedPrompts
-        onSelect={onSendSuggestion ?? (() => {})}
-        suggestions={suggestedPrompts?.length ? suggestedPrompts : defaultSuggestions}
-      />
-    )
+    return <EmptyState config={emptyState} onSelect={onSendSuggestion ?? (() => {})} />
   }
 
   // Show the response indicator only while the agent is working *and* the

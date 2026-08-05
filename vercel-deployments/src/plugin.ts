@@ -2,6 +2,7 @@ import type { Config, Widget } from 'payload'
 
 import type { VercelDeploymentsPluginConfig } from './types.js'
 
+import { PLUGIN_SLUG } from './constants.js'
 import { getDeploymentsEndpoint } from './endpoints/getDeployments.js'
 import { triggerDeploymentEndpoint } from './endpoints/triggerDeployment.js'
 import { translations } from './translations/index.js'
@@ -48,12 +49,12 @@ export const vercelDeploymentsPlugin =
         {
           handler: getDeploymentsEndpoint,
           method: 'get',
-          path: '/vercel-deployments',
+          path: `/${PLUGIN_SLUG}`,
         },
         {
           handler: triggerDeploymentEndpoint,
           method: 'post',
-          path: '/vercel-deployments',
+          path: `/${PLUGIN_SLUG}`,
         },
       ],
       i18n: {

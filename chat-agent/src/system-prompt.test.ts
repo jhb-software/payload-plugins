@@ -9,15 +9,6 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('confirm with the user')
   })
 
-  it('prepends custom prefix when provided', () => {
-    const prompt = buildSystemPrompt(
-      { collections: [], globals: [] },
-      'You are a marketing assistant.',
-    )
-    expect(prompt.startsWith('You are a marketing assistant.')).toBe(true)
-    expect(prompt).toContain('CMS content assistant')
-  })
-
   it('lists collection slugs only, not their fields', () => {
     const config = {
       collections: [
@@ -109,17 +100,31 @@ describe('buildSystemPrompt', () => {
   })
 
   it('mentions listEndpoints only when custom endpoints exist', () => {
-    const withEndpoints = buildSystemPrompt({ collections: [], globals: [] }, undefined, true)
+    const withEndpoints = buildSystemPrompt({ collections: [], globals: [] }, true)
     expect(withEndpoints).toContain('listEndpoints')
 
     const withoutEndpoints = buildSystemPrompt({ collections: [], globals: [] })
     expect(withoutEndpoints).not.toContain('listEndpoints')
   })
 
+  it('mentions deferred tool search only when deferred tools are enabled', () => {
+    const withDeferredTools = buildSystemPrompt(
+      { collections: [], globals: [] },
+      false,
+      undefined,
+      true,
+    )
+    expect(withDeferredTools).toContain('Some tools are deferred')
+    expect(withDeferredTools).toContain('_chatAgentToolSearch')
+
+    const withoutDeferredTools = buildSystemPrompt({ collections: [], globals: [] })
+    expect(withoutDeferredTools).not.toContain('Some tools are deferred')
+  })
+
   it('does not dump endpoint paths/descriptions into the prompt', () => {
     // Endpoints live behind listEndpoints now — the prompt only signals that
     // they exist. Agent pays one round trip to see them.
-    const prompt = buildSystemPrompt({ collections: [], globals: [] }, undefined, true)
+    const prompt = buildSystemPrompt({ collections: [], globals: [] }, true)
     expect(prompt).not.toContain('## Custom Endpoints')
   })
 
@@ -159,6 +164,39 @@ describe('buildSystemPrompt', () => {
   it('omits localization section when not configured', () => {
     const prompt = buildSystemPrompt({ collections: [], globals: [] })
     expect(prompt).not.toContain('## Localization')
+  })
+
+  it('warns that a localized field with no value is omitted from the response', () => {
+    // Without this hint, the agent reacts to a missing localized field by
+    // broadening `select` / `depth` / `draft` instead of trying another
+    // locale — burning 3-5 redundant tool calls per investigation.
+    const config = {
+      collections: [],
+      globals: [],
+      localization: {
+        defaultLocale: 'de',
+        locales: ['en', 'de'],
+      },
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toMatch(/omitted from the response/i)
+    expect(prompt).toMatch(/try (the )?other locales?/i)
+  })
+
+  it('directs the agent to pass `draft: true` when a fetched document has _status: draft', () => {
+    // The descriptive `draft` paragraph alone left the agent re-fetching
+    // unpublished documents without the flag and getting empty content.
+    const prompt = buildSystemPrompt({ collections: [], globals: [] })
+    expect(prompt).toMatch(/_status.*['"]draft['"].*draft: true/s)
+  })
+
+  it('tells the agent not to re-fetch a document already loaded this conversation', () => {
+    // Caching helps with the prefix cost, but re-fetching at all still pays
+    // full output tokens for the new tool input + new tool result. The cheapest
+    // re-fetch is the one that doesn't happen.
+    const prompt = buildSystemPrompt({ collections: [], globals: [] })
+    expect(prompt).toMatch(/don['’]t re-?fetch/i)
+    expect(prompt).toMatch(/write tool|update.*returns|create.*returns/i)
   })
 
   it('omits collections section when empty', () => {
@@ -237,26 +275,26 @@ describe('buildSystemPrompt with modes', () => {
   const minConfig = { collections: [], globals: [] }
 
   it('includes read-only instructions in read mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, false, 'read')
+    const prompt = buildSystemPrompt(minConfig, false, 'read')
     expect(prompt).toContain('read-only mode')
     expect(prompt).toContain('only read content')
     expect(prompt).not.toContain('confirm with the user before creating')
   })
 
   it('includes ask mode instructions in ask mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, false, 'ask')
+    const prompt = buildSystemPrompt(minConfig, false, 'ask')
     expect(prompt).toContain('ask mode')
     expect(prompt).toContain('confirmation')
   })
 
   it('includes superuser instructions in superuser mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, false, 'superuser')
+    const prompt = buildSystemPrompt(minConfig, false, 'superuser')
     expect(prompt).toContain('superuser mode')
     expect(prompt).toContain('bypassing normal user permissions')
   })
 
   it('includes standard rules in read-write mode', () => {
-    const prompt = buildSystemPrompt(minConfig, undefined, false, 'read-write')
+    const prompt = buildSystemPrompt(minConfig, false, 'read-write')
     expect(prompt).toContain('confirm with the user before creating')
   })
 
@@ -427,5 +465,82 @@ describe('buildSystemPrompt rich-text feature guidance', () => {
     }
     const prompt = buildSystemPrompt(config)
     expect(prompt).not.toContain('"type": "block"')
+  })
+
+  it('includes list node docs when unorderedList or orderedList features are present', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'unorderedList'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('## Lexical list nodes')
+    expect(prompt).toContain('"type": "list"')
+    expect(prompt).toContain('"listType": "bullet"')
+    expect(prompt).toContain('"type": "listitem"')
+    expect(prompt).toContain('all emit `"type": "list"`')
+  })
+
+  it('includes list node docs with checklist guidance when the checklist feature is present', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'checklist'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('## Lexical list nodes')
+    expect(prompt).toContain('"checked"')
+  })
+
+  it('omits list node docs when no list features are present', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'italic'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('## Lexical list nodes')
+  })
+
+  it('includes feature key → node type mapping for blockquote and horizontalRule', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['blockquote', 'horizontalRule'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).toContain('## Feature key → node type')
+    expect(prompt).toContain('`blockquote` → `"type": "quote"`')
+    expect(prompt).toContain('`horizontalRule` → `"type": "horizontalrule"`')
+  })
+
+  it('omits feature key mapping when no mismatched features are present', () => {
+    const config = {
+      collections: [
+        {
+          slug: 'posts',
+          fields: [richTextField('body', ['bold', 'heading'])],
+        },
+      ],
+      globals: [],
+    }
+    const prompt = buildSystemPrompt(config)
+    expect(prompt).not.toContain('## Feature key → node type')
   })
 })

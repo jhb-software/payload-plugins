@@ -34,19 +34,21 @@ Provider API keys are never read from `process.env` by the plugin — pass them 
 
 ## Configuration
 
-| Option            | Type                                          | Required | Description                                                                                             |
-| ----------------- | --------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
-| `model`           | `(modelId: string) => LanguageModel`          | Yes      | Resolves a model id to a Vercel AI SDK `LanguageModel`. Called once per request with the selected model |
-| `defaultModel`    | `string`                                      | Yes      | Model id used when no per-request override is provided                                                  |
-| `availableModels` | `ModelOption[]`                               | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries)                         |
-| `systemPrompt`    | `string`                                      | No       | Custom text prepended to the auto-generated system prompt                                               |
-| `access`          | `(req) => boolean`                            | No       | Override the default auth check (default: requires authenticated user)                                  |
-| `maxSteps`        | `number`                                      | No       | Maximum tool-use loop steps per request (default: 20)                                                   |
-| `modes`           | `ModesConfig`                                 | No       | Agent modes configuration (see below)                                                                   |
-| `adminView`       | `{ path, Component }`                         | No       | Customize the admin chat view route or component                                                        |
-| `navLink`         | `boolean`                                     | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                |
-| `budget`          | `BudgetConfig`                                | No       | Optional token budget (see below)                                                                       |
-| `tools`           | `({ req, defaultTools, modelId }) => ToolMap` | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)          |
+| Option            | Type                                                                | Required | Description                                                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`           | `(modelId: string) => LanguageModel`                                | Yes      | Resolves a model id to a Vercel AI SDK `LanguageModel`. Called once per request with the selected model                                                                                                 |
+| `defaultModel`    | `string`                                                            | Yes      | Model id used when no per-request override is provided                                                                                                                                                  |
+| `availableModels` | `ModelOption[]`                                                     | No       | Models the user can choose from in the chat UI (selector shown when 2+ entries)                                                                                                                         |
+| `systemPrompt`    | `({ req, defaultPrompt }) => string \| Promise<string>`             | No       | Customize the agent's system prompt. Wrap or replace `defaultPrompt` and return the final string. Called per request, so the prompt can be loaded from a Payload global / varied per tenant (see below) |
+| `access`          | `(req) => boolean \| Promise<boolean>`                              | No       | Gates every plugin surface (endpoints, admin view, nav link). Defaults to `(req) => !!req.user` (any authenticated user) — see [Production considerations](#production-considerations)                  |
+| `maxSteps`        | `number`                                                            | No       | Maximum tool-use loop steps per request (default: 20)                                                                                                                                                   |
+| `modes`           | `ModesConfig`                                                       | No       | Agent modes configuration (see below)                                                                                                                                                                   |
+| `adminView`       | `{ path, Component }`                                               | No       | Customize the admin chat view route or component                                                                                                                                                        |
+| `navLink`         | `boolean`                                                           | No       | Show a "Chat" link at the top of the admin nav sidebar (default: `true`)                                                                                                                                |
+| `budget`          | `BudgetConfig`                                                      | No       | Optional token budget (see below)                                                                                                                                                                       |
+| `emptyState`      | `EmptyStateConfig \| (({ req }) => MaybePromise<EmptyStateConfig>)` | No       | Customize the empty chat screen — static object or per-request callback (see below)                                                                                                                     |
+| `tools`           | `({ req, defaultTools, modelId }) => ToolMap`                       | No       | Compose the final toolset — add user or provider-native tools, drop defaults, etc. (see below)                                                                                                          |
+| `toolDiscovery`   | `{ searchTool, eager? }`                                            | No       | Anthropic's Tool Search Tool — defer cold-path tool definitions and load them on demand (see below)                                                                                                     |
 
 ### Mixing providers
 
@@ -89,10 +91,40 @@ chatAgentPlugin({
 })
 ```
 
-- `read` is always available and cannot be restricted
-- Modes without an access function are available to all authenticated users
+- Modes without an access function are available to all authenticated users (including `read`)
 - `superuser` requires an explicit access function to be enabled
 - Users only see modes they have access to
+- When only one mode remains after access filtering, the mode selector is hidden
+
+### Empty chat screen
+
+Customize what editors see before they've sent the first message. Without this option, the chat opens to a generic "What can I help you with?" headline and a few example prompt chips.
+
+Accepts a static object or a per-request callback (e.g. to read from a Payload global):
+
+```ts
+// Static
+chatAgentPlugin({
+  emptyState: {
+    title: 'Content Assistant',
+    description:
+      'I can help with **drafting**, **translating**, and finding stale pages. ' +
+      'I cannot delete content or change user permissions.',
+    starterPrompts: ['Audit my recent draft posts', 'Translate the homepage tagline to German'],
+  },
+})
+
+// Per-request callback
+chatAgentPlugin({
+  emptyState: async ({ req }) => {
+    const site = await req.payload.findGlobal({ slug: 'site' })
+    return {
+      title: site.chatTitle,
+      starterPrompts: site.chatPrompts,
+    }
+  },
+})
+```
 
 ### Custom endpoints
 
@@ -118,6 +150,24 @@ endpoints: [
 ```
 
 `custom.schema` leaves are passed through verbatim — use whatever shape your team already documents endpoints with (plain descriptors, JSON Schema, etc.). Route params like `:id` belong in the path, not the schema.
+
+### Customizing the system prompt
+
+One `systemPrompt` factory produces the full prompt the agent sees. It receives the auto-generated prompt (collection / global slug catalog, mode rules, admin link patterns, ...) as `defaultPrompt` along with the authenticated `req`, and returns the final string. Wrap `defaultPrompt` to extend, or ignore it to replace.
+
+The factory runs on every chat request, so the prompt can be loaded from a Payload global and edited in the admin panel:
+
+```ts
+chatAgentPlugin({
+  systemPrompt: async ({ req, defaultPrompt }) => {
+    const settings = await req.payload.findGlobal({ slug: 'settings' })
+    const extra = settings?.chatAgentPrompt?.trim()
+    return extra ? `${defaultPrompt}\n\n${extra}` : defaultPrompt
+  },
+})
+```
+
+To replace the auto-generated prompt entirely, ignore `defaultPrompt` and return your own string. The same callback can vary per tenant, locale, or `req.user.role` — see the dev app's `payload.config.ts` for a runnable example.
 
 ### Extending or customizing tools
 
@@ -184,6 +234,31 @@ Classification for mode filtering:
 - **User-defined executable tools** (anything with an `execute` function) default to the safe "write" classification: excluded in `read`, gated behind `needsApproval: true` in `ask`, passed through in `read-write` / `superuser`. The plugin can't know the tool's side effects.
 
 The plugin does not merge — what the factory returns is what the agent sees. Omit `tools` entirely to use the defaults. Runnable examples of custom tools (Axiom Logs, Vercel Logs, Slack webhook) live in `chat-agent/dev/src/customTools.ts`.
+
+### Deferred tool loading (Anthropic Tool Search)
+
+Large toolsets (many collections × CRUD + custom endpoints + provider-native tools) push tool definitions into the multi-thousand-token range, and Anthropic charges for them on every step of a tool-use loop. Anthropic's [Tool Search Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool) lets you mark cold-path tools with `defer_loading: true` so their definitions are held out of the system-prompt prefix until Claude finds them via a search call.
+
+Opt in by passing a `searchTool`:
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic'
+
+chatAgentPlugin({
+  defaultModel: 'claude-sonnet-4-20250514',
+  model: (id) => anthropic(id),
+  toolDiscovery: {
+    searchTool: anthropic.tools.toolSearchBm25_20251119(),
+    // Optional: override the default eager set. Anthropic recommends 3–5 tools.
+    // Default: ['find', 'findByID', 'count', 'findGlobal', 'getCollectionSchema']
+    // eager: ['find', 'findByID', 'getCollectionSchema'],
+  },
+})
+```
+
+Every tool not named in `eager` is sent with `providerOptions.anthropic.deferLoading: true`. The search tool is registered under a reserved internal key so it can't collide with user-defined tools. Either Anthropic search variant works — `toolSearchBm25_20251119()` (natural-language) or `toolSearchRegex_20251119()`.
+
+Activates only when the resolved `modelId` starts with `claude-`. For OpenAI, Google, and other providers the option is silently ignored — tools are sent eagerly as before — so it's safe to leave configured in a multi-provider setup.
 
 ### Budget limiting
 

@@ -10,6 +10,7 @@
 import type { AccessArgs, CollectionConfig, Endpoint, PayloadRequest } from 'payload'
 
 import { isPluginAccessAllowed } from './access.js'
+import { PLUGIN_SLUG } from './constants.js'
 import { AGENT_MODES, type AgentMode } from './types.js'
 
 export const CONVERSATIONS_SLUG = 'agent-conversations'
@@ -301,26 +302,26 @@ export const conversationEndpoints: Endpoint[] = [
   {
     handler: listConversations,
     method: 'get',
-    path: '/chat-agent/chat/conversations',
+    path: `/${PLUGIN_SLUG}/chat/conversations`,
   },
   {
     handler: getConversation,
     method: 'get',
-    path: '/chat-agent/chat/conversations/:id',
+    path: `/${PLUGIN_SLUG}/chat/conversations/:id`,
   },
   {
     handler: createConversation,
     method: 'post',
-    path: '/chat-agent/chat/conversations',
+    path: `/${PLUGIN_SLUG}/chat/conversations`,
   },
   {
     handler: updateConversation,
     method: 'patch',
-    path: '/chat-agent/chat/conversations/:id',
+    path: `/${PLUGIN_SLUG}/chat/conversations/:id`,
   },
   {
     handler: deleteConversation,
     method: 'delete',
-    path: '/chat-agent/chat/conversations/:id',
+    path: `/${PLUGIN_SLUG}/chat/conversations/:id`,
   },
 ]

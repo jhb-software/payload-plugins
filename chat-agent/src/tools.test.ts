@@ -21,6 +21,7 @@ import {
  */
 const asConfig = (v: unknown) => v as SanitizedConfig
 const asReq = (v: unknown) => v as PayloadRequest
+const asSchema = (v: unknown) => v as { safeParse: (input: unknown) => { success: boolean } }
 
 describe('buildTools', () => {
   // Cast to `TypedUser` — the parameter is typed against Payload's generated
@@ -96,7 +97,7 @@ describe('buildTools', () => {
         sort: '-createdAt',
         where: { status: { equals: 'published' } },
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -105,7 +106,6 @@ describe('buildTools', () => {
         depth: 2,
         limit: 5,
         overrideAccess: false,
-        page: 1,
         select: { slug: true, title: true },
         sort: '-createdAt',
         user: mockUser,
@@ -120,7 +120,7 @@ describe('buildTools', () => {
 
     await tools.find.execute(
       { collection: 'posts' },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({ depth: 0 }))
@@ -132,7 +132,7 @@ describe('buildTools', () => {
 
     await tools.findByID.execute(
       { id: 'abc-123', collection: 'posts', depth: 2 },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.findByID).toHaveBeenCalledWith(
@@ -153,7 +153,7 @@ describe('buildTools', () => {
 
     await tools.create.execute(
       { collection: 'posts', data, locale: 'en' },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.create).toHaveBeenCalledWith(
@@ -174,7 +174,7 @@ describe('buildTools', () => {
 
     await tools.update.execute(
       { id: 'abc-123', collection: 'posts', data: { title: 'Updated' } },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.update).toHaveBeenCalledWith(
@@ -195,7 +195,7 @@ describe('buildTools', () => {
 
     await tools.delete.execute(
       { id: 'abc-123', collection: 'posts' },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.delete).toHaveBeenCalledWith(
@@ -209,13 +209,108 @@ describe('buildTools', () => {
     )
   })
 
+  it('update with where forwards to payload.update without an id (bulk path)', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.update.execute(
+      {
+        collection: 'posts',
+        data: { status: 'published' },
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'posts',
+        data: { status: 'published' },
+        overrideAccess: false,
+        user: mockUser,
+        where: { status: { equals: 'draft' } },
+      }),
+    )
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({ id: expect.anything() }),
+    )
+  })
+
+  it('update with where forwards limit', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.update.execute(
+      {
+        collection: 'posts',
+        data: { status: 'published' },
+        limit: 10,
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.update).toHaveBeenCalledWith(expect.objectContaining({ limit: 10 }))
+  })
+
+  it('delete with where forwards to payload.delete without an id (bulk path)', async () => {
+    const payload = createMockPayload()
+    const tools = buildTools(payload, mockUser)
+
+    await tools.delete.execute(
+      {
+        collection: 'posts',
+        where: { status: { equals: 'draft' } },
+      },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
+    )
+
+    expect(payload.delete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'posts',
+        overrideAccess: false,
+        user: mockUser,
+        where: { status: { equals: 'draft' } },
+      }),
+    )
+    expect(payload.delete).toHaveBeenCalledWith(
+      expect.not.objectContaining({ id: expect.anything() }),
+    )
+  })
+
+  it('update schema requires exactly one of id or where', () => {
+    // Mirrors Payload's local update API: `id` updates a single doc, `where`
+    // updates many. Passing neither would silently target nothing useful;
+    // passing both is ambiguous. Both must be caught at the schema, since the
+    // AI SDK validates input before `execute` runs.
+    const schema = asSchema(buildTools(createMockPayload(), mockUser).update.inputSchema)
+
+    expect(schema.safeParse({ collection: 'posts', data: {} }).success).toBe(false)
+    expect(
+      schema.safeParse({ id: '1', collection: 'posts', data: {}, where: { x: {} } }).success,
+    ).toBe(false)
+    expect(schema.safeParse({ id: '1', collection: 'posts', data: {} }).success).toBe(true)
+    expect(schema.safeParse({ collection: 'posts', data: {}, where: { x: {} } }).success).toBe(true)
+  })
+
+  it('delete schema requires exactly one of id or where', () => {
+    // Same rationale as `update` — the schema guards a destructive op against
+    // accidental "delete everything" when `where` is forgotten.
+    const schema = asSchema(buildTools(createMockPayload(), mockUser).delete.inputSchema)
+
+    expect(schema.safeParse({ collection: 'posts' }).success).toBe(false)
+    expect(schema.safeParse({ id: '1', collection: 'posts', where: { x: {} } }).success).toBe(false)
+    expect(schema.safeParse({ id: '1', collection: 'posts' }).success).toBe(true)
+    expect(schema.safeParse({ collection: 'posts', where: { x: {} } }).success).toBe(true)
+  })
+
   it('count calls payload.count correctly', async () => {
     const payload = createMockPayload()
     const tools = buildTools(payload, mockUser)
 
     await tools.count.execute(
       { collection: 'posts', where: { status: { equals: 'published' } } },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.count).toHaveBeenCalledWith(
@@ -234,7 +329,7 @@ describe('buildTools', () => {
 
     await tools.findGlobal.execute(
       { slug: 'settings' },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.findGlobal).toHaveBeenCalledWith(
@@ -253,7 +348,7 @@ describe('buildTools', () => {
 
     await tools.updateGlobal.execute(
       { slug: 'settings', data: { siteName: 'New Name' } },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.updateGlobal).toHaveBeenCalledWith(
@@ -277,7 +372,7 @@ describe('buildTools', () => {
         populate: { author: true },
         select: { slug: true, title: true },
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -299,7 +394,7 @@ describe('buildTools', () => {
         fallbackLocale: 'en',
         locale: 'de',
       },
-      { abortSignal: undefined, messages: [], toolCallId: '1' },
+      { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' },
     )
 
     expect(payload.find).toHaveBeenCalledWith(
@@ -316,6 +411,7 @@ describe('buildTools', () => {
     const tools = buildTools(payload, mockUser)
     const ctx = {
       abortSignal: undefined,
+      context: undefined,
       messages: [],
       toolCallId: '1',
     }
@@ -496,6 +592,7 @@ describe('callEndpoint tool', () => {
   const mockUser = { id: 'u1' } as unknown as TypedUser
   const ctx = {
     abortSignal: undefined,
+    context: undefined,
     messages: [],
     toolCallId: '1',
   }
@@ -518,7 +615,7 @@ describe('callEndpoint tool', () => {
     ]
     const tools = buildTools(mockPayload, mockUser, false, asReq({}), endpoints)
     expect(tools.callEndpoint).toBeDefined()
-    expect(tools.callEndpoint.description).toContain('custom API endpoint')
+    expect(tools.callEndpoint.description).toContain('custom endpoint')
   })
 
   it('calls the matching handler with route params', async () => {
@@ -815,7 +912,7 @@ describe('schema inspection tools', () => {
     updateGlobal: vi.fn(),
   }
   const mockUser = { id: 'u1' } as unknown as TypedUser
-  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+  const ctx = { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' }
 
   it('are not registered when config is not passed', () => {
     const tools = buildTools(mockPayload, mockUser)
@@ -1087,7 +1184,7 @@ describe('block schema tools', () => {
     updateGlobal: vi.fn(),
   }
   const mockUser = { id: 'u1' } as unknown as TypedUser
-  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+  const ctx = { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' }
 
   it('are not registered when config is not passed', () => {
     const tools = buildTools(mockPayload, mockUser)
@@ -1297,7 +1394,7 @@ describe('listEndpoints', () => {
     updateGlobal: vi.fn(),
   }
   const mockUser = { id: 'u1' } as unknown as TypedUser
-  const ctx = { abortSignal: undefined, messages: [], toolCallId: '1' }
+  const ctx = { abortSignal: undefined, context: undefined, messages: [], toolCallId: '1' }
 
   it('is not registered when no custom endpoints exist', () => {
     const tools = buildTools(mockPayload, mockUser, false, asReq({}), [])

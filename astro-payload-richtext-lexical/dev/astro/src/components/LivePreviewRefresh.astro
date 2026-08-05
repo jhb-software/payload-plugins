@@ -1,0 +1,34 @@
+---
+// Reloads the page when its document is saved in Payload, so the CMS Live
+// Preview iframe stays in sync. Astro adaptation of Payload's RefreshRouteOnSave.
+// see https://payloadcms.com/docs/live-preview/server
+type Props = { serverURL: string }
+const { serverURL } = Astro.props
+---
+
+<meta name="payload-server-url" content={serverURL} />
+
+<script>
+  import { isDocumentEvent, ready } from '@payloadcms/live-preview'
+
+  const serverURL =
+    document.querySelector('meta[name="payload-server-url"]')?.getAttribute('content') ?? ''
+
+  function sendReady() {
+    ready({ serverURL })
+  }
+
+  function onMessage(event: MessageEvent) {
+    if (isDocumentEvent(event, serverURL)) {
+      window.location.reload()
+    }
+  }
+
+  window.addEventListener('message', onMessage)
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', sendReady, { once: true })
+  } else {
+    sendReady()
+  }
+</script>

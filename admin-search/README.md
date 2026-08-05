@@ -28,12 +28,25 @@ export default {
     adminSearchPlugin({}),
     searchPlugin({
       collections: ['pages', 'posts', 'authors'],
+      // The index is exposed at GET /api/search — set its access to match who should read it (see Security).
+      searchOverrides: {
+        access: {
+          read: ({ req }) => Boolean(req.user),
+        },
+      },
     }),
   ],
 }
 ```
 
 You can control which collections you can search by adjusting the `collections` option in the search plugin config.
+
+## Security
+
+Search results are served by the `search` collection from [@payloadcms/plugin-search](https://www.npmjs.com/package/@payloadcms/plugin-search), exposed at `GET /api/search`. Two things to be aware of when deciding its access:
+
+- **It is public by default** (`read: () => true`): the titles and IDs of every indexed document are readable by anyone. If that doesn't fit your app, set `searchOverrides.access.read` — e.g. `({ req }) => Boolean(req.user)` for admin-only, or leave it open if your frontend reads the index.
+- **Its read access is coarse:** the collection flattens documents from every configured collection into one and does not inherit per-collection access control. To limit which documents a user sees, return a `where` constraint from `searchOverrides.access.read`. This can only be done server-side — the admin UI shows whatever the endpoint returns.
 
 ## Configuration
 

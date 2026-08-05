@@ -6,8 +6,9 @@ import type { UIMessage } from 'ai'
 import { Button, SetStepNav } from '@payloadcms/ui'
 import { useCallback, useEffect, useState } from 'react'
 
-import type { AgentMode, MessageMetadata, ModelOption } from '../types.js'
+import type { AgentMode, EmptyStateConfig, MessageMetadata, ModelOption } from '../types.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { ChatHeader } from './ChatHeader.js'
 import { ChatInput } from './ChatInput.js'
 import './ChatView.css'
@@ -42,13 +43,14 @@ export interface ChatViewProps {
   conversationId?: string
   defaultMode?: AgentMode
   defaultModel?: string
+  /** Customizes the empty chat screen (title, markdown description, suggested prompt chips). */
+  emptyState?: EmptyStateConfig
   initialConversations?: ConversationSummary[]
   initialMessages?: unknown[]
   /** Mode persisted on the conversation doc; used as the initial selection when resuming. */
   initialMode?: AgentMode
   /** Model id persisted on the conversation doc; used as the initial selection when resuming. */
   initialModel?: string
-  suggestedPrompts?: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -61,13 +63,13 @@ export default function ChatView({
   conversationId,
   defaultMode = 'ask',
   defaultModel,
+  emptyState,
   initialConversations,
   initialMessages: serverMessages,
   initialMode,
   initialModel,
-  suggestedPrompts,
 }: ChatViewProps) {
-  const endpointUrl = '/api/chat-agent/chat'
+  const endpointUrl = `/api/${PLUGIN_SLUG}/chat`
   const [chatId, setChatId] = useState(conversationId)
   const resolveMode = useCallback(
     (candidate: unknown): AgentMode => {
@@ -241,7 +243,7 @@ export default function ChatView({
         return
       }
       const truncated = messages.slice(0, msgIndex)
-      setMessages(truncated as UIMessage<MessageMetadata>[])
+      setMessages(truncated)
       void sendMessage({ text: newText })
     },
     [messages, sendMessage, setMessages],
@@ -343,7 +345,7 @@ export default function ChatView({
             canRename={Boolean(chatId)}
             defaultModel={defaultModel}
             disabled={isLoading}
-            messages={messages as UIMessage<MessageMetadata>[]}
+            messages={messages}
             mode={mode}
             onModeChange={setMode}
             onModelChange={setSelectedModel}
@@ -352,6 +354,7 @@ export default function ChatView({
             title={currentTitle}
           />
           <MessageList
+            emptyState={emptyState}
             isLoading={isLoading}
             isLoadingMessages={isLoadingMessages}
             // Keying by conversation id makes switching conversations a fresh
@@ -361,13 +364,12 @@ export default function ChatView({
             // `MessageList` instance whose `useLayoutEffect` already ran with
             // the previous conversation's messages and won't re-fire.
             key={chatId ?? 'new'}
-            messages={messages as UIMessage<MessageMetadata>[]}
+            messages={messages}
             onEditMessage={handleEditMessage}
             onRetry={handleRetry}
             onSendSuggestion={handleSend}
             onToolApprove={handleToolApprove}
             onToolDeny={handleToolDeny}
-            suggestedPrompts={suggestedPrompts}
           />
           {error ? (
             <div

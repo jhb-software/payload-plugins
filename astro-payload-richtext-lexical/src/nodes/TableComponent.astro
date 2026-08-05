@@ -1,14 +1,7 @@
 ---
-import type { LexicalNode } from '../types.js'
+import type { TableNode } from '../types.js'
 import type { AstroComponentFactory } from 'astro/runtime/server'
-
-type TableNode = LexicalNode & {
-  children: Array<{
-    children: Array<{
-      children: LexicalNode[]
-    }>
-  }>
-}
+import { buildTableModel } from './tableModel.js'
 
 type Props = {
   node: TableNode
@@ -18,44 +11,54 @@ type Props = {
 }
 
 const { node, RichTextRenderer, BlockRenderer, UploadRenderer } = Astro.props
+
+const { headRows, bodyRows } = buildTableModel(node)
 ---
 
 <table>
   {
-    node.children?.at(0) && (
+    headRows.length > 0 && (
       <thead>
-        <tr>
-          {node.children.at(0)?.children.map((cell) => (
-            <th>
-              <RichTextRenderer
-                nodes={cell.children}
-                BlockRenderer={BlockRenderer}
-                UploadRenderer={UploadRenderer}
-              />
-            </th>
-          ))}
-        </tr>
+        {headRows.map((row) => (
+          <tr>
+            {row.cells.map((cell) => {
+              const CellTag = cell.tag
+              return (
+                <CellTag colspan={cell.colSpan} rowspan={cell.rowSpan}>
+                  <RichTextRenderer
+                    nodes={cell.children}
+                    BlockRenderer={BlockRenderer}
+                    UploadRenderer={UploadRenderer}
+                  />
+                </CellTag>
+              )
+            })}
+          </tr>
+        ))}
       </thead>
     )
   }
 
-  <tbody>
-    {
-      node.children?.slice(1).map((row) => {
-        return (
+  {
+    bodyRows.length > 0 && (
+      <tbody>
+        {bodyRows.map((row) => (
           <tr>
-            {row.children.map((cell) => (
-              <td>
-                <RichTextRenderer
-                  nodes={cell.children}
-                  BlockRenderer={BlockRenderer}
-                  UploadRenderer={UploadRenderer}
-                />
-              </td>
-            ))}
+            {row.cells.map((cell) => {
+              const CellTag = cell.tag
+              return (
+                <CellTag colspan={cell.colSpan} rowspan={cell.rowSpan}>
+                  <RichTextRenderer
+                    nodes={cell.children}
+                    BlockRenderer={BlockRenderer}
+                    UploadRenderer={UploadRenderer}
+                  />
+                </CellTag>
+              )
+            })}
           </tr>
-        )
-      })
-    }
-  </tbody>
+        ))}
+      </tbody>
+    )
+  }
 </table>

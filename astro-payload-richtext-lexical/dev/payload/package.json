@@ -1,0 +1,39 @@
+{
+  "name": "astro-payload-richtext-lexical-payload-app",
+  "description": "Payload authoring app for previewing the Astro Lexical renderer against real Payload output",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev --webpack",
+    "devsafe": "rm -rf .next && pnpm dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build --webpack",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "format": "prettier --write src",
+    "payload": "payload",
+    "generate:types": "payload generate:types",
+    "generate:importmap": "payload generate:importmap"
+  },
+  "dependencies": {
+    "@payloadcms/db-sqlite": "^3.86.0",
+    "@payloadcms/next": "^3.86.0",
+    "@payloadcms/richtext-lexical": "^3.86.0",
+    "@payloadcms/translations": "^3.86.0",
+    "@payloadcms/ui": "^3.86.0",
+    "next": "16.2.11",
+    "payload": "^3.86.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "cross-env": "^10.1.0",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.8.0"
+}

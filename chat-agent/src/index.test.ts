@@ -1,3 +1,4 @@
+import type * as AiModule from 'ai'
 import type { LanguageModel, Tool } from 'ai'
 import type { Endpoint } from 'payload'
 
@@ -23,7 +24,7 @@ type NavLinkEntry = { clientProps?: { path?: string }; path?: string } | string
 // `toUIMessageStreamResponse` on the returned object so budget tests can
 // assert on `headers` / invoke the `onFinish` callback.
 vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+  const actual = await vi.importActual<typeof AiModule>('ai')
   return {
     ...actual,
     // Wrapped in `vi.fn` so individual tests can override it with
@@ -516,6 +517,104 @@ describe('chatAgentPlugin modes', () => {
     const response = await handler({ user: { id: 'u1' } })
     const body = await response.json()
     expect(body.default).toBe('read-write')
+  })
+
+  it('modes endpoint returns the configured emptyState (title, description, starterPrompts)', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: {
+        description: 'I can help with **content**.',
+        starterPrompts: ['Audit recent drafts'],
+        title: 'Welcome, editor',
+      },
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      description: 'I can help with **content**.',
+      starterPrompts: ['Audit recent drafts'],
+      title: 'Welcome, editor',
+    })
+    // The legacy top-level field must not leak into the response — clients
+    // should read everything from `emptyState`.
+    expect(body.starterPrompts).toBeUndefined()
+  })
+
+  it('modes endpoint preserves an empty starterPrompts array so the client can disable the default chips', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: {
+        starterPrompts: [],
+        title: 'Content Assistant',
+      },
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      starterPrompts: [],
+      title: 'Content Assistant',
+    })
+  })
+
+  it('modes endpoint omits emptyState when no fields are configured', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toBeUndefined()
+  })
+
+  it('modes endpoint resolves emptyState callback per-request', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: ({ req }) => ({
+        starterPrompts: ['Draft a post'],
+        title: `Hello, ${(req.user as { id: string }).id}`,
+      }),
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      starterPrompts: ['Draft a post'],
+      title: 'Hello, u1',
+    })
+  })
+
+  it('modes endpoint resolves async emptyState callback', async () => {
+    const plugin = chatAgentPlugin({
+      defaultModel: 'claude-sonnet-4-20250514',
+      emptyState: async () => {
+        const config = await Promise.resolve({ starterPrompts: ['Hello'], title: 'Async title' })
+        return config
+      },
+      model: makeModelFactory().factory,
+    })
+    const result = plugin({ endpoints: [] })
+    const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
+
+    const response = await handler({ user: { id: 'u1' } })
+    const body = await response.json()
+    expect(body.emptyState).toEqual({
+      starterPrompts: ['Hello'],
+      title: 'Async title',
+    })
   })
 
   it('chat endpoint rejects invalid mode', async () => {

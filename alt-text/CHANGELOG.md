@@ -2,7 +2,41 @@
 
 ## Unreleased
 
-- fix: defer the alt text health cache invalidation via `after()` so `payload.create` / `payload.update` invoked from `onInit` (or any other render-time path) no longer crash with `revalidateTag … during render`
+- fix: defer the alt text health cache invalidation via `after()` so `payload.create` / `payload.update` invoked from `onInit` (or any other render-time path) no longer crash with `revalidateTag … during render`; requires Next.js `>= 15.1`, where `after()` is stable (peer dependency narrowed from `^15.0.0`)
+
+## 0.9.1
+
+- fix: also export `getAltTextHealth` from the package root. Importing it from `/server` pulled the admin widget's `@payloadcms/ui` styles into the config graph and crashed `payload generate:*` (`ERR_UNKNOWN_FILE_EXTENSION`); import it from the package root in code loaded outside a bundler (custom endpoints, MCP tools).
+
+## 0.9.0
+
+- **BREAKING**: serve the generate, bulk-generate, and health endpoints under `/api/alt-text/` (previously `/api/alt-text-plugin/`) so the endpoint prefix matches the plugin slug. Any API client calling the old paths must be updated.
+- fix: `openAIResolver` now builds its OpenAI client lazily, so a plugin disabled via `enabled: !!process.env.OPENAI_API_KEY` no longer throws at config load when the key is absent
+
+## 0.8.0
+
+- feat: bound and de-duplicate the bulk-generate `ids` array — duplicate IDs are collapsed and requests above the new `maxBulkGenerateIds` option (default 100) are rejected with `400`, so a single request can no longer fan out into an unbounded number of paid resolver calls
+- fix: enforce collection access control in the generate and bulk-generate endpoints by running the Local API reads and writes under the requesting user (`overrideAccess: false`)
+- fix: return the real HTTP status for access errors in the generate and bulk-generate endpoints — a `Forbidden` now responds `403` (and fails the whole bulk request instead of listing every id as errored) rather than a generic `500`, giving API clients an accurate, non-retryable signal
+- fix: reject requests to the generate and bulk-generate endpoints that target a collection the plugin does not manage with `403`, before any document read or write
+- fix: filter the alt text health report (endpoint and dashboard widget) to the collections the requesting user may read, so the aggregate no longer discloses counts and document IDs for collections their role cannot access
+- feat: `healthCheck` now accepts an access function that gates the health endpoint and hides the dashboard widget, letting the collection-wide report be restricted (e.g. to admins) separately from the generate endpoints
+- fix: respect update access in the admin UI — render the alt text field read-only and hide the single-document and bulk generate buttons for users without update access
+- fix: reject a generate request whose `locale` is not among the configured locales with `400`, so a write can't target an unconfigured locale and an arbitrary string can't be interpolated into the resolver's prompt
+
+## 0.7.0
+
+- feat: add `baseUrl` option to `openAIResolver` for OpenAI-compatible providers (e.g. Nebius, Azure)
+
+## 0.6.1
+
+- fix: pass `'max'` as the second `revalidateTag` argument so the health-widget cache invalidation no longer triggers Next 16's deprecation warning
+
+## 0.6.0
+
+- feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
+- fix: respect a user-customized `routes.api` in the generate and bulk-generate buttons (the fetch previously hardcoded `/api/alt-text-plugin/...`)
+- refactor: use Payload's `formatAdminURL` helper when linking from the health widget to collection lists
 
 ## 0.5.0
 

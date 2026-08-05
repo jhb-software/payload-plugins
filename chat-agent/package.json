@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-chat-agent",
-  "version": "0.1.0-beta.4",
+  "version": "0.1.0-beta.9",
   "description": "A Payload CMS plugin that adds an AI chat agent for reading, creating, and updating content",
   "bugs": "https://github.com/jhb-software/payload-plugins/issues",
   "repository": "https://github.com/jhb-software/payload-plugins",
@@ -31,34 +31,35 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/react": "^3.0.166",
-    "ai": "^6.0.164",
+    "@ai-sdk/react": "^4.0.45",
+    "ai": "^7.0.42",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@payloadcms/next": "^3.83.0",
-    "@payloadcms/ui": "^3.83.0",
-    "next": "15.4.11",
-    "payload": "^3.83.0",
-    "react": "19.2.5",
-    "react-dom": "19.2.5"
+    "@payloadcms/next": "^3.86.0",
+    "@payloadcms/ui": "^3.86.0",
+    "next": "^15.0.0 || ^16.0.0",
+    "payload": "^3.86.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
     "@swc/cli": "^0.8.1",
-    "@swc/core": "^1.15.26",
+    "@swc/core": "^1.15.47",
     "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "copyfiles": "^2.4.1",
-    "eslint": "^9.0.0",
-    "jsdom": "^29.0.2",
-    "prettier": "^3.8.3",
+    "eslint": "^9.39.4",
+    "jsdom": "^30.0.1",
+    "prettier": "3.9.6",
     "rimraf": "^6.1.3",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.4"
+    "typescript": "^6.0.3",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
   },
   "files": [
     "dist"
@@ -104,6 +105,7 @@
     }
   },
   "engines": {
-    "node": "^18.20.2 || >=20.9.0"
-  }
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.8.0"
 }

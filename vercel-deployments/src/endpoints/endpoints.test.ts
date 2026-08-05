@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { VercelDeploymentsPluginConfig } from '../types.js'
 
@@ -36,6 +36,10 @@ function createMockReq(overrides: {
 }
 
 describe('getDeploymentsEndpoint', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('returns 401 when user is not authenticated (default access)', async () => {
     const req = createMockReq({ user: null })
     const response = await getDeploymentsEndpoint(req)
@@ -59,6 +63,21 @@ describe('getDeploymentsEndpoint', () => {
     expect(response.status).toBe(500)
     const body = await response.json()
     expect(body.error).toBe('Plugin config not found')
+  })
+
+  it('rejects an id containing path separators without contacting the Vercel API', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const req = createMockReq({
+      url: 'http://localhost:3000/api/vercel-deployments?id=..%2F..%2Fv9%2Fprojects',
+      user: { id: 'user-1' },
+    })
+
+    const response = await getDeploymentsEndpoint(req)
+
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body.error).toBe('Invalid deployment id')
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
 

@@ -8,7 +8,7 @@ import { matchesMimeType } from '../utilities/mimeTypes.js'
 import { GenerateAltTextButton } from './GenerateAltTextButton.js'
 
 export const AltTextField = (clientProps: TextareaFieldClientProps) => {
-  const { field, path } = clientProps
+  const { field, path, readOnly } = clientProps
 
   const supportedMimeTypes = field.admin?.custom?.supportedMimeTypes as string[] | undefined
   const trackedMimeTypes = field.admin?.custom?.trackedMimeTypes as string[] | undefined
@@ -41,9 +41,12 @@ export const AltTextField = (clientProps: TextareaFieldClientProps) => {
 
       <div className="field-type__wrap">
         <TextareaInput
-          AfterInput={<GenerateAltTextButton supportedMimeTypes={supportedMimeTypes} />}
+          AfterInput={
+            readOnly ? undefined : <GenerateAltTextButton supportedMimeTypes={supportedMimeTypes} />
+          }
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
           path={path}
+          readOnly={readOnly}
           required={required}
           value={value}
         />

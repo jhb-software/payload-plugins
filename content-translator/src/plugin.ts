@@ -5,6 +5,7 @@ import { deepMerge } from 'payload/shared'
 import type { TranslatorConfig } from './types.js'
 
 import { CustomButton } from './client/components/CustomButton/index.js'
+import { PLUGIN_SLUG } from './constants.js'
 import { translations } from './i18n/translations.js'
 import { translateEndpoint } from './translate/endpoint.js'
 
@@ -66,9 +67,10 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
         {
           handler: translateEndpoint(
             pluginConfig.access ?? (({ req }: { req: PayloadRequest }) => !!req.user),
+            { collections: pluginConfig.collections, globals: pluginConfig.globals },
           ),
           method: 'post',
-          path: '/translator/translate',
+          path: `/${PLUGIN_SLUG}/translate`,
         },
       ],
       globals:

@@ -186,7 +186,7 @@ async function findUsageDoc(
       ],
     },
   })
-  return (result.docs[0] as undefined | UsageDoc) ?? null
+  return result.docs[0] ?? null
 }
 
 async function getUsedTokens(
@@ -227,7 +227,7 @@ async function addUsage(
   if (!existing) {
     await req.payload.create({
       collection: slug as never,
-      data: { ...delta, model, period, scope } as never,
+      data: { ...delta, model, period, scope },
       overrideAccess: true,
     })
     return
@@ -239,7 +239,7 @@ async function addUsage(
       inputTokens: (existing.inputTokens ?? 0) + delta.inputTokens,
       outputTokens: (existing.outputTokens ?? 0) + delta.outputTokens,
       totalTokens: (existing.totalTokens ?? 0) + delta.totalTokens,
-    } as never,
+    },
     overrideAccess: true,
   })
 }

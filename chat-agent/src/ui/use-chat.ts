@@ -7,12 +7,14 @@
  * plus conversation persistence via the agent-conversations collection.
  */
 
+import type { UseChatOptions as AIUseChatOptions } from '@ai-sdk/react'
 import type { UIMessage } from 'ai'
 
 import { useChat as useAIChat } from '@ai-sdk/react'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { type AgentMode, type MessageMetadata, messageMetadataSchema } from '../types.js'
 
 export type ChatMessageUI = UIMessage<MessageMetadata>
@@ -81,7 +83,7 @@ function titleFromMessages(messages: UIMessage[]): string {
 
 export function useChat(options?: string | UseChatOptions) {
   const endpointUrl =
-    typeof options === 'string' ? options : (options?.endpointUrl ?? '/api/chat-agent/chat')
+    typeof options === 'string' ? options : (options?.endpointUrl ?? `/api/${PLUGIN_SLUG}/chat`)
   const model = typeof options === 'object' ? options?.model : undefined
   const mode = typeof options === 'object' ? options?.mode : undefined
   const chatId = typeof options === 'object' ? options?.chatId : undefined
@@ -121,7 +123,7 @@ export function useChat(options?: string | UseChatOptions) {
   )
 
   const handleFinish = useCallback(
-    async ({
+    ({
       message,
       messages: allMessages,
     }: {
@@ -131,7 +133,7 @@ export function useChat(options?: string | UseChatOptions) {
       if (message.role !== 'assistant') {
         return
       }
-      await persistMessages(allMessages)
+      void persistMessages(allMessages)
     },
     [persistMessages],
   )
@@ -178,7 +180,7 @@ export function useChat(options?: string | UseChatOptions) {
     [endpointUrl],
   )
 
-  const chatOptions: Record<string, unknown> = {
+  const chatOptions: AIUseChatOptions<ChatMessageUI> = {
     messageMetadataSchema,
     onError: handleError,
     onFinish: handleFinish,
@@ -194,8 +196,36 @@ export function useChat(options?: string | UseChatOptions) {
     chatOptions.messages = initialMessages
   }
 
-  const chat = useAIChat(chatOptions as any)
-  messagesRef.current = chat.messages as UIMessage<MessageMetadata>[]
+  const chat = useAIChat(chatOptions)
+  messagesRef.current = chat.messages
+
+  // The AI SDK auto-submits immediately after `addToolApprovalResponse()`,
+  // but that trigger is lost if the browser reloads after the approval has
+  // been saved as `approval-responded`. On hydration, submit that restored
+  // transcript once so the approved tool actually runs instead of rendering
+  // forever as a non-terminal "running" part.
+  const resumedApprovalRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!initialMessages || initialMessages.length === 0) {
+      return
+    }
+    if (chat.status === 'streaming' || chat.status === 'submitted') {
+      return
+    }
+    if (!lastAssistantMessageIsCompleteWithApprovalResponses({ messages: initialMessages })) {
+      return
+    }
+    const lastMessage = initialMessages[initialMessages.length - 1]
+    if (!lastMessage) {
+      return
+    }
+    const resumeKey = `${chatId ?? 'new'}:${lastMessage.id}`
+    if (resumedApprovalRef.current === resumeKey) {
+      return
+    }
+    resumedApprovalRef.current = resumeKey
+    void chat.sendMessage()
+  }, [chat.sendMessage, chat.status, chatId, initialMessages])
 
   return {
     ...chat,

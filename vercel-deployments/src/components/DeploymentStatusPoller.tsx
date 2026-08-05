@@ -1,10 +1,13 @@
 'use client'
 
+import { useConfig } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import React, { createContext, use, useCallback, useEffect, useRef, useState } from 'react'
 
 import type { DeploymentsInfo } from '../endpoints/getDeployments.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
+
+import { PLUGIN_SLUG } from '../constants.js'
 
 const IDLE_INTERVAL = 2 * 60 * 1000 // 2 minutes
 const ACTIVE_INTERVAL = 5 * 1000 // 5 seconds
@@ -27,6 +30,13 @@ export const useDeploymentPoller = () => use(PollerContext)
  */
 export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter()
+  const {
+    config: {
+      routes: { api: apiRoute },
+      serverURL,
+    },
+  } = useConfig()
+  const deploymentsEndpoint = `${serverURL ?? ''}${apiRoute}/${PLUGIN_SLUG}`
   const intervalRef = useRef<null | ReturnType<typeof setInterval>>(null)
   const activeDeploymentIdRef = useRef<null | string>(null)
   const [isBuilding, setIsBuilding] = useState(false)
@@ -59,7 +69,7 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
     }
 
     try {
-      const res = await fetch(`/api/vercel-deployments?id=${encodeURIComponent(deploymentId)}`, {
+      const res = await fetch(`${deploymentsEndpoint}?id=${encodeURIComponent(deploymentId)}`, {
         credentials: 'include',
       })
       if (!res.ok) {
@@ -87,12 +97,12 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
     } catch {
       // Silently ignore polling errors
     }
-  }, [router])
+  }, [router, deploymentsEndpoint])
 
   // Poll the list endpoint to detect any in-progress deployments (idle mode)
   const pollDeploymentsList = useCallback(async () => {
     try {
-      const res = await fetch('/api/vercel-deployments', { credentials: 'include' })
+      const res = await fetch(deploymentsEndpoint, { credentials: 'include' })
       if (!res.ok) {
         return
       }
@@ -116,13 +126,21 @@ export const DeploymentStatusPoller: React.FC<{ children: React.ReactNode }> = (
       }
 
       if (lastResponseRef.current !== responseText) {
+        // The server component already rendered with this exact data on the
+        // initial load, so refreshing on the first poll would just re-suspend
+        // the Suspense boundary and flash the skeleton again (twice under
+        // StrictMode's double-invoked effect). Seed the cache instead; only
+        // refresh once a later poll observes a real change.
+        const isFirstPoll = lastResponseRef.current === null
         lastResponseRef.current = responseText
-        router.refresh()
+        if (!isFirstPoll) {
+          router.refresh()
+        }
       }
     } catch {
       // Silently ignore polling errors
     }
-  }, [router])
+  }, [router, deploymentsEndpoint])
 
   // Switch between idle and active polling based on build state
   useEffect(() => {

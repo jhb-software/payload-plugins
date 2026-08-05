@@ -1,3 +1,4 @@
+import type * as AiModule from 'ai'
 import type { LanguageModel, Tool, UIMessage } from 'ai'
 import type { Payload, PayloadRequest } from 'payload'
 
@@ -14,7 +15,7 @@ import { runAgent } from './runAgent.js'
 // `stepCountIs`, …) and only swap `streamText` for a vi.fn whose return value
 // satisfies `result.text` / `result.totalUsage` reads in tests.
 vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+  const actual = await vi.importActual<typeof AiModule>('ai')
   return {
     ...actual,
     streamText: vi.fn((streamTextOpts: unknown) => {
@@ -144,7 +145,7 @@ describe('runAgent auth and mode guards', () => {
         defaultModel: 'gpt-4o-mini',
         model: makeModelFactory().factory,
       },
-      undefined as unknown as { id: number | string },
+      undefined,
     )
     ;(req as unknown as { user: unknown }).user = null
 
@@ -377,7 +378,8 @@ describe('runAgent systemPrompt option', () => {
       systemPrompt: 'you are a custom audit agent',
     })
 
-    expect(lastStreamTextCall().system).toBe('you are a custom audit agent')
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toBe('you are a custom audit agent')
   })
 
   it('lets a function transform the derived base prompt', async () => {
@@ -392,9 +394,210 @@ describe('runAgent systemPrompt option', () => {
       systemPrompt: (base) => `${base}\n\nExtra instruction.`,
     })
 
-    const sent = lastStreamTextCall().system as string
-    expect(sent.endsWith('Extra instruction.')).toBe(true)
-    expect(sent).toContain('CMS content assistant')
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content.endsWith('Extra instruction.')).toBe(true)
+    expect(sent.content).toContain('CMS content assistant')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Plugin-level systemPrompt callback (resolves per request)
+// ---------------------------------------------------------------------------
+
+describe('plugin-level systemPrompt callback', () => {
+  it('passes the auto-generated prompt as `defaultPrompt` and uses the callback return value as the final prompt', async () => {
+    vi.mocked(streamText).mockClear()
+    const callback = vi.fn(
+      ({ defaultPrompt }: { defaultPrompt: string; req: PayloadRequest }) =>
+        `${defaultPrompt}\n\nAlways respond in German.`,
+    )
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      systemPrompt: callback,
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    expect(callback).toHaveBeenCalledTimes(1)
+    expect(callback.mock.calls[0]?.[0].req).toBe(req)
+    expect(callback.mock.calls[0]?.[0].defaultPrompt).toContain('CMS content assistant')
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toContain('CMS content assistant')
+    expect(sent.content.endsWith('Always respond in German.')).toBe(true)
+  })
+
+  it('lets the callback fully replace the auto-generated prompt by ignoring `defaultPrompt`', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      systemPrompt: () => 'You are a marketing assistant.',
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toBe('You are a marketing assistant.')
+    expect(sent.content).not.toContain('CMS content assistant')
+  })
+
+  it('re-invokes the callback on each request so a Payload-global edit takes effect on the next chat', async () => {
+    vi.mocked(streamText).mockClear()
+    let dynamicTone = 'formal'
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      systemPrompt: ({ defaultPrompt }) => `${defaultPrompt}\n\nTone: ${dynamicTone}.`,
+    })
+
+    await runAgent(req, { messages: 'hi' })
+    const first = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(first.content.endsWith('Tone: formal.')).toBe(true)
+
+    dynamicTone = 'casual'
+
+    await runAgent(req, { messages: 'hi again' })
+    const second = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(second.content.endsWith('Tone: casual.')).toBe(true)
+  })
+
+  it('lets a per-call systemPrompt override still replace the plugin-level result', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      systemPrompt: () => 'plugin-level prompt',
+    })
+
+    await runAgent(req, {
+      messages: 'hi',
+      systemPrompt: 'caller-side replacement',
+    })
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toBe('caller-side replacement')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Deferred tool loading prompt guidance
+// ---------------------------------------------------------------------------
+
+describe('runAgent deferred tool prompt guidance', () => {
+  const fakeSearchTool = { type: 'tool_search_tool_bm25_20251119' } as unknown as Tool
+
+  it('adds concise tool-search guidance for Claude when tool discovery is enabled', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'claude-haiku-4-5-20251001',
+      model: makeModelFactory().factory,
+      toolDiscovery: { searchTool: fakeSearchTool },
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).toContain(
+      'Some tools are deferred. If a needed tool is missing, call `_chatAgentToolSearch` first.',
+    )
+  })
+
+  it('omits tool-search guidance for non-Claude models', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'gpt-4o-mini',
+      model: makeModelFactory().factory,
+      toolDiscovery: { searchTool: fakeSearchTool },
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    const sent = lastStreamTextCall().system as { content: string; role: 'system' }
+    expect(sent.content).not.toContain('Some tools are deferred')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Anthropic prompt caching
+// ---------------------------------------------------------------------------
+
+describe('runAgent prompt caching', () => {
+  it('marks the system prompt with an ephemeral cache breakpoint so it is reused across requests', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'claude-haiku-4-5',
+      model: makeModelFactory().factory,
+    })
+
+    await runAgent(req, { messages: 'hi' })
+
+    const sent = lastStreamTextCall().system as {
+      content: string
+      providerOptions: { anthropic: { cacheControl: { type: string } } }
+      role: string
+    }
+    expect(sent.role).toBe('system')
+    expect(sent.providerOptions.anthropic.cacheControl).toEqual({ type: 'ephemeral' })
+    expect(sent.content).toContain('CMS content assistant')
+  })
+
+  it('keeps a single cache breakpoint on the trailing message as multi-step accumulates messages', async () => {
+    vi.mocked(streamText).mockClear()
+    const req = makeReqWithPlugin({
+      defaultModel: 'claude-haiku-4-5',
+      model: makeModelFactory().factory,
+    })
+
+    await runAgent(req, { messages: [{ content: 'hi', role: 'user' }] })
+
+    const prepareStep = lastStreamTextCall().prepareStep
+    expect(prepareStep).toBeDefined()
+
+    // Simulate a multi-step state — earlier user message carries a stale
+    // breakpoint that should be moved onto the new tool-result tail.
+    const stepMessages = [
+      {
+        content: 'hi',
+        providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+        role: 'user' as const,
+      },
+      {
+        content: [{ type: 'tool-call' as const, input: {}, toolCallId: 'a', toolName: 'find' }],
+        role: 'assistant' as const,
+      },
+      {
+        content: [
+          {
+            type: 'tool-result' as const,
+            output: { type: 'json' as const, value: { ok: true } },
+            toolCallId: 'a',
+            toolName: 'find',
+          },
+        ],
+        role: 'tool' as const,
+      },
+    ]
+    const result = await prepareStep!({
+      initialInstructions: undefined,
+      initialMessages: stepMessages,
+      instructions: undefined,
+      messages: stepMessages,
+      model: {} as unknown as Parameters<NonNullable<typeof prepareStep>>[0]['model'],
+      responseMessages: [],
+      runtimeContext: {},
+      stepNumber: 1,
+      steps: [],
+      toolsContext: {},
+    })
+
+    const out = (result as { messages: typeof stepMessages }).messages
+    expect(out[0].providerOptions).toBeUndefined()
+    expect(out[1].providerOptions).toBeUndefined()
+    expect(out[2].providerOptions).toEqual({
+      anthropic: { cacheControl: { type: 'ephemeral' } },
+    })
   })
 })
 

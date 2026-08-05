@@ -25,6 +25,9 @@ type LinkMockProps = { children?: ReactNode; href: string; prefetch?: boolean } 
   'children' | 'href'
 >
 
+/* eslint-disable @eslint-react/hooks-extra/no-useless-custom-hooks --
+   Mock factory members are not real React hooks; the lint rule misfires on
+   property names that start with `use`. */
 vi.mock('@payloadcms/ui', () => ({
   Link: ({ children, href, prefetch: _prefetch, ...rest }: LinkMockProps) => (
     <a href={href} {...rest}>
@@ -39,6 +42,7 @@ vi.mock('@payloadcms/ui', () => ({
 vi.mock('next/navigation.js', () => ({
   usePathname: () => '/admin',
 }))
+/* eslint-enable @eslint-react/hooks-extra/no-useless-custom-hooks */
 
 const { default: ChatNavLinkServer } = await import('./ChatNavLinkServer.js')
 

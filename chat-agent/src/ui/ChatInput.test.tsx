@@ -44,7 +44,7 @@ const stubPointerMedia = (fine: boolean) => {
     onchange: null,
     removeEventListener: vi.fn(),
     removeListener: vi.fn(),
-  })) as unknown as typeof window.matchMedia
+  }))
 }
 
 describe('ChatInput', () => {

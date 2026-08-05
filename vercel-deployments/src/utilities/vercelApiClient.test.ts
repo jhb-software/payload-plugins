@@ -96,6 +96,19 @@ describe('VercelApiClient', () => {
       )
       expect(result.id).toBe('dpl-abc')
     })
+
+    it('encodes the id so path separators cannot alter the request path', async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({}),
+        ok: true,
+      })
+
+      await client.getDeployment({ idOrUrl: '../../v9/projects' })
+
+      const calledUrl = mockFetch.mock.calls[0][0] as string
+      expect(calledUrl).toContain('/v13/deployments/..%2F..%2Fv9%2Fprojects')
+      expect(calledUrl).not.toContain('/v9/projects')
+    })
   })
 
   describe('createDeployment', () => {

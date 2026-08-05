@@ -1,7 +1,52 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.9
 
+BREAKING CHANGES:
+
+- fix!: bump the bundled `ai` dependency to v7 and `@ai-sdk/react` to v4. Not a peer dependency, so most installs are unaffected; if your app also imports `ai`/`@ai-sdk/*` directly (e.g. to build custom tools passed via `options.tools`), bump those to matching versions to avoid duplicate-package type conflicts.
+
+OTHER CHANGES:
+
+- fix: drop the UI-only `toolbarInline` and `toolbarFixed` feature keys from a `richText` field's `lexical.features`
+
+## 0.1.0-beta.8
+
+- feat: `update` and `delete` tools now accept a `where` query for bulk operations, mirroring Payload's local API. Pass `id` to target a single document or `where` to update/delete many in one call; `update` also accepts an optional `limit` when using `where`.
+- fix: document in the system prompt that the list (`unorderedList`/`orderedList`/`checklist`), `blockquote`, and `horizontalRule` feature keys serialize to different Lexical node types, so the agent stops emitting types that fail `parseEditorState`.
+
+## 0.1.0-beta.7
+
+- feat: `emptyState` accepts a per-request callback `({ req }) => EmptyStateConfig | Promise<EmptyStateConfig>` in addition to a static object, so the empty chat screen can be loaded from a Payload global or varied per tenant.
+- feat: allow restricting the `read` mode via `modes.access.read`. Previously `read` was unconditionally available and the access function was ignored.
+- fix: accept numeric IDs in the `findById`, `update`, and `delete` tool schemas so Postgres setups (numeric document IDs) stop failing tool calls with a Zod validation error.
+- fix: add system prompt guidance for Claude to use `_chatAgentToolSearch` when deferred tool loading hides a needed tool.
+
+## 0.1.0-beta.6
+
+BREAKING CHANGES:
+
+- feat!: `systemPrompt` is now a per-request factory `({ req, defaultPrompt }) => string | Promise<string>` instead of a static string. Wrap `defaultPrompt` to extend, ignore it to replace. Migrate `systemPrompt: 'extra'` → `systemPrompt: ({ defaultPrompt }) => \`${defaultPrompt}\n\nextra\``.
+
+OTHER CHANGES:
+
+- fix: resume a reload-restored approved tool call instead of leaving it displayed as running forever.
+- fix: stop the orphan sanitizer from stripping ask-mode tool-calls that are waiting on user approval, which made the next request fail with `AI_ToolCallNotFoundForApprovalError`.
+- feat: animate the tool-call status dot and surface an elapsed-second counter while a tool is running
+
+## 0.1.0-beta.5
+
+BREAKING CHANGES:
+
+- feat!: add an `emptyState` plugin option to customize the empty chat screen with a `title`, a markdown `description`, and `starterPrompts` chips. The previous top-level `suggestedPrompts` option has been removed in favor of `emptyState.starterPrompts`.
+
+OTHER CHANGES:
+
+- feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
+- feat: add `toolDiscovery` plugin option for Anthropic's [Tool Search Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool). Cuts tool-definition tokens on the prefix substantially; activates only for `claude-*` models, ignored for other providers.
+- perf: tighten the system prompt to cut redundant fetches
+- perf: tighten the tool definitions
+- perf: enable Anthropic prompt caching so multi-step tool-use turns stop re-paying full input tokens for the system prompt, tool definitions, and accumulated tool-result history on every step.
 - feat: add `runAgent(req, opts)` so cron-triggered endpoints, Payload tasks, and webhooks can invoke the agent off-HTTP with the same tool / prompt / model machinery the chat endpoint uses. Throws if `req.user` is missing unless the caller passes `overrideAccess: true`.
 - feat: pass the resolved `modelId` to the `tools` plugin option so a multi-provider setup can conditionally include provider-native tools (e.g. drop `anthropic.tools.webSearch_*` when the user selects an OpenAI model) instead of sending a tool shape the selected provider would reject at runtime.
 - fix: clear the chat error banner when starting a new chat or switching conversations via the sidebar, so an error surfaced on the previous chat no longer carries over to an unrelated one

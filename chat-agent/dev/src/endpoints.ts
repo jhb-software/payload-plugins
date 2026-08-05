@@ -88,7 +88,10 @@ export const rootEndpoints: Endpoint[] = [
         },
       },
     },
-    handler: () => {
+    handler: async () => {
+      // simulate a slow response
+      await new Promise((resolve) => setTimeout(resolve, 5000))
+
       return Response.json({ ok: true, time: new Date().toISOString() })
     },
   },

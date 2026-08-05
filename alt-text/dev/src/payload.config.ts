@@ -80,7 +80,14 @@ export default buildConfig({
         apiKey: process.env.OPENAI_API_KEY!,
         model: 'gpt-4.1-mini',
       }),
-      healthCheck: true,
+      // Cap how many images a single bulk-generate request may process.
+      // Selecting more than this in the list view returns a 400 instead of
+      // fanning out into an unbounded number of paid resolver calls.
+      maxBulkGenerateIds: 25,
+      // The function form gates the collection-wide health report (endpoint and
+      // widget) more strictly than the per-document generate endpoints, which
+      // allow any authenticated user: here only the designated admin sees it.
+      healthCheck: ({ req }) => req.user?.email === 'dev@payloadcms.com',
       getImageThumbnail: (doc: Record<string, unknown>) => {
         // in a real application, you would use a function to get a thumbnail URL (e.g. from the sizes)
         return doc.url as string

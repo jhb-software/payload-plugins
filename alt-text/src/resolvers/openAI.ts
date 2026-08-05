@@ -18,6 +18,12 @@ export type OpenAIResolverConfig = {
   /** OpenAI API key for authentication */
   apiKey: string
   /**
+   * Base URL for the OpenAI-compatible API.
+   * Use this to point at alternative providers (e.g. Azure, Nebius, local inference).
+   * @default undefined — the OpenAI SDK defaults to 'https://api.openai.com/v1'
+   */
+  baseUrl?: string
+  /**
    * The OpenAI LLM model to use for alt text generation.
    * @default 'gpt-4.1-nano'
    */
@@ -57,14 +63,28 @@ function zodResponseFormat<ZodInput extends z.ZodType>(
  * ```typescript
  * import { openAIResolver } from '@jhb.software/payload-alt-text-plugin'
  *
+ * // OpenAI
  * openAIResolver({
  *   apiKey: process.env.OPENAI_API_KEY,
  *   model: 'gpt-4.1-mini', // optional, defaults to 'gpt-4.1-nano'
  * })
+ *
+ * // OpenAI-compatible provider (e.g. Nebius)
+ * openAIResolver({
+ *   apiKey: process.env.NEBIUS_API_KEY,
+ *   baseUrl: 'https://api.tokenfactory.us-central1.nebius.com/v1',
+ *   model: 'Qwen/Qwen2.5-VL-72B-Instruct',
+ * })
  * ```
  */
 export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver => {
-  const { apiKey, model = 'gpt-4.1-nano' } = config
+  const { apiKey, baseUrl, model = 'gpt-4.1-nano' } = config
+
+  // Build the client lazily (once, on first use): the `resolver` argument is
+  // evaluated even when the plugin is disabled, so eager construction would
+  // throw on a keyless `enabled: !!process.env.OPENAI_API_KEY` setup.
+  let openai: OpenAI | undefined
+  const getClient = (): OpenAI => (openai ??= new OpenAI({ apiKey, baseURL: baseUrl }))
 
   return {
     key: 'openai',
@@ -74,14 +94,12 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
       locale,
     }: AltTextResolverArgs): Promise<AltTextResolverResponse> => {
       try {
-        const openai = new OpenAI({ apiKey })
-
         const modelResponseSchema = z.object({
           altText: z.string().describe('A concise, descriptive alt text for the image'),
           keywords: z.array(z.string()).describe('Keywords that describe the content of the image'),
         })
 
-        const response = await openai.chat.completions.parse({
+        const response = await getClient().chat.completions.parse({
           max_completion_tokens: 150,
           messages: [
             {
@@ -144,8 +162,6 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
       locales,
     }: AltTextBulkResolverArgs): Promise<AltTextBulkResolverResponse> => {
       try {
-        const openai = new OpenAI({ apiKey })
-
         const modelResponseSchema = z.object(
           Object.fromEntries(
             locales.map((locale) => [
@@ -160,7 +176,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           ),
         )
 
-        const response = await openai.chat.completions.parse({
+        const response = await getClient().chat.completions.parse({
           max_completion_tokens: 300,
           messages: [
             {

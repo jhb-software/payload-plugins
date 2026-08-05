@@ -11,28 +11,25 @@
 import type { PayloadConfigForPrompt } from './schema.js'
 import type { AgentMode } from './types.js'
 
-import { scanRichTextFeatures } from './schema.js'
+import { FEATURE_KEY_TO_NODE_TYPE, scanRichTextFeatures } from './schema.js'
 
 /**
- * Build the system prompt for the chat agent.
+ * Build the auto-generated system prompt for the chat agent. Consumers don't
+ * extend it through this function; they either replace or wrap the returned
+ * string via the plugin's `systemPrompt` option.
  *
  * @param payloadConfig        The Payload runtime config (`req.payload.config`)
- * @param customPrefix         Optional user-provided text prepended to the prompt
  * @param hasCustomEndpoints   Whether `listEndpoints` is available — controls
  *                             whether to mention it in the rules
  * @param mode                 Current agent mode (affects behavioral instructions)
  */
 export function buildSystemPrompt(
   payloadConfig: PayloadConfigForPrompt,
-  customPrefix?: string,
   hasCustomEndpoints = false,
   mode?: AgentMode,
+  hasDeferredTools = false,
 ): string {
   const sections: string[] = []
-
-  if (customPrefix) {
-    sections.push(customPrefix)
-  }
 
   const adminRoute = payloadConfig.routes?.admin ?? '/admin'
 
@@ -40,7 +37,8 @@ export function buildSystemPrompt(
     ...(payloadConfig.collections ?? []).map((c) => c.fields ?? []),
     ...(payloadConfig.globals ?? []).map((g) => g.fields ?? []),
   ]
-  const { hasBlocksFeature, hasLexicalFeatures } = scanRichTextFeatures(fieldGroups)
+  const { featureKeyMismatches, hasBlocksFeature, hasLexicalFeatures, hasListFeature } =
+    scanRichTextFeatures(fieldGroups)
 
   sections.push(
     'You are a CMS content assistant with access to the Payload CMS database.',
@@ -86,12 +84,17 @@ export function buildSystemPrompt(
           '- Call `listEndpoints` to see plugin-provided custom endpoints that can be invoked via `callEndpoint`.',
         ]
       : []),
+    ...(hasDeferredTools
+      ? [
+          '- Some tools are deferred. If a needed tool is missing, call `_chatAgentToolSearch` first.',
+        ]
+      : []),
     '- When showing results, format them clearly. Summarize large result sets.',
     '- If a query returns no results, say so clearly.',
     "- Respect that your actions are limited by the current user's permissions.",
     '- If a tool call fails with a permission error, tell the user they lack access.',
     '- Payload uses [Lexical](https://lexical.dev) for rich text fields — their values are Lexical editor JSON state, not HTML or Markdown.',
-    "- Drafts: for versioned collections, the `draft` flag selects which table is read from or written to — the versions table (drafts) or the main collection table (published); it acts as a \"latest version\" flag and relaxes required-field validation on writes. The document's actual status lives in the `_status` field, with values `'draft'` or `'published'`.",
+    "- Drafts: for versioned collections, the `draft` flag selects which table is read from or written to — the versions table (drafts) or the main collection table (published); it acts as a \"latest version\" flag and relaxes required-field validation on writes. The document's actual status lives in the `_status` field, with values `'draft'` or `'published'`. **If a fetched document has `_status: 'draft'`, pass `draft: true` on subsequent reads — without it you may get the published version (which can be empty if the doc was never published).**",
     ...(hasBlocksFeature
       ? [
           '',
@@ -114,12 +117,42 @@ export function buildSystemPrompt(
           'The `blockType` discriminator lives inside `fields`, not at the top level. `blockName` is an empty string unless the user named the block. `id` is optional on input — Payload generates an ObjectId automatically. Inline-block nodes use `"type": "inlineBlock"` and `"version": 1` instead.',
         ]
       : []),
+    ...(hasListFeature
+      ? [
+          '',
+          '## Lexical list nodes',
+          'The `unorderedList`, `orderedList`, and `checklist` feature keys all emit `"type": "list"` — never a node type matching the key. Distinguish via `listType`/`tag`: `bullet`/`ul`, `number`/`ol`, `check`/`ul`.',
+          '',
+          '```json',
+          '{',
+          '  "type": "list", "version": 1, "listType": "bullet", "tag": "ul", "start": 1, "format": "",',
+          '  "children": [',
+          '    { "type": "listitem", "version": 1, "value": 1, "format": "", "indent": 0, "children": [{ "type": "text", "text": "…" }] }',
+          '  ]',
+          '}',
+          '```',
+          '',
+          'Increment `value` for each sibling `listitem`. Checklist items add `"checked": true | false`.',
+        ]
+      : []),
+    ...(featureKeyMismatches.length > 0
+      ? [
+          '',
+          '## Feature key → node type',
+          'These feature keys serialize to a different node `type`:',
+          ...featureKeyMismatches.map(
+            (key) => `- \`${key}\` → \`"type": "${FEATURE_KEY_TO_NODE_TYPE[key]}"\``,
+          ),
+        ]
+      : []),
     '',
     '## Token efficiency',
     '- Always use `select` to request only the fields you need. Never fetch all fields when you only need a few.',
     '- Keep `depth` at 0 (the default) unless you specifically need populated relationship data. Depth 0 returns relationship IDs only.',
     '- Use `limit` to fetch only as many documents as needed.',
     '- For listing/browsing, select only summary fields (e.g. id, title, slug, status) first, then fetch full details with findByID only when needed.',
+    "- Don't re-fetch a document already loaded in this conversation unless its data may have changed. A write tool (`update`, `create`, `updateGlobal`) returns the saved document — use that response directly instead of following it with a `findByID`.",
+    '- When an expected field is missing from a response, the most likely causes (in order) are: a localized field unset in the requested locale (try another locale), an unpublished doc requiring `draft: true`, or a `select` that excluded the field. Check those before broadening `depth` or removing `select`.',
     '',
     '## Admin Panel Links',
     `When referencing a document (after create/update/find), render it as a markdown link to its admin page so the user can open it. Use the title as the label, ID as fallback. Patterns (relative URLs): \`${adminRoute}/collections/<slug>/<id>\`, \`${adminRoute}/collections/<slug>\`, \`${adminRoute}/globals/<slug>\`.`,
@@ -161,7 +194,7 @@ export function buildSystemPrompt(
       '## Localization',
       `Locales: ${locales.join(', ')}`,
       `Default locale: ${payloadConfig.localization.defaultLocale}`,
-      'Use the `locale` parameter in tool calls to read/write localized fields.',
+      'Use the `locale` parameter in tool calls to read/write localized fields. **A localized field with no value in the requested locale is omitted from the response — not returned as `null`.** If a field you expect is missing, try the other locales before broadening `select` or `depth`.',
     )
   }
 

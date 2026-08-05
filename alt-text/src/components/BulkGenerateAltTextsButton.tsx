@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, toast, useSelection, useTranslation } from '@payloadcms/ui'
+import { Button, toast, useAuth, useConfig, useSelection, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { useTransition } from 'react'
 
@@ -9,13 +9,23 @@ import type {
   PluginAltTextTranslations,
 } from '../translations/index.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 
 export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug: string }) {
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
   const [isPending, startTransition] = useTransition()
+  const { permissions } = useAuth()
   const { selected, setSelection } = useSelection()
+
+  const canUpdateCollection = Boolean(permissions?.collections?.[collectionSlug]?.update)
+  const {
+    config: {
+      routes: { api: apiRoute },
+      serverURL,
+    },
+  } = useConfig()
 
   const selectedIds = Array.from(selected.entries())
     .filter(([, isSelected]) => isSelected)
@@ -30,7 +40,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
       }
 
       try {
-        const response = await fetch('/api/alt-text-plugin/generate/bulk', {
+        const response = await fetch(`${serverURL ?? ''}${apiRoute}/${PLUGIN_SLUG}/generate/bulk`, {
           body: JSON.stringify({
             collection: collectionSlug,
             ids: selectedIds,
@@ -88,6 +98,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
   }
 
   return (
+    canUpdateCollection &&
     selectedIds.length > 0 && (
       <div className="m-0" style={{ display: 'flex', justifyContent: 'right' }}>
         <Button

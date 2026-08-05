@@ -4,17 +4,20 @@
  * the agent off-HTTP. See the `runAgent` JSDoc below for the public contract.
  */
 
-import type { ModelMessage, StreamTextResult, Tool, ToolSet, UIMessage } from 'ai'
+import type { ModelMessage, Tool, ToolSet, UIMessage } from 'ai'
 import type { PayloadRequest } from 'payload'
 
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import type { AgentMode, BudgetConfig, ChatAgentPluginOptions } from './types.js'
 
+import { systemMessageWithCache, withTrailingCache } from './cache-control.js'
+import { debugLogPromptIfEnabled } from './debug-prompt.js'
 import { getDefaultMode } from './modes.js'
 import { getPluginOptions } from './plugin-custom-config.js'
 import { sanitizeOrphanToolCalls } from './sanitize-tool-calls.js'
 import { buildSystemPrompt } from './system-prompt.js'
+import { applyToolDiscovery, isAnthropicModel } from './tool-discovery.js'
 import { buildTools, discoverEndpoints, filterToolsByMode } from './tools.js'
 
 export interface RunAgentOptions {
@@ -67,7 +70,7 @@ export interface RunAgentOptions {
 }
 
 /** Result mirrors `streamText`'s handle so callers choose how to consume it. */
-export type RunAgentResult = StreamTextResult<ToolSet, never>
+export type RunAgentResult = ReturnType<typeof streamText<ToolSet, never>>
 
 /**
  * Thrown when a consumer-supplied `tools` factory throws. Lets the HTTP
@@ -152,7 +155,7 @@ export async function runAgentImpl(
 
   const customEndpoints = discoverEndpoints(req.payload.config)
   const builtInTools = buildTools(
-    req.payload as unknown as Parameters<typeof buildTools>[0],
+    req.payload,
     req.user,
     overrideAccess,
     req,
@@ -165,16 +168,16 @@ export async function runAgentImpl(
   let baseTools: ToolSet
   if (pluginOptions.tools) {
     try {
-      baseTools = (await pluginOptions.tools({
+      baseTools = await pluginOptions.tools({
         defaultTools: builtInTools,
         modelId,
         req,
-      })) as ToolSet
+      })
     } catch (err) {
       throw new ToolsResolverError(err)
     }
   } else {
-    baseTools = builtInTools as ToolSet
+    baseTools = builtInTools
   }
 
   let finalTools: ToolSet
@@ -185,14 +188,22 @@ export async function runAgentImpl(
   } else {
     finalTools = baseTools
   }
-  const tools = filterToolsByMode(finalTools as Record<string, Tool>, mode)
+  const tools = applyToolDiscovery(
+    filterToolsByMode(finalTools as Record<string, Tool>, mode),
+    pluginOptions.toolDiscovery,
+    modelId,
+  )
 
-  const basePrompt = buildSystemPrompt(
+  const hasDeferredTools = Boolean(pluginOptions.toolDiscovery && isAnthropicModel(modelId))
+  const defaultPrompt = buildSystemPrompt(
     req.payload.config,
-    pluginOptions.systemPrompt,
     customEndpoints.length > 0,
     mode,
+    hasDeferredTools,
   )
+  const basePrompt = pluginOptions.systemPrompt
+    ? await pluginOptions.systemPrompt({ defaultPrompt, req })
+    : defaultPrompt
   let systemPrompt: string
   if (typeof opts.systemPrompt === 'string') {
     systemPrompt = opts.systemPrompt
@@ -220,16 +231,21 @@ export async function runAgentImpl(
 
   const maxSteps = opts.maxSteps ?? pluginOptions.maxSteps ?? 20
 
-  return streamText({
+  await debugLogPromptIfEnabled({ messages, systemPrompt, tools })
+
+  return streamText<ToolSet, never>({
     abortSignal: opts.abortSignal,
     messages,
     model: resolvedModel,
     onFinish,
+    prepareStep: ({ messages: stepMessages }) => ({
+      messages: withTrailingCache(stepMessages),
+    }),
     stopWhen: stepCountIs(maxSteps),
-    system: systemPrompt,
+    system: systemMessageWithCache(systemPrompt),
     toolChoice: 'auto',
     tools,
-  }) as unknown as RunAgentResult
+  })
 }
 
 type FinishEvent = {
@@ -273,7 +289,7 @@ async function normaliseMessages(
   input: ModelMessage[] | string | UIMessage[],
 ): Promise<ModelMessage[]> {
   if (typeof input === 'string') {
-    return [{ content: input, role: 'user' } as ModelMessage]
+    return [{ content: input, role: 'user' }]
   }
   if (!Array.isArray(input) || input.length === 0) {
     return input as ModelMessage[]

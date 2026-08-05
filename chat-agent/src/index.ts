@@ -23,9 +23,10 @@
 import type { TextStreamPart, ToolSet } from 'ai'
 import type { PayloadRequest } from 'payload'
 
-import type { AgentMode, ChatAgentPluginOptions } from './types.js'
+import type { AgentMode, ChatAgentPluginOptions, EmptyStateConfig } from './types.js'
 
 import { isPluginAccessAllowed } from './access.js'
+import { PLUGIN_SLUG } from './constants.js'
 import { conversationEndpoints, conversationsCollection } from './conversations.js'
 import {
   getDefaultMode,
@@ -45,7 +46,12 @@ export {
 } from './budget.js'
 export { runAgent, type RunAgentOptions, type RunAgentResult } from './runAgent.js'
 export type { BudgetConfig, BudgetUsage } from './types.js'
-export type { ChatAgentPluginOptions, ModelFactory, ModelOption } from './types.js'
+export type {
+  ChatAgentPluginOptions,
+  EmptyStateConfig,
+  ModelFactory,
+  ModelOption,
+} from './types.js'
 export { AGENT_MODES, type AgentMode, type ModesConfig } from './types.js'
 export { type MessageMetadata, messageMetadataSchema } from './types.js'
 
@@ -54,6 +60,29 @@ export { type MessageMetadata, messageMetadataSchema } from './types.js'
 // triggering a CSS import chain (DefaultTemplate → @payloadcms/ui → react-image-crop).
 const CHAT_VIEW_COMPONENT = '@jhb.software/payload-chat-agent/server#ChatViewServer'
 const CHAT_NAV_LINK_COMPONENT = '@jhb.software/payload-chat-agent/server#ChatNavLinkServer'
+
+/**
+ * Resolves the configured empty state — supports both a static object and a
+ * per-request callback. Returns `undefined` when no field is populated so an
+ * unconfigured plugin doesn't ship an empty object the client has to special-case.
+ */
+export async function resolveEmptyState(
+  input: ChatAgentPluginOptions['emptyState'],
+  req: PayloadRequest,
+): Promise<EmptyStateConfig | undefined> {
+  const resolved = typeof input === 'function' ? await input({ req }) : input
+  if (!resolved) {
+    return undefined
+  }
+  // `starterPrompts: []` is meaningful — it's the opt-out signal that
+  // disables the chips on the client. Treat any array (incl. empty) as a
+  // configured field so the empty array survives the trip to the client.
+  const hasField =
+    (typeof resolved.title === 'string' && resolved.title.length > 0) ||
+    (typeof resolved.description === 'string' && resolved.description.length > 0) ||
+    Array.isArray(resolved.starterPrompts)
+  return hasField ? resolved : undefined
+}
 
 /**
  * Validate that a messages array is non-empty and has valid roles.
@@ -155,16 +184,15 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             }
 
             const available = await resolveAvailableModes(modesConfig, req)
+            const emptyState = await resolveEmptyState(options.emptyState, req)
             return Response.json({
               default: getDefaultMode(modesConfig),
               modes: available,
-              ...(options.suggestedPrompts?.length
-                ? { suggestedPrompts: options.suggestedPrompts }
-                : {}),
+              ...(emptyState ? { emptyState } : {}),
             })
           },
           method: 'get',
-          path: '/chat-agent/modes',
+          path: `/${PLUGIN_SLUG}/modes`,
         },
 
         // --- GET /chat-agent/chat/models ------------------------------------
@@ -179,7 +207,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             })
           },
           method: 'get',
-          path: '/chat-agent/chat/models',
+          path: `/${PLUGIN_SLUG}/chat/models`,
         },
 
         // --- POST /chat-agent/chat ------------------------------------------
@@ -318,7 +346,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
             })
           },
           method: 'post',
-          path: '/chat-agent/chat',
+          path: `/${PLUGIN_SLUG}/chat`,
         },
 
         // --- GET /chat-agent/budget -----------------------------------------
@@ -336,7 +364,7 @@ export function chatAgentPlugin(options: ChatAgentPluginOptions) {
                   return Response.json({ remaining: r })
                 },
                 method: 'get' as const,
-                path: '/chat-agent/budget',
+                path: `/${PLUGIN_SLUG}/budget`,
               },
             ]
           : []),

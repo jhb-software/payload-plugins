@@ -116,6 +116,38 @@ export interface InlineBlockNode extends LexicalNode {
 }
 
 /**
+ * Lexical table cell header state bitmask.
+ * @see https://github.com/facebook/lexical/blob/main/packages/lexical-table/src/LexicalTableCellNode.ts
+ */
+export const TableCellHeaderStates = {
+  NO_STATUS: 0,
+  ROW: 1,
+  COLUMN: 2,
+  BOTH: 3,
+} as const
+
+/**
+ * A single cell within a table row. The `headerState` bitmask determines
+ * whether the cell is a header (`<th>`) and along which axis.
+ */
+export interface TableCellNode extends LexicalNode {
+  type: 'tablecell'
+  headerState?: number
+  colSpan?: number
+  rowSpan?: number
+}
+
+export interface TableRowNode extends LexicalNode {
+  type: 'tablerow'
+  children?: TableCellNode[]
+}
+
+export interface TableNode extends LexicalNode {
+  type: 'table'
+  children?: TableRowNode[]
+}
+
+/**
  * @see https://github.com/payloadcms/payload/blob/main/packages/richtext-lexical/src/features/upload/server/nodes/UploadNode.tsx
  */
 export interface UploadNode extends LexicalNode {

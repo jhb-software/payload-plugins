@@ -7,6 +7,11 @@ vi.mock('next/navigation.js', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 
+// Minimal stub: importing the real @payloadcms/ui pulls in CSS that vitest can't load.
+vi.mock('@payloadcms/ui', () => ({
+  useConfig: () => ({ config: { routes: { api: '/api' }, serverURL: '' } }),
+}))
+
 const { DeploymentStatusPoller } = await import('./DeploymentStatusPoller.js')
 
 function mockFetchResponse(data: object) {
@@ -60,7 +65,7 @@ describe('DeploymentStatusPoller', () => {
     await vi.advanceTimersByTimeAsync(0)
   }
 
-  it('does not call router.refresh() when polled data is unchanged', async () => {
+  it('does not call router.refresh() on the first poll (server already rendered this data)', async () => {
     render(
       <DeploymentStatusPoller>
         <div />
@@ -68,11 +73,11 @@ describe('DeploymentStatusPoller', () => {
     )
     await flushPolling()
 
-    // First poll always refreshes (no previous data)
-    expect(mockRefresh).toHaveBeenCalledTimes(1)
-    mockRefresh.mockClear()
+    // First poll seeds the cache without refreshing — otherwise the skeleton
+    // flashes again right after the initial server render.
+    expect(mockRefresh).not.toHaveBeenCalled()
 
-    // Advance past idle interval — same data returned
+    // Advance past idle interval — same data returned, still no refresh
     await vi.advanceTimersByTimeAsync(2 * 60 * 1000)
     await flushPolling()
 

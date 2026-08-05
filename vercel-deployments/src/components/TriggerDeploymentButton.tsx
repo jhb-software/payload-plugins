@@ -1,7 +1,8 @@
 'use client'
-import { Button, toast } from '@payloadcms/ui'
+import { Button, toast, useConfig } from '@payloadcms/ui'
 import React, { useTransition } from 'react'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { useDashboardTranslation } from '../react-hooks/useDashboardTranslation.js'
 import { useDeploymentPoller } from './DeploymentStatusPoller.js'
 import { RefreshIcon } from './icons/refresh.js'
@@ -11,11 +12,17 @@ export const TriggerFrontendDeploymentButton: React.FC = () => {
   const [isPending, startTransition] = useTransition()
   const { t } = useDashboardTranslation()
   const { notifyBuildTriggered } = useDeploymentPoller()
+  const {
+    config: {
+      routes: { api: apiRoute },
+      serverURL,
+    },
+  } = useConfig()
 
   const handleClick = () => {
     startTransition(async () => {
       try {
-        const res = await fetch('/api/vercel-deployments', {
+        const res = await fetch(`${serverURL ?? ''}${apiRoute}/${PLUGIN_SLUG}`, {
           credentials: 'include',
           method: 'POST',
         })

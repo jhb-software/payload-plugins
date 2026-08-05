@@ -5,8 +5,6 @@ import type stream from 'stream'
 import { v2 as cloudinary } from 'cloudinary'
 import fs from 'fs'
 
-import type { ClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
-
 import { generatePublicId } from './utilities/generatePublicId.js'
 
 type HandleUploadArgs = {
@@ -23,16 +21,6 @@ export const getHandleUpload = ({
   useFilename,
 }: HandleUploadArgs): HandleUpload => {
   return async ({ data, file }) => {
-    const clientUploadContext = file.clientUploadContext as ClientUploadContext | undefined
-
-    // If the file was already uploaded from the client, add the publicId and secureUrl to the data object and return it
-    if (clientUploadContext) {
-      data.cloudinaryPublicId = clientUploadContext.publicId
-      data.url = clientUploadContext.secureUrl
-
-      return data
-    }
-
     const uploadOptions: UploadApiOptions = {
       folder: folderSrc,
       public_id: useFilename ? generatePublicId(prefix, file.filename) : undefined,
