@@ -476,17 +476,18 @@ describe('findPageByPath query cost', () => {
     const parent = await createPage({ title: 'B', slug: 'b', parent: grandparent.id })
     await createPage({ title: 'C', slug: 'c', parent: parent.id })
 
-    // The virtual `path` is computed by walking the ancestor chain, and every ancestor is read
-    // via findByID, so each ancestor read reaches the database as a `findOne` on the collection.
+    // The virtual `path` is computed by walking the ancestor chain, which reads the ancestors
+    // of one level in a single batched `find` on their ids.
     const ancestorReads: string[] = []
-    const findOne = payload.db.findOne.bind(payload.db)
+    const find = payload.db.find.bind(payload.db)
     const spy = vi
-      .spyOn(payload.db, 'findOne')
-      .mockImplementation(async (args: Parameters<typeof findOne>[0]) => {
-        if (args.collection === 'pages') {
+      .spyOn(payload.db, 'find')
+      .mockImplementation(async (args: Parameters<typeof find>[0]) => {
+        const ids = (args.where as { id?: { in?: unknown } } | undefined)?.id?.in
+        if (args.collection === 'pages' && Array.isArray(ids)) {
           ancestorReads.push(JSON.stringify(args.where))
         }
-        return findOne(args)
+        return find(args)
       })
 
     try {

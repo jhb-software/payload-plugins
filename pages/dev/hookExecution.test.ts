@@ -9,20 +9,17 @@ import {
 } from './src/test/hookExecutionCounter'
 
 /**
- * These tests document a hidden cost of the virtual `path` / `breadcrumbs` generation.
+ * These tests pin the cost that virtual `path` / `breadcrumbs` generation is allowed to add to
+ * a read.
  *
- * To build the path of a nested page, the `beforeRead` hook walks up the parent chain and
- * loads every ancestor through a full `payload.findByID` Local API call. A full Local API
- * call runs the parent collection's ENTIRE hook chain, so every user-defined `afterRead`
- * hook on the page collection runs once more per ancestor — for documents the caller never
- * asked for. A user hook that signs image URLs, calls an external API or computes derived
- * data therefore gets silently multiplied by the depth of the page tree on every read.
+ * To build the path of a nested page, the plugin walks up the parent chain. That walk reads
+ * ancestors straight from the database adapter and selects only the fields the path is built
+ * from, so it never enters the ancestor collections' hook chain: a user-defined `afterRead`
+ * hook (signing image URLs, calling an external API, computing derived data) runs exactly once
+ * for the document the caller asked for and ZERO times per ancestor, no matter how deep the
+ * page tree is or how many documents a list query returns.
  *
- * The assertions below pin the CURRENT counts, so they describe the problem rather than the
- * desired end state. A future lean ancestor walk (loading only the fields the path needs,
- * bypassing the hook chain) should drive every ancestor count to 0; when that lands, the
- * expected ancestor counts in this file are meant to be updated to 0 and the leaf/requested
- * document counts left unchanged.
+ * Every ancestor count below is therefore 0, and only the requested documents run hooks.
  *
  * All reads use `depth: 0` on purpose. At Payload's default `depth: 2` the `parent`
  * relationship is additionally populated, which runs the same hooks again for reasons that
@@ -83,7 +80,7 @@ const seedChain = async () => {
 }
 
 describe('afterRead hook executions caused by the ancestor walk', () => {
-  test("executes the parent collection's afterRead hook for every distinct ancestor when generating the path", async () => {
+  test("does not execute the parent collection's afterRead hook for any ancestor when generating the path", async () => {
     const { a, b, c, root } = await seedChain()
     resetHookExecutionCounts()
 
@@ -93,28 +90,29 @@ describe('afterRead hook executions caused by the ancestor walk', () => {
     expect(doc.path).toBe('/de/a/b/c')
     expect(collectionAfterReadCount(c.id)).toBe(1)
 
-    // ...but each of the three ancestors is read as well, running the collection's
-    // afterRead hook for documents the caller never requested
-    expect(collectionAfterReadCount(b.id)).toBe(1)
-    expect(collectionAfterReadCount(a.id)).toBe(1)
-    expect(collectionAfterReadCount(root.id)).toBe(1)
+    // ...and none of the three ancestors runs the collection's afterRead hook, even though
+    // all of them are needed to build the path
+    expect(collectionAfterReadCount(b.id)).toBe(0)
+    expect(collectionAfterReadCount(a.id)).toBe(0)
+    expect(collectionAfterReadCount(root.id)).toBe(0)
   })
 
-  test('runs the ancestor afterRead hooks again on every separate read because the ancestor cache is request-scoped', async () => {
+  test('keeps ancestor afterRead hooks unexecuted across repeated reads of the same document', async () => {
     const { a, b, c, root } = await seedChain()
     resetHookExecutionCounts()
 
     await payload.findByID({ collection: 'pages', id: c.id, depth: 0, locale: 'de' })
     await payload.findByID({ collection: 'pages', id: c.id, depth: 0, locale: 'de' })
 
-    // the promise cache in findByIDCached lives on `req.context`, so it dedupes within a
-    // single operation only — a second read pays the full ancestor cost again
-    expect(collectionAfterReadCount(b.id)).toBe(2)
-    expect(collectionAfterReadCount(a.id)).toBe(2)
-    expect(collectionAfterReadCount(root.id)).toBe(2)
+    // the ancestor cache lives on `req.context` and therefore does not survive between reads,
+    // but the walk itself runs no hooks, so a repeated read costs nothing in hook executions
+    expect(collectionAfterReadCount(c.id)).toBe(2)
+    expect(collectionAfterReadCount(b.id)).toBe(0)
+    expect(collectionAfterReadCount(a.id)).toBe(0)
+    expect(collectionAfterReadCount(root.id)).toBe(0)
   })
 
-  test('runs the ancestor afterRead hooks once per distinct ancestor for a list of sibling pages', async () => {
+  test('runs no ancestor afterRead hook for a list of sibling pages', async () => {
     const { a, b, c, root } = await seedChain()
     const siblings = [c]
     for (let index = 0; index < 5; index++) {
@@ -136,12 +134,10 @@ describe('afterRead hook executions caused by the ancestor walk', () => {
       expect(collectionAfterReadCount(sibling.id)).toBe(1)
     }
 
-    // the request-scoped promise cache collapses the six identical parent chains, so each
-    // distinct ancestor is read once rather than once per sibling — the amplification is
-    // bounded by tree depth here, not by page size
-    expect(collectionAfterReadCount(b.id)).toBe(1)
-    expect(collectionAfterReadCount(a.id)).toBe(1)
-    expect(collectionAfterReadCount(root.id)).toBe(1)
+    // no ancestor of the six siblings runs a hook — neither once per sibling nor once in total
+    expect(collectionAfterReadCount(b.id)).toBe(0)
+    expect(collectionAfterReadCount(a.id)).toBe(0)
+    expect(collectionAfterReadCount(root.id)).toBe(0)
   })
 
   test('does not touch any ancestor when the query selects no virtual field', async () => {
@@ -157,7 +153,7 @@ describe('afterRead hook executions caused by the ancestor walk', () => {
     })
 
     // without a virtual field in the select there is no path to generate, so no ancestor is
-    // walked — this is the baseline the ancestor counts above should eventually match
+    // walked at all — the same hook cost the walking reads above now have
     expect(doc.path).toBeUndefined()
     expect(collectionAfterReadCount(c.id)).toBe(1)
     expect(collectionAfterReadCount(b.id)).toBe(0)
@@ -165,7 +161,7 @@ describe('afterRead hook executions caused by the ancestor walk', () => {
     expect(collectionAfterReadCount(root.id)).toBe(0)
   })
 
-  test('runs field-level afterRead hooks of ancestors only for the fields the ancestor walk selects', async () => {
+  test('runs no field-level afterRead hook of an ancestor, not even for the fields the walk reads', async () => {
     const { a, b, c, root } = await seedChain()
     resetHookExecutionCounts()
 
@@ -175,14 +171,12 @@ describe('afterRead hook executions caused by the ancestor walk', () => {
     expect(fieldAfterReadCount('title', c.id)).toBe(1)
     expect(fieldAfterReadCount('content', c.id)).toBe(1)
 
-    // `title` is the breadcrumb label field, so the ancestor walk selects it and its
-    // field-level hook runs for every ancestor as well
-    expect(fieldAfterReadCount('title', b.id)).toBe(1)
-    expect(fieldAfterReadCount('title', a.id)).toBe(1)
-    expect(fieldAfterReadCount('title', root.id)).toBe(1)
+    // `title` is the breadcrumb label field, so the walk reads it for every ancestor — but it
+    // reads it from the database adapter, which never runs field hooks
+    expect(fieldAfterReadCount('title', b.id)).toBe(0)
+    expect(fieldAfterReadCount('title', a.id)).toBe(0)
+    expect(fieldAfterReadCount('title', root.id)).toBe(0)
 
-    // fields outside that select are stripped before the field hooks run, which keeps the
-    // amplification off unrelated fields — only fields the walk happens to need pay the cost
     expect(fieldAfterReadCount('content', b.id)).toBe(0)
     expect(fieldAfterReadCount('content', a.id)).toBe(0)
     expect(fieldAfterReadCount('content', root.id)).toBe(0)

@@ -2553,8 +2553,8 @@ describe('Request-scoped ancestor caching', () => {
     }
   })
 
-  test('shared parent is only fetched once when listing siblings', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('reads the shared parent once for the whole sibling list, not once per sibling', async () => {
+    const reads = captureAncestorReads()
 
     await payload.find({
       collection: 'pages',
@@ -2562,14 +2562,11 @@ describe('Request-scoped ancestor caching', () => {
       where: { parent: { equals: parent.id } },
     })
 
-    const parentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === parent.id && call[0].collection === 'pages',
-    )
-    expect(parentFetches).toHaveLength(1)
+    expect(reads.forId(parent.id)).toHaveLength(1)
   })
 
-  test('shared grandparent is only fetched once when listing siblings', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('reads the shared grandparent once for the whole sibling list', async () => {
+    const reads = captureAncestorReads()
 
     await payload.find({
       collection: 'pages',
@@ -2577,12 +2574,9 @@ describe('Request-scoped ancestor caching', () => {
       where: { parent: { equals: parent.id } },
     })
 
-    // Each child fetches the parent, which in turn fetches the grandparent for its breadcrumbs.
-    // The grandparent should be fetched only once because the cache is passed through via req.context.
-    const grandparentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === grandparent.id && call[0].collection === 'pages',
-    )
-    expect(grandparentFetches).toHaveLength(1)
+    // Every child walks up to the grandparent. All walks reach that level within the same
+    // batching window, so it is read once for the whole list.
+    expect(reads.forId(grandparent.id)).toHaveLength(1)
   })
 
   test('virtual fields are still computed correctly despite caching', async () => {
@@ -2604,7 +2598,7 @@ describe('Request-scoped ancestor caching', () => {
     }
   })
 
-  test('different locales are cached separately', async () => {
+  test('reads the shared parent once when listing siblings for all locales at once', async () => {
     // Add English locale to the parent
     await payload.update({
       collection: 'pages',
@@ -2619,24 +2613,45 @@ describe('Request-scoped ancestor caching', () => {
       },
     })
 
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+    const reads = captureAncestorReads()
 
-    // Fetch children with locale 'all' — this fetches the parent once per locale
     await payload.find({
       collection: 'pages',
       locale: 'all',
       where: { parent: { equals: parent.id } },
     })
 
-    // The parent should be fetched once for locale 'all' (not once per child)
-    const parentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === parent.id && call[0].collection === 'pages',
-    )
-    expect(parentFetches).toHaveLength(1)
+    // One read covers every locale of the parent, because the walk reads the raw row
+    expect(reads.forId(parent.id)).toHaveLength(1)
   })
 })
 
-describe('Request context is forwarded to nested findByID calls during breadcrumb computation', () => {
+/**
+ * Captures the batched ancestor reads the breadcrumb walk issues against the database adapter.
+ * The walk reads all ancestor ids of one level in a single `find` on `id: { in: [...] }`, so
+ * those queries are the ancestor reads a document read pays for.
+ *
+ * The spy is removed by the global `afterEach` (`vi.restoreAllMocks`).
+ */
+const captureAncestorReads = () => {
+  const reads: { ids: unknown[]; req: unknown }[] = []
+  const find = payload.db.find.bind(payload.db)
+
+  vi.spyOn(payload.db, 'find').mockImplementation(async (args: Parameters<typeof find>[0]) => {
+    const ids = (args.where as { id?: { in?: unknown } } | undefined)?.id?.in
+    if (args.collection === 'pages' && Array.isArray(ids)) {
+      reads.push({ ids, req: args.req })
+    }
+    return find(args)
+  })
+
+  return {
+    reads,
+    forId: (id: DefaultIDType) => reads.filter((read) => read.ids.includes(id)),
+  }
+}
+
+describe('The request is forwarded to the ancestor queries during breadcrumb computation', () => {
   let parentPage: { id: DefaultIDType }
 
   beforeAll(async () => {
@@ -2654,8 +2669,8 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
     })
   })
 
-  test('nested findByID receives the full req including user and context', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('the ancestor query runs inside the transaction of the operation that triggered it', async () => {
+    const reads = captureAncestorReads()
 
     await payload.create({
       collection: 'pages',
@@ -2669,25 +2684,19 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
       },
     })
 
-    // Find the nested findByID call that fetches the parent during breadcrumb computation
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
-    )
+    const parentRead = reads.forId(parentPage.id).at(0)
+    expect(parentRead).toBeDefined()
 
-    expect(parentFetch).toBeDefined()
-    const reqArg = parentFetch![0].req
-
-    // The nested call should receive a req with the payload instance (not a bare object)
-    expect(reqArg).toBeDefined()
-    expect(reqArg!.payload).toBeDefined()
-    expect(reqArg!.transactionID).toBeDefined()
-
-    // The full req should include context (not just the ancestor cache)
-    expect(reqArg!.context).toBeDefined()
+    // Without the request, the ancestor query would run outside the write transaction and
+    // could not see the uncommitted document it is computing breadcrumbs for.
+    const req = parentRead!.req as { context?: unknown; payload?: unknown; transactionID?: unknown }
+    expect(req).toBeDefined()
+    expect(req.payload).toBeDefined()
+    expect(req.transactionID).toBeDefined()
   })
 
-  test('custom req.context properties are preserved in nested findByID calls', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('custom req.context properties are preserved for the ancestor queries', async () => {
+    const reads = captureAncestorReads()
 
     // Use payload.find with a custom context property
     await payload.find({
@@ -2697,16 +2706,11 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
       context: { customProperty: 'test-value' },
     })
 
-    // Find the nested findByID call for the parent
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
-    )
+    const parentRead = reads.forId(parentPage.id).at(0)
+    expect(parentRead).toBeDefined()
 
-    expect(parentFetch).toBeDefined()
-    const reqArg = parentFetch![0].req
-
-    // The custom context property should be forwarded through to the nested call
-    expect(reqArg!.context).toHaveProperty('customProperty', 'test-value')
+    const req = parentRead!.req as { context: Record<string, unknown> }
+    expect(req.context).toHaveProperty('customProperty', 'test-value')
   })
 
   test('breadcrumbs include parent data even when access control would deny reading the parent', async () => {
@@ -2851,6 +2855,72 @@ describe('Circular parent reference prevention', () => {
         },
       }),
     ).rejects.toThrow()
+  })
+
+  test('reports a cycle that bypassed the write-time guard instead of walking it forever', async () => {
+    const pageA = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page A Raw',
+        slug: 'page-a-raw',
+        content: 'Content A',
+        ...virtualFields,
+      },
+    })
+
+    const pageB = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page B Raw',
+        slug: 'page-b-raw',
+        content: 'Content B',
+        parent: pageA.id,
+        ...virtualFields,
+      },
+    })
+
+    // Write A -> B directly via the adapter, which bypasses the beforeChange guard and leaves
+    // the cycle A -> B -> A in the database (a state a restored backup or a migration can produce)
+    const rawA = (
+      await payload.db.find({
+        collection: 'pages',
+        pagination: false,
+        where: { id: { equals: pageA.id } },
+      })
+    ).docs[0]
+    await payload.db.updateOne({
+      collection: 'pages',
+      id: pageA.id,
+      data: { ...rawA, parent: pageB.id },
+    })
+
+    const loggerErrorSpy = vi.spyOn(payload.logger, 'error')
+
+    // Reading a document of the cycle must terminate with a diagnosable error rather than
+    // walking the chain until the process runs out of memory
+    const result = await payload.findByID({
+      collection: 'pages',
+      id: pageB.id,
+      locale: 'de',
+      depth: 0,
+    })
+
+    expect(result.path).toBeUndefined()
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        err: expect.objectContaining({
+          message: expect.stringContaining('Circular parent reference detected'),
+        }),
+      }),
+      expect.stringContaining('Failed to compute virtual fields for doc'),
+    )
+
+    // the error names the documents forming the cycle
+    const message = loggerErrorSpy.mock.calls.at(-1)![0].err.message as string
+    expect(message).toContain(`pages:${pageA.id}`)
+    expect(message).toContain(`pages:${pageB.id}`)
   })
 
   test('allows setting a valid (non-circular) parent', async () => {
