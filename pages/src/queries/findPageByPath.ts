@@ -186,7 +186,8 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     }
   }
 
-  for (const collection of candidates) {
+  /** Queries a single collection for the documents whose slug matches the last path segment. */
+  const scanCollection = async (collection: PageCollectionConfig): Promise<PageDocument[]> => {
     const result = await payload.find({
       collection: collection.slug,
       depth: 0,
@@ -199,8 +200,31 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       where: buildWhere({ slug: { equals: slug } }, collection),
     })
 
+    return result.docs
+  }
+
+  // Scanning the collections concurrently turns the per-collection round-trip latency into a
+  // single wait instead of one wait per collection, which dominates lookups that match late or
+  // not at all (a 404 scans every collection).
+  //
+  // A read operation does not open a transaction on its own, but when the caller's `req` already
+  // carries one (e.g. a lookup from within an `afterChange` hook) every query runs on that single
+  // database session: MongoDB forbids concurrent operations on one session and Postgres
+  // serializes them on one connection, so the scans must stay sequential in that case.
+  // `transactionID` holds a promise while the transaction is still being created, so a truthiness
+  // check covers both states — the same guard payload's own `initTransaction` applies.
+  //
+  // A rejected scan rejects the whole lookup, matching the sequential scan's error behavior.
+  const scans = args.req?.transactionID
+    ? undefined
+    : await Promise.all(candidates.map((collection) => scanCollection(collection)))
+
+  for (const [index, collection] of candidates.entries()) {
+    // Without concurrent scans, each collection is only queried until one of them matches.
+    const docs = scans?.[index] ?? (await scanCollection(collection))
+
     // The slug only matches the last path segment, so verify the full path.
-    const match = (result.docs as PageDocument[]).find((doc) => doc.path === path)
+    const match = docs.find((doc) => doc.path === path)
     if (!match) {
       continue
     }
