@@ -18,6 +18,7 @@ import {
   setVirtualFieldsAfterChange,
   setVirtualFieldsBeforeRead,
 } from '../hooks/setVirtualFields.js'
+import { stripAutoSelectedFieldsAfterOperation } from '../hooks/stripAutoSelectedFieldsAfterOperation.js'
 
 /**
  * Creates a collection config for a page-like collection by adding:
@@ -132,6 +133,11 @@ export const createPageCollectionConfig = ({
       afterChange: [
         setVirtualFieldsAfterChange,
         ...(incomingCollectionConfig.hooks?.afterChange || []),
+      ],
+      // Runs last so that a user hook cannot reintroduce the auto-selected fields into the response
+      afterOperation: [
+        ...(incomingCollectionConfig.hooks?.afterOperation || []),
+        stripAutoSelectedFieldsAfterOperation,
       ],
       beforeChange: [
         ...(incomingCollectionConfig.hooks?.beforeChange || []),
