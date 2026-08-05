@@ -32,6 +32,10 @@ export function parentField(
 
       return true
     },
+    // The SQL adapters index relationship columns automatically, but MongoDB only indexes
+    // fields with an explicit index. Child-page lookups and parent-deletion checks filter
+    // by this field, so it must be indexed.
+    index: true,
     label: translatedLabel('parent'),
     relationTo: pageConfig.parent.collection,
     required: !pageConfig.isRootCollection,
