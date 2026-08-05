@@ -258,6 +258,17 @@ The plugin's [`baseFilter`](#multi-tenant-support) is applied to the lookup auto
 
 Resolving a path requires scanning the page collections for documents whose slug matches the last path segment and comparing their computed paths. To avoid this scan on repeated lookups, `findPageByPath` caches successful path→document-id resolutions in [Payload's KV store](https://payloadcms.com/docs/kv-store/overview) (`payload.kv`). A cache hit replaces the scan with a single fetch by id.
 
+Note that the KV store's default adapter (`databaseKVAdapter`) stores its entries in a `payload-kv` collection, so reading the cache is itself a database round trip — a hit saves the scan, but not the trip to the database. Frontends which resolve a path on every request should configure a faster adapter through the `kv` option of the Payload config, e.g. `redisKVAdapter` from `@payloadcms/kv-redis`, or `inMemoryKVAdapter` from `payload` for a single long-lived process:
+
+```ts
+import { redisKVAdapter } from '@payloadcms/kv-redis'
+
+export default buildConfig({
+  // ...
+  kv: redisKVAdapter({ redisURL: process.env.REDIS_URL }),
+})
+```
+
 The cache never requires manual invalidation: every cached mapping is verified against the requested path on read. If the page was renamed, moved, unpublished or deleted in the meantime, the stale entry is deleted and the lookup transparently falls back to the scan.
 
 Draft and published lookups (`draft: true`) are cached under separate keys, so an unpublished change never leaks into a published lookup and vice versa. Because the cache only maps a path to a document id and the document is re-fetched on every lookup, draft content changes are always reflected without invalidating the cached path — so a preview that re-renders on every edit still benefits from the cache as long as the page's path stays the same.
