@@ -43,7 +43,9 @@ Document IDs must always support both `string` and `number` (MongoDB uses string
 
 ## Test-Driven Fixes and Features
 
-For new fixes/features that can satisfy the four-point gate below, add a failing test **first** that succeeds once the fix is in place. For bug fixes, it must reproduce the bug as a user would observe it (wrong response, wrong UI state, wrong DB row) — not merely exercise the line being changed. **If satisfying the gate would require restructuring production code to be mockable, skip the test, ship the fix, and say so in the PR.**
+For every new fix or feature, add a failing test **first** that succeeds once the fix is in place. For bug fixes, it must reproduce the bug as a user would observe it (wrong response, wrong UI state, wrong DB row) — not merely exercise the line being changed.
+
+**Exception — environment-bound bugs**: when a bug is only observable inside an environment the test suite cannot host (a Next.js render scope, a real browser, a platform signal), drop the repro requirement, not the test. Instead: (1) write a contract test against a behavioral fake of that boundary — a stub that mirrors the environment's actual behavior (throws where it throws, defers where it defers), not a call recorder; (2) verify the fix manually in the plugin's dev app; and (3) state both in the PR. Skipping the test entirely is a last resort and must be called out in the PR with the reason.
 
 Every test must justify its existence by verifying meaningful behavior. A test earns its place only if **all** of these hold:
 
