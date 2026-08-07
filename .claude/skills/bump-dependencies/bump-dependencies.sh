@@ -6,7 +6,7 @@ PLUGINS=("pages" "geocoding" "cloudinary" "admin-search" "alt-text" "content-tra
 PAGES_DEV_FOLDERS=("dev" "dev_unlocalized" "dev_multi_tenant")
 ALT_TEXT_DEV_FOLDERS=("dev" "dev_unlocalized")
 CONTENT_TRANSLATOR_DEV_FOLDERS=("dev")
-ASTRO_RICHTEXT_DEV_FOLDERS=("dev")
+ASTRO_RICHTEXT_DEV_FOLDERS=("dev/astro" "dev/payload")
 
 # Color codes for output
 RED='\033[0;31m'
@@ -217,8 +217,14 @@ for plugin in "${PLUGINS[@]}"; do
                 continue
             fi
 
-            # Skip Payload-specific steps for non-Payload plugins
-            if [ "$plugin" != "astro-payload-richtext-lexical" ]; then
+            # Skip Payload-specific steps for non-Payload dev apps (e.g. the
+            # Astro consumer app under astro-payload-richtext-lexical/dev/astro)
+            is_payload_app=true
+            if [ "$plugin" = "astro-payload-richtext-lexical" ] && [ "$dev_folder" = "dev/astro" ]; then
+                is_payload_app=false
+            fi
+
+            if [ "$is_payload_app" = true ]; then
                 if ! generate_types "$dev_path"; then
                     PLUGIN_STATUS="FAILED"
                     log_error "Failed to generate types in $dev_path"
@@ -230,11 +236,11 @@ for plugin in "${PLUGINS[@]}"; do
                     log_error "Failed to generate importmap in $dev_path"
                     continue
                 fi
+            fi
 
-                if ! verify_dev_server "$dev_path"; then
-                    log_warning "Dev server verification failed in $dev_path"
-                    # Don't mark as failed, just warn
-                fi
+            if ! verify_dev_server "$dev_path"; then
+                log_warning "Dev server verification failed in $dev_path"
+                # Don't mark as failed, just warn
             fi
         else
             log_warning "Dev folder not found: $dev_path"
