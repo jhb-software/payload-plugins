@@ -31,25 +31,25 @@
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
-    "openai": "^7.1.0",
+    "openai": "^7.4.0",
     "p-map": "^7.0.6",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@payloadcms/translations": "^3.86.0",
-    "@payloadcms/ui": "^3.86.0",
+    "@payloadcms/translations": "^3.87.1",
+    "@payloadcms/ui": "^3.87.1",
     "next": "^15.0.0 || ^16.0.0",
-    "payload": "^3.86.0",
+    "payload": "^3.87.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
-    "@payloadcms/translations": "^3.86.0",
+    "@payloadcms/translations": "^3.87.1",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.47",
-    "@types/react": "19.2.17",
-    "@types/react-dom": "19.2.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
     "copyfiles": "2.4.1",
     "eslint": "^9.39.4",
     "prettier": "3.9.6",

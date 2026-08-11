@@ -17,11 +17,11 @@
   },
   "dependencies": {
     "@jhb.software/payload-cloudinary-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.86.0",
-    "@payloadcms/next": "^3.86.0",
-    "@payloadcms/plugin-cloud-storage": "^3.86.0",
-    "next": "16.2.12",
-    "payload": "^3.86.0",
+    "@payloadcms/db-mongodb": "^3.87.1",
+    "@payloadcms/next": "^3.87.1",
+    "@payloadcms/plugin-cloud-storage": "^3.87.1",
+    "next": "16.3.0",
+    "payload": "^3.87.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
