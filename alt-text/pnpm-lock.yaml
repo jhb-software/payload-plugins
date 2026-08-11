@@ -5,13 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  sharp: ^0.35.0
-  js-yaml: ^4.3.1
+  dompurify: ^3.4.13
   prettier: 3.9.6
-  dompurify: ^3.4.0
   '@eslint/plugin-kit': ^0.3.4
-  postcss: ^8.5.18
-  mongoose: ^8.24.1
   next: 16.3.0
   '@typescript-eslint/utils': ^8.59.3
   '@typescript-eslint/eslint-plugin': ^8.59.3
@@ -2834,14 +2830,14 @@ packages:
     resolution: {integrity: sha512-8chOqpVE3bcoWT2pIgcJeIZlXaOfQCavZgQZF4qytUtjRBqsNMyzUoR16qdw9XL2kC478N8iA8z0AA+NSS0d1A==}
     engines: {node: '>=16.20.1'}
     peerDependencies:
-      mongoose: ^8.24.1
+      mongoose: '>=5.11.10'
 
   mongoose-paginate-v2@1.9.4:
     resolution: {integrity: sha512-0LOsVEQmjrbJKVDi/IvFEhIezmuRjUE4loGgslv57j9nK/NMC+mbKT0QnaPSPpib4lByKVBcy3VbDa1TvlHZjA==}
     engines: {node: '>=4.0.0'}
 
-  mongoose@8.24.2:
-    resolution: {integrity: sha512-5+H3MSHNJCcr9M+lVplekrZ4/Dyn3N1dOpvgn9gMwvHJhunc4G8SQcBVd/btBQoVdspVNPjx8Pw03YWBv6uTJg==}
+  mongoose@8.24.1:
+    resolution: {integrity: sha512-UpHBA0l5kHyKJQFjmBaFYQFo5sgz1DK0TRqDkOyBLYbqiIbKKhIvBpHWBXqeo0rgW4kGI1UhhAw+kTQZoj1BdA==}
     engines: {node: '>=16.20.1'}
 
   mpath@0.8.4:
@@ -3107,6 +3103,10 @@ packages:
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
+
+  postcss@8.5.23:
+    resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
+    engines: {node: ^10 || ^12 || >=14}
 
   postcss@8.5.26:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
@@ -4629,8 +4629,8 @@ snapshots:
 
   '@payloadcms/db-mongodb@3.87.1(payload@3.87.1(graphql@16.12.0)(typescript@6.0.3))':
     dependencies:
-      mongoose: 8.24.2
-      mongoose-paginate-v2: 1.9.4(mongoose@8.24.2)
+      mongoose: 8.24.1
+      mongoose-paginate-v2: 1.9.4(mongoose@8.24.1)
       payload: 3.87.1(graphql@16.12.0)(typescript@6.0.3)
       prompts: 2.4.2
       uuid: 13.0.2
@@ -6767,18 +6767,18 @@ snapshots:
       bson: 6.10.4
       mongodb-connection-string-url: 3.0.2
 
-  mongoose-lean-virtuals@1.1.1(mongoose@8.24.2):
+  mongoose-lean-virtuals@1.1.1(mongoose@8.24.1):
     dependencies:
-      mongoose: 8.24.2
+      mongoose: 8.24.1
       mpath: 0.8.4
 
-  mongoose-paginate-v2@1.9.4(mongoose@8.24.2):
+  mongoose-paginate-v2@1.9.4(mongoose@8.24.1):
     dependencies:
-      mongoose-lean-virtuals: 1.1.1(mongoose@8.24.2)
+      mongoose-lean-virtuals: 1.1.1(mongoose@8.24.1)
     transitivePeerDependencies:
       - mongoose
 
-  mongoose@8.24.2:
+  mongoose@8.24.1:
     dependencies:
       bson: 6.10.4
       kareem: 2.6.3
@@ -6821,7 +6821,7 @@ snapshots:
       '@swc/helpers': 0.5.15
       baseline-browser-mapping: 2.10.38
       caniuse-lite: 1.0.30001799
-      postcss: 8.5.26
+      postcss: 8.5.23
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
       styled-jsx: 5.1.6(react@19.2.8)
@@ -7082,6 +7082,12 @@ snapshots:
   pluralize@8.0.0: {}
 
   possible-typed-array-names@1.1.0: {}
+
+  postcss@8.5.23:
+    dependencies:
+      nanoid: 3.3.17
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
 
   postcss@8.5.26:
     dependencies:
