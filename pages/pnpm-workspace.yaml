@@ -8,11 +8,6 @@ allowBuilds:
   esbuild: true
   sharp: true
 
-minimumReleaseAgeExclude:
-  - '@payloadcms/translations@3.87.1'
-  - '@payloadcms/ui@3.87.1'
-  - payload@3.87.1
-
 overrides:
   sharp: '^0.35.0'
   js-yaml: '^4.3.1'

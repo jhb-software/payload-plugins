@@ -29,7 +29,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@payloadcms/translations": "^3.87.0"
+    "@payloadcms/translations": "^3.87.1"
   },
   "peerDependencies": {
     "@payloadcms/ui": "^3.87.1",

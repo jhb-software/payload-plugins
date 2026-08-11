@@ -31,7 +31,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@payloadcms/translations": "^3.87.0",
+    "@payloadcms/translations": "^3.87.1",
     "bson-objectid": "^2.0.4",
     "he": "^1.2.0"
   },
