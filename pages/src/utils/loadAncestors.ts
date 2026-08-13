@@ -213,6 +213,9 @@ async function fetchAncestors({
 
   // A draft read resolves every ancestor to its latest version, the same way
   // `findByID({ draft: true })` resolves a single document.
+  // Note: the top-level `parent` in the where/select below is Payload's versions-table field
+  // referencing the versioned document — unrelated to the plugin's parent field, which lives
+  // inside `version` under its configurable name.
   if (req.context.draft === true && hasDraftsEnabled(collectionConfig)) {
     const { docs } = await payload.db.findVersions({
       collection,
