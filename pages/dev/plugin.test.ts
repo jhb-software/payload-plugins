@@ -1898,6 +1898,134 @@ describe('Select during create and update operations', () => {
   })
 })
 
+describe('Select does not leak the fields the plugin needs to compute the virtual fields', () => {
+  let childPageId: DefaultIDType
+
+  beforeEach(async () => {
+    await deleteCollection('pages')
+
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    childPageId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child Page',
+          slug: 'child-page',
+          content: 'Child content',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+    ).id
+  })
+
+  test('findByID with select: { path: true } returns the path without the dependent raw fields', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        path: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('title')
+  })
+
+  test('findByID keeps a dependent field which the caller selected explicitly', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        path: true,
+        slug: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc.slug).toBe('child-page')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('title')
+  })
+
+  test('findByID with select: { slug: false } excludes the slug and still computes the virtual fields', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        slug: false,
+      },
+    })
+
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc.breadcrumbs).toHaveLength(2)
+    // Fields the caller did not exclude are untouched
+    expect(doc.title).toBe('Child Page')
+  })
+
+  test('find with select: { path: true } returns the path without the dependent raw fields', async () => {
+    const result = await payload.find({
+      collection: 'pages',
+      locale: 'de',
+      where: {
+        slug: { equals: 'child-page' },
+      },
+      select: {
+        path: true,
+      },
+    })
+
+    expect(result.docs).toHaveLength(1)
+    const doc = result.docs[0]
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('title')
+  })
+
+  test('update with select: { path: true } returns the path without the dependent raw fields', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        content: 'Updated content',
+      },
+      select: {
+        path: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('title')
+  })
+})
+
 describe('The afterChange hook doc and previousDoc contain the path of the page.', () => {
   beforeEach(async () => {
     // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.

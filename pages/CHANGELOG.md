@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: a `select` no longer returns the raw fields (`slug`, the parent field, `isRootPage` and the breadcrumb label field) which are only selected internally to compute the virtual fields — responses now contain exactly the fields the caller requested. Select such a field explicitly if a response is expected to contain it.
+
 ## 0.9.0-beta.1
 
 - feat: add `waitUntil` and `onCacheResult` arguments to `findPageByPath` — defer cache maintenance writes off the critical path (e.g. via `waitUntil` from `@vercel/functions` or Cloudflare's `ctx.waitUntil`) and observe the cache lookup status (`hit` / `stale` / `miss`)

@@ -2,6 +2,7 @@ import type { CollectionBeforeOperationHook } from 'payload'
 
 import { getSelectMode } from 'payload/shared'
 
+import { recordAutoSelectedFields } from '../utils/autoSelectedFields.js'
 import { hasVirtualFieldSelected } from '../utils/hasVirtualFieldSelected.js'
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 import { dependentFields } from './setVirtualFields.js'
@@ -10,6 +11,10 @@ import { dependentFields } from './setVirtualFields.js'
  * A CollectionBeforeOperationHook that alters the select in case a virtual field is selected
  * to ensure that the fields the setVirtualFields hook depends on to correctly generate
  * the virtual fields are also selected.
+ *
+ * Every field which is selected here on the plugin's own behalf is recorded on the operation
+ * args, so `stripAutoSelectedFieldsAfterOperation` can remove it from the response again —
+ * a caller must only receive the fields it asked for.
  */
 export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook = ({
   args,
@@ -40,15 +45,23 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
     const hasVirtualFieldsSelected = hasVirtualFieldSelected(args.select)
 
     if (hasVirtualFieldsSelected && selectMode === 'include') {
+      const select = args.select
+      // Fields the caller selected itself must not be stripped from the response afterwards
+      const addedFields = dependendSelectedFields.filter((field) => !select[field])
+
       // extend the select with the dependent fields
       args.select = {
         ...args.select,
-        ...dependendSelectedFields.reduce((acc, field) => ({ ...acc, [field]: true }), {}),
+        ...addedFields.reduce((acc, field) => ({ ...acc, [field]: true }), {}),
       }
+
+      recordAutoSelectedFields(args, addedFields)
 
       // Indicate that the virtual fields should be generated in the setVirtualFields hook
       context.generateVirtualFields = true
     } else if (hasVirtualFieldsSelected && selectMode === 'exclude') {
+      const deselectedFields = dependendSelectedFields.filter((field) => field in args.select!)
+
       // remove deselection of the dependent fields
       args.select = Object.fromEntries(
         Object.entries(args.select).filter(([field]) => !dependendSelectedFields.includes(field)),
@@ -58,6 +71,8 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
       if (Object.keys(args.select).length === 0) {
         args.select = undefined
       }
+
+      recordAutoSelectedFields(args, deselectedFields)
 
       // Indicate that the virtual fields should be generated in the setVirtualFields hook
       context.generateVirtualFields = true
