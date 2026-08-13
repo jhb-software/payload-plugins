@@ -1,4 +1,4 @@
-import payload, { CollectionSlug, SanitizedConfig, ValidationError } from 'payload'
+import payload, { ValidationError } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
@@ -6,6 +6,7 @@ import {
   clearCapturedAfterChanges,
   getLastAfterChangeHookArgs,
 } from './src/test/afterChangeCapture'
+import { deleteAllCollections, deleteCollection } from './src/test/deleteCollections'
 
 type DefaultIDType = Config['db']['defaultIDType']
 
@@ -859,7 +860,7 @@ describe('Find operation gracefully handles missing parent documents.', () => {
     }
   })
 
-  test('deeply nested page handles missing grandparent gracefully', async () => {
+  test('deeply nested page handles missing direct parent gracefully', async () => {
     const rootPage = await payload.create({
       collection: 'pages',
       locale: 'de',
@@ -937,6 +938,111 @@ describe('Find operation gracefully handles missing parent documents.', () => {
         expect.objectContaining({ err: expect.any(Error) }),
         expect.stringContaining('Failed to compute virtual fields for doc'),
       )
+    }
+  })
+
+  test('logs error and returns doc without virtual fields when an ancestor two levels up is missing', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root',
+        slug: '',
+        content: 'Root',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Parent',
+        slug: 'parent',
+        content: 'Parent',
+        parent: rootPage.id,
+        ...virtualFields,
+      },
+    })
+
+    const grandchild = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Grandchild',
+        slug: 'grandchild',
+        content: 'Grandchild',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    // Verify correct virtual fields before deletion
+    const grandchildBefore = await payload.findByID({
+      collection: 'pages',
+      id: grandchild.id,
+      locale: 'de',
+    })
+    expect(grandchildBefore.path).toBe('/de/parent/grandchild')
+    expect(grandchildBefore.breadcrumbs).toHaveLength(3)
+
+    // Delete the ROOT directly via the DB adapter — unlike the tests above, the broken
+    // reference now sits one level above the read document's direct parent
+    await payload.db.deleteMany({
+      collection: 'pages',
+      where: { id: { equals: rootPage.id } },
+    })
+
+    const loggerErrorSpy = vi.spyOn(payload.logger, 'error')
+
+    // Grandchild should still be readable, and its direct parent still exists
+    const result = await payload.findByID({
+      collection: 'pages',
+      id: grandchild.id,
+      locale: 'de',
+    })
+
+    expect(result.id).toBe(grandchild.id)
+    expect(result.title).toBe('Grandchild')
+
+    // Probe the parent's raw row: FK-backed adapters null the reference on delete,
+    // MongoDB leaves it dangling
+    const rawParent = (
+      await payload.db.find({
+        collection: 'pages',
+        pagination: false,
+        where: { id: { equals: parentPage.id } },
+      })
+    ).docs[0] as { parent?: null | number | string }
+
+    // the direct parent itself still exists — only its own parent reference is broken
+    expect(rawParent).toBeDefined()
+
+    if (rawParent.parent === null) {
+      // SQLite/Postgres: ON DELETE SET NULL turned the parent into a legitimate top-level
+      // page, so the chain stays consistent (the root contributed no path segment anyway)
+      expect(result.path).toBe('/de/parent/grandchild')
+      expect(result.breadcrumbs).toHaveLength(2)
+      expect(result.breadcrumbs[0].slug).toBe('parent')
+      expect(result.breadcrumbs[1].slug).toBe('grandchild')
+      expect(loggerErrorSpy).not.toHaveBeenCalled()
+    } else {
+      // MongoDB: the parent's reference dangles, so the ancestor walk fails one level up.
+      // The document is returned without virtual fields — never with a truncated path that
+      // silently drops the existing parent segment.
+      expect(result.path).toBeUndefined()
+      expect(result.breadcrumbs).toEqual([])
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Failed to compute virtual fields for doc'),
+      )
+
+      // the error reports the missing root as the parent of the intermediate page (not of the
+      // read document), proving the walk failed one level up the chain
+      const message = (loggerErrorSpy.mock.calls.at(-1)![0] as { err: Error }).err.message
+      expect(message).toContain(`Parent document with id ${rootPage.id}`)
+      expect(message).toContain(`of document with id ${parentPage.id}`)
     }
   })
 })
@@ -3092,63 +3198,4 @@ const removeIdsFromArray = <T extends { id?: any; [key: string]: any }>(
   array: T[],
 ): Omit<T, 'id'>[] => {
   return array.map(({ id, ...rest }) => rest)
-}
-
-/**
- * Helper function to delete all documents from a collection.
- */
-const deleteCollection = async (collection: CollectionSlug) => {
-  // use db.deleteMany instead of payload.delete to avoid running hooks
-  await payload.db.deleteMany({
-    collection: collection,
-    where: {},
-  })
-
-  // this will fail for collections which have no versions enabled, therefore wrapped in a try catch
-  try {
-    await payload.db.deleteVersions({
-      collection: collection,
-      where: {},
-    })
-  } catch {}
-}
-
-/**
- * Deletion order for collections to respect foreign key constraints.
- * Collections are deleted in this order: children before parents.
- * Collections not in this list will be deleted at the end in arbitrary order.
- */
-const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
-  // Level 3: deepest nested (depends on level 2)
-  'country-travel-tips',
-  // Level 2: depends on level 1 collections
-  'blogposts',
-  'authors',
-  'countries',
-  // Level 1: root collections (pages can self-reference)
-  'pages',
-  // Level 0: no dependencies
-  'blogpost-categories',
-  'redirects',
-]
-
-const deleteAllCollections = async (
-  config: Promise<SanitizedConfig>,
-  except: CollectionSlug[] = [],
-) => {
-  const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
-  const collectionSlugs = new Set(collections.map((c) => c.slug))
-
-  // Delete in the specified order first
-  for (const slug of COLLECTION_DELETION_ORDER) {
-    if (collectionSlugs.has(slug)) {
-      await deleteCollection(slug)
-      collectionSlugs.delete(slug)
-    }
-  }
-
-  // Delete any remaining collections not in the order list
-  for (const slug of Array.from(collectionSlugs)) {
-    await deleteCollection(slug)
-  }
 }

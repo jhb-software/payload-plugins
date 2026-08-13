@@ -1,4 +1,4 @@
-import payload, { CollectionSlug, SanitizedConfig } from 'payload'
+import payload from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   clearPathCache,
@@ -7,6 +7,7 @@ import {
 } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
+import { deleteAllCollections, deleteCollection } from './src/test/deleteCollections'
 
 type DefaultIDType = Config['db']['defaultIDType']
 
@@ -504,55 +505,3 @@ describe('findPageByPath query cost', () => {
     expect(ancestorReads).toHaveLength(new Set(ancestorReads).size)
   })
 })
-
-/**
- * Helper function to delete all documents from a collection.
- */
-const deleteCollection = async (collection: CollectionSlug) => {
-  // use db.deleteMany instead of payload.delete to avoid running hooks
-  await payload.db.deleteMany({
-    collection: collection,
-    where: {},
-  })
-
-  // this will fail for collections which have no versions enabled, therefore wrapped in a try catch
-  try {
-    await payload.db.deleteVersions({
-      collection: collection,
-      where: {},
-    })
-  } catch {}
-}
-
-/**
- * Deletion order for collections to respect foreign key constraints.
- * Collections are deleted in this order: children before parents.
- */
-const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
-  'country-travel-tips',
-  'blogposts',
-  'authors',
-  'countries',
-  'pages',
-  'blogpost-categories',
-  'redirects',
-]
-
-const deleteAllCollections = async (
-  config: Promise<SanitizedConfig>,
-  except: CollectionSlug[] = [],
-) => {
-  const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
-  const collectionSlugs = new Set(collections.map((c) => c.slug))
-
-  for (const slug of COLLECTION_DELETION_ORDER) {
-    if (collectionSlugs.has(slug)) {
-      await deleteCollection(slug)
-      collectionSlugs.delete(slug)
-    }
-  }
-
-  for (const slug of Array.from(collectionSlugs)) {
-    await deleteCollection(slug)
-  }
-}

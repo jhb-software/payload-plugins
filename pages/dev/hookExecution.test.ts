@@ -1,7 +1,8 @@
-import payload, { CollectionSlug, SanitizedConfig } from 'payload'
+import payload from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
+import { deleteAllCollections, deleteCollection } from './src/test/deleteCollections'
 import {
   collectionAfterReadCount,
   fieldAfterReadCount,
@@ -182,46 +183,3 @@ describe('afterRead hook executions caused by the ancestor walk', () => {
     expect(fieldAfterReadCount('content', root.id)).toBe(0)
   })
 })
-
-const deleteCollection = async (collection: CollectionSlug) => {
-  // use db.deleteMany instead of payload.delete to avoid running hooks
-  await payload.db.deleteMany({ collection, where: {} })
-
-  // this will fail for collections which have no versions enabled, therefore wrapped in a try catch
-  try {
-    await payload.db.deleteVersions({ collection, where: {} })
-  } catch {}
-}
-
-/**
- * Deletion order for collections to respect foreign key constraints.
- * Collections are deleted in this order: children before parents.
- */
-const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
-  'country-travel-tips',
-  'blogposts',
-  'authors',
-  'countries',
-  'pages',
-  'blogpost-categories',
-  'redirects',
-]
-
-const deleteAllCollections = async (
-  config: Promise<SanitizedConfig>,
-  except: CollectionSlug[] = [],
-) => {
-  const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
-  const collectionSlugs = new Set(collections.map((c) => c.slug))
-
-  for (const slug of COLLECTION_DELETION_ORDER) {
-    if (collectionSlugs.has(slug)) {
-      await deleteCollection(slug)
-      collectionSlugs.delete(slug)
-    }
-  }
-
-  for (const slug of Array.from(collectionSlugs)) {
-    await deleteCollection(slug)
-  }
-}
