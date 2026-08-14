@@ -217,8 +217,6 @@ await payload.create({
 })
 ```
 
-This is also useful as an escape hatch in older Next.js setups where `revalidateTag` is not safe to call from your write site (the plugin already defers the call via `after()` to escape render scopes, so this is rarely needed at runtime).
-
 ### Resolvers
 
 This plugin is designed to work seamlessly with various AI providers by accepting a customizable resolver as a configuration option.
