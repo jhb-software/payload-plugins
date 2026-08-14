@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **BREAKING**: the parent deletion guard now also applies to the trash. Moving a parent that is referenced by child documents to the trash is refused, where it previously succeeded and left the children without a computed `path` and `breadcrumbs`. Collections without `trash: true` are unaffected; restoring a document is never blocked.
+- **BREAKING**: trashed children now count towards the parent deletion guard, because they carry a live parent id until they are permanently deleted. A parent whose children are all trashed can no longer be permanently deleted — restore or reassign those children first. The exported `childDocumentsOf` / `hasChildDocuments` include trashed children accordingly, and now propagate a query failure instead of logging a warning and reporting no children.
+- feat: the generated fields (`slug`, `parent`, `path`, `breadcrumbs`, `isRootPage`) accept an `admin` override in the matching `page` block, and `page.parent` additionally a `filterOptions`. Both `admin.condition` and `filterOptions` are ANDed with the plugin's, so an override narrows rather than replaces (see the README).
+- perf: virtual path/breadcrumb generation reads ancestors directly from the database adapter in batched per-level queries instead of one Local API call per ancestor — ancestor collections' `afterRead` hooks no longer run during the walk, and a dangling ancestor reference deeper than the direct parent (possible on MongoDB) now logs an error and returns the document without virtual fields instead of a wrong, shorter path
 - fix: a `select` no longer returns the raw fields (`slug`, the parent field, `isRootPage` and the breadcrumb label field) which are only selected internally to compute the virtual fields — responses now contain exactly the fields the caller requested. Select such a field explicitly if a response is expected to contain it.
 
 ## 0.9.0-beta.1
