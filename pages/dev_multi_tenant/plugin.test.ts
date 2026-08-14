@@ -21,6 +21,13 @@ const virtualFields = {
 
 type DefaultIDType = Config['db']['defaultIDType']
 
+/** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
+const tenantReq = async (tenantId: DefaultIDType) => {
+  const req = await createLocalReq({}, payload)
+  req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
+  return req
+}
+
 beforeAll(async () => {
   await payload.init({
     config: config,
@@ -404,13 +411,6 @@ describe('Multi-tenant baseFilter functionality', () => {
   })
 
   describe('findPageByPath is scoped by the plugin baseFilter', () => {
-    /** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
-    const tenantReq = async (tenantId: DefaultIDType) => {
-      const req = await createLocalReq({}, payload)
-      req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
-      return req
-    }
-
     test('resolves the same path to the page of the requesting tenant, without an explicit where', async () => {
       const page1 = await payload.create({
         collection: 'pages',
@@ -457,13 +457,6 @@ describe('Multi-tenant baseFilter functionality', () => {
   })
 
   describe('The parent deletion guard is scoped by the plugin baseFilter', () => {
-    /** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
-    const tenantReq = async (tenantId: DefaultIDType) => {
-      const req = await createLocalReq({}, payload)
-      req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
-      return req
-    }
-
     test('trashes a childless parent even when another tenant holds a same-slug parent with children', async () => {
       const parentT1 = await payload.create({
         collection: 'pages',
@@ -572,13 +565,6 @@ describe('Multi-tenant baseFilter functionality', () => {
   })
 
   describe('A mutation computes the virtual fields under a select which asks for none of them', () => {
-    /** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
-    const tenantReq = async (tenantId: DefaultIDType) => {
-      const req = await createLocalReq({}, payload)
-      req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
-      return req
-    }
-
     test('a narrow-select update still resolves the parent through the baseFilter', async () => {
       const rootPage = await payload.create({
         collection: 'pages',

@@ -50,13 +50,17 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
     // the dependent fields must survive the select filtering whatever the caller selected.
     const needsDependentFields = isMutationOperation || hasVirtualFieldsSelected
 
-    // `setVirtualFieldsAfterChange` writes the virtual fields onto the document *after* Payload
-    // has applied the select, so on a mutation which asked for none of them they would reach the
-    // caller regardless of the select. Strip them alongside the dependent fields.
+    // `setVirtualFieldsAfterChange` writes all virtual fields onto the document *after* Payload
+    // has applied the select, so on a mutation every virtual field the select did not ask for
+    // would reach the caller regardless. Strip exactly those alongside the dependent fields.
     // (On a read the select is applied after `setVirtualFieldsBeforeRead`, so Payload removes
     // them itself and there is nothing to strip.)
-    const unselectedVirtualFields =
-      isMutationOperation && !hasVirtualFieldsSelected ? virtualFieldNames : []
+    const callerSelect = args.select
+    const unselectedVirtualFields = !isMutationOperation
+      ? []
+      : selectMode === 'include'
+        ? virtualFieldNames.filter((field) => !callerSelect[field])
+        : virtualFieldNames.filter((field) => field in callerSelect)
 
     if (needsDependentFields && selectMode === 'include') {
       const select = args.select

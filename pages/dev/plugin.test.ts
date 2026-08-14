@@ -2466,6 +2466,60 @@ describe('A mutation computes the virtual fields under a select which asks for n
     expect(doc.title).toBe('Child Page Updated')
     expect(doc.content).toBe('Child content')
   })
+
+  test('an update selecting one virtual field does not return the other virtual fields', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        path: true,
+        title: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc.title).toBe('Child Page Updated')
+    expect(doc).not.toHaveProperty('breadcrumbs')
+    expect(doc).not.toHaveProperty('meta')
+    expect(doc).not.toHaveProperty('slug')
+  })
+
+  test('an update excluding a single virtual field does not return it', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        path: false,
+      },
+    })
+
+    expect(doc).not.toHaveProperty('path')
+    expect(doc.breadcrumbs).toHaveLength(2)
+    expect(doc.title).toBe('Child Page Updated')
+  })
+
+  test('a read passing a select which asks for none of the virtual fields does not compute them', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        title: true,
+      },
+    })
+
+    expect(doc.title).toBe('Child Page')
+    expect(doc).not.toHaveProperty('path')
+    expect(doc).not.toHaveProperty('breadcrumbs')
+  })
 })
 
 describe('The afterChange hook doc and previousDoc contain the path of the page.', () => {
