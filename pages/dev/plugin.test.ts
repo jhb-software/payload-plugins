@@ -1,5 +1,6 @@
 import payload, { CollectionSlug, SanitizedConfig, ValidationError } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
+import { findPageByPath } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 import {
@@ -1220,6 +1221,141 @@ describe('Parent deletion prevention hook', () => {
         id: parentPage.id,
       }),
     ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+  })
+})
+
+describe('Parent deletion prevention hook on trashed documents', () => {
+  beforeEach(async () => await deleteAllCollections(config, ['users']))
+
+  /** Soft-deletes a document the way the admin panel's delete action does. */
+  const trash = async (collection: 'countries' | 'pages', id: DefaultIDType) =>
+    await payload.update({
+      collection,
+      id,
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+  /** Restores a soft-deleted document the way the Trash view's restore action does. */
+  const restore = async (collection: 'countries' | 'pages', id: DefaultIDType) =>
+    await payload.update({
+      collection,
+      id,
+      trash: true,
+      data: { deletedAt: null, _status: 'published' },
+    })
+
+  const createPage = async (data: { title: string; slug: string; parent?: DefaultIDType }) =>
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: { content: 'Content', ...data, ...virtualFields },
+    })
+
+  test('refuses to trash a parent that has a child in another collection', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'trash-parent' })
+
+    const childCountry = await payload.create({
+      collection: 'countries',
+      locale: 'de',
+      data: {
+        title: 'Child Country',
+        slug: 'trash-child-country',
+        content: 'Child content',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    await expect(trash('pages', parentPage.id)).rejects.toThrow(
+      'Cannot delete this document because it is referenced as a parent by',
+    )
+
+    // A trashed parent is invisible to the ancestor lookup, which leaves the child without any
+    // computed virtual fields. The refusal keeps the child's path and breadcrumbs intact.
+    const child = await payload.findByID({
+      collection: 'countries',
+      id: childCountry.id,
+      locale: 'de',
+    })
+    expect(child.path).toBe('/de/trash-parent/trash-child-country')
+    expect(child.breadcrumbs).toHaveLength(2)
+  })
+
+  test('refuses to trash a parent whose only children are themselves trashed', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'trash-parent-trashed-children' })
+    const childPage = await createPage({
+      title: 'Child',
+      slug: 'trash-child-already-trashed',
+      parent: parentPage.id,
+    })
+
+    await trash('pages', childPage.id)
+
+    await expect(trash('pages', parentPage.id)).rejects.toThrow(
+      'Cannot delete this document because it is referenced as a parent by',
+    )
+  })
+
+  test('refuses to hard-delete a parent whose only children are trashed', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'delete-parent-trashed-children' })
+    const childPage = await createPage({
+      title: 'Child',
+      slug: 'delete-child-already-trashed',
+      parent: parentPage.id,
+    })
+
+    await trash('pages', childPage.id)
+
+    await expect(
+      payload.delete({ collection: 'pages', id: parentPage.id, trash: true }),
+    ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+  })
+
+  test('allows restoring a trashed parent that has children', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'restore-parent' })
+    await createPage({ title: 'Child', slug: 'restore-child', parent: parentPage.id })
+
+    // Trash the parent through the DB adapter to reproduce the state installs are left in by
+    // trashing a parent before this guard existed — the guard refuses this through the Local API.
+    await payload.db.updateOne({
+      collection: 'pages',
+      where: { id: { equals: parentPage.id } },
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+    const restored = await restore('pages', parentPage.id)
+    expect(restored.deletedAt).toBeFalsy()
+  })
+
+  test('trashes a parentless page and resolves it again after restore', async () => {
+    const page = await createPage({ title: 'Lonely', slug: 'lonely-page' })
+
+    await trash('pages', page.id)
+    expect(await findPageByPath({ payload, path: '/de/lonely-page' })).toBeNull()
+
+    await restore('pages', page.id)
+    const resolved = await findPageByPath({ payload, path: '/de/lonely-page' })
+    expect(resolved?.doc.id).toBe(page.id)
+  })
+
+  test('counts children living in a collection that has no trash support', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'parent-of-author' })
+
+    await payload.create({
+      collection: 'authors',
+      locale: 'de',
+      data: {
+        name: 'Child Author',
+        slug: 'child-author',
+        content: 'Author content',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    await expect(payload.delete({ collection: 'pages', id: parentPage.id })).rejects.toThrow(
+      'Cannot delete this document because it is referenced as a parent by',
+    )
   })
 })
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **BREAKING**: the parent deletion guard now also applies to the trash. Moving a parent that is referenced by child documents to the trash is refused, where it previously succeeded and left the children without a computed `path` and `breadcrumbs`. Collections without `trash: true` are unaffected; restoring a document is never blocked.
+- **BREAKING**: trashed children now count towards the parent deletion guard, because they carry a live parent id until they are permanently deleted. A parent whose children are all trashed can no longer be permanently deleted — restore or reassign those children first.
 - fix: a `select` no longer returns the raw fields (`slug`, the parent field, `isRootPage` and the breadcrumb label field) which are only selected internally to compute the virtual fields — responses now contain exactly the fields the caller requested. Select such a field explicitly if a response is expected to contain it.
 
 ## 0.9.0-beta.1

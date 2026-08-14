@@ -451,6 +451,68 @@ describe('Multi-tenant baseFilter functionality', () => {
       await expect(findPageByPath({ payload, path: '/pricing' })).rejects.toThrow()
     })
   })
+
+  describe('The parent deletion guard is scoped by the plugin baseFilter', () => {
+    /** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
+    const tenantReq = async (tenantId: DefaultIDType) => {
+      const req = await createLocalReq({}, payload)
+      req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
+      return req
+    }
+
+    test('trashes a childless parent even when another tenant holds a same-slug parent with children', async () => {
+      const parentT1 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Support - Tenant 1',
+          slug: 'support',
+          content: 'Support tenant 1',
+          tenant: tenant1Id,
+          ...virtualFields,
+        },
+      })
+
+      const parentT2 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Support - Tenant 2',
+          slug: 'support',
+          content: 'Support tenant 2',
+          tenant: tenant2Id,
+          ...virtualFields,
+        },
+      })
+
+      await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Onboarding - Tenant 2',
+          slug: 'onboarding',
+          content: 'Onboarding tenant 2',
+          parent: parentT2.id,
+          tenant: tenant2Id,
+          ...virtualFields,
+        },
+      })
+
+      const trashed = await payload.update({
+        collection: 'pages',
+        id: parentT1.id,
+        req: await tenantReq(tenant1Id),
+        data: { deletedAt: new Date().toISOString() },
+      })
+      expect(trashed.deletedAt).toBeTruthy()
+
+      await expect(
+        payload.update({
+          collection: 'pages',
+          id: parentT2.id,
+          req: await tenantReq(tenant2Id),
+          data: { deletedAt: new Date().toISOString() },
+        }),
+      ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+    })
+  })
 })
 
 /**

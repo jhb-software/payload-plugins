@@ -1,4 +1,9 @@
-import type { CollectionBeforeDeleteHook } from 'payload'
+import type {
+  CollectionBeforeChangeHook,
+  CollectionBeforeDeleteHook,
+  PayloadRequest,
+  SanitizedCollectionConfig,
+} from 'payload'
 
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
@@ -11,11 +16,20 @@ const ADAPTERS_REQUIRING_CUSTOM_LOGIC = [
   '@payloadcms/db-postgres',
 ]
 
-export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
+/**
+ * Throws when the given document is still referenced as a parent by other documents.
+ *
+ * Skipped on adapters which enforce the reference through a foreign key constraint themselves.
+ */
+async function assertNoChildDocuments({
   id,
   collection,
   req,
-}) => {
+}: {
+  collection: SanitizedCollectionConfig
+  id: number | string
+  req: PayloadRequest
+}) {
   const databaseAdapter = req.payload.db.packageName || req.payload.db.name
   if (!ADAPTERS_REQUIRING_CUSTOM_LOGIC.includes(databaseAdapter)) {
     return
@@ -53,4 +67,37 @@ export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
 
     throw new AdminPanelError(errorMessage)
   }
+}
+
+/** Refuses a permanent delete of a document which is still referenced as a parent. */
+export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
+  id,
+  collection,
+  req,
+}) => {
+  await assertNoChildDocuments({ id, collection, req })
+}
+
+/**
+ * Refuses moving a document which is still referenced as a parent to the trash.
+ *
+ * Payload soft-deletes through `update`, so a trash operation never reaches `beforeDelete`.
+ * Without this hook the guard would not run for the delete path an editor actually uses on a
+ * collection with `trash: true`. Restoring a document is never blocked.
+ */
+export const preventParentTrashing: CollectionBeforeChangeHook = async ({
+  collection,
+  data,
+  originalDoc,
+  req,
+}) => {
+  const isBeingTrashed = Boolean(data.deletedAt) && !originalDoc?.deletedAt
+
+  if (!isBeingTrashed || originalDoc?.id == null) {
+    return data
+  }
+
+  await assertNoChildDocuments({ id: originalDoc.id, collection, req })
+
+  return data
 }

@@ -28,28 +28,27 @@ export async function childDocumentsOf(
 
     const baseFilterWhere = typeof baseFilter === 'function' ? baseFilter({ req }) : undefined
 
-    try {
-      const childDocuments = await req.payload.find({
-        collection: targetCollection.slug,
-        depth: 0,
-        limit: 0,
-        select: {},
-        where: {
-          and: [
-            { [parentFieldName]: { equals: docId } },
-            ...(baseFilterWhere ? [baseFilterWhere] : []),
-          ],
-        },
-      })
+    const childDocuments = await req.payload.find({
+      collection: targetCollection.slug,
+      depth: 0,
+      limit: 0,
+      select: {},
+      // A trashed child is still a reference: it can be restored, and until it is purged its
+      // parent id is live data.
+      trash: true,
+      where: {
+        and: [
+          { [parentFieldName]: { equals: docId } },
+          ...(baseFilterWhere ? [baseFilterWhere] : []),
+        ],
+      },
+    })
 
-      for (const doc of childDocuments.docs) {
-        childReferences.push({
-          id: doc.id,
-          collection: targetCollection.slug,
-        })
-      }
-    } catch (error) {
-      console.warn(`Error checking collection ${targetCollection.slug} for child documents:`, error)
+    for (const doc of childDocuments.docs) {
+      childReferences.push({
+        id: doc.id,
+        collection: targetCollection.slug,
+      })
     }
   }
 

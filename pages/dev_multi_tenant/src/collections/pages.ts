@@ -16,6 +16,7 @@ export const Pages: PageCollectionConfig = {
       unique: false,
     },
   },
+  trash: true,
   versions: {
     drafts: true,
   },
