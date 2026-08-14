@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
-    "@payloadcms/plugin-cloud-storage": "^3.87.1",
+    "@payloadcms/plugin-cloud-storage": "^3.88.0",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.47",
     "@types/react": "19.2.18",
@@ -49,9 +49,9 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "@payloadcms/plugin-cloud-storage": "^3.87.1",
+    "@payloadcms/plugin-cloud-storage": "^3.88.0",
     "next": "^15.0.0 || ^16.0.0",
-    "payload": "^3.87.1"
+    "payload": "^3.88.0"
   },
   "files": [
     "dist"
