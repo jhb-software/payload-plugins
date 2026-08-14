@@ -254,6 +254,12 @@ describe('database reads caused by an ancestor walk that crosses collections', (
     )
     expect(list.docs).toHaveLength(20)
 
+    // The single read costs one query for the document itself plus one per ancestor level
+    // (topics:mens, pages:shop, pages:root) — four in total. The ceiling keeps the walk
+    // proportional to the depth of the chain; a per-ancestor-document or per-collection-retry
+    // walk would exceed it. Raise it only when the depth of the seeded chain changes.
+    expect(singleQueries).toBeLessThanOrEqual(6)
+
     // Batching means the twenty siblings share the ancestor loads, so the list costs no more
     // ancestor queries than the single read. Without it, each document would walk on its own.
     expect(listQueries).toBeLessThanOrEqual(singleQueries)

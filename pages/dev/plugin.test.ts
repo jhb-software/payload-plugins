@@ -1,6 +1,10 @@
 import payload, { ValidationError } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import { findPageByPath } from '@jhb.software/payload-pages-plugin'
+import {
+  clearPathCache,
+  findPageByPath,
+  type PathCacheLookupResult,
+} from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 import {
@@ -3474,14 +3478,32 @@ describe('Multi-collection parents', () => {
     const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
     await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
 
-    const req = { payload } as any
+    await clearPathCache(payload)
 
-    const cold = await findPageByPath({ path: '/de/shop/mens/shirts', req })
+    const req = { payload } as any
+    const cacheResults: PathCacheLookupResult[] = []
+    const lookup = () =>
+      findPageByPath({
+        path: '/de/shop/mens/shirts',
+        req,
+        onCacheResult: (result) => cacheResults.push(result),
+      })
+
+    const cold = await lookup()
     expect(cold?.collection).toBe('topics')
     expect(cold?.doc?.path).toBe('/de/shop/mens/shirts')
 
-    const cached = await findPageByPath({ path: '/de/shop/mens/shirts', req })
+    // The cold lookup scans the candidate collections and remembers which one won, so the
+    // second lookup skips the scan and resolves the topic straight from the cached entry.
+    expect(await payload.kv.get(cacheResults[0].cacheKey)).toMatchObject({
+      collection: 'topics',
+      id: cold!.doc.id,
+    })
+
+    const cached = await lookup()
+    expect(cached?.collection).toBe('topics')
     expect(cached?.doc?.id).toBe(cold?.doc?.id)
+    expect(cacheResults.map((result) => result.status)).toEqual(['miss', 'hit'])
   })
 
   test('a cycle spanning two collections is rejected, naming the chain', async () => {

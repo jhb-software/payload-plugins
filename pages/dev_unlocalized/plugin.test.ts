@@ -383,6 +383,42 @@ describe('Path and breadcrumb virtual fields are set correctly for find operatio
   })
 })
 
+describe('Parent deletion guard disabled via preventParentDeletion: false', () => {
+  beforeEach(async () => await deleteAllCollections(['users']))
+
+  const createPage = async (data: { title: string; slug: string; parent?: DefaultIDType }) =>
+    await payload.create({
+      collection: 'pages',
+      data: { content: 'Content', ...data, ...virtualFields },
+    })
+
+  test('deletes a parent that is still referenced by a child', async () => {
+    const parent = await createPage({ title: 'Parent', slug: 'parent' })
+    const child = await createPage({ title: 'Child', slug: 'child', parent: parent.id })
+
+    await payload.delete({ collection: 'pages', id: parent.id })
+
+    expect(
+      (await payload.find({ collection: 'pages', where: { id: { equals: parent.id } } })).docs,
+    ).toHaveLength(0)
+    // The child survives the delete, its parent reference is simply left dangling.
+    expect((await payload.findByID({ collection: 'pages', id: child.id })).id).toBe(child.id)
+  })
+
+  test('trashes a parent that is still referenced by a child', async () => {
+    const parent = await createPage({ title: 'Parent', slug: 'trash-parent' })
+    await createPage({ title: 'Child', slug: 'trash-child', parent: parent.id })
+
+    const trashed = await payload.update({
+      collection: 'pages',
+      id: parent.id,
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+    expect(trashed.deletedAt).toBeTruthy()
+  })
+})
+
 describe('Slug field behaves as expected for create and update operations', () => {
   test('Slug remains unchanged when title is updated', async () => {
     // Create initial page
