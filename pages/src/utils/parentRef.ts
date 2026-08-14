@@ -104,12 +104,10 @@ export function parentRefKey(ref: ParentRef): string {
 function isPolymorphicValue(
   value: unknown,
 ): value is { relationTo: CollectionSlug; value: unknown } {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'relationTo' in value &&
-    typeof value.relationTo === 'string'
-  )
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  return 'relationTo' in value && typeof value.relationTo === 'string'
 }
 
 /** Extracts a plain id from a raw relationship value (an id, or a populated document). */
