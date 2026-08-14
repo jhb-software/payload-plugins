@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: the generated fields (`slug`, `parent`, `path`, `breadcrumbs`) accept an `admin` override in the matching `page` block, deep merged over the plugin's own — no more patching the built config after the plugin has run. `page.parent` also accepts `filterOptions` to constrain where documents may be attached in the page tree. `admin.condition` and `parent.filterOptions` are ANDed with the plugin's, so an override narrows rather than replaces (see the README).
 - fix: a `select` no longer returns the raw fields (`slug`, the parent field, `isRootPage` and the breadcrumb label field) which are only selected internally to compute the virtual fields — responses now contain exactly the fields the caller requested. Select such a field explicitly if a response is expected to contain it.
 
 ## 0.9.0-beta.1

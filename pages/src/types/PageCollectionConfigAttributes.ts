@@ -1,10 +1,27 @@
-import type { CollectionSlug } from 'payload'
+import type {
+  ArrayField,
+  CollectionSlug,
+  FilterOptions,
+  SingleRelationshipField,
+  TextField,
+} from 'payload'
 
 import type { Locale } from './Locale.js'
+
+/**
+ * Overrides for the `admin` config of a generated field, deep merged over the
+ * plugin's own — `components.Field` can be replaced without losing
+ * `position: 'sidebar'`. `condition` is ANDed rather than replaced, so an
+ * override can only hide the field in more cases, never in fewer.
+ */
+type FieldAdminOverride<TField extends { admin?: unknown }> = TField['admin']
 
 /** The incoming attributes for the page collection config. */
 export type IncomingPageCollectionConfigAttributes = {
   breadcrumbs?: {
+    /** Admin overrides for the generated breadcrumbs field. */
+    admin?: FieldAdminOverride<ArrayField>
+
     /**
      * Name of the field to use to generate the breadcrumb label.
      * Most of the time this will be the field which is set as the 'useAsTitle' field.
@@ -21,8 +38,18 @@ export type IncomingPageCollectionConfigAttributes = {
   livePreview?: boolean
 
   parent: {
+    /** Admin overrides for the generated parent field. */
+    admin?: FieldAdminOverride<SingleRelationshipField>
+
     /** Collection in which the parent document is stored. */
     collection: CollectionSlug
+
+    /**
+     * Additional filter for the parent picker, ANDed with the plugin's own
+     * (which excludes the current document from its own parents). Payload
+     * re-runs `filterOptions` on save, so this also holds REST/local API writes.
+     */
+    filterOptions?: FilterOptions
 
     /** Name of the field which stores the parent document. */
     name: string
@@ -31,10 +58,18 @@ export type IncomingPageCollectionConfigAttributes = {
     sharedDocument?: boolean
   }
 
+  path?: {
+    /** Admin overrides for the generated path field. */
+    admin?: FieldAdminOverride<TextField>
+  }
+
   /** Whether Payloads feature should be enabled for this collection. Defaults to `true`. */
   preview?: boolean
 
   slug?: {
+    /** Admin overrides for the generated slug field. */
+    admin?: FieldAdminOverride<TextField>
+
     /** Name of the field to use as fallback for the slug field. Defaults to the `useAsTitle` field. */
     fallbackField?: string
 
