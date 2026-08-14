@@ -2,10 +2,15 @@ import type { CollectionBeforeChangeHook } from 'payload'
 
 import { ValidationError } from 'payload'
 
-import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { ParentRef } from '../utils/parentRef.js'
 
-import { resolveParentRef } from '../utils/parentRef.js'
+import { pageAttributesOf } from '../utils/pageCollectionConfigHelpers.js'
+import {
+  parentRefKey,
+  resolveParentRef,
+  tryResolveParentRef,
+  UnresolvableParentRefError,
+} from '../utils/parentRef.js'
 
 /**
  * A CollectionBeforeChangeHook that prevents circular parent references.
@@ -28,14 +33,29 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
   originalDoc,
   req,
 }) => {
-  const pageConfig = collection.custom?.pageConfig as PageCollectionConfigAttributes | undefined
+  const pageConfig = pageAttributesOf(collection)
 
   if (!pageConfig) {
     return data
   }
 
   const parentFieldName = pageConfig.parent.name
-  const newParentRef = resolveParentRef(data[parentFieldName], pageConfig)
+
+  let newParentRef: null | ParentRef
+
+  try {
+    newParentRef = resolveParentRef(data[parentFieldName], pageConfig)
+  } catch (error) {
+    if (!(error instanceof UnresolvableParentRefError)) {
+      throw error
+    }
+
+    // Payload skips field validation on draft saves, so without this the value would be stored
+    // and only surface later as a document that has silently fallen out of the page tree.
+    throw new ValidationError({
+      errors: [{ message: error.message, path: parentFieldName }],
+    })
+  }
 
   // No parent set – nothing to validate
   if (!newParentRef) {
@@ -50,15 +70,17 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
 
   // On updates, skip the ancestor walk if the parent hasn't changed
   if (operation === 'update' && originalDoc) {
-    const originalParentRef = resolveParentRef(originalDoc[parentFieldName], pageConfig)
+    // An unresolvable stored value must not block a write which replaces it, so it counts as a
+    // changed parent rather than failing here.
+    const originalParentRef = tryResolveParentRef(originalDoc[parentFieldName], pageConfig)
 
-    if (originalParentRef && refKey(originalParentRef) === refKey(newParentRef)) {
+    if (originalParentRef && parentRefKey(originalParentRef) === parentRefKey(newParentRef)) {
       return data
     }
   }
 
   // Direct self-reference check
-  if (currentRef && refKey(currentRef) === refKey(newParentRef)) {
+  if (currentRef && parentRefKey(currentRef) === parentRefKey(newParentRef)) {
     throw new ValidationError({
       errors: [{ message: 'A document cannot be its own parent', path: parentFieldName }],
     })
@@ -66,12 +88,12 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
 
   // Walk up the ancestor chain looking for cycles. `visited` is kept ordered so the error can
   // name the chain that closes the loop.
-  const visited: string[] = currentRef ? [refKey(currentRef)] : []
+  const visited: string[] = currentRef ? [parentRefKey(currentRef)] : []
 
   let cursor: null | ParentRef = newParentRef
 
   while (cursor) {
-    const key = refKey(cursor)
+    const key = parentRefKey(cursor)
 
     if (visited.includes(key)) {
       throw new ValidationError({
@@ -88,8 +110,7 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
 
     // Each hop names its parent field independently, so the config is read per collection
     // rather than reusing the one of the document being saved.
-    const hopConfig = req.payload.collections[cursor.collection]?.config.custom?.pageConfig as
-      PageCollectionConfigAttributes | undefined
+    const hopConfig = pageAttributesOf(req.payload.collections[cursor.collection]?.config)
 
     // A non-page collection has no parent to follow, so the chain ends here.
     if (!hopConfig) {
@@ -113,13 +134,10 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
       select: { [hopParentField]: true },
     })) as null | Record<string, unknown>
 
-    cursor = ancestor ? resolveParentRef(ancestor[hopParentField], hopConfig) : null
+    // An ancestor carrying an unresolvable parent value ends the walk: the chain cannot be
+    // followed any further, and that ancestor's own writes are refused above.
+    cursor = ancestor ? tryResolveParentRef(ancestor[hopParentField], hopConfig) : null
   }
 
   return data
-}
-
-/** Identifies a document across collections, matching the format `loadAncestors` reports. */
-function refKey(ref: ParentRef): string {
-  return `${ref.collection}:${String(ref.id)}`
 }

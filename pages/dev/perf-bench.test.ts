@@ -169,22 +169,59 @@ async function createPage(
   return doc.id
 }
 
+/**
+ * Creates a topic, whose parent may live in `pages` or in `topics` — the chains below therefore
+ * alternate between two collections, which the ancestor walk has to batch per collection.
+ */
+async function createTopic(
+  key: string,
+  data: {
+    parent: { collection: 'pages' | 'topics'; key: string }
+    slugDe: string
+    slugEn: string
+    title: string
+  },
+) {
+  const doc = await payload.create({
+    collection: 'topics',
+    locale: 'de',
+    data: {
+      title: `${data.title} DE`,
+      slug: data.slugDe,
+      parent: { relationTo: data.parent.collection, value: ids[data.parent.key] },
+      _status: 'published',
+      ...virtualFields,
+    } as any,
+  })
+  ids[key] = doc.id
+  await payload.update({
+    collection: 'topics',
+    id: doc.id,
+    locale: 'en',
+    data: { title: `${data.title} EN`, slug: data.slugEn } as any,
+  })
+  return doc.id
+}
+
 const enabled = process.env.RUN_PERF_BENCH === '1'
 
 beforeAll(async () => {
   if (!enabled) return
   await payload.init({ config })
 
-  // reset all page docs from previous runs
+  // reset all page docs from previous runs (topics first, they reference pages)
+  await payload.db.deleteMany({ collection: 'topics', where: {} })
   await payload.db.deleteMany({ collection: 'pages', where: {} })
   // and the path cache, so the cache-miss scenario is a real miss (sqlite reuses row ids,
   // so an entry from a previous run can otherwise still resolve)
   for (const key of await payload.kv.keys()) {
     await payload.kv.delete(key)
   }
-  try {
-    await (payload.db as any).deleteVersions({ collection: 'pages', where: {} })
-  } catch {}
+  for (const collection of ['pages', 'topics']) {
+    try {
+      await (payload.db as any).deleteVersions({ collection, where: {} })
+    } catch {}
+  }
 
   // Seed BEFORE instrumenting, so seeding cost is excluded.
   // Tree:
@@ -217,6 +254,29 @@ beforeAll(async () => {
         parent: `s${s}`,
       })
     }
+  }
+
+  // Cross-collection subtree, hanging off the page tree above:
+  //   pages:s1 ── topics:shop ── topics:mens ── m1..m5
+  await createTopic('shop', {
+    slugDe: 'shop',
+    slugEn: 'shop',
+    title: 'Shop',
+    parent: { collection: 'pages', key: 's1' },
+  })
+  await createTopic('mens', {
+    slugDe: 'herren',
+    slugEn: 'mens',
+    title: 'Mens',
+    parent: { collection: 'topics', key: 'shop' },
+  })
+  for (let c = 1; c <= 5; c++) {
+    await createTopic(`m${c}`, {
+      slugDe: `hemd-${c}`,
+      slugEn: `shirt-${c}`,
+      title: `Shirt ${c}`,
+      parent: { collection: 'topics', key: 'mens' },
+    })
   }
 
   instrumentDb()
@@ -334,6 +394,29 @@ describe.skipIf(!enabled)('virtual path generation DB cost', () => {
         locale: 'de',
         data: { parent: ids.web } as any,
       }),
+    )
+
+    // 11. Cross-collection chain: every level of the walk alternates between two collections,
+    // so each level costs one query per collection instead of one.
+    await scenario('findByID topic at depth 4, chain crosses pages and topics', () =>
+      payload.findByID({ collection: 'topics', id: ids.m1, locale: 'de' }),
+    )
+
+    // 12. Cross-collection list: the five siblings share the same chain, so batching must keep
+    // this at the cost of the single read above.
+    await scenario('find ALL topics (7 docs), all fields [admin list]', () =>
+      payload.find({ collection: 'topics', locale: 'de', limit: 200, pagination: false }),
+    )
+
+    // 13. Resolving a path whose segments span both collections.
+    for (const key of await payload.kv.keys()) {
+      await payload.kv.delete(key)
+    }
+    await scenario('findPageByPath /de/bereich-1/shop/herren/hemd-1 (cache MISS)', () =>
+      findPageByPath({ payload, path: '/de/bereich-1/shop/herren/hemd-1', cache: true }),
+    )
+    await scenario('findPageByPath /de/bereich-1/shop/herren/hemd-1 (cache HIT)', () =>
+      findPageByPath({ payload, path: '/de/bereich-1/shop/herren/hemd-1', cache: true }),
     )
   }, 240_000)
 })

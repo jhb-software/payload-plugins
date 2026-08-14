@@ -1,14 +1,16 @@
-import type { CollectionConfig, CollectionSlug, PayloadRequest, SelectType } from 'payload'
+import type {
+  CollectionConfig,
+  CollectionSlug,
+  DefaultDocumentIDType,
+  PayloadRequest,
+  SelectType,
+} from 'payload'
 
 import type { Locale } from '../types/Locale.js'
-import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { ParentRef } from './parentRef.js'
 
-import { asPageCollectionConfig } from './pageCollectionConfigHelpers.js'
-import { extractID, resolveParentRef } from './parentRef.js'
-
-/** Document ids are numbers on SQL adapters and strings on MongoDB. */
-type DocumentID = number | string
+import { pageAttributesOf } from './pageCollectionConfigHelpers.js'
+import { extractID, parentRefKey, resolveParentRef } from './parentRef.js'
 
 /**
  * An ancestor document reduced to the values the breadcrumb assembly needs.
@@ -18,7 +20,7 @@ type DocumentID = number | string
  */
 export type Ancestor = {
   collection: CollectionSlug
-  id: DocumentID
+  id: DefaultDocumentIDType
   isRootPage: boolean
   label: unknown
   slug: unknown
@@ -30,7 +32,7 @@ type AncestorRow = {
 } & Ancestor
 
 type Batch = {
-  ids: DocumentID[]
+  ids: DefaultDocumentIDType[]
   promise: Promise<Map<string, AncestorRow>>
   reject: (error: unknown) => void
   resolve: (rows: Map<string, AncestorRow>) => void
@@ -66,7 +68,7 @@ export async function loadAncestorChain({
   /** Id of the document the chain is built for, used for error messages. */
   docId: unknown
   /** Id of the first ancestor. */
-  id: DocumentID
+  id: DefaultDocumentIDType
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   req: PayloadRequest
@@ -74,10 +76,10 @@ export async function loadAncestorChain({
   const chain: Ancestor[] = []
   const visited: string[] = []
   let childId: unknown = docId
-  let next: { collection: CollectionSlug; id: DocumentID } | null = { id, collection }
+  let next: { collection: CollectionSlug; id: DefaultDocumentIDType } | null = { id, collection }
 
   while (next) {
-    const key = `${next.collection}:${next.id}`
+    const key = parentRefKey(next)
 
     if (visited.includes(key)) {
       throw new Error(
@@ -125,7 +127,7 @@ function loadAncestor({
   req,
 }: {
   collection: CollectionSlug
-  id: DocumentID
+  id: DefaultDocumentIDType
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   req: PayloadRequest
@@ -188,14 +190,14 @@ async function fetchAncestors({
   req,
 }: {
   collection: CollectionSlug
-  ids: DocumentID[]
+  ids: DefaultDocumentIDType[]
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   req: PayloadRequest
 }): Promise<Map<string, AncestorRow>> {
   const { payload } = req
   const collectionConfig = payload.collections[collection]?.config
-  const pageAttributes = collectionConfig ? pageAttributesOf(collectionConfig) : undefined
+  const pageAttributes = pageAttributesOf(collectionConfig)
 
   if (!collectionConfig || !pageAttributes) {
     throw new Error(
@@ -262,7 +264,7 @@ async function fetchAncestors({
   const rows = new Map<string, AncestorRow>()
   for (const [key, doc] of documents) {
     rows.set(key, {
-      id: doc.id as DocumentID,
+      id: doc.id as DefaultDocumentIDType,
       slug: doc.slug,
       collection,
       isRootPage: doc.isRootPage === true,
@@ -274,14 +276,6 @@ async function fetchAncestors({
   }
 
   return rows
-}
-
-/** Returns the page attributes of a collection config, or undefined if it is not a page collection. */
-function pageAttributesOf(config: CollectionConfig): PageCollectionConfigAttributes | undefined {
-  return (
-    asPageCollectionConfig(config)?.page ??
-    (config.custom?.pageConfig as PageCollectionConfigAttributes | undefined)
-  )
 }
 
 /** Whether the collection stores drafts in its versions table. */

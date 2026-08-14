@@ -1,6 +1,7 @@
 import type {
   CollectionBeforeChangeHook,
   CollectionBeforeDeleteHook,
+  DefaultDocumentIDType,
   PayloadRequest,
   SanitizedCollectionConfig,
 } from 'payload'
@@ -24,7 +25,7 @@ async function assertNoChildDocuments({
   req,
 }: {
   collection: SanitizedCollectionConfig
-  id: number | string
+  id: DefaultDocumentIDType
   req: PayloadRequest
 }) {
   const pagesPluginConfig = collection.custom?.pagesPluginConfig as PagesPluginConfig
@@ -45,7 +46,7 @@ async function assertNoChildDocuments({
         acc[child.collection].push(child.id)
         return acc
       },
-      {} as Record<string, (number | string)[]>,
+      {} as Record<string, DefaultDocumentIDType[]>,
     )
 
     const collectionMessages = Object.entries(childrenByCollection)

@@ -3400,6 +3400,7 @@ describe('Multi-collection parents', () => {
     })
 
   beforeEach(async () => {
+    await deleteCollection('announcements')
     await deleteCollection('topics')
     await deleteCollection('pages')
   })
@@ -3581,6 +3582,79 @@ describe('Multi-collection parents', () => {
     // Nothing is parented to `pages:<id>`, so the delete must go through. An id-only child
     // query would see the topic above and refuse it.
     await expect(payload.delete({ collection: 'pages', id: page.id })).resolves.toBeTruthy()
+  })
+  test('a cycle spanning more than two documents is rejected, naming the whole chain', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const shirts = await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+    const tees = await createTopic('Tees', 'tees', { relationTo: 'topics', value: shirts.id })
+
+    // Re-parenting `mens` under its grandchild closes a loop the walk only reaches after
+    // following two hops, unlike a document parented to its own direct child.
+    const error = await parentFieldErrorOf(
+      payload.update({
+        collection: 'topics',
+        id: mens.id,
+        locale: 'de',
+        data: { parent: { relationTo: 'topics', value: tees.id } } as any,
+      }),
+    )
+
+    expect(error).toBe(
+      `Circular parent reference detected: topics:${mens.id} -> topics:${tees.id} -> topics:${shirts.id} -> topics:${mens.id}`,
+    )
+  })
+
+  test('a parent id which does not name its collection is refused instead of stored', async () => {
+    const shop = await createRootPage()
+
+    // Payload skips relationship validation on draft saves, which is how a bare id — the shape
+    // the field had before the collection was switched to a list — reaches the database.
+    const error = await parentFieldErrorOf(
+      payload.create({
+        collection: 'topics',
+        locale: 'de',
+        data: {
+          ...virtualFields,
+          title: 'Mens',
+          slug: 'mens',
+          parent: shop.id,
+          _status: 'draft',
+        } as any,
+      }),
+    )
+
+    expect(error).toContain('does not name the collection it points at')
+
+    const topics = await payload.find({ collection: 'topics', locale: 'de', draft: true })
+    expect(topics.docs).toHaveLength(0)
+  })
+
+  test('a shared parent document is inherited together with the collection it lives in', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    const createAnnouncement = async (title: string, slug: string, parent?: unknown) =>
+      await payload.create({
+        collection: 'announcements',
+        locale: 'de',
+        data: { ...virtualFields, title, slug, parent, _status: 'published' } as any,
+      })
+
+    await createAnnouncement('First', 'first', { relationTo: 'topics', value: mens.id })
+
+    // The second document gets no parent, so the shared default has to supply one.
+    const second = await createAnnouncement('Second', 'second')
+
+    const stored = await payload.findByID({
+      collection: 'announcements',
+      id: second.id,
+      locale: 'de',
+      depth: 0,
+    })
+
+    expect(stored.parent).toEqual({ relationTo: 'topics', value: mens.id })
+    expect(stored.path).toBe('/de/shop/mens/second')
   })
 })
 

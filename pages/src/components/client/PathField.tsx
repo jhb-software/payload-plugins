@@ -14,7 +14,7 @@ import type { Breadcrumb } from '../../types/Breadcrumb.js'
 import type { Locale } from '../../types/Locale.js'
 
 import { getBreadcrumbs as getBreadcrumbsForDoc } from '../../utils/getBreadcrumbs.js'
-import { resolveParentRef } from '../../utils/parentRef.js'
+import { parentRefKey, tryResolveParentRef } from '../../utils/parentRef.js'
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useDidUpdateEffect } from '../../utils/useDidUpdateEffect.js'
 import { BreadcrumbsFieldModalButton } from './BreadcrumbsField.js'
@@ -36,11 +36,13 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
     ?.value as string | undefined
   const parent = useFormFields(([fields, _]) => fields[parentField])?.value
   const isRootPage = useFormFields(([fields, _]) => fields.isRootPage)?.value as boolean | undefined
-  const parentRef = resolveParentRef(parent, pageConfig)
+  // A value which does not name its collection cannot be turned into a path; the save is
+  // refused server-side, so the preview treats it as no parent rather than crashing the editor.
+  const parentRef = tryResolveParentRef(parent, pageConfig)
   // A polymorphic parent's value is an object, whose identity changes on every render. The
   // effects below must re-run when the parent actually changes, not on every render, so they
   // depend on this key rather than on the value.
-  const parentKey = parentRef ? `${parentRef.collection}:${String(parentRef.id)}` : ''
+  const parentKey = parentRef ? parentRefKey(parentRef) : ''
 
   /**
    * Sets the path, but only if the new path is different from the current path.

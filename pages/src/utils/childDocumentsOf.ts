@@ -1,4 +1,9 @@
-import type { CollectionConfig, CollectionSlug, PayloadRequest } from 'payload'
+import type {
+  CollectionConfig,
+  CollectionSlug,
+  DefaultDocumentIDType,
+  PayloadRequest,
+} from 'payload'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
@@ -12,11 +17,11 @@ import { hasPolymorphicParent, parentCollections } from '../utils/parentRef.js'
  */
 export async function childDocumentsOf(
   req: PayloadRequest,
-  docId: number | string,
+  docId: DefaultDocumentIDType,
   collectionSlug: CollectionSlug,
   baseFilter?: PagesPluginConfig['baseFilter'],
-): Promise<{ collection: CollectionSlug; id: number | string }[]> {
-  const childReferences: { collection: CollectionSlug; id: number | string }[] = []
+): Promise<{ collection: CollectionSlug; id: DefaultDocumentIDType }[]> {
+  const childReferences: { collection: CollectionSlug; id: DefaultDocumentIDType }[] = []
 
   const allCollections = req.payload.config.collections || []
 
@@ -68,7 +73,7 @@ export async function childDocumentsOf(
  */
 export async function hasChildDocuments(
   req: PayloadRequest,
-  docId: number | string,
+  docId: DefaultDocumentIDType,
   collectionSlug: CollectionSlug,
   baseFilter?: PagesPluginConfig['baseFilter'],
 ): Promise<boolean> {

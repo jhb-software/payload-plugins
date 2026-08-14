@@ -4,6 +4,8 @@ import {
   hasPolymorphicParent,
   parentCollections,
   resolveParentRef,
+  tryResolveParentRef,
+  UnresolvableParentRefError,
 } from '../src/utils/parentRef.js'
 
 const mono = { parent: { collection: 'pages' } }
@@ -67,7 +69,21 @@ describe('resolveParentRef', () => {
     expect(resolveParentRef({ relationTo: 'topics', value: null }, poly)).toBeNull()
   })
 
-  test('is null for a bare id on a polymorphic config, where the collection is unknowable', () => {
-    expect(resolveParentRef(3, poly)).toBeNull()
+  test('rejects a bare id on a polymorphic config, where the collection is unknowable', () => {
+    expect(() => resolveParentRef(3, poly)).toThrow(UnresolvableParentRefError)
+    expect(() => resolveParentRef(3, poly)).toThrow('"pages", "topics"')
+  })
+})
+
+describe('tryResolveParentRef', () => {
+  test('reports a bare id on a polymorphic config as no parent instead of throwing', () => {
+    expect(tryResolveParentRef(3, poly)).toBeNull()
+  })
+
+  test('resolves a well-formed value the same way as resolveParentRef', () => {
+    expect(tryResolveParentRef({ relationTo: 'topics', value: 3 }, poly)).toEqual({
+      id: 3,
+      collection: 'topics',
+    })
   })
 })

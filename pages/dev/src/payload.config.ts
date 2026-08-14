@@ -8,6 +8,7 @@ import { Countries } from './collections/countries'
 import { CountryTravelTips } from './collections/country-travel-tips'
 import { Pages } from './collections/pages'
 import { Topics } from './collections/topics'
+import { Announcements } from './collections/announcements'
 import { Redirects } from './collections/redirects'
 import { BlogpostCategories } from './collections/blogpost-categories'
 import { en } from 'payload/i18n/en'
@@ -29,6 +30,7 @@ export default buildConfig({
   collections: [
     Pages,
     Topics,
+    Announcements,
     Authors,
     Blogposts,
     BlogpostCategories,

@@ -79,6 +79,7 @@ export interface Config {
   collections: {
     pages: Page;
     topics: Topic;
+    announcements: Announcement;
     authors: Author;
     blogposts: Blogpost;
     'blogpost-categories': BlogpostCategory;
@@ -95,6 +96,7 @@ export interface Config {
   collectionsSelect: {
     pages: PagesSelect<false> | PagesSelect<true>;
     topics: TopicsSelect<false> | TopicsSelect<true>;
+    announcements: AnnouncementsSelect<false> | AnnouncementsSelect<true>;
     authors: AuthorsSelect<false> | AuthorsSelect<true>;
     blogposts: BlogpostsSelect<false> | BlogpostsSelect<true>;
     'blogpost-categories': BlogpostCategoriesSelect<false> | BlogpostCategoriesSelect<true>;
@@ -190,6 +192,29 @@ export interface Topic {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "announcements".
+ */
+export interface Announcement {
+  id: number;
+  slug: string;
+  parent:
+    | {
+        relationTo: 'pages';
+        value: number | Page;
+      }
+    | {
+        relationTo: 'topics';
+        value: number | Topic;
+      };
+  path: string;
+  breadcrumbs: Breadcrumbs;
+  title: string;
+  updatedAt: string;
+  createdAt: string;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -364,6 +389,10 @@ export interface PayloadLockedDocument {
         value: number | Topic;
       } | null)
     | ({
+        relationTo: 'announcements';
+        value: number | Announcement;
+      } | null)
+    | ({
         relationTo: 'authors';
         value: number | Author;
       } | null)
@@ -486,6 +515,20 @@ export interface TopicsSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "announcements_select".
+ */
+export interface AnnouncementsSelect<T extends boolean = true> {
+  slug?: T;
+  parent?: T;
+  path?: T;
+  breadcrumbs?: T | BreadcrumbsSelect<T>;
+  title?: T;
+  updatedAt?: T;
+  createdAt?: T;
   _status?: T;
 }
 /**
