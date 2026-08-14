@@ -1,7 +1,7 @@
 /**
  * Performance investigation benchmark for virtual path/breadcrumb generation.
  *
- * Wraps every payload.db adapter method to:
+ * Uses the shared DB instrumentation (`src/test/dbOps.ts`) to:
  *  1. count DB operations per scenario (with method/collection/select breakdown)
  *  2. inject simulated network latency per DB round trip (SIMULATED_LATENCY_MS)
  *
@@ -16,6 +16,7 @@ import payload, { createLocalReq } from 'payload'
 import { afterAll, beforeAll, describe, test } from 'vitest'
 import config from './src/payload.config'
 import { findPageByPath } from '@jhb.software/payload-pages-plugin'
+import { instrumentDbOps, type DbOpsInstrumentation } from './src/test/dbOps'
 
 const OUT_FILE = process.env.BENCH_OUT ?? './bench-results.txt'
 const outLines: string[] = []
@@ -26,92 +27,14 @@ function report(line: string) {
 
 const SIMULATED_LATENCY_MS = 8
 
-type DbOp = {
-  method: string
-  collection?: string
-  select?: string
-  whereKeys?: string
-}
-
-const ops: DbOp[] = []
-let txOps = 0
-let capturing = false
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-function summarizeWhere(where: any): string | undefined {
-  if (!where) return undefined
-  try {
-    return JSON.stringify(where, (key, value) =>
-      typeof value === 'string' && value.length > 24 ? value.slice(0, 24) + '…' : value,
-    ).slice(0, 120)
-  } catch {
-    return '?'
-  }
-}
-
-function instrumentDb() {
-  const db = payload.db as any
-  const dataMethods = [
-    'find',
-    'findOne',
-    'create',
-    'updateOne',
-    'updateMany',
-    'deleteOne',
-    'deleteMany',
-    'count',
-    'countDistinct',
-    'findDistinct',
-    'queryDrafts',
-    'findVersions',
-    'createVersion',
-    'updateVersion',
-    'deleteVersions',
-    'countVersions',
-    'upsert',
-    'findGlobal',
-    'createGlobal',
-    'updateGlobal',
-    'findGlobalVersions',
-    'createGlobalVersion',
-    'updateGlobalVersion',
-    'countGlobalVersions',
-  ]
-  for (const method of dataMethods) {
-    if (typeof db[method] !== 'function') continue
-    const original = db[method].bind(db)
-    db[method] = async (args: any, ...rest: any[]) => {
-      if (capturing) {
-        ops.push({
-          method,
-          collection: args?.collection ?? args?.global ?? args?.globalSlug,
-          select: args?.select ? JSON.stringify(args.select) : undefined,
-          whereKeys: summarizeWhere(args?.where),
-        })
-        await sleep(SIMULATED_LATENCY_MS)
-      }
-      return original(args, ...rest)
-    }
-  }
-  for (const method of ['beginTransaction', 'commitTransaction', 'rollbackTransaction']) {
-    if (typeof db[method] !== 'function') continue
-    const original = db[method].bind(db)
-    db[method] = async (...args: any[]) => {
-      if (capturing) txOps++
-      return original(...args)
-    }
-  }
-}
+let dbOps: DbOpsInstrumentation
 
 async function scenario<T>(name: string, fn: () => Promise<T>): Promise<T> {
-  ops.length = 0
-  txOps = 0
-  capturing = true
+  dbOps.start()
   const start = performance.now()
   const result = await fn()
   const elapsed = performance.now() - start
-  capturing = false
+  const ops = dbOps.stop()
 
   const byKind = new Map<string, number>()
   for (const op of ops) {
@@ -120,14 +43,14 @@ async function scenario<T>(name: string, fn: () => Promise<T>): Promise<T> {
   }
   report(`\n=== ${name} ===`)
   report(
-    `DB ops: ${ops.length}  |  tx begin/commit: ${txOps}  |  wall time @${SIMULATED_LATENCY_MS}ms simulated latency: ${elapsed.toFixed(0)}ms`,
+    `DB ops: ${ops.length}  |  tx begin/commit: ${dbOps.txOps()}  |  wall time @${SIMULATED_LATENCY_MS}ms simulated latency: ${elapsed.toFixed(0)}ms`,
   )
   for (const [kind, count] of byKind) {
     report(`  ${count}x ${kind}`)
   }
   if (process.env.BENCH_VERBOSE) {
     for (const op of ops) {
-      report(`    ${op.method}(${op.collection}) where=${op.whereKeys} select=${op.select}`)
+      report(`    ${op.method}(${op.collection}) where=${op.where} select=${op.select}`)
     }
   }
   return result
@@ -279,7 +202,7 @@ beforeAll(async () => {
     })
   }
 
-  instrumentDb()
+  dbOps = instrumentDbOps(payload.db, { latencyMs: SIMULATED_LATENCY_MS })
 }, 240_000)
 
 afterAll(async () => {

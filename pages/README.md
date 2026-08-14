@@ -437,6 +437,75 @@ await findPageByPath({
 
 After bulk operations which change many paths at once (e.g. imports or migrations), the cache can be reset with `clearPathCache(payload)` — this is an optimization, not a correctness requirement, as stale entries heal themselves on read.
 
+## Enumerating page paths
+
+> ⚠️ `listPagePaths` and `pathChanges` are **experimental**: they may change or be removed in a future minor release without a breaking-change bump. They need more real-world testing before being marked stable.
+
+`listPagePaths` enumerates every live path across the plugin's page collections — published, not trashed, and scoped by the plugin's [`baseFilter`](#multi-tenant-support). It returns data, not XML: sitemap, `robots.txt` and `llms.txt` serialization stay with the caller, as do indexability rules (pass a noindex filter through `where` on the sitemap call only).
+
+```ts
+import { listPagePaths } from '@jhb.software/payload-pages-plugin'
+
+const entries = await listPagePaths({ req })
+// entries: [{ collection: 'pages', id: '...', locale: 'de', path: '/de/blog/my-post', title: 'My Post', updatedAt: '...' }, ...]
+
+const sitemap = entries.map(({ path, updatedAt }) => ({
+  loc: `${origin}${path}`,
+  lastmod: updatedAt,
+}))
+```
+
+On a localized install the result carries one entry per (document, locale); a locale whose slug is unset yields no entry. On an unlocalized install `locale` is absent from every entry. `title` carries the value of each collection's `breadcrumbs.labelField`. Options:
+
+- `collections`: The page collections to enumerate. Defaults to every registered page collection, so a newly added page collection appears without a code change.
+- `locale`: Narrows a localized install to one locale.
+- `draft`: Whether to enumerate the latest versions instead of the published ones (default `false`), mirroring `findPageByPath`.
+- `where`: An additional filter, merged per collection with `and` — it can narrow the enumeration but never widen it past the plugin's own conditions. The filtered fields must be queryable on every enumerated collection. On a localized install the default enumeration queries all locales at once, where Payload cannot filter on localized fields — filter on unlocalized fields, or pass `locale` to filter on localized ones.
+
+## Reacting to path changes
+
+`pathChanges` reports which live paths a write started or stopped resolving — for the written document and, when a live path moved, for every descendant whose path moved with it. Call it from a page collection's own `afterChange` and `afterDelete` hooks with the hook's arguments:
+
+```ts
+import { pathChanges } from '@jhb.software/payload-pages-plugin'
+
+// in a page collection's own hooks
+hooks: {
+  afterChange: [
+    async (args) => {
+      for (const change of await pathChanges(args)) {
+        await revalidate(change.previousPath, change.path)
+      }
+    },
+  ],
+}
+```
+
+Each entry carries `previousPath` (the live path before the write, `null` when it did not resolve) and `path` (the live path after it, `null` when it no longer resolves), so the three cases a consumer acts on fall out of the two nullable strings: `null → '/x'` (created, published, restored — warm it), `'/x' → null` (deleted, trashed, unpublished — purge it), `'/x' → '/y'` (moved — purge old, warm new).
+
+A draft save or autosave tick reports no changes. A rename staged in a draft is reported when it is published, carrying the previously published path as `previousPath` — which the hook's `previousDoc` cannot supply, since on a drafts-enabled collection it holds the latest version rather than the published state.
+
+`pathChanges` rejects rather than returning a short list: a silently incomplete purge is worse than a loud failure. Await it inside the hook as above, or chain `.catch()` when running it off the critical path:
+
+```ts
+afterChange: [
+  (args) =>
+    void pathChanges(args)
+      .then(invalidate)
+      .catch((error) => args.req.payload.logger.error(error)),
+]
+```
+
+## Identifying page collections
+
+`isPageCollectionConfig` (also experimental) is the plugin's own predicate for "is this collection config a page collection". It works on the raw config — before the plugin transforms it — so it can derive the page collection slugs at config-build time, e.g. to configure a rich-text link feature or a page picker:
+
+```ts
+import { isPageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+
+const pageSlugs = collections.filter(isPageCollectionConfig).map((collection) => collection.slug)
+```
+
 ## About this plugin
 
 This plugin streamlines website development with Payload CMS by providing enhanced document nesting capabilities. While the official [Nested Docs plugin](https://payloadcms.com/docs/plugins/nested-docs) only supports nesting within a single collection, this plugin enables nesting documents across multiple collections. Another major difference is that this plugin uses virtual fields for the paths and breadcrumbs, ensuring these computed values stay automatically synchronized with your content structure.

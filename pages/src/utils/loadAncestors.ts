@@ -42,6 +42,13 @@ const CACHE_KEY = 'pagesPluginAncestorCache'
 const BATCH_KEY = 'pagesPluginAncestorBatches'
 
 /**
+ * Thrown when an ancestor referenced as a parent no longer exists (e.g. it was hard-deleted).
+ * A document with a broken ancestor chain has no computable path, so callers which only need to
+ * know whether the path resolves treat this as "it does not" rather than as a failure.
+ */
+export class MissingAncestorError extends Error {}
+
+/**
  * Loads the ancestor chain of a document, ordered top-down (root first).
  *
  * Ancestors are read straight from the database adapter instead of through the Local API, so
@@ -92,7 +99,7 @@ export async function loadAncestorChain({
 
     if (!row) {
       // This can be the case, when the parent document got deleted.
-      throw new Error(
+      throw new MissingAncestorError(
         'Parent document with id ' +
           String(next.id) +
           ' of document with id ' +

@@ -1,6 +1,10 @@
 import { alternatePathsField, PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 import { captureAfterChangeDoc } from '../test/afterChangeCapture'
 import { countCollectionAfterRead, countFieldAfterRead } from '../test/hookExecutionCounter'
+import {
+  recordPathChangesAfterChange,
+  recordPathChangesAfterDelete,
+} from '../test/pathChangesCapture'
 
 export const Pages: PageCollectionConfig = {
   slug: 'pages',
@@ -11,7 +15,8 @@ export const Pages: PageCollectionConfig = {
     useAsTitle: 'title',
   },
   hooks: {
-    afterChange: [captureAfterChangeDoc],
+    afterChange: [captureAfterChangeDoc, recordPathChangesAfterChange],
+    afterDelete: [recordPathChangesAfterDelete],
     afterRead: [countCollectionAfterRead],
   },
   page: {
