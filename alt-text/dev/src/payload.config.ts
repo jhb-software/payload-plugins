@@ -1,4 +1,5 @@
 import {
+  mistralResolver,
   openAIResolver,
   payloadAltTextPlugin,
   validateAltText,
@@ -92,13 +93,23 @@ export default buildConfig({
           },
         },
       ],
-      resolver: openAIResolver({
-        apiKey: process.env.OPENAI_API_KEY!,
-        model: 'gpt-4.1-mini',
-        // Pointing `baseUrl` at another OpenAI-compatible provider? Declare the
-        // formats that provider accepts instead of inheriting OpenAI's list:
-        // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-      }),
+      // Set MISTRAL_API_KEY to exercise the Mistral resolver, which sends the
+      // image bytes as a data URI instead of handing the provider a URL — the
+      // case `imageThumbnailMimeType` below exists for, since a media type
+      // cannot be sniffed from a URL.
+      resolver: process.env.MISTRAL_API_KEY
+        ? mistralResolver({
+            apiKey: process.env.MISTRAL_API_KEY,
+            model: 'mistral-medium-latest',
+          })
+        : openAIResolver({
+            apiKey: process.env.OPENAI_API_KEY!,
+            model: 'gpt-4.1-mini',
+            // Pointing `baseUrl` at another OpenAI-compatible provider? Declare
+            // the formats that provider accepts instead of inheriting OpenAI's
+            // list:
+            // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+          }),
       // Cap how many images a single bulk-generate request may process.
       // Selecting more than this in the list view returns a 400 instead of
       // fanning out into an unbounded number of paid resolver calls.
@@ -111,8 +122,8 @@ export default buildConfig({
       // an image CDN that always emits WebP, whatever was uploaded. Declaring
       // that delivered format takes the stored mime type out of the decision
       // entirely — upload an AVIF or HEIC image and the Generate button stays
-      // enabled and generation succeeds, even though the OpenAI resolver
-      // rejects those source formats.
+      // enabled and generation succeeds, even though neither resolver accepts
+      // those source formats.
       imageThumbnailMimeType: 'image/webp',
       // Async because real CDNs usually want a signed URL. `signThumbnailUrl`
       // stands in for S3 presigning or a signed-CDN token here.

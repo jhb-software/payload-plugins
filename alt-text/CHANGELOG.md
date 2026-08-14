@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.10.0
 
-- feat: add the `imageThumbnailMimeType` option (per collection, `null` to opt out) declaring the format `getImageThumbnail` delivers. A resolver only sees the bytes at that URL, so a transcoding thumbnail (e.g. a Cloudinary `f_webp` transformation) no longer has AVIF and HEIC uploads rejected on their stored format. Validated at config load, so a bad declaration fails at boot rather than per image
-- feat: resolvers receive `imageThumbnailMimeType` alongside `imageThumbnailUrl`, for providers that inline image bytes and need an explicit media type
-- feat: `getImageThumbnail` receives `{ collection, req }` as a second argument and may be async, for per-collection URLs and on-demand signing. Existing sync single-argument functions are unaffected
-- feat: add a `supportedMimeTypes` option to `openAIResolver`, so a `baseUrl` pointing at another OpenAI-compatible provider can declare the formats it accepts instead of inheriting OpenAI's list
+- feat: add `mistralResolver`, a resolver for Mistral's vision models (default `mistral-medium-latest`). It downloads the image and sends the bytes instead of passing the thumbnail URL to the provider: Mistral's fetcher requires a publicly reachable file — never true in local development, not true for private buckets — and some hosts refuse it with `File could not be fetched from url` (error 3310). All requested locales are generated in a single request.
+- feat: add the `imageThumbnailMimeType` option (plugin-wide or per collection, `null` to opt out) declaring the format `getImageThumbnail` delivers. A resolver only sees the bytes at that URL, so a transcoding thumbnail (e.g. a Cloudinary `f_webp` transformation) no longer has AVIF and HEIC uploads rejected on their stored format. The declaration is validated at config load, so a wrong one fails at boot rather than per image, and is passed to resolvers as `imageThumbnailMimeType` for providers that inline the image bytes and need an explicit media type.
+- feat: `getImageThumbnail` receives `{ collection, req }` as a second argument and may be async, for per-collection URLs and on-demand signing. Existing sync single-argument functions are unaffected.
+- feat: add a `supportedMimeTypes` option to `openAIResolver`, so a `baseUrl` pointing at another OpenAI-compatible provider can declare the formats it accepts instead of inheriting OpenAI's list.
 
 ## 0.9.1
 
