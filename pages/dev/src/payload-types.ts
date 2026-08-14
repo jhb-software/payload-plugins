@@ -163,6 +163,7 @@ export interface Page {
   };
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -194,6 +195,9 @@ export interface Author {
 export interface Blogpost {
   id: number;
   slug: string;
+  /**
+   * Blog posts can only be attached to a published page.
+   */
   parent: number | Page;
   path: string;
   breadcrumbs: Breadcrumbs;
@@ -249,6 +253,7 @@ export interface Country {
   };
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -272,6 +277,7 @@ export interface CountryTravelTip {
   };
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -424,6 +430,7 @@ export interface PagesSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -523,6 +530,7 @@ export interface CountriesSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -549,6 +557,7 @@ export interface CountryTravelTipsSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**

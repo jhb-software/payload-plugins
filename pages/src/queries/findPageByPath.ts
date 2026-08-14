@@ -1,5 +1,6 @@
-import type { SelectType, Where } from 'payload'
+import type { PayloadRequest, SelectType, Where } from 'payload'
 
+import { createLocalReq } from 'payload'
 import { getSelectMode } from 'payload/shared'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
@@ -105,6 +106,17 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
   const cacheKey = buildPathCacheKey({ baseFilter, draft, locale, path, where: args.where })
 
   /**
+   * The request every internal query runs on. Computing the virtual `path` walks the ancestor
+   * chain of each candidate, and those ancestor fetches are cached on the request context. One
+   * shared request therefore lets the scan and the document fetch reuse a single walk instead of
+   * repeating it. A caller-provided request is passed through unchanged, so its transaction, user
+   * and context keep applying.
+   */
+  let localReq: Promise<PayloadRequest> | undefined
+  const getReq = (): Promise<PayloadRequest> =>
+    args.req ? Promise.resolve(args.req) : (localReq ??= createLocalReq({}, payload))
+
+  /**
    * Runs a cache maintenance write. Deferred via `args.waitUntil` when provided (the lookup
    * result never depends on these writes), otherwise awaited. Deferred failures are swallowed:
    * a lost write only means the next lookup falls back to the scan. Within a lookup, writes
@@ -152,7 +164,7 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       overrideAccess: args.overrideAccess,
       pagination: false,
       populate: args.populate,
-      req: args.req,
+      req: await getReq(),
       select: ensurePathSelected(args.select),
       where: buildWhere({ id: { equals: id } }, collection),
     })
@@ -195,7 +207,7 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       locale,
       overrideAccess: args.overrideAccess,
       pagination: false,
-      req: args.req,
+      req: await getReq(),
       select: { slug: true, path: true },
       where: buildWhere({ slug: { equals: slug } }, collection),
     })
