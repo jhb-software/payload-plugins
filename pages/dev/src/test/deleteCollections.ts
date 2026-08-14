@@ -31,6 +31,9 @@ const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
   'blogposts',
   'authors',
   'countries',
+  // announcements hang off pages and topics, topics off pages and themselves
+  'announcements',
+  'topics',
   // Level 1: root collections (pages can self-reference)
   'pages',
   // Level 0: no dependencies

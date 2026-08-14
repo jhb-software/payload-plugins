@@ -1,6 +1,7 @@
-import type { ClientCollectionConfig, CollectionConfig } from 'payload'
+import type { ClientCollectionConfig, CollectionConfig, SanitizedCollectionConfig } from 'payload'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
+import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 
 /** Checks if the config is a PageCollectionConfig. */
 export const isPageCollectionConfig = (
@@ -26,6 +27,31 @@ export const asPageCollectionConfig = (
     return config
   }
   return null
+}
+
+/**
+ * Returns the page attributes of a collection, or undefined if it is not a page collection.
+ *
+ * Prefers `custom.pageConfig`, which is where the attributes live on the sanitized config a hook
+ * receives, and falls back to the `page` block of a config that has not been sanitized yet.
+ */
+export const pageAttributesOf = (
+  config: ClientCollectionConfig | CollectionConfig | null | SanitizedCollectionConfig | undefined,
+): PageCollectionConfigAttributes | undefined => {
+  if (!config) {
+    return undefined
+  }
+
+  const fromCustom = ('custom' in config ? config.custom?.pageConfig : undefined) as
+    PageCollectionConfigAttributes | undefined
+
+  if (fromCustom) {
+    return fromCustom
+  }
+
+  return 'page' in config && typeof config.page === 'object'
+    ? (config.page as PageCollectionConfigAttributes)
+    : undefined
 }
 
 /**

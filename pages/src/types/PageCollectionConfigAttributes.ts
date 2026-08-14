@@ -3,7 +3,7 @@ import type {
   CheckboxField,
   CollectionSlug,
   FilterOptions,
-  SingleRelationshipField,
+  RelationshipField,
   TextField,
 } from 'payload'
 
@@ -49,10 +49,21 @@ export type IncomingPageCollectionConfigAttributes = {
      * the field on the root page) rather than replacing it, so an override can
      * only hide the field in more cases, never reveal it in fewer.
      */
-    admin?: SingleRelationshipField['admin']
+    admin?: RelationshipField['admin']
 
-    /** Collection in which the parent document is stored. */
-    collection: CollectionSlug
+    /**
+     * Collection(s) in which the parent document may be stored.
+     *
+     * A single slug keeps the field monomorphic: the value is a bare id, exactly as before.
+     * A list makes it polymorphic, storing `{ relationTo, value }` — which lets a collection
+     * nest under itself and under other page collections at the same time.
+     *
+     * Payload treats even a single-element list as polymorphic, so declaring `['pages']` up
+     * front adopts the polymorphic storage layout now and adding further slugs later never
+     * requires a second migration. Switching an existing collection from a slug to a list is
+     * a storage change; see the migration section of the README.
+     */
+    collection: CollectionSlug | CollectionSlug[]
 
     /**
      * Additional filter for the parent picker, ANDed with the plugin's own
@@ -114,8 +125,11 @@ export type PageCollectionConfigAttributes = {
   livePreview: boolean
 
   parent: {
-    /** Collection in which the parent document is stored. */
-    collection: CollectionSlug
+    /**
+     * Collection(s) in which the parent document may be stored. A list makes the field
+     * polymorphic; read it through `utils/parentRef.ts` rather than branching on the shape.
+     */
+    collection: CollectionSlug | CollectionSlug[]
 
     /** Name of the field which stores the parent document. */
     name: string

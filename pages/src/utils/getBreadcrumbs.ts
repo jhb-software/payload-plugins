@@ -1,24 +1,24 @@
-import type { CollectionSlug, PayloadRequest } from 'payload'
+import type { PayloadRequest } from 'payload'
 
 import { stringify } from 'qs-esm'
 
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
+import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { Ancestor } from './loadAncestors.js'
 
 import { loadAncestorChain } from './loadAncestors.js'
+import { resolveParentRef } from './parentRef.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
 /** Returns the breadcrumbs to the given document. */
 export async function getBreadcrumbs({
   apiURL,
-  breadcrumbLabelField,
   data,
   locale,
   locales,
-  parentCollection,
-  parentField,
+  pageConfig,
   req,
 }: {
   /**
@@ -27,15 +27,16 @@ export async function getBreadcrumbs({
    * so the plugin respects a user-customized `routes.api`.
    */
   apiURL?: string
-  breadcrumbLabelField: string
   data: Record<string, any>
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
-  parentCollection: CollectionSlug
-  parentField: string
+  /** Page config of the collection `data` belongs to. Every ancestor resolves its own. */
+  pageConfig: PageCollectionConfigAttributes
   req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
 }): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
+  const breadcrumbLabelField = pageConfig.breadcrumbs.labelField
+  const parentField = pageConfig.parent.name
   const getCurrentDocBreadcrumb = (locale: Locale | undefined, parentBreadcrumbs: Breadcrumb[]) =>
     docToBreadcrumb(
       {
@@ -62,12 +63,9 @@ export async function getBreadcrumbs({
   }
 
   // If the parent is set, fetch the ancestor chain, add the breadcrumb of the current doc and return
-  const parentId =
-    typeof data[parentField] === 'string' || typeof data[parentField] === 'number'
-      ? data[parentField]
-      : data[parentField].id
+  const parentRef = resolveParentRef(data[parentField], pageConfig)
 
-  if (!parentId) {
+  if (!parentRef) {
     throw new Error('Parent ID not found for document with id ' + data.id)
   }
 
@@ -75,8 +73,8 @@ export async function getBreadcrumbs({
 
   if (req) {
     const ancestors = await loadAncestorChain({
-      id: parentId,
-      collection: parentCollection,
+      id: parentRef.id,
+      collection: parentRef.collection,
       docId: data.id,
       locale,
       req,
@@ -90,7 +88,7 @@ export async function getBreadcrumbs({
       throw new Error('[Pages Plugin] getBreadcrumbs requires `apiURL` when called without `req`.')
     }
     const query = stringify({ depth: 0, locale, select: { breadcrumbs: true } })
-    const response = await fetch(`${apiURL}/${parentCollection}/${parentId}?${query}`, {
+    const response = await fetch(`${apiURL}/${parentRef.collection}/${parentRef.id}?${query}`, {
       headers: { 'Content-Type': 'application/json' },
       method: 'GET',
     })
@@ -104,7 +102,11 @@ export async function getBreadcrumbs({
     if (!parent) {
       // This can be the case, when the parent document got deleted.
       throw new Error(
-        'Parent document with id ' + parentId + ' of document with id ' + data.id + ' not found.',
+        'Parent document with id ' +
+          parentRef.id +
+          ' of document with id ' +
+          data.id +
+          ' not found.',
       )
     }
 
