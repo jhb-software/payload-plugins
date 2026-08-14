@@ -1,4 +1,4 @@
-import type { Field, PayloadRequest, SingleRelationshipField, Where } from 'payload'
+import type { Field, PayloadRequest, RelationshipField, Where } from 'payload'
 
 import type { IncomingPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
@@ -13,18 +13,22 @@ export function parentField(
   baseFilter?: PagesPluginConfig['baseFilter'],
   overrides?: Pick<IncomingPageCollectionConfigAttributes['parent'], 'admin' | 'filterOptions'>,
 ): Field {
-  return {
+  const relationTo = pageConfig.parent.collection
+
+  const field = {
     name: pageConfig.parent.name,
     type: 'relationship',
-    filterOptions: composeFilterOptions(({ data }) => {
+    filterOptions: composeFilterOptions(({ data, relationTo }) => {
       if (!data.id) {
         // Before the document is created, there is no id, therefore do not filter
         return true
       }
 
       // Exclude the current document from the list of available parents.
-      // NOTE: To not hide documents with the same serial id in another collection, only apply the filter if the parent collection is the same as the current collection.
-      if (pageConfig.parent.collection === collectionSlug) {
+      // NOTE: `filterOptions` runs once per relation, so `relationTo` is the relation being
+      // filtered, not the whole config. Restricting the filter to this collection avoids
+      // hiding documents which happen to share the serial id in another collection.
+      if (relationTo === collectionSlug) {
         return {
           id: {
             not_equals: data.id,
@@ -39,10 +43,10 @@ export function parentField(
     // by this field, so it must be indexed.
     index: true,
     label: translatedLabel('parent'),
-    relationTo: pageConfig.parent.collection,
+    relationTo,
     required: !pageConfig.isRootCollection,
 
-    admin: mergeFieldAdmin<NonNullable<SingleRelationshipField['admin']>>(
+    admin: mergeFieldAdmin<NonNullable<RelationshipField['admin']>>(
       {
         components: {
           Field: '@jhb.software/payload-pages-plugin/server#ParentField',
@@ -96,4 +100,9 @@ export function parentField(
       return undefined
     },
   }
+
+  // `RelationshipField` is a union of its monomorphic and polymorphic members, which differ in
+  // the type of `admin.sortOptions`. `relationTo` is only known to be one or the other at
+  // runtime, so the assembled object matches neither member statically.
+  return field as Field
 }

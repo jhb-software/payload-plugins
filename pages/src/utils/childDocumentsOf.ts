@@ -4,6 +4,7 @@ import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
+import { hasPolymorphicParent, parentCollections } from '../utils/parentRef.js'
 
 /**
  * Finds all child documents that reference a given parent document.
@@ -28,6 +29,13 @@ export async function childDocumentsOf(
 
     const baseFilterWhere = typeof baseFilter === 'function' ? baseFilter({ req }) : undefined
 
+    // A polymorphic parent stores `{ relationTo, value }`, so matching on the id alone would
+    // also match a document in another collection that happens to share the id — which the
+    // SQL adapters' serial ids readily do. Both adapters understand the object notation.
+    const parentValue = hasPolymorphicParent(targetCollection.page)
+      ? { relationTo: collectionSlug, value: docId }
+      : docId
+
     const childDocuments = await req.payload.find({
       collection: targetCollection.slug,
       depth: 0,
@@ -38,7 +46,7 @@ export async function childDocumentsOf(
       trash: true,
       where: {
         and: [
-          { [parentFieldName]: { equals: docId } },
+          { [parentFieldName]: { equals: parentValue } },
           ...(baseFilterWhere ? [baseFilterWhere] : []),
         ],
       },
@@ -80,5 +88,5 @@ function isPageCollectionWithParent(
     return false
   }
 
-  return collection.page.parent.collection === expectedParentCollectionSlug
+  return parentCollections(collection.page).includes(expectedParentCollectionSlug)
 }

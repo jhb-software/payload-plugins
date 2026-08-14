@@ -30,11 +30,12 @@ const fieldNamed = (fields: Field[], name: string) =>
 const parentFilter = async (
   fields: Field[],
   data: Record<string, unknown>,
+  relationTo = 'pages',
 ): Promise<boolean | undefined | Where> => {
   const { filterOptions } = fieldNamed(fields, 'parent') as { filterOptions: any }
 
   return typeof filterOptions === 'function'
-    ? await filterOptions({ data } as unknown as FilterOptionsProps)
+    ? await filterOptions({ data, relationTo } as unknown as FilterOptionsProps)
     : filterOptions
 }
 
@@ -144,6 +145,40 @@ describe('createPageCollectionConfig field overrides', () => {
       name: 'parent',
       sharedDocument: false,
     })
+  })
+})
+
+describe('createPageCollectionConfig polymorphic parent', () => {
+  const buildPolymorphic = () =>
+    createPageCollectionConfig({
+      collectionConfig: {
+        slug: 'topics',
+        admin: { useAsTitle: 'title' },
+        fields: [{ name: 'title', type: 'text' }],
+        page: { parent: { collection: ['pages', 'topics'], name: 'parent' } },
+      },
+      pluginConfig,
+    })
+
+  test('the parent field relates to every configured collection', () => {
+    const { fields } = buildPolymorphic()
+
+    expect((fieldNamed(fields, 'parent') as { relationTo: unknown }).relationTo).toEqual([
+      'pages',
+      'topics',
+    ])
+  })
+
+  test('the exclude-self filter applies to the own collection only', async () => {
+    const { fields } = buildPolymorphic()
+
+    expect(await parentFilter(fields, { id: 7 }, 'topics')).toEqual({ id: { not_equals: 7 } })
+  })
+
+  test('a document is not excluded from another collection sharing its serial id', async () => {
+    const { fields } = buildPolymorphic()
+
+    expect(await parentFilter(fields, { id: 7 }, 'pages')).toBe(true)
   })
 })
 

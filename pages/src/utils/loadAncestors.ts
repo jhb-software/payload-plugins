@@ -2,8 +2,10 @@ import type { CollectionConfig, CollectionSlug, PayloadRequest, SelectType } fro
 
 import type { Locale } from '../types/Locale.js'
 import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { ParentRef } from './parentRef.js'
 
 import { asPageCollectionConfig } from './pageCollectionConfigHelpers.js'
+import { extractID, resolveParentRef } from './parentRef.js'
 
 /** Document ids are numbers on SQL adapters and strings on MongoDB. */
 type DocumentID = number | string
@@ -23,8 +25,8 @@ export type Ancestor = {
 }
 
 type AncestorRow = {
-  parentCollection: CollectionSlug
-  parentId: DocumentID | null
+  /** The collection and id this ancestor is itself parented to, or null when it has no parent. */
+  parent: null | ParentRef
 } & Ancestor
 
 type Batch = {
@@ -45,7 +47,8 @@ const BATCH_KEY = 'pagesPluginAncestorBatches'
  * once for the document that was actually requested, never once more per level of the page
  * tree. Only the fields the path and breadcrumbs are built from are selected, resolved from
  * each ancestor collection's own page config, which keeps chains that cross collections
- * (e.g. blogposts → pages) working.
+ * (e.g. blogposts → pages) working — including chains that alternate between collections at
+ * every level, which a polymorphic `parent.collection` makes possible.
  *
  * Access control is intentionally not applied: breadcrumbs of a readable document must not
  * change based on who may read its ancestors (the previous implementation passed
@@ -98,7 +101,7 @@ export async function loadAncestorChain({
 
     chain.unshift(row)
     childId = row.id
-    next = row.parentId === null ? null : { id: row.parentId, collection: row.parentCollection }
+    next = row.parent
   }
 
   return chain
@@ -264,8 +267,9 @@ async function fetchAncestors({
       collection,
       isRootPage: doc.isRootPage === true,
       label: doc[labelField],
-      parentCollection: pageAttributes.parent.collection,
-      parentId: extractID(doc[parentFieldName]),
+      // On a polymorphic parent the next hop's collection comes from the stored value, so a
+      // chain may alternate between collections at every level.
+      parent: resolveParentRef(doc[parentFieldName], pageAttributes),
     })
   }
 
@@ -283,18 +287,4 @@ function pageAttributesOf(config: CollectionConfig): PageCollectionConfigAttribu
 /** Whether the collection stores drafts in its versions table. */
 function hasDraftsEnabled(config: CollectionConfig): boolean {
   return typeof config.versions === 'object' && Boolean(config.versions.drafts)
-}
-
-/** Extracts a plain id from a raw relationship value (an id, or a populated document). */
-function extractID(value: unknown): DocumentID | null {
-  if (typeof value === 'number' || typeof value === 'string') {
-    return value
-  }
-  if (value && typeof value === 'object' && 'id' in value) {
-    const id = value.id
-    if (typeof id === 'number' || typeof id === 'string') {
-      return id
-    }
-  }
-  return null
 }

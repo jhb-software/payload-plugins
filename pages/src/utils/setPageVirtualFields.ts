@@ -24,11 +24,9 @@ export async function setPageDocumentVirtualFields({
 }) {
   if (locales && locale) {
     const breadcrumbs = (await getBreadcrumbs({
-      breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
       data: doc,
       locales,
-      parentCollection: pageConfigAttributes.parent.collection,
-      parentField: pageConfigAttributes.parent.name,
+      pageConfig: pageConfigAttributes,
       req,
       // For localized pages, we need to fetch the breadcrumbs for all locales in order to correctly set the alternate paths
       locale: 'all',
@@ -78,12 +76,10 @@ export async function setPageDocumentVirtualFields({
     }
   } else {
     const breadcrumbs = (await getBreadcrumbs({
-      breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
       data: doc,
       locale: undefined,
       locales,
-      parentCollection: pageConfigAttributes.parent.collection,
-      parentField: pageConfigAttributes.parent.name,
+      pageConfig: pageConfigAttributes,
       req,
     })) as Breadcrumb[]
 

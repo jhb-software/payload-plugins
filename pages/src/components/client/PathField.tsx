@@ -14,6 +14,7 @@ import type { Breadcrumb } from '../../types/Breadcrumb.js'
 import type { Locale } from '../../types/Locale.js'
 
 import { getBreadcrumbs as getBreadcrumbsForDoc } from '../../utils/getBreadcrumbs.js'
+import { resolveParentRef } from '../../utils/parentRef.js'
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useDidUpdateEffect } from '../../utils/useDidUpdateEffect.js'
 import { BreadcrumbsFieldModalButton } from './BreadcrumbsField.js'
@@ -22,18 +23,24 @@ import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConf
 
 export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) => {
   const { config } = useConfig()
+  const pageConfig = usePageCollectionConfigAttributes()
   const {
     breadcrumbs: { labelField: breadcrumbLabelFieldName },
-    parent: { name: parentField, collection: parentCollection },
-  } = usePageCollectionConfigAttributes()
+    parent: { name: parentField },
+  } = pageConfig
   const { code: locale } = useLocale() as unknown as { code: Locale | undefined }
   const { getBreadcrumbs, setBreadcrumbs } = useBreadcrumbs()
   const { setValue: setPathRaw, value: path } = useField<string>({ path: fieldPath })
   const { setValue: setSlugRaw, value: slug } = useField<string>({ path: 'slug' })
   const breadcrumbLabel = useFormFields(([fields, _]) => fields[breadcrumbLabelFieldName])
     ?.value as string | undefined
-  const parent = useFormFields(([fields, _]) => fields[parentField])?.value as string | undefined
+  const parent = useFormFields(([fields, _]) => fields[parentField])?.value
   const isRootPage = useFormFields(([fields, _]) => fields.isRootPage)?.value as boolean | undefined
+  const parentRef = resolveParentRef(parent, pageConfig)
+  // A polymorphic parent's value is an object, whose identity changes on every render. The
+  // effects below must re-run when the parent actually changes, not on every render, so they
+  // depend on this key rather than on the value.
+  const parentKey = parentRef ? `${parentRef.collection}:${String(parentRef.id)}` : ''
 
   /**
    * Sets the path, but only if the new path is different from the current path.
@@ -69,15 +76,13 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
 
     const fechtchedBreadcrumbs = (await getBreadcrumbsForDoc({
       apiURL: `${config.serverURL ?? ''}${config.routes.api}`,
-      breadcrumbLabelField: breadcrumbLabelFieldName,
       data: doc,
       locale,
       locales:
         typeof config.localization === 'object' && config.localization.localeCodes
           ? config.localization.localeCodes
           : undefined,
-      parentCollection,
-      parentField,
+      pageConfig,
       req: undefined, // payload req is not available here
     })) as Breadcrumb[]
 
@@ -89,7 +94,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
   useDidUpdateEffect(() => {
     const fetchAndSetData = async () => {
       // the parent was added:
-      if (parent) {
+      if (parentRef) {
         const fechtchedBreadcrumbs = await fetchBreadcrumbs()
 
         const updatedPath = pathFromBreadcrumbs({
@@ -114,7 +119,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
     void fetchAndSetData()
 
     // This effect should only be executed when the parent changes:
-  }, [parent])
+  }, [parentKey])
 
   // Update the breadcrumbs and path when
   //  - the slug changes
@@ -124,7 +129,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
       let breadcrumbs = getBreadcrumbs()
 
       if (!breadcrumbs || breadcrumbs.length === 0) {
-        if (parent) {
+        if (parentRef) {
           // Fetching the virtual breadcrumbs field in this case fixes the issue that when creating a localized version of an existing document
           // with a parent set, the breadcrumbs do not show the parent breadcrumbs in the UI when setting the slug.
           const fechtchedBreadcrumbs = await fetchBreadcrumbs()
