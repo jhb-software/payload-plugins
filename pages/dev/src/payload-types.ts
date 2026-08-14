@@ -194,6 +194,9 @@ export interface Author {
 export interface Blogpost {
   id: number;
   slug: string;
+  /**
+   * Blog posts can only be attached to a published page.
+   */
   parent: number | Page;
   path: string;
   breadcrumbs: Breadcrumbs;

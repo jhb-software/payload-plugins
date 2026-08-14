@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: the generated fields (`slug`, `parent`, `path`, `breadcrumbs`, `isRootPage`) accept an `admin` override in the matching `page` block, and `page.parent` additionally a `filterOptions`. Both `admin.condition` and `filterOptions` are ANDed with the plugin's, so an override narrows rather than replaces (see the README).
 - perf: virtual path/breadcrumb generation reads ancestors directly from the database adapter in batched per-level queries instead of one Local API call per ancestor — ancestor collections' `afterRead` hooks no longer run during the walk, and a dangling ancestor reference deeper than the direct parent (possible on MongoDB) now logs an error and returns the document without virtual fields instead of a wrong, shorter path
 - fix: a `select` no longer returns the raw fields (`slug`, the parent field, `isRootPage` and the breadcrumb label field) which are only selected internally to compute the virtual fields — responses now contain exactly the fields the caller requested. Select such a field explicitly if a response is expected to contain it.
 

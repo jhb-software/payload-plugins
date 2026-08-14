@@ -99,18 +99,26 @@ export const createPageCollectionConfig = ({
       ...(pageConfig.isRootCollection
         ? [
             isRootPageField({
+              admin: incomingCollectionConfig.page.isRootPage?.admin,
               baseFilter: pluginConfig.baseFilter,
             }),
           ]
         : []),
+      // Overrides are read from the incoming config, not from `pageConfig`:
+      // that one is exposed to the admin client via `custom.pageConfig` below,
+      // where functions would not survive serialization.
       pageSlugField({
+        admin: incomingCollectionConfig.page.slug?.admin,
         fallbackField: pageConfig.slug.fallbackField,
         staticValue: pageConfig.slug.staticValue,
         unique: pageConfig.slug.unique,
       }),
-      parentField(pageConfig, incomingCollectionConfig.slug, pluginConfig.baseFilter),
-      pathField(),
-      breadcrumbsField(),
+      parentField(pageConfig, incomingCollectionConfig.slug, pluginConfig.baseFilter, {
+        admin: incomingCollectionConfig.page.parent.admin,
+        filterOptions: incomingCollectionConfig.page.parent.filterOptions,
+      }),
+      pathField({ admin: incomingCollectionConfig.page.path?.admin }),
+      breadcrumbsField({ admin: incomingCollectionConfig.page.breadcrumbs?.admin }),
       // add the user defined fields below the fields defined by the plugin to ensure a correct order in the sidebar
 
       // add the beforeDuplicate hook to the title field
