@@ -94,6 +94,44 @@ describe('declared thumbnail mime type reaches the resolver', () => {
   })
 })
 
+describe('declared thumbnail mime type replaces the stored-format check', () => {
+  // The reason the option exists: the resolver never sees the AVIF bytes, only
+  // the transcoded thumbnail, so the stored format must stop deciding.
+  test('generates for a source format the resolver rejects when a delivered type is declared', async () => {
+    const { pluginConfig, resolveCalls } = buildRecordingConfig({
+      collections: [
+        { slug: 'media', mimeTypes: ['image/*'], imageThumbnailMimeType: 'image/webp' },
+      ],
+    })
+    pluginConfig.resolver.supportedMimeTypes = ['image/jpeg', 'image/webp']
+    const { req, updateCalls } = buildEndpointRequest(
+      { id: 'doc-1', collection: 'media', locale: 'en', update: true },
+      { doc: { mimeType: 'image/avif' }, pluginConfig },
+    )
+
+    const response = await generateAltTextEndpoint(pluginConfig.access)(req)
+
+    assert.equal(response.status, 200)
+    assert.equal(resolveCalls.length, 1)
+    assert.equal(updateCalls.length, 1)
+  })
+
+  test('still rejects that source format when nothing is declared', async () => {
+    const { pluginConfig, resolveCalls } = buildRecordingConfig()
+    pluginConfig.resolver.supportedMimeTypes = ['image/jpeg', 'image/webp']
+    const { req } = buildEndpointRequest(
+      { id: 'doc-1', collection: 'media', locale: 'en', update: true },
+      { doc: { mimeType: 'image/avif' }, pluginConfig },
+    )
+
+    const response = await generateAltTextEndpoint(pluginConfig.access)(req)
+
+    assert.equal(response.status, 400)
+    assert.match((await response.json()).error, /not supported for files of type "image\/avif"/)
+    assert.equal(resolveCalls.length, 0)
+  })
+})
+
 describe('async getImageThumbnail', () => {
   test('awaits a promise-returning getImageThumbnail before calling the resolver', async () => {
     const { pluginConfig, resolveCalls } = buildRecordingConfig({
