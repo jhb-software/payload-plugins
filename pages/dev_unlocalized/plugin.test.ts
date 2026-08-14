@@ -72,6 +72,42 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
         ]),
       )
     })
+
+    test('is the first breadcrumb of its children, with the site root as its path', async () => {
+      const rootPageId = (
+        await payload.create({
+          collection: 'pages',
+          data: {
+            title: 'Root Page',
+            slug: '',
+            content: 'Root Page',
+            isRootPage: true,
+            ...virtualFields,
+          },
+        })
+      ).id
+
+      const child = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Child Page',
+          slug: 'child-page',
+          content: 'Child Page',
+          parent: rootPageId,
+          ...virtualFields,
+        },
+      })
+
+      // The root page contributes no slug segment, so its path is `/` rather than the empty
+      // string its slug would produce.
+      expect(child.path).toBe('/child-page')
+      expect(removeIdsFromArray(child.breadcrumbs)).toEqual(
+        removeIdsFromArray([
+          { id: undefined, path: '/', label: 'Root Page', slug: '' },
+          { id: undefined, path: '/child-page', label: 'Child Page', slug: 'child-page' },
+        ]),
+      )
+    })
   })
 
   describe('Nested document in same collection.', () => {
