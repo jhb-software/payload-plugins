@@ -177,6 +177,11 @@ beforeAll(async () => {
 
   // reset all page docs from previous runs
   await payload.db.deleteMany({ collection: 'pages', where: {} })
+  // and the path cache, so the cache-miss scenario is a real miss (sqlite reuses row ids,
+  // so an entry from a previous run can otherwise still resolve)
+  for (const key of await payload.kv.keys()) {
+    await payload.kv.delete(key)
+  }
   try {
     await (payload.db as any).deleteVersions({ collection: 'pages', where: {} })
   } catch {}
