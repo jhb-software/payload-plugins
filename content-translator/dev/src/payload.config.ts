@@ -2,6 +2,7 @@ import {
   openAIResolver,
   payloadContentTranslatorPlugin,
 } from '@jhb.software/payload-content-translator-plugin'
+import { openai } from '@ai-sdk/openai'
 import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
@@ -17,10 +18,16 @@ import { mediaSchema } from './collections/media'
 import { pagesSchema } from './collections/pages'
 import { postsSchema } from './collections/posts'
 import { makeSlugTranslatable } from './helpers/makeSlugTranslatable'
+import { aiSdkResolver } from './resolvers/aiSdkResolver'
 import { mockResolver } from './resolvers/mockResolver'
 import { seed } from './seed'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Protected brand names built from everyday words, which a translation would
+// otherwise turn into "Nordlicht" and "Erste Schritte" in German. Put them into
+// a page title or body and translate to see them survive.
+const protectedTermsInstruction = `Never translate the following product names, keep them exactly as written in English: "Northern Light", "First Steps".`
 
 export default buildConfig({
   admin: {
@@ -122,10 +129,23 @@ export default buildConfig({
       collections: ['pages', 'docs', 'posts', 'authors'],
       globals: [],
       // resolver: mockResolver(), // custom resolver for testing
-      resolver: openAIResolver({
-        apiKey: process.env.OPENAI_API_KEY || '',
-        model: 'gpt-4o-mini',
-      }),
+      // Set TRANSLATOR_RESOLVER=ai-sdk to translate through the custom AI SDK
+      // resolver instead of the built-in one. Both expose the same
+      // `instructions` extension point, so the protected terms below apply
+      // either way.
+      resolver:
+        process.env.TRANSLATOR_RESOLVER === 'ai-sdk'
+          ? aiSdkResolver({
+              model: openai('gpt-4o-mini'),
+              instructions: ({ defaultInstructions }) =>
+                `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+            })
+          : openAIResolver({
+              apiKey: process.env.OPENAI_API_KEY || '',
+              model: 'gpt-4o-mini',
+              instructions: ({ defaultInstructions }) =>
+                `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+            }),
     }),
   ],
 })

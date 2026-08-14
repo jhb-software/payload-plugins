@@ -18,6 +18,7 @@
     "seed": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts tsx seed-db.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.22",
     "@jhb.software/payload-content-translator-plugin": "workspace:*",
     "@jhb.software/payload-pages-plugin": "workspace:*",
     "@payloadcms/db-mongodb": "^3.88.0",
@@ -25,11 +26,13 @@
     "@payloadcms/richtext-lexical": "^3.88.0",
     "@payloadcms/translations": "^3.88.0",
     "@payloadcms/ui": "^3.88.0",
+    "ai": "^7.0.40",
     "next": "16.3.0",
     "openai": "^7.4.0",
     "payload": "^3.88.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
