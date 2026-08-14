@@ -1463,6 +1463,41 @@ describe('Parent deletion prevention hook on trashed documents', () => {
       'Cannot delete this document because it is referenced as a parent by',
     )
   })
+
+  test('refuses to trash a referenced parent selected in a bulk trash', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'bulk-trash-parent' })
+    await createPage({ title: 'Child', slug: 'bulk-trash-child', parent: parentPage.id })
+
+    const result = await payload.update({
+      collection: 'pages',
+      where: { id: { equals: parentPage.id } },
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+    expect(result.docs).toHaveLength(0)
+    expect(JSON.stringify(result.errors)).toContain('referenced as a parent by')
+
+    const parent = await payload.findByID({ collection: 'pages', id: parentPage.id, locale: 'de' })
+    expect(parent.deletedAt).toBeFalsy()
+  })
+
+  test('refuses to trash a referenced parent on an adapter the permanent-delete guard skips', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'foreign-adapter-parent' })
+    await createPage({ title: 'Child', slug: 'foreign-adapter-child', parent: parentPage.id })
+
+    const originalPackageName = payload.db.packageName
+    // Trashing writes deletedAt through an update, so an adapter's foreign keys never see it —
+    // the guard has to run no matter which adapter is configured.
+    payload.db.packageName = '@payloadcms/db-vercel-postgres'
+
+    try {
+      await expect(trash('pages', parentPage.id)).rejects.toThrow(
+        'Cannot delete this document because it is referenced as a parent by',
+      )
+    } finally {
+      payload.db.packageName = originalPackageName
+    }
+  })
 })
 
 describe('Virtual fields in findVersions operation', () => {

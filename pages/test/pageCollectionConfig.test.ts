@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 import type { IncomingPageCollectionConfig } from '../src/types/PageCollectionConfig.js'
 
 import { createPageCollectionConfig } from '../src/collections/PageCollectionConfig.js'
+import { preventParentDeletion, preventParentTrashing } from '../src/hooks/preventParentDeletion.js'
 
 const pluginConfig = { generatePageURL: () => null }
 
@@ -143,5 +144,35 @@ describe('createPageCollectionConfig field overrides', () => {
       name: 'parent',
       sharedDocument: false,
     })
+  })
+})
+
+describe('createPageCollectionConfig parent deletion guard', () => {
+  const buildWithGuard = (preventParentDeletionOption?: boolean) =>
+    createPageCollectionConfig({
+      collectionConfig: {
+        slug: 'pages',
+        admin: { useAsTitle: 'title' },
+        fields: [{ name: 'title', type: 'text' }],
+        page: {
+          isRootCollection: true,
+          parent: { collection: 'pages', name: 'parent' },
+        },
+      },
+      pluginConfig: { ...pluginConfig, preventParentDeletion: preventParentDeletionOption },
+    })
+
+  test('guards the permanent delete and the trash transition by default', () => {
+    const { hooks } = buildWithGuard()
+
+    expect(hooks!.beforeDelete).toContain(preventParentDeletion)
+    expect(hooks!.beforeChange).toContain(preventParentTrashing)
+  })
+
+  test('guards neither path when preventParentDeletion is disabled', () => {
+    const { hooks } = buildWithGuard(false)
+
+    expect(hooks!.beforeDelete).not.toContain(preventParentDeletion)
+    expect(hooks!.beforeChange).not.toContain(preventParentTrashing)
   })
 })

@@ -275,7 +275,28 @@ On a collection with [`trash: true`](https://payloadcms.com/docs/trash/overview)
 
 Trashed children still count as references, because they carry a live parent id until they are permanently deleted. Restoring a document is never blocked.
 
-Installs that trashed parents before this behavior existed can find the affected children by querying a page collection with `trash: true` and looking for documents whose parent id only resolves with `trash: true`.
+Parents trashed before this guard existed left children behind. List the trashed parents of a collection and restore or reassign the children referencing them:
+
+```ts
+const trashedParents = await payload.find({
+  collection: 'pages',
+  trash: true,
+  where: { deletedAt: { exists: true } },
+})
+
+for (const parent of trashedParents.docs) {
+  const orphans = await payload.find({
+    collection: 'pages', // repeat for every collection whose page.parent points at 'pages'
+    trash: true,
+    where: { parent: { equals: parent.id } },
+  })
+
+  console.log(
+    parent.id,
+    orphans.docs.map((doc) => doc.id),
+  )
+}
+```
 
 ### Payload Select API
 
