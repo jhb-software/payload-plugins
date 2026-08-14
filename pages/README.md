@@ -136,11 +136,10 @@ Two keys compose with the plugin's instead of replacing it:
 - **`admin.condition`** is ANDed with the plugin's (the parent field is hidden on the root page), so an override can only hide the field in more cases, never reveal it in fewer.
 - **`parent.filterOptions`** is ANDed with the plugin's, which excludes the current document from its own parents. Payload re-runs `filterOptions` on save, so this holds REST and local API writes too, not just the admin picker.
 
-Every other key replaces the plugin's, including `slug`'s `readOnly` (which the plugin derives from `staticValue`).
+Every other key replaces the plugin's. Two of them do less than expected:
 
-Which keys have an effect depends on who renders the field. `parent`, `breadcrumbs` and `isRootPage` render through Payload's own field components, so `description`, `className` and friends work. `slug` and `path` are rendered by the plugin's components, which read only the label and the value — keys Payload itself acts on (`position`, `hidden`, `condition`, `disableBulkEdit`, `disableListColumn`, `components`) still apply, but `description`, `readOnly`, `placeholder` and `style` are ignored. Point `components.Field` at your own component to change how those two fields look.
-
-Hiding the `parent` field with `admin.hidden` leaves editors unable to fill a field the plugin marks `required` for every non-root collection, so the document can no longer be saved. Combine it with `sharedDocument: true` (which defaults the parent from the sibling documents), and create the first document of the collection before hiding the field.
+- `slug` and `path` are rendered by the plugin's own components, which ignore `description`, `readOnly` and `placeholder`. Replace `components.Field` to change how those two look.
+- `admin.hidden` on `parent` hides a field which is `required` for every non-root collection, so only combine it with `sharedDocument: true`.
 
 Two caveats when hiding `path`:
 
