@@ -12,7 +12,7 @@ import { pathField } from '../fields/pathField.js'
 import { pageSlugField } from '../fields/slugField.js'
 import { beforeDuplicateTitle } from '../hooks/beforeDuplicate.js'
 import { preventCircularParentReference } from '../hooks/preventCircularParentReference.js'
-import { preventParentDeletion } from '../hooks/preventParentDeletion.js'
+import { preventParentDeletion, preventParentTrashing } from '../hooks/preventParentDeletion.js'
 import { selectDependentFieldsBeforeOperation } from '../hooks/selectDependentFieldsBeforeOperation.js'
 import {
   setVirtualFieldsAfterChange,
@@ -150,6 +150,7 @@ export const createPageCollectionConfig = ({
       beforeChange: [
         ...(incomingCollectionConfig.hooks?.beforeChange || []),
         preventCircularParentReference,
+        ...(pluginConfig.preventParentDeletion !== false ? [preventParentTrashing] : []),
       ],
       beforeDelete: [
         ...(incomingCollectionConfig.hooks?.beforeDelete || []),

@@ -18,6 +18,7 @@ export const CountryTravelTips: PageCollectionConfig = {
       },
     },
   },
+  trash: true,
   versions: {
     drafts: {
       autosave: true,

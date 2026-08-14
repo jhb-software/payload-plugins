@@ -269,6 +269,35 @@ To delete a parent document that has child references, you have two options:
 1. **Reassign child documents**: Update the child documents to reference a different parent
 2. **Remove child documents**: Delete the child documents first, then delete the parent
 
+#### Trashed Documents
+
+On a collection with [`trash: true`](https://payloadcms.com/docs/trash/overview), moving a parent to the trash is refused just like a permanent delete. Payload excludes trashed documents from reads, so a trashed parent is invisible to the ancestor lookup and its children lose their `path` and `breadcrumbs` entirely.
+
+Trashed children still count as references, because they carry a live parent id until they are permanently deleted. Restoring a document is never blocked.
+
+Parents trashed before this guard existed left children behind. List the trashed parents of a collection and restore or reassign the children referencing them:
+
+```ts
+const trashedParents = await payload.find({
+  collection: 'pages',
+  trash: true,
+  where: { deletedAt: { exists: true } },
+})
+
+for (const parent of trashedParents.docs) {
+  const orphans = await payload.find({
+    collection: 'pages', // repeat for every collection whose page.parent points at 'pages'
+    trash: true,
+    where: { parent: { equals: parent.id } },
+  })
+
+  console.log(
+    parent.id,
+    orphans.docs.map((doc) => doc.id),
+  )
+}
+```
+
 ### Payload Select API
 
 When using the [Payload Select API](https://payloadcms.com/docs/queries/select), the plugin automatically extends the selection to include all virtual fields if any of them are selected. This ensures that virtual fields can be generated correctly.

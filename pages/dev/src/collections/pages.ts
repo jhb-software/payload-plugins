@@ -21,6 +21,7 @@ export const Pages: PageCollectionConfig = {
     },
     isRootCollection: true,
   },
+  trash: true,
   versions: {
     drafts: true,
   },
