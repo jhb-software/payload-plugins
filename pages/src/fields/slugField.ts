@@ -1,14 +1,16 @@
-import type { Field } from 'payload'
+import type { Field, TextField } from 'payload'
 
 import type { SlugFieldProps } from '../components/client/SlugFieldClient.js'
 import type { Locale } from '../types/Locale.js'
 
 import { beforeDuplicateSlug } from '../hooks/beforeDuplicate.js'
 import { formatSlug } from '../hooks/validateSlug.js'
+import { mergeFieldAdmin } from '../utils/fieldOverrides.js'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 type InternalSlugFieldConfig = {
+  admin?: TextField['admin']
   fallbackField: string
   pageSlug?: boolean
   staticValue?: Record<Locale, string> | string
@@ -22,6 +24,7 @@ type SlugFieldConfig = Omit<InternalSlugFieldConfig, 'pageSlug'>
  * The internal slug field which can be used on pages and non-page collections, depending on the `pageSlug` option.
  */
 export function internalSlugField({
+  admin,
   fallbackField,
   pageSlug,
   staticValue,
@@ -30,22 +33,29 @@ export function internalSlugField({
   return {
     name: 'slug',
     type: 'text',
-    admin: {
-      components: {
-        Field: {
-          clientProps: {
-            defaultValue: staticValue,
-            fallbackField,
-            pageSlug,
-            readOnly: !!staticValue,
-          } satisfies Omit<SlugFieldProps, 'redirectsCollectionSlug'>,
-          path: '@jhb.software/payload-pages-plugin/server#SlugField',
+    admin: mergeFieldAdmin<NonNullable<TextField['admin']>>(
+      {
+        components: {
+          Field: {
+            // `readOnly` is deliberately absent: Payload spreads these props last, so passing it
+            // here would overwrite the read only state it derives for trashed and locked
+            // documents. `SlugField` reads the static value instead.
+            clientProps: {
+              defaultValue: staticValue,
+              fallbackField,
+              pageSlug,
+            } satisfies Omit<SlugFieldProps, 'readOnly' | 'redirectsCollectionSlug'>,
+            path: '@jhb.software/payload-pages-plugin/server#SlugField',
+          },
         },
+        position: 'sidebar',
+        // An explicit `false` would opt the field out of an inherited read only state, so the
+        // key is only set when the static value actually makes the field read only.
+        ...(staticValue ? { readOnly: true } : {}),
+        // The condition option is not used to hide the field when the page is the root page because then the type of the slug field would be optional.
       },
-      position: 'sidebar',
-      readOnly: !!staticValue,
-      // The condition option is not used to hide the field when the page is the root page because then the type of the slug field would be optional.
-    },
+      admin,
+    ),
     defaultValue: ({ locale }) =>
       typeof staticValue === 'string' ? staticValue : locale && staticValue?.[locale],
     hooks: {

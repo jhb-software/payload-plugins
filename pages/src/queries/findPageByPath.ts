@@ -1,5 +1,6 @@
-import type { SelectType, Where } from 'payload'
+import type { PayloadRequest, SelectType, Where } from 'payload'
 
+import { createLocalReq } from 'payload'
 import { getSelectMode } from 'payload/shared'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
@@ -8,6 +9,7 @@ import type { FindPageByPathArgs, PageDocument, PageDocumentResult } from './typ
 
 import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
+import { livenessConditions } from './liveness.js'
 import { buildPathCacheKey, type PathCacheEntry } from './pathCache.js'
 
 /**
@@ -105,6 +107,17 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
   const cacheKey = buildPathCacheKey({ baseFilter, draft, locale, path, where: args.where })
 
   /**
+   * The request every internal query runs on. Computing the virtual `path` walks the ancestor
+   * chain of each candidate, and those ancestor fetches are cached on the request context. One
+   * shared request therefore lets the scan and the document fetch reuse a single walk instead of
+   * repeating it. A caller-provided request is passed through unchanged, so its transaction, user
+   * and context keep applying.
+   */
+  let localReq: Promise<PayloadRequest> | undefined
+  const getReq = (): Promise<PayloadRequest> =>
+    args.req ? Promise.resolve(args.req) : (localReq ??= createLocalReq({}, payload))
+
+  /**
    * Runs a cache maintenance write. Deferred via `args.waitUntil` when provided (the lookup
    * result never depends on these writes), otherwise awaited. Deferred failures are swallowed:
    * a lost write only means the next lookup falls back to the scan. Within a lookup, writes
@@ -131,10 +144,8 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     if (args.where) {
       and.push(args.where)
     }
-    // Without this constraint, a find with `draft: false` would still return
-    // documents which only exist as a draft and were never published.
-    if (!draft && hasDraftsEnabled(collection)) {
-      and.push({ _status: { equals: 'published' } })
+    if (!draft) {
+      and.push(...livenessConditions(collection))
     }
     return { and }
   }
@@ -152,7 +163,7 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       overrideAccess: args.overrideAccess,
       pagination: false,
       populate: args.populate,
-      req: args.req,
+      req: await getReq(),
       select: ensurePathSelected(args.select),
       where: buildWhere({ id: { equals: id } }, collection),
     })
@@ -186,7 +197,8 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     }
   }
 
-  for (const collection of candidates) {
+  /** Queries a single collection for the documents whose slug matches the last path segment. */
+  const scanCollection = async (collection: PageCollectionConfig): Promise<PageDocument[]> => {
     const result = await payload.find({
       collection: collection.slug,
       depth: 0,
@@ -194,13 +206,36 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       locale,
       overrideAccess: args.overrideAccess,
       pagination: false,
-      req: args.req,
+      req: await getReq(),
       select: { slug: true, path: true },
       where: buildWhere({ slug: { equals: slug } }, collection),
     })
 
+    return result.docs
+  }
+
+  // Scanning the collections concurrently turns the per-collection round-trip latency into a
+  // single wait instead of one wait per collection, which dominates lookups that match late or
+  // not at all (a 404 scans every collection).
+  //
+  // A read operation does not open a transaction on its own, but when the caller's `req` already
+  // carries one (e.g. a lookup from within an `afterChange` hook) every query runs on that single
+  // database session: MongoDB forbids concurrent operations on one session and Postgres
+  // serializes them on one connection, so the scans must stay sequential in that case.
+  // `transactionID` holds a promise while the transaction is still being created, so a truthiness
+  // check covers both states — the same guard payload's own `initTransaction` applies.
+  //
+  // A rejected scan rejects the whole lookup, matching the sequential scan's error behavior.
+  const scans = args.req?.transactionID
+    ? undefined
+    : await Promise.all(candidates.map((collection) => scanCollection(collection)))
+
+  for (const [index, collection] of candidates.entries()) {
+    // Without concurrent scans, each collection is only queried until one of them matches.
+    const docs = scans?.[index] ?? (await scanCollection(collection))
+
     // The slug only matches the last path segment, so verify the full path.
-    const match = (result.docs as PageDocument[]).find((doc) => doc.path === path)
+    const match = docs.find((doc) => doc.path === path)
     if (!match) {
       continue
     }
@@ -259,9 +294,4 @@ function ensurePathSelected(select: SelectType | undefined): SelectType | undefi
   // In exclude mode, remove a potential `path: false` so the path stays included
   const { path: _path, ...rest } = select
   return rest
-}
-
-/** Whether the collection has drafts (and therefore a `_status` field) enabled. */
-function hasDraftsEnabled(collection: PageCollectionConfig): boolean {
-  return typeof collection.versions === 'object' && Boolean(collection.versions.drafts)
 }

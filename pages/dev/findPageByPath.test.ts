@@ -1,4 +1,4 @@
-import payload, { CollectionSlug, SanitizedConfig } from 'payload'
+import payload from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   clearPathCache,
@@ -7,6 +7,7 @@ import {
 } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
+import { deleteAllCollections, deleteCollection } from './src/test/deleteCollections'
 
 type DefaultIDType = Config['db']['defaultIDType']
 
@@ -470,54 +471,37 @@ describe('Draft pages', () => {
   })
 })
 
-/**
- * Helper function to delete all documents from a collection.
- */
-const deleteCollection = async (collection: CollectionSlug) => {
-  // use db.deleteMany instead of payload.delete to avoid running hooks
-  await payload.db.deleteMany({
-    collection: collection,
-    where: {},
-  })
+describe('findPageByPath query cost', () => {
+  test('reads each ancestor only once when called without a request', async () => {
+    const grandparent = await createPage({ title: 'A', slug: 'a' })
+    const parent = await createPage({ title: 'B', slug: 'b', parent: grandparent.id })
+    await createPage({ title: 'C', slug: 'c', parent: parent.id })
 
-  // this will fail for collections which have no versions enabled, therefore wrapped in a try catch
-  try {
-    await payload.db.deleteVersions({
-      collection: collection,
-      where: {},
-    })
-  } catch {}
-}
+    // The virtual `path` is computed by walking the ancestor chain, which reads the ancestors
+    // of one level in a single batched `find` on their ids.
+    const ancestorReads: string[] = []
+    const find = payload.db.find.bind(payload.db)
+    const spy = vi
+      .spyOn(payload.db, 'find')
+      .mockImplementation(async (args: Parameters<typeof find>[0]) => {
+        const ids = (args.where as { id?: { in?: unknown } } | undefined)?.id?.in
+        if (args.collection === 'pages' && Array.isArray(ids)) {
+          ancestorReads.push(JSON.stringify(args.where))
+        }
+        return find(args)
+      })
 
-/**
- * Deletion order for collections to respect foreign key constraints.
- * Collections are deleted in this order: children before parents.
- */
-const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
-  'country-travel-tips',
-  'blogposts',
-  'authors',
-  'countries',
-  'pages',
-  'blogpost-categories',
-  'redirects',
-]
-
-const deleteAllCollections = async (
-  config: Promise<SanitizedConfig>,
-  except: CollectionSlug[] = [],
-) => {
-  const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
-  const collectionSlugs = new Set(collections.map((c) => c.slug))
-
-  for (const slug of COLLECTION_DELETION_ORDER) {
-    if (collectionSlugs.has(slug)) {
-      await deleteCollection(slug)
-      collectionSlugs.delete(slug)
+    try {
+      // `cache: false` forces the scan, so the lookup both scans and fetches the document
+      const result = await findPageByPath({ payload, path: '/de/a/b/c', cache: false })
+      expect(result?.doc.path).toBe('/de/a/b/c')
+    } finally {
+      spy.mockRestore()
     }
-  }
 
-  for (const slug of Array.from(collectionSlugs)) {
-    await deleteCollection(slug)
-  }
-}
+    expect(ancestorReads.length).toBeGreaterThan(0)
+    // Both the scan and the document fetch walk the same chain, so without a shared request the
+    // same ancestor is read twice.
+    expect(ancestorReads).toHaveLength(new Set(ancestorReads).size)
+  })
+})

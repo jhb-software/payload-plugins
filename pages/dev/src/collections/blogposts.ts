@@ -10,9 +10,16 @@ export const Blogposts: PageCollectionConfig = {
       collection: 'pages',
       name: 'parent',
       sharedDocument: true,
+      // Demonstrates the overrides for the generated fields: the picker only
+      // offers published pages, ANDed with the plugin's exclude-self filter.
+      filterOptions: { _status: { equals: 'published' } },
+      admin: { description: 'Blog posts can only be attached to a published page.' },
     },
     breadcrumbs: {
       labelField: 'shortTitle',
+    },
+    slug: {
+      admin: { position: 'main' },
     },
   },
   fields: [

@@ -1,6 +1,16 @@
-import type { CollectionBeforeChangeHook, DefaultDocumentIDType } from 'payload'
+import type { CollectionBeforeChangeHook } from 'payload'
 
 import { ValidationError } from 'payload'
+
+import type { ParentRef } from '../utils/parentRef.js'
+
+import { pageAttributesOf } from '../utils/pageCollectionConfigHelpers.js'
+import {
+  parentRefKey,
+  resolveParentRef,
+  tryResolveParentRef,
+  UnresolvableParentRefError,
+} from '../utils/parentRef.js'
 
 /**
  * A CollectionBeforeChangeHook that prevents circular parent references.
@@ -9,6 +19,12 @@ import { ValidationError } from 'payload'
  * - Direct self-references (doc.parent = doc.id)
  * - Two-node cycles (A -> B -> A)
  * - Deep cycles (A -> B -> C -> A)
+ *
+ * The walk crosses collections. With a polymorphic `parent.collection` a collection can be
+ * parented both to itself and to another page collection, which makes a cycle such as
+ * `topics/1 -> pages/2 -> topics/3 -> topics/1` reachable — one that never revisits the same
+ * collection twice in a row, and which would otherwise recurse until the request dies while
+ * resolving breadcrumbs.
  */
 export const preventCircularParentReference: CollectionBeforeChangeHook = async ({
   collection,
@@ -17,87 +33,110 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
   originalDoc,
   req,
 }) => {
-  const pageConfig = collection.custom?.pageConfig as {
-    parent: { collection: string; name: string }
-  }
+  const pageConfig = pageAttributesOf(collection)
 
   if (!pageConfig) {
     return data
   }
 
   const parentFieldName = pageConfig.parent.name
-  const parentCollection = pageConfig.parent.collection
 
-  // Only validate if the parent collection is the same as the current collection
-  // (cross-collection parents cannot create cycles within this collection)
-  if (parentCollection !== collection.slug) {
-    return data
+  let newParentRef: null | ParentRef
+
+  try {
+    newParentRef = resolveParentRef(data[parentFieldName], pageConfig)
+  } catch (error) {
+    if (!(error instanceof UnresolvableParentRefError)) {
+      throw error
+    }
+
+    // Payload skips field validation on draft saves, so without this the value would be stored
+    // and only surface later as a document that has silently fallen out of the page tree.
+    throw new ValidationError({
+      errors: [{ message: error.message, path: parentFieldName }],
+    })
   }
-
-  // Resolve the parent id from the incoming data
-  const newParentValue = data[parentFieldName]
-  const newParentId =
-    newParentValue && typeof newParentValue === 'object' && 'id' in newParentValue
-      ? newParentValue.id
-      : newParentValue
 
   // No parent set – nothing to validate
-  if (!newParentId) {
+  if (!newParentRef) {
     return data
   }
 
-  // Determine the id of the current document
-  const currentId = operation === 'update' ? originalDoc?.id : undefined
+  // Determine the ref of the current document
+  const currentRef: null | ParentRef =
+    operation === 'update' && originalDoc?.id !== undefined
+      ? { id: originalDoc.id, collection: collection.slug }
+      : null
 
   // On updates, skip the ancestor walk if the parent hasn't changed
   if (operation === 'update' && originalDoc) {
-    const originalParentValue = originalDoc[parentFieldName]
-    const originalParentId =
-      originalParentValue && typeof originalParentValue === 'object' && 'id' in originalParentValue
-        ? originalParentValue.id
-        : originalParentValue
-    if (String(newParentId) === String(originalParentId)) {
+    // An unresolvable stored value must not block a write which replaces it, so it counts as a
+    // changed parent rather than failing here.
+    const originalParentRef = tryResolveParentRef(originalDoc[parentFieldName], pageConfig)
+
+    if (originalParentRef && parentRefKey(originalParentRef) === parentRefKey(newParentRef)) {
       return data
     }
   }
 
   // Direct self-reference check
-  if (currentId !== undefined && String(newParentId) === String(currentId)) {
+  if (currentRef && parentRefKey(currentRef) === parentRefKey(newParentRef)) {
     throw new ValidationError({
       errors: [{ message: 'A document cannot be its own parent', path: parentFieldName }],
     })
   }
 
-  // Walk up the ancestor chain looking for cycles
-  const visited = new Set<string>()
-  if (currentId !== undefined) {
-    visited.add(String(currentId))
-  }
+  // Walk up the ancestor chain looking for cycles. `visited` is kept ordered so the error can
+  // name the chain that closes the loop.
+  const visited: string[] = currentRef ? [parentRefKey(currentRef)] : []
 
-  let cursor: null | number | string | undefined = newParentId
+  let cursor: null | ParentRef = newParentRef
 
   while (cursor) {
-    const cursorStr = String(cursor)
+    const key = parentRefKey(cursor)
 
-    if (visited.has(cursorStr)) {
+    if (visited.includes(key)) {
       throw new ValidationError({
-        errors: [{ message: 'Circular parent reference detected', path: parentFieldName }],
+        errors: [
+          {
+            message: `Circular parent reference detected: ${[...visited, key].join(' -> ')}`,
+            path: parentFieldName,
+          },
+        ],
       })
     }
 
-    visited.add(cursorStr)
+    visited.push(key)
 
-    const parent = await req.payload.findByID({
-      id: cursor,
-      collection: parentCollection as any,
+    // Each hop names its parent field independently, so the config is read per collection
+    // rather than reusing the one of the document being saved.
+    const hopConfig = pageAttributesOf(req.payload.collections[cursor.collection]?.config)
+
+    // A non-page collection has no parent to follow, so the chain ends here.
+    if (!hopConfig) {
+      return data
+    }
+
+    const hopParentField = hopConfig.parent.name
+
+    const ancestor = (await req.payload.findByID({
+      id: cursor.id,
+      collection: cursor.collection,
       depth: 0,
+      // A missing ancestor ends the walk instead of failing the save.
+      disableErrors: true,
+      draft: true,
+      // Whether a cycle exists is a structural invariant, not a user read: an editor allowed to
+      // write this collection but not to read an ancestor collection must not hit an access
+      // error on save.
+      overrideAccess: true,
       req,
-      select: { [parentFieldName]: true },
-    })
+      select: { [hopParentField]: true },
+    })) as null | Record<string, unknown>
 
-    const nextParentValue = (parent as Record<string, unknown>)?.[parentFieldName] as
-      DefaultDocumentIDType | undefined
-    cursor = nextParentValue ? nextParentValue : undefined
+    // An ancestor carrying an unresolvable parent value ends the walk: the chain cannot be
+    // followed any further, and that ancestor's own writes are refused above.
+    cursor = ancestor ? tryResolveParentRef(ancestor[hopParentField], hopConfig) : null
   }
 
   return data
