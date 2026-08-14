@@ -2,6 +2,10 @@ import payload, { CollectionSlug, ValidationError } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
+import {
+  clearCapturedAfterChanges,
+  getLastAfterChangeHookArgs,
+} from './src/test/afterChangeCapture'
 
 type DefaultIDType = Config['db']['defaultIDType']
 
@@ -512,6 +516,101 @@ describe('Slug field behaves as expected for create and update operations', () =
     } catch (error) {
       expect(error).toBeInstanceOf(ValidationError)
     }
+  })
+})
+
+describe('A mutation computes the virtual fields under a select which asks for none of them', () => {
+  let rootPageId: DefaultIDType
+  let childPageId: DefaultIDType
+
+  beforeEach(async () => {
+    // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
+    await deleteCollection('authors')
+    await deleteCollection('pages')
+    clearCapturedAfterChanges()
+
+    const rootPage = await payload.create({
+      collection: 'pages',
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+    rootPageId = rootPage.id
+
+    childPageId = (
+      await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Child Page',
+          slug: 'child-page',
+          content: 'Child content',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+  })
+
+  test('an update selecting only an unrelated field still hands afterChange hooks the path', async () => {
+    await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/child-page')
+    expect(previousDoc.path).toBe('/child-page')
+  })
+
+  test('a create selecting only an unrelated field still hands afterChange hooks the path', async () => {
+    await payload.create({
+      collection: 'pages',
+      data: {
+        title: 'Second Child',
+        slug: 'second-child',
+        content: 'Second child content',
+        parent: rootPageId,
+        ...virtualFields,
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/second-child')
+  })
+
+  test('the response to a narrow-select update contains only the field the caller selected', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    expect(doc.title).toBe('Child Page Updated')
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('content')
+    expect(doc).not.toHaveProperty('path')
   })
 })
 
