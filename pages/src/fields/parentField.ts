@@ -1,10 +1,14 @@
-import type { Field, PayloadRequest, SingleRelationshipField, Where } from 'payload'
+import type { Field, PayloadRequest, RelationshipField, Where } from 'payload'
 
-import type { IncomingPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type {
+  IncomingPageCollectionConfigAttributes,
+  PageCollectionConfigAttributes,
+} from '../types/PageCollectionConfigAttributes.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { composeFilterOptions, mergeFieldAdmin } from '../utils/fieldOverrides.js'
 import { getPageCollectionConfigAttributes } from '../utils/getPageCollectionConfigAttributes.js'
+import { hasPolymorphicParent, parentCollections } from '../utils/parentRef.js'
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 export function parentField(
@@ -13,18 +17,22 @@ export function parentField(
   baseFilter?: PagesPluginConfig['baseFilter'],
   overrides?: Pick<IncomingPageCollectionConfigAttributes['parent'], 'admin' | 'filterOptions'>,
 ): Field {
-  return {
+  const relationTo = pageConfig.parent.collection
+
+  const field = {
     name: pageConfig.parent.name,
     type: 'relationship',
-    filterOptions: composeFilterOptions(({ data }) => {
+    filterOptions: composeFilterOptions(({ data, relationTo }) => {
       if (!data.id) {
         // Before the document is created, there is no id, therefore do not filter
         return true
       }
 
       // Exclude the current document from the list of available parents.
-      // NOTE: To not hide documents with the same serial id in another collection, only apply the filter if the parent collection is the same as the current collection.
-      if (pageConfig.parent.collection === collectionSlug) {
+      // NOTE: `filterOptions` runs once per relation, so `relationTo` is the relation being
+      // filtered, not the whole config. Restricting the filter to this collection avoids
+      // hiding documents which happen to share the serial id in another collection.
+      if (relationTo === collectionSlug) {
         return {
           id: {
             not_equals: data.id,
@@ -39,10 +47,10 @@ export function parentField(
     // by this field, so it must be indexed.
     index: true,
     label: translatedLabel('parent'),
-    relationTo: pageConfig.parent.collection,
+    relationTo,
     required: !pageConfig.isRootCollection,
 
-    admin: mergeFieldAdmin<NonNullable<SingleRelationshipField['admin']>>(
+    admin: mergeFieldAdmin<NonNullable<RelationshipField['admin']>>(
       {
         components: {
           Field: '@jhb.software/payload-pages-plugin/server#ParentField',
@@ -57,12 +65,13 @@ export function parentField(
     ),
     // When this collection has a shared parent document, set the parent field:
     defaultValue: async ({ req }: { req: PayloadRequest }) => {
-      const {
-        parent: { name: parentField, sharedDocument: sharedParentDocument },
-      } = getPageCollectionConfigAttributes({
+      const pageConfigAttributes = getPageCollectionConfigAttributes({
         collectionSlug,
         payload: req.payload,
       })
+      const {
+        parent: { name: parentField, sharedDocument: sharedParentDocument },
+      } = pageConfigAttributes
 
       if (sharedParentDocument) {
         // If the current document
@@ -81,7 +90,7 @@ export function parentField(
           },
           where: {
             and: [
-              { [parentField]: { not_equals: null } },
+              parentIsSetWhere(pageConfigAttributes),
               ...(baseFilterWhere ? [baseFilterWhere] : []),
             ],
           },
@@ -95,5 +104,31 @@ export function parentField(
 
       return undefined
     },
+  }
+
+  // `RelationshipField` is a union of its monomorphic and polymorphic members, which differ in
+  // the type of `admin.sortOptions`. `relationTo` is only known to be one or the other at
+  // runtime, so the assembled object matches neither member statically.
+  return field as Field
+}
+
+/**
+ * Matches the documents whose parent field is set.
+ *
+ * A polymorphic parent is stored as `{ relationTo, value }`, which the SQL adapters keep in a
+ * join row: a query against the field itself, or against `parent.value`, is rejected there.
+ * Asking for each configured relation in turn is understood by every adapter.
+ */
+function parentIsSetWhere(attributes: PageCollectionConfigAttributes): Where {
+  const parentFieldName = attributes.parent.name
+
+  if (!hasPolymorphicParent(attributes)) {
+    return { [parentFieldName]: { not_equals: null } }
+  }
+
+  return {
+    or: parentCollections(attributes).map((slug) => ({
+      [`${parentFieldName}.relationTo`]: { equals: slug },
+    })),
   }
 }

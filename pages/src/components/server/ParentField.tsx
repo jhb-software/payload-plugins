@@ -23,7 +23,9 @@ export const ParentField: RelationshipFieldServerComponent = ({
     payload,
   })
 
-  const parentValue: string | undefined = data?.[parentField] ?? undefined
+  // A polymorphic parent stores `{ relationTo, value }` rather than a bare id, so this is only
+  // read for its truthiness.
+  const parentValue: unknown = data?.[parentField] ?? undefined
   // Check both shared parent document and permissions
   const isReadOnly =
     Boolean(sharedParentDocument && parentValue) ||

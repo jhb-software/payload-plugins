@@ -5,7 +5,6 @@ import { describe, expect, test } from 'vitest'
 import type { IncomingPageCollectionConfig } from '../src/types/PageCollectionConfig.js'
 
 import { createPageCollectionConfig } from '../src/collections/PageCollectionConfig.js'
-import { preventParentDeletion, preventParentTrashing } from '../src/hooks/preventParentDeletion.js'
 
 const pluginConfig = { generatePageURL: () => null }
 
@@ -30,11 +29,12 @@ const fieldNamed = (fields: Field[], name: string) =>
 const parentFilter = async (
   fields: Field[],
   data: Record<string, unknown>,
+  relationTo = 'pages',
 ): Promise<boolean | undefined | Where> => {
   const { filterOptions } = fieldNamed(fields, 'parent') as { filterOptions: any }
 
   return typeof filterOptions === 'function'
-    ? await filterOptions({ data } as unknown as FilterOptionsProps)
+    ? await filterOptions({ data, relationTo } as unknown as FilterOptionsProps)
     : filterOptions
 }
 
@@ -147,32 +147,36 @@ describe('createPageCollectionConfig field overrides', () => {
   })
 })
 
-describe('createPageCollectionConfig parent deletion guard', () => {
-  const buildWithGuard = (preventParentDeletionOption?: boolean) =>
+describe('createPageCollectionConfig polymorphic parent', () => {
+  const buildPolymorphic = () =>
     createPageCollectionConfig({
       collectionConfig: {
-        slug: 'pages',
+        slug: 'topics',
         admin: { useAsTitle: 'title' },
         fields: [{ name: 'title', type: 'text' }],
-        page: {
-          isRootCollection: true,
-          parent: { collection: 'pages', name: 'parent' },
-        },
+        page: { parent: { collection: ['pages', 'topics'], name: 'parent' } },
       },
-      pluginConfig: { ...pluginConfig, preventParentDeletion: preventParentDeletionOption },
+      pluginConfig,
     })
 
-  test('guards the permanent delete and the trash transition by default', () => {
-    const { hooks } = buildWithGuard()
+  test('the parent field relates to every configured collection', () => {
+    const { fields } = buildPolymorphic()
 
-    expect(hooks!.beforeDelete).toContain(preventParentDeletion)
-    expect(hooks!.beforeChange).toContain(preventParentTrashing)
+    expect((fieldNamed(fields, 'parent') as { relationTo: unknown }).relationTo).toEqual([
+      'pages',
+      'topics',
+    ])
   })
 
-  test('guards neither path when preventParentDeletion is disabled', () => {
-    const { hooks } = buildWithGuard(false)
+  test('the exclude-self filter applies to the own collection only', async () => {
+    const { fields } = buildPolymorphic()
 
-    expect(hooks!.beforeDelete).not.toContain(preventParentDeletion)
-    expect(hooks!.beforeChange).not.toContain(preventParentTrashing)
+    expect(await parentFilter(fields, { id: 7 }, 'topics')).toEqual({ id: { not_equals: 7 } })
+  })
+
+  test('a document is not excluded from another collection sharing its serial id', async () => {
+    const { fields } = buildPolymorphic()
+
+    expect(await parentFilter(fields, { id: 7 }, 'pages')).toBe(true)
   })
 })

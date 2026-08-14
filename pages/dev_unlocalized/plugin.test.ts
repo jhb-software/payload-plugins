@@ -387,6 +387,42 @@ describe('Path and breadcrumb virtual fields are set correctly for find operatio
   })
 })
 
+describe('Parent deletion guard disabled via preventParentDeletion: false', () => {
+  beforeEach(async () => await deleteAllCollections(['users']))
+
+  const createPage = async (data: { title: string; slug: string; parent?: DefaultIDType }) =>
+    await payload.create({
+      collection: 'pages',
+      data: { content: 'Content', ...data, ...virtualFields },
+    })
+
+  test('deletes a parent that is still referenced by a child', async () => {
+    const parent = await createPage({ title: 'Parent', slug: 'parent' })
+    const child = await createPage({ title: 'Child', slug: 'child', parent: parent.id })
+
+    await payload.delete({ collection: 'pages', id: parent.id })
+
+    expect(
+      (await payload.find({ collection: 'pages', where: { id: { equals: parent.id } } })).docs,
+    ).toHaveLength(0)
+    // The child survives the delete, its parent reference is simply left dangling.
+    expect((await payload.findByID({ collection: 'pages', id: child.id })).id).toBe(child.id)
+  })
+
+  test('trashes a parent that is still referenced by a child', async () => {
+    const parent = await createPage({ title: 'Parent', slug: 'trash-parent' })
+    await createPage({ title: 'Child', slug: 'trash-child', parent: parent.id })
+
+    const trashed = await payload.update({
+      collection: 'pages',
+      id: parent.id,
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+    expect(trashed.deletedAt).toBeTruthy()
+  })
+})
+
 describe('Slug field behaves as expected for create and update operations', () => {
   test('Slug remains unchanged when title is updated', async () => {
     // Create initial page
@@ -434,7 +470,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -452,7 +488,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         data: { ...pageData, ...virtualFields },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -474,7 +510,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -514,7 +550,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 })
@@ -615,6 +651,17 @@ describe('A mutation computes the virtual fields under a select which asks for n
 })
 
 /**
+ * Asserts a rejected write failed validation.
+ *
+ * Matches on the error's `name` instead of `instanceof ValidationError`: an install can end up
+ * with more than one copy of `payload`, in which case an error thrown by the plugin's copy is not
+ * an instance of the class this test file imported.
+ */
+function expectValidationError(error: unknown): asserts error is ValidationError {
+  expect((error as Error | undefined)?.name).toBe('ValidationError')
+}
+
+/**
  * Helper function to remove id field from objects in an array
  */
 const removeIdsFromArray = <T extends { id?: any }>(array: T[]): Omit<T, 'id'>[] => {
@@ -658,6 +705,58 @@ const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
   'blogpost-categories',
   'redirects',
 ]
+
+describe('Multi-collection parents without localization', () => {
+  beforeEach(async () => {
+    await payload.delete({ collection: 'topics', where: {} })
+    await payload.delete({ collection: 'pages', where: {} })
+  })
+
+  test('breadcrumbs span pages and topics when localization is disabled', async () => {
+    const shop = await payload.create({
+      collection: 'pages',
+      data: {
+        ...virtualFields,
+        title: 'Shop',
+        content: 'Shop',
+        slug: 'shop',
+        isRootPage: false,
+        parent: null,
+      } as any,
+    })
+
+    const mens = await payload.create({
+      collection: 'topics',
+      data: {
+        ...virtualFields,
+        title: 'Mens',
+        slug: 'mens',
+        parent: { relationTo: 'pages', value: shop.id },
+      } as any,
+    })
+
+    const shirts = await payload.create({
+      collection: 'topics',
+      data: {
+        ...virtualFields,
+        title: 'Shirts',
+        slug: 'shirts',
+        parent: { relationTo: 'topics', value: mens.id },
+      } as any,
+    })
+
+    const doc = await payload.findByID({ collection: 'topics', id: shirts.id })
+
+    expect(doc.path).toBe('/shop/mens/shirts')
+    expect(
+      (doc.breadcrumbs as any[]).map(({ slug, label, path }) => ({ slug, label, path })),
+    ).toEqual([
+      { slug: 'shop', label: 'Shop', path: '/shop' },
+      { slug: 'mens', label: 'Mens', path: '/shop/mens' },
+      { slug: 'shirts', label: 'Shirts', path: '/shop/mens/shirts' },
+    ])
+  })
+})
 
 const deleteAllCollections = async (except: CollectionSlug[] = []) => {
   const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
