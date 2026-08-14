@@ -466,7 +466,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -484,7 +484,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         data: { ...pageData, ...virtualFields },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -506,7 +506,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -546,10 +546,21 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 })
+
+/**
+ * Asserts a rejected write failed validation.
+ *
+ * Matches on the error's `name` instead of `instanceof ValidationError`: an install can end up
+ * with more than one copy of `payload`, in which case an error thrown by the plugin's copy is not
+ * an instance of the class this test file imported.
+ */
+function expectValidationError(error: unknown): asserts error is ValidationError {
+  expect((error as Error | undefined)?.name).toBe('ValidationError')
+}
 
 /**
  * Helper function to remove id field from objects in an array

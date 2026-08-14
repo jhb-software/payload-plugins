@@ -1100,7 +1100,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -1117,7 +1117,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -1135,7 +1135,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -1166,7 +1166,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 })
@@ -3681,6 +3681,17 @@ describe('Multi-collection parents', () => {
 })
 
 /**
+ * Asserts a rejected write failed validation.
+ *
+ * Matches on the error's `name` instead of `instanceof ValidationError`: an install can end up
+ * with more than one copy of `payload`, in which case an error thrown by the plugin's copy is not
+ * an instance of the class this test file imported.
+ */
+function expectValidationError(error: unknown): asserts error is ValidationError {
+  expect((error as Error | undefined)?.name).toBe('ValidationError')
+}
+
+/**
  * Resolves to the `parent` field's validation message of a rejected write, or undefined if the
  * write succeeded. `ValidationError.message` is the generic "The following field is invalid",
  * so the field-level message is what carries the plugin's diagnosis.
@@ -3690,7 +3701,7 @@ const parentFieldErrorOf = async (operation: Promise<unknown>): Promise<string |
     await operation
     return undefined
   } catch (error) {
-    expect(error).toBeInstanceOf(ValidationError)
-    return (error as ValidationError).data.errors.find((e) => e.path === 'parent')?.message
+    expectValidationError(error)
+    return error.data.errors.find((e) => e.path === 'parent')?.message
   }
 }
