@@ -47,7 +47,8 @@ function stubFetch(options: {
 
     if (call === 1) {
       return {
-        arrayBuffer: async () => PIXEL.buffer.slice(PIXEL.byteOffset, PIXEL.byteOffset + PIXEL.byteLength),
+        arrayBuffer: async () =>
+          PIXEL.buffer.slice(PIXEL.byteOffset, PIXEL.byteOffset + PIXEL.byteLength),
         headers: { get: (name: string) => (name === 'content-type' ? contentType : null) },
         ok: imageStatus === 200,
         status: imageStatus,
@@ -85,7 +86,11 @@ describe('mistral resolver', () => {
   test('sends the image bytes to the provider instead of the URL', async () => {
     const recorded = stubFetch({ completion: { en: threeLocales.en } })
 
-    await mistralResolver({ apiKey: 'key' }).resolve({ imageThumbnailUrl: IMAGE_URL, locale: 'en', req })
+    await mistralResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
 
     const content = (recorded[0]!.body.messages as { content: { image_url?: string }[] }[])[1]!
       .content

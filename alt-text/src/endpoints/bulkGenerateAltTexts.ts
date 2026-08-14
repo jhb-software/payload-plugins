@@ -7,7 +7,7 @@ import { ZodError } from 'zod'
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { localesFromConfig } from '../utilities/localesFromConfig.js'
-import { matchesMimeType } from '../utilities/mimeTypes.js'
+import { getUnsupportedSourceMimeTypeError, matchesMimeType } from '../utilities/mimeTypes.js'
 import { bulkGenerateAltTextsRequestSchema, formatZodError } from './schemas.js'
 
 /**
@@ -182,23 +182,23 @@ async function generateAndUpdateAltText({
     )
   }
 
-  if (
-    mimeType &&
-    pluginConfig.resolver.supportedMimeTypes &&
-    !pluginConfig.resolver.supportedMimeTypes.includes(mimeType)
-  ) {
-    throw new Error(
-      `Alt text generation is not supported for files of type "${mimeType}". Supported types: ${pluginConfig.resolver.supportedMimeTypes.join(', ')}.`,
-    )
+  const unsupportedSourceError = getUnsupportedSourceMimeTypeError({
+    declaredThumbnailMimeType: collectionConfig.imageThumbnailMimeType,
+    mimeType,
+    supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
+  })
+  if (unsupportedSourceError) {
+    throw new Error(unsupportedSourceError)
   }
 
-  const imageThumbnailUrl = pluginConfig.getImageThumbnail(imageDoc)
+  const imageThumbnailUrl = await pluginConfig.getImageThumbnail(imageDoc, { collection, req })
 
   const result = await pluginConfig.resolver.resolveBulk({
     filename:
       'filename' in imageDoc && typeof imageDoc.filename === 'string'
         ? imageDoc.filename
         : undefined,
+    imageThumbnailMimeType: collectionConfig.imageThumbnailMimeType,
     imageThumbnailUrl,
     locales,
     req,
