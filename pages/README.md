@@ -460,9 +460,26 @@ On a localized install the result carries one entry per (document, locale); a lo
 - `collections`: The page collections to enumerate. Defaults to every registered page collection, so a newly added page collection appears without a code change.
 - `locale`: Narrows a localized install to one locale.
 - `draft`: Whether to enumerate the latest versions instead of the published ones (default `false`), mirroring `findPageByPath`.
-- `where`: An additional filter, merged per collection with `and` — it can narrow the enumeration but never widen it past the plugin's own conditions. The filtered fields must be queryable on every enumerated collection. On a localized install the default enumeration queries all locales at once, where Payload cannot filter on localized fields — filter on unlocalized fields, or pass `locale` to filter on localized ones.
+- `where`: An additional filter, merged per collection with `and` — it can narrow the enumeration but never widen it past the plugin's own conditions. A plain `Where` applies to every enumerated collection, so its fields must be queryable on all of them. For fields that exist on only some collections, pass a function instead: it is called once per collection and returns a filter for it, or `undefined` to leave it unfiltered. On a localized install the default enumeration queries all locales at once, where Payload cannot filter on localized fields — filter on unlocalized fields, or pass `locale` to filter on localized ones.
+- `baseFilter`: Pass `false` to enumerate without the plugin's [`baseFilter`](#multi-tenant-support) — e.g. a cache warmer or a multi-tenant sweep that scopes explicitly through `where` instead of through the request.
+- `overrideAccess`: Whether to skip Payload's access control (default `true`, mirroring `payload.find`). Pass `false` to enforce each collection's read access for `req.user`.
 
-The queries run with access control overridden (the Local API default): entries are scoped by liveness and the `baseFilter`, not by the request user's read access. This fits a sitemap or llms.txt; do not use the result to render navigation for a user whose read access is narrower.
+`listPagePaths` is a trusted server-side primitive, like `payload.find` itself: the `baseFilter` scoping and skipped access control are defaults, not restrictions. With the defaults, entries are scoped by liveness and the `baseFilter`, not by the request user's read access — this fits a sitemap or llms.txt, but do not use the result to render navigation for a user whose read access is narrower (or pass `overrideAccess: false`).
+
+```ts
+// Sweep every tenant in one call, scoping explicitly instead of through the request:
+const entries = await listPagePaths({
+  req,
+  baseFilter: false,
+  where: { tenant: { equals: tenantId } },
+})
+
+// Filter a field that exists on only one collection:
+const publicEntries = await listPagePaths({
+  req,
+  where: ({ slug }) => (slug === 'pages' ? { access: { equals: 'public' } } : undefined),
+})
+```
 
 ## Reacting to path changes
 

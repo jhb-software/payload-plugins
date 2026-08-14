@@ -40,6 +40,13 @@ export type PagePathEntry = {
 /** Arguments for {@link listPagePaths}. */
 export type ListPagePathsArgs = {
   /**
+   * Pass `false` to enumerate without the plugin's `baseFilter` — e.g. a cache warmer or a
+   * multi-tenant sweep that scopes explicitly through `where` instead of through the request.
+   * When omitted, the plugin's `baseFilter` is evaluated against `req` and applied.
+   */
+  baseFilter?: false
+
+  /**
    * The page collections to enumerate. Defaults to every registered page collection, so a
    * newly added page collection appears without a code change.
    */
@@ -57,6 +64,14 @@ export type ListPagePathsArgs = {
   locale?: Locale
 
   /**
+   * Whether to skip Payload's access control, mirroring `payload.find`. Pass `false` to
+   * enforce each collection's read access for `req.user`.
+   *
+   * @default true
+   */
+  overrideAccess?: boolean
+
+  /**
    * The Payload request. Queries run on its transaction and user, and the plugin's
    * `baseFilter` (e.g. the active tenant) is evaluated against it.
    */
@@ -64,12 +79,14 @@ export type ListPagePathsArgs = {
 
   /**
    * An additional filter, merged per collection with `and` — it can narrow the enumeration
-   * but never widen it past the plugin's own conditions. The filtered fields must be
-   * queryable on every enumerated collection. On a localized install the default enumeration
-   * queries all locales at once, where Payload cannot filter on localized fields — filter on
-   * unlocalized fields, or pass `locale` to filter on localized ones.
+   * but never widen it past the plugin's own conditions. A plain `Where` applies to every
+   * enumerated collection, so its fields must be queryable on all of them; the function form
+   * is called once per collection and returns a filter for it, or `undefined` to leave it
+   * unfiltered — for fields that exist on only some collections. On a localized install the
+   * default enumeration queries all locales at once, where Payload cannot filter on localized
+   * fields — filter on unlocalized fields, or pass `locale` to filter on localized ones.
    */
-  where?: Where
+  where?: ((collection: { slug: CollectionSlug }) => undefined | Where) | Where
 }
 
 /**
@@ -77,6 +94,11 @@ export type ListPagePathsArgs = {
  * scoped by the plugin's `baseFilter`. On a localized install the result carries one entry per
  * (document, locale); a locale whose slug is unset yields no entry, matching the path
  * computation.
+ *
+ * A trusted server-side primitive, like `payload.find` itself: the plugin's `baseFilter` and
+ * skipped access control are defaults, not restrictions — infrastructure code (a cache warmer,
+ * a multi-tenant sitemap sweep, build-time enumeration) lifts them via `baseFilter: false` and
+ * scopes explicitly through `where`, or opts into enforcement via `overrideAccess: false`.
  *
  * @experimental This API is experimental and may change or be removed in a future minor
  * release without a breaking-change bump. It needs more real-world testing before it is
@@ -121,7 +143,7 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
   // including its baseFilter — speaks for all of them. This breaks if the plugin ever supports
   // multiple instances with different configs in one Payload config.
   const pluginConfig = collections[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
-  const baseFilter = pluginConfig?.baseFilter?.({ req })
+  const baseFilter = args.baseFilter === false ? undefined : pluginConfig?.baseFilter?.({ req })
 
   const enumerateCollection = async (
     collection: PageCollectionConfig,
@@ -132,8 +154,10 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
     if (baseFilter) {
       and.push(baseFilter)
     }
-    if (args.where) {
-      and.push(args.where)
+    const where =
+      typeof args.where === 'function' ? args.where({ slug: collection.slug }) : args.where
+    if (where) {
+      and.push(where)
     }
 
     const { docs } = await payload.find({
@@ -142,6 +166,7 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
       draft,
       limit: 0,
       locale,
+      overrideAccess: args.overrideAccess,
       pagination: false,
       req,
       select: { [labelField]: true, path: true, updatedAt: true },

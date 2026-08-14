@@ -1,6 +1,6 @@
 import { listPagePaths } from '@jhb.software/payload-pages-plugin'
-import { createLocalReq, getPayload, type CollectionSlug } from 'payload'
 import config from '@payload-config'
+import { type CollectionSlug, createLocalReq, getPayload } from 'payload'
 
 /**
  * Demonstrates the path index enumeration (`listPagePaths`).
@@ -12,6 +12,9 @@ import config from '@payload-config'
  * the arguments:
  *   ?locale=de            narrow to one locale
  *   ?collections=pages    narrow to specific page collections (comma-separated)
+ *   ?metaTitle=Foo        function-form where: filters `meta.title` on the pages collection
+ *                         only, leaving collections without that field unfiltered
+ *   ?enforceAccess=1      overrideAccess: false — enforce each collection's read access
  */
 export const GET = async (request: Request) => {
   const payload = await getPayload({ config })
@@ -21,8 +24,21 @@ export const GET = async (request: Request) => {
   const locale = url.searchParams.get('locale') ?? undefined
   const collections = url.searchParams.get('collections')?.split(',') as
     CollectionSlug[] | undefined
+  const metaTitle = url.searchParams.get('metaTitle')
+  const enforceAccess = url.searchParams.get('enforceAccess') !== null
 
-  const entries = await listPagePaths({ collections, locale, req })
+  const entries = await listPagePaths({
+    collections,
+    locale,
+    req,
+    ...(enforceAccess ? { overrideAccess: false } : {}),
+    ...(metaTitle
+      ? {
+          where: ({ slug }: { slug: CollectionSlug }) =>
+            slug === 'pages' ? { 'meta.title': { equals: metaTitle } } : undefined,
+        }
+      : {}),
+  })
 
   return Response.json({ count: entries.length, entries })
 }

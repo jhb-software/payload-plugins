@@ -286,6 +286,61 @@ describe('listPagePaths', () => {
     )
   })
 
+  test('a function-form where filters only the collections it returns a condition for', async () => {
+    const kept = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Kept',
+        slug: 'kept',
+        content: 'Content',
+        _status: 'published',
+        ...virtualFields,
+        meta: { title: 'Keep Me', alternatePaths: [] },
+      },
+    })
+    await createPage({ title: 'Dropped', slug: 'dropped' })
+    // topics have no `meta.title` field — the filter must never reach them
+    await createTopic({
+      title: 'Topic',
+      slug: 'topic',
+      parent: { relationTo: 'pages', value: kept.id },
+    })
+
+    const req = await createLocalReq({}, payload)
+    const entries = await listPagePaths({
+      req,
+      where: ({ slug }) => (slug === 'pages' ? { 'meta.title': { equals: 'Keep Me' } } : undefined),
+    })
+
+    expect(new Set(entries.map((entry) => entry.path))).toEqual(
+      new Set(['/de/kept', '/de/kept/topic']),
+    )
+  })
+
+  test('overrideAccess: false enforces the collection`s read access', async () => {
+    await createPage({ title: 'Guarded', slug: 'guarded' })
+
+    // the dev pages collection denies read access when this context flag is set
+    const restrictedReq = await createLocalReq({ context: { restrictPageAccess: true } }, payload)
+
+    // by default access control is skipped, matching payload.find
+    expect(await listPagePaths({ collections: ['pages'], req: restrictedReq })).toHaveLength(1)
+
+    await expect(
+      listPagePaths({ collections: ['pages'], overrideAccess: false, req: restrictedReq }),
+    ).rejects.toThrow()
+
+    // enforcement with a granting read access still enumerates
+    expect(
+      await listPagePaths({
+        collections: ['pages'],
+        overrideAccess: false,
+        req: await createLocalReq({}, payload),
+      }),
+    ).toHaveLength(1)
+  })
+
   test('includes the root page under its bare locale prefix', async () => {
     const root = await createPage({ title: 'Root', slug: '', isRootPage: true })
     await createPage({ title: 'Under Root', slug: 'under-root', parent: root.id })

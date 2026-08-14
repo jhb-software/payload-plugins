@@ -690,6 +690,31 @@ describe('Multi-tenant baseFilter functionality', () => {
       )
     })
 
+    test('baseFilter: false enumerates the paths of every tenant in one call', async () => {
+      const entries = await listPagePaths({
+        baseFilter: false,
+        req: await createLocalReq({}, payload),
+      })
+
+      const ids = entries.map((entry) => entry.id)
+      expect(ids).toContain(tenant1Parent)
+      expect(ids).toContain(tenant2Parent)
+    })
+
+    test('baseFilter: false with an explicit tenant where enumerates a tenant other than the request`s', async () => {
+      const entries = await listPagePaths({
+        baseFilter: false,
+        req: await tenantReq(tenant1Id),
+        where: { tenant: { equals: tenant2Id } },
+      })
+
+      expect(new Set(entries.map((entry) => entry.path))).toEqual(
+        new Set(['/shared', '/shared/shared-child']),
+      )
+      expect(entries.map((entry) => entry.id)).toContain(tenant2Parent)
+      expect(entries.map((entry) => entry.id)).not.toContain(tenant1Parent)
+    })
+
     test('a rename in one tenant produces no entries for the other tenant', async () => {
       clearPathChangeRecords()
       await payload.update({
