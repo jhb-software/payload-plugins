@@ -11,6 +11,10 @@ import { parentField } from '../fields/parentField.js'
 import { pathField } from '../fields/pathField.js'
 import { pageSlugField } from '../fields/slugField.js'
 import { beforeDuplicateTitle } from '../hooks/beforeDuplicate.js'
+import {
+  capturePreviousPathsBeforeChange,
+  capturePreviousPathsBeforeDelete,
+} from '../hooks/capturePreviousPaths.js'
 import { preventCircularParentReference } from '../hooks/preventCircularParentReference.js'
 import { preventParentDeletion, preventParentTrashing } from '../hooks/preventParentDeletion.js'
 import { selectDependentFieldsBeforeOperation } from '../hooks/selectDependentFieldsBeforeOperation.js'
@@ -151,10 +155,13 @@ export const createPageCollectionConfig = ({
         ...(incomingCollectionConfig.hooks?.beforeChange || []),
         preventCircularParentReference,
         ...(pluginConfig.preventParentDeletion !== false ? [preventParentTrashing] : []),
+        // Runs after the guards so a refused write never pays for a capture read
+        capturePreviousPathsBeforeChange,
       ],
       beforeDelete: [
         ...(incomingCollectionConfig.hooks?.beforeDelete || []),
         ...(pluginConfig.preventParentDeletion !== false ? [preventParentDeletion] : []),
+        capturePreviousPathsBeforeDelete,
       ],
       beforeOperation: [
         ...(incomingCollectionConfig.hooks?.beforeOperation || []),

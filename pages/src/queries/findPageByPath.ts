@@ -9,6 +9,7 @@ import type { FindPageByPathArgs, PageDocument, PageDocumentResult } from './typ
 
 import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
+import { livenessConditions } from './liveness.js'
 import { buildPathCacheKey, type PathCacheEntry } from './pathCache.js'
 
 /**
@@ -143,10 +144,8 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     if (args.where) {
       and.push(args.where)
     }
-    // Without this constraint, a find with `draft: false` would still return
-    // documents which only exist as a draft and were never published.
-    if (!draft && hasDraftsEnabled(collection)) {
-      and.push({ _status: { equals: 'published' } })
+    if (!draft) {
+      and.push(...livenessConditions(collection))
     }
     return { and }
   }
@@ -295,9 +294,4 @@ function ensurePathSelected(select: SelectType | undefined): SelectType | undefi
   // In exclude mode, remove a potential `path: false` so the path stays included
   const { path: _path, ...rest } = select
   return rest
-}
-
-/** Whether the collection has drafts (and therefore a `_status` field) enabled. */
-function hasDraftsEnabled(collection: PageCollectionConfig): boolean {
-  return typeof collection.versions === 'object' && Boolean(collection.versions.drafts)
 }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- feat: add **experimental** `listPagePaths`, which enumerates every live path across the plugin's page collections — one entry per document and locale, as the data source for a sitemap or llms.txt
+- feat: add **experimental** `pathChanges`, an `afterChange`/`afterDelete` helper reporting which live paths a write started or stopped resolving, including descendants moved by a renamed or moved ancestor
+- feat: export **experimental** `isPageCollectionConfig` for identifying page collections at config-build time
+
 - fix: redirect validation, the parent deletion guard and the `sharedDocument` parent default now run inside the caller's transaction instead of on a separate connection. Writes batched into one transaction are no longer invisible to them: deleting a parent whose only child was created in the same transaction is refused, a duplicate redirect is refused, and the shared parent default finds a sibling created alongside it.
 - feat: `page.parent.collection` accepts a list of collection slugs, so a collection can nest under itself and under other page collections at the same time (`/shop` → `/shop/mens` → `/shop/mens/shirts`). A single slug keeps the previous field type, storage and value shape, so existing installs need no migration; opting a collection into a list is a storage change and the README documents the recipe per adapter. A parent value which does not name its collection — what an unmigrated row looks like — is refused with a validation error instead of being treated as no parent.
 - **BREAKING**: a `page.parent.collection` naming a collection which is not a page collection now throws at startup instead of failing later with a confusing breadcrumb error. A collection using `parent.sharedDocument` may no longer list its own slug. Both indicate a config that could never produce a valid page tree.

@@ -1,9 +1,17 @@
 import { alternatePathsField, PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import {
+  recordPathChangesAfterChange,
+  recordPathChangesAfterDelete,
+} from '../test/pathChangesCapture'
 
 export const CountryTravelTips: PageCollectionConfig = {
   slug: 'country-travel-tips',
   admin: {
     useAsTitle: 'title',
+  },
+  hooks: {
+    afterChange: [recordPathChangesAfterChange],
+    afterDelete: [recordPathChangesAfterDelete],
   },
   page: {
     parent: {
