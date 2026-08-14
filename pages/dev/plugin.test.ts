@@ -3768,6 +3768,26 @@ describe('Multi-collection parents', () => {
     ])
   })
 
+  test('previousDoc.path reflects the old path when a polymorphic parent changes', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const womens = await createTopic('Womens', 'womens', { relationTo: 'pages', value: shop.id })
+    const shirts = await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+
+    clearCapturedAfterChanges()
+
+    await payload.update({
+      collection: 'topics',
+      id: shirts.id,
+      locale: 'de',
+      data: { parent: { relationTo: 'topics', value: womens.id } } as any,
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/shop/womens/shirts')
+    expect(previousDoc.path).toBe('/de/shop/mens/shirts')
+  })
+
   test('siblings under different parents may share a slug', async () => {
     const shop = await createRootPage()
     const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })

@@ -4,6 +4,7 @@ import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
+import { parentRefKey, tryResolveParentRef } from '../utils/parentRef.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
 
@@ -137,10 +138,17 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   // afterChange hooks can access the previous path (e.g. for ISR revalidation).
   // Wrapped in try-catch because previousDoc's parent may no longer exist.
   try {
+    // The parent comparison must be collection-qualified: with a polymorphic parent the same id
+    // can point at different collections, so bare ids are not enough to detect a re-parent.
+    const docParentRef = tryResolveParentRef(doc[parentField], pageConfig.page)
+    const previousParentRef = tryResolveParentRef(previousDoc[parentField], pageConfig.page)
+    const parentUnchanged =
+      docParentRef === null || previousParentRef === null
+        ? docParentRef === previousParentRef
+        : parentRefKey(docParentRef) === parentRefKey(previousParentRef)
+
     const dependentFieldsUnchanged =
-      extractID(doc[parentField]) === extractID(previousDoc[parentField]) &&
-      doc.slug === previousDoc.slug &&
-      doc.isRootPage === previousDoc.isRootPage
+      parentUnchanged && doc.slug === previousDoc.slug && doc.isRootPage === previousDoc.isRootPage
 
     if (dependentFieldsUnchanged) {
       const meta = docWithVirtualFields.meta as { alternatePaths?: unknown } | undefined
@@ -185,18 +193,4 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   }
 
   return docWithVirtualFields
-}
-
-/** Extracts a plain ID from a value that may be a raw ID or a populated document object. */
-function extractID(value: unknown): null | number | string | undefined {
-  if (value === null || value === undefined) {
-    return value
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    return value
-  }
-  if (typeof value === 'object' && 'id' in value) {
-    return (value as { id: number | string }).id
-  }
-  return undefined
 }
