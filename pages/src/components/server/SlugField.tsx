@@ -17,7 +17,10 @@ export const SlugField = ({
   permissions,
   readOnly,
 }: SlugFieldProps & TextFieldServerProps) => {
-  const isReadOnly = readOnly || (permissions !== true && permissions?.update !== true)
+  // `readOnly` covers both the field access and the states in which Payload freezes the whole
+  // document (trashed, locked by another user); a static slug is read only on its own.
+  const isReadOnly =
+    readOnly || !!defaultValue || (permissions !== true && permissions?.update !== true)
 
   let redirectsCollectionSlug = payload.config.collections?.find(
     (col) => col.custom?.isRedirectsCollection === true,
