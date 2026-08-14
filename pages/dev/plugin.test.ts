@@ -2307,6 +2307,237 @@ describe('Select does not leak the fields the plugin needs to compute the virtua
   })
 })
 
+describe('A mutation computes the virtual fields under a select which asks for none of them', () => {
+  let rootPageId: DefaultIDType
+  let childPageId: DefaultIDType
+
+  beforeEach(async () => {
+    // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
+    await deleteCollection('authors')
+    await deleteCollection('pages')
+    clearCapturedAfterChanges()
+
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+    rootPageId = rootPage.id
+
+    childPageId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child Page',
+          slug: 'child-page',
+          content: 'Child content',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+  })
+
+  test('an update selecting only an unrelated field still hands afterChange hooks the virtual fields', async () => {
+    await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+    expect(previousDoc.path).toBe('/de/child-page')
+    expect(doc.breadcrumbs).toHaveLength(2)
+    expect((doc.breadcrumbs as { label: string }[])[1].label).toBe('Child Page Updated')
+  })
+
+  test('a create selecting only an unrelated field still hands afterChange hooks the path', async () => {
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Second Child',
+        slug: 'second-child',
+        content: 'Second child content',
+        parent: rootPageId,
+        ...virtualFields,
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/second-child')
+  })
+
+  test('the response to a narrow-select update contains only the field the caller selected', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    expect(doc.title).toBe('Child Page Updated')
+    // The dependent fields the plugin selected on its own behalf must not reach the caller —
+    // this is what distinguishes widening the select here from a collection-level `forceSelect`.
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('content')
+  })
+
+  test('an update excluding the virtual fields and a dependent field computes the path but excludes both from the response', async () => {
+    const responseDoc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        breadcrumbs: false,
+        meta: false,
+        path: false,
+        slug: false,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+
+    expect(responseDoc).not.toHaveProperty('slug')
+    expect(responseDoc).not.toHaveProperty('path')
+    expect(responseDoc.title).toBe('Child Page Updated')
+    expect(responseDoc.content).toBe('Child content')
+  })
+
+  test('an update selecting one virtual field does not return the other virtual fields', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        path: true,
+        title: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc.title).toBe('Child Page Updated')
+    expect(doc).not.toHaveProperty('breadcrumbs')
+    expect(doc).not.toHaveProperty('meta')
+    expect(doc).not.toHaveProperty('slug')
+  })
+
+  test('an update excluding a single virtual field does not return it', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        path: false,
+      },
+    })
+
+    expect(doc).not.toHaveProperty('path')
+    expect(doc.breadcrumbs).toHaveLength(2)
+    expect(doc.title).toBe('Child Page Updated')
+  })
+
+  test('a read passing a select which asks for none of the virtual fields does not return them', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        title: true,
+      },
+    })
+
+    expect(doc.title).toBe('Child Page')
+    expect(doc).not.toHaveProperty('path')
+    expect(doc).not.toHaveProperty('breadcrumbs')
+  })
+
+  test('a bulk update passing a narrow select still hands afterChange hooks the path and returns only the selected field', async () => {
+    const result = await payload.update({
+      collection: 'pages',
+      locale: 'de',
+      where: {
+        slug: {
+          equals: 'child-page',
+        },
+      },
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+
+    expect(result.errors).toHaveLength(0)
+    expect(result.docs).toHaveLength(1)
+    expect(result.docs[0].title).toBe('Child Page Updated')
+    expect(result.docs[0]).not.toHaveProperty('slug')
+    expect(result.docs[0]).not.toHaveProperty('path')
+  })
+
+  test('a draft update passing a narrow select still hands afterChange hooks the path and returns only the selected field', async () => {
+    const responseDoc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Child Page Draft',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+
+    expect(responseDoc.title).toBe('Child Page Draft')
+    expect(responseDoc).not.toHaveProperty('slug')
+    expect(responseDoc).not.toHaveProperty('path')
+  })
+})
+
 describe('The afterChange hook doc and previousDoc contain the path of the page.', () => {
   beforeEach(async () => {
     // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.

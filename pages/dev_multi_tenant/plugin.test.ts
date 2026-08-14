@@ -3,6 +3,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { findPageByPath } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Page, Tenant, Config } from 'payload/generated-types'
+import {
+  clearCapturedAfterChanges,
+  getLastAfterChangeHookArgs,
+} from './src/test/afterChangeCapture'
 
 // NOTE: this file only contains test that are specific to the multi-tenant setup. The main plugin tests are located in the /dev project.
 
@@ -16,6 +20,13 @@ const virtualFields = {
 }
 
 type DefaultIDType = Config['db']['defaultIDType']
+
+/** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
+const tenantReq = async (tenantId: DefaultIDType) => {
+  const req = await createLocalReq({}, payload)
+  req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
+  return req
+}
 
 beforeAll(async () => {
   await payload.init({
@@ -400,13 +411,6 @@ describe('Multi-tenant baseFilter functionality', () => {
   })
 
   describe('findPageByPath is scoped by the plugin baseFilter', () => {
-    /** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
-    const tenantReq = async (tenantId: DefaultIDType) => {
-      const req = await createLocalReq({}, payload)
-      req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
-      return req
-    }
-
     test('resolves the same path to the page of the requesting tenant, without an explicit where', async () => {
       const page1 = await payload.create({
         collection: 'pages',
@@ -453,13 +457,6 @@ describe('Multi-tenant baseFilter functionality', () => {
   })
 
   describe('The parent deletion guard is scoped by the plugin baseFilter', () => {
-    /** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
-    const tenantReq = async (tenantId: DefaultIDType) => {
-      const req = await createLocalReq({}, payload)
-      req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
-      return req
-    }
-
     test('trashes a childless parent even when another tenant holds a same-slug parent with children', async () => {
       const parentT1 = await payload.create({
         collection: 'pages',
@@ -564,6 +561,53 @@ describe('Multi-tenant baseFilter functionality', () => {
           data: { deletedAt: new Date().toISOString() },
         }),
       ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+    })
+  })
+
+  describe('A mutation computes the virtual fields under a select which asks for none of them', () => {
+    test('a narrow-select update still resolves the parent through the baseFilter', async () => {
+      const rootPage = await payload.create({
+        collection: 'pages',
+        req: await tenantReq(tenant1Id),
+        data: {
+          title: 'Narrow Select Root',
+          slug: 'narrow-select-root',
+          content: 'Root content',
+          tenant: tenant1Id,
+          ...virtualFields,
+        },
+      })
+
+      const childPage = await payload.create({
+        collection: 'pages',
+        req: await tenantReq(tenant1Id),
+        data: {
+          title: 'Narrow Select Child',
+          slug: 'narrow-select-child',
+          content: 'Child content',
+          parent: rootPage.id,
+          tenant: tenant1Id,
+          ...virtualFields,
+        },
+      })
+
+      clearCapturedAfterChanges()
+
+      await payload.update({
+        collection: 'pages',
+        id: childPage.id,
+        req: await tenantReq(tenant1Id),
+        data: {
+          title: 'Narrow Select Child Updated',
+        },
+        select: {
+          title: true,
+        },
+      })
+
+      const { doc } = getLastAfterChangeHookArgs()
+      expect(doc.path).toBe('/narrow-select-root/narrow-select-child')
+      expect(doc.breadcrumbs).toHaveLength(2)
     })
   })
 })
