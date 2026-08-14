@@ -314,6 +314,25 @@ To delete a parent document that has child references, you have two options:
 1. **Reassign child documents**: Update the child documents to reference a different parent
 2. **Remove child documents**: Delete the child documents first, then delete the parent
 
+#### Deleting a Whole Subtree
+
+A teardown which removes a parent together with all of its descendants cannot orphan anything, so the guard has nothing to protect there. Instead of ordering the deletes leaf-first, opt out per request with `SKIP_PARENT_GUARD_CONTEXT_KEY`:
+
+```ts
+import { SKIP_PARENT_GUARD_CONTEXT_KEY } from '@jhb.software/payload-pages-plugin'
+
+const skipParentGuard = { [SKIP_PARENT_GUARD_CONTEXT_KEY]: true }
+
+await payload.delete({ collection: 'pages', id: subtreeRootId, context: skipParentGuard })
+await payload.delete({
+  collection: 'pages',
+  where: { parent: { equals: subtreeRootId } },
+  context: skipParentGuard,
+})
+```
+
+The key disables both the permanent-delete and the trash guard, and it applies to the request it is set on — every delete and trash operation sharing that request skips the guard, not only the subtree that motivated it. The admin panel never sets it, so editors keep the full protection.
+
 #### Trashed Documents
 
 On a collection with [`trash: true`](https://payloadcms.com/docs/trash/overview), moving a parent to the trash is refused just like a permanent delete. Payload excludes trashed documents from reads, so a trashed parent is invisible to the ancestor lookup and its children lose their `path` and `breadcrumbs` entirely.

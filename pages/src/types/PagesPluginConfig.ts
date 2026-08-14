@@ -42,7 +42,8 @@ export type PagesPluginConfig = {
    * database adapters that don't enforce foreign key constraints natively.
    *
    * Set to false to disable this protection and allow deletion of parent documents regardless
-   * of existing child references.
+   * of existing child references. To keep the protection but skip it for a single operation, pass
+   * `SKIP_PARENT_GUARD_CONTEXT_KEY` through that operation's `context` instead.
    *
    * @default true
    */

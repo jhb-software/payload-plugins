@@ -4,6 +4,7 @@ import {
   clearPathCache,
   findPageByPath,
   type PathCacheLookupResult,
+  SKIP_PARENT_GUARD_CONTEXT_KEY,
 } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
@@ -1501,6 +1502,64 @@ describe('Parent deletion prevention hook on trashed documents', () => {
     } finally {
       payload.db.packageName = originalPackageName
     }
+  })
+})
+
+describe('Parent guard opt-out via request context', () => {
+  beforeEach(async () => await deleteAllCollections(config, ['users']))
+
+  const createPage = async (data: { title: string; slug: string; parent?: DefaultIDType }) =>
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: { content: 'Content', ...data, ...virtualFields },
+    })
+
+  const skipGuard = { [SKIP_PARENT_GUARD_CONTEXT_KEY]: true }
+
+  test('deletes a referenced parent when the caller opts out of the guard', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'teardown-parent' })
+    const childPage = await createPage({
+      title: 'Child',
+      slug: 'teardown-child',
+      parent: parentPage.id,
+    })
+
+    // A teardown removes the whole subtree, so the parent may go before its children.
+    await payload.delete({ collection: 'pages', id: parentPage.id, context: skipGuard })
+    await payload.delete({ collection: 'pages', id: childPage.id, context: skipGuard })
+
+    const remaining = await payload.find({ collection: 'pages', limit: 0 })
+    expect(remaining.totalDocs).toBe(0)
+  })
+
+  test('trashes a referenced parent when the caller opts out of the guard', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'skip-guard-trash-parent' })
+    await createPage({ title: 'Child', slug: 'skip-guard-trash-child', parent: parentPage.id })
+
+    await payload.update({
+      collection: 'pages',
+      id: parentPage.id,
+      data: { deletedAt: new Date().toISOString() },
+      context: skipGuard,
+    })
+
+    const parent = await payload.findByID({
+      collection: 'pages',
+      id: parentPage.id,
+      locale: 'de',
+      trash: true,
+    })
+    expect(parent.deletedAt).toBeTruthy()
+  })
+
+  test('keeps the guard armed for a request which does not carry the flag', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'guard-still-armed-parent' })
+    await createPage({ title: 'Child', slug: 'guard-still-armed-child', parent: parentPage.id })
+
+    await expect(
+      payload.delete({ collection: 'pages', id: parentPage.id, context: { unrelated: true } }),
+    ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
   })
 })
 
