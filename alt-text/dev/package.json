@@ -18,12 +18,12 @@
   },
   "dependencies": {
     "@jhb.software/payload-alt-text-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.87.1",
-    "@payloadcms/next": "^3.87.1",
-    "@payloadcms/translations": "^3.87.1",
-    "@payloadcms/ui": "^3.87.1",
+    "@payloadcms/db-mongodb": "^3.88.0",
+    "@payloadcms/next": "^3.88.0",
+    "@payloadcms/translations": "^3.88.0",
+    "@payloadcms/ui": "^3.88.0",
     "next": "16.3.0",
-    "payload": "^3.87.1",
+    "payload": "^3.88.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
