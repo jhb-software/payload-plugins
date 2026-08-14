@@ -85,6 +85,7 @@ export function parentField(
           depth: 0, // only get the id of the parent document
           draft: true,
           limit: 1,
+          req, // join the caller's transaction: the shared parent may be a sibling created in it
           select: {
             [parentField]: true,
           },

@@ -7,5 +7,7 @@ export const databaseAdapter = sqliteAdapter({
   client: {
     url: process.env.SQLITE_URL!,
   },
+  // The sqlite adapter runs without transactions unless this is set. The plugin's guards read
+  // uncommitted state of the write they guard, so the tests need real transactions.
+  transactionOptions: {},
 })
-

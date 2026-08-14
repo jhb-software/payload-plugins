@@ -45,6 +45,9 @@ export async function childDocumentsOf(
       collection: targetCollection.slug,
       depth: 0,
       limit: 0,
+      // The guard runs inside the caller's delete/trash transaction, so the lookup has to join
+      // it — on its own connection it cannot see the uncommitted state it is guarding.
+      req,
       select: {},
       // A trashed child is still a reference: it can be restored, and until it is purged its
       // parent id is live data.

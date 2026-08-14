@@ -1,4 +1,4 @@
-import payload, { ValidationError } from 'payload'
+import payload, { type PayloadRequest, ValidationError } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   clearPathCache,
@@ -3181,33 +3181,59 @@ describe('The request is forwarded to the ancestor queries during breadcrumb com
     })
   })
 
-  test('the ancestor query runs inside the transaction of the operation that triggered it', async () => {
-    const reads = captureAncestorReads()
+  test('breadcrumbs of a child name a parent that only exists inside the caller transaction', async ({
+    skip,
+  }) => {
+    await inCallerTransaction({ skip }, async (req) => {
+      const uncommittedParent = await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        req,
+        data: {
+          ...virtualFields,
+          title: 'Uncommitted Parent',
+          slug: 'uncommitted-parent',
+          content: 'parent',
+        },
+      })
 
+      // Without the request, the ancestor query would run outside the write transaction and
+      // could not see the parent it has to name in the breadcrumbs.
+      const child = await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        req,
+        data: {
+          ...virtualFields,
+          title: 'Uncommitted Child',
+          slug: 'uncommitted-child',
+          content: 'child',
+          parent: uncommittedParent.id,
+        },
+      })
+
+      expect(child.path).toBe('/de/uncommitted-parent/uncommitted-child')
+      expect(removeIdsFromArray(child.breadcrumbs!).at(0)).toEqual({
+        slug: 'uncommitted-parent',
+        label: 'Uncommitted Parent',
+        path: '/de/uncommitted-parent',
+      })
+    })
+  })
+
+  test('custom req.context properties are preserved for the ancestor queries', async () => {
     await payload.create({
       collection: 'pages',
       locale: 'de',
       data: {
+        ...virtualFields,
         title: 'Context Child',
         slug: 'context-child',
         content: 'child',
         parent: parentPage.id,
-        ...virtualFields,
       },
     })
 
-    const parentRead = reads.forId(parentPage.id).at(0)
-    expect(parentRead).toBeDefined()
-
-    // Without the request, the ancestor query would run outside the write transaction and
-    // could not see the uncommitted document it is computing breadcrumbs for.
-    const req = parentRead!.req as { context?: unknown; payload?: unknown; transactionID?: unknown }
-    expect(req).toBeDefined()
-    expect(req.payload).toBeDefined()
-    expect(req.transactionID).toBeDefined()
-  })
-
-  test('custom req.context properties are preserved for the ancestor queries', async () => {
     const reads = captureAncestorReads()
 
     // Use payload.find with a custom context property
@@ -3910,6 +3936,122 @@ describe('Multi-collection parents', () => {
     expect(stored.path).toBe('/de/shop/mens/second')
   })
 })
+
+describe('Queries backing the guards join the transaction of the caller', () => {
+  beforeEach(async () => await deleteAllCollections(config, ['users']))
+
+  test('the deletion guard refuses a parent whose child was created in the same transaction', async ({
+    skip,
+  }) => {
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: { ...virtualFields, title: 'Parent', slug: 'tx-parent', content: 'Parent' },
+    })
+
+    await inCallerTransaction({ skip }, async (req) => {
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        req,
+        data: {
+          ...virtualFields,
+          title: 'Child',
+          slug: 'tx-child',
+          content: 'Child',
+          parent: parentPage.id,
+        },
+      })
+
+      await expect(payload.delete({ collection: 'pages', id: parentPage.id, req })).rejects.toThrow(
+        'Cannot delete this document because it is referenced as a parent by',
+      )
+    })
+  })
+
+  test('redirect validation refuses a source path already taken in the same transaction', async ({
+    skip,
+  }) => {
+    await inCallerTransaction({ skip }, async (req) => {
+      await payload.create({
+        collection: 'redirects',
+        req,
+        data: { sourcePath: '/de/tx-old', destinationPath: '/de/tx-new', type: 'permanent' },
+      })
+
+      await expect(
+        payload.create({
+          collection: 'redirects',
+          req,
+          data: { sourcePath: '/de/tx-old', destinationPath: '/de/tx-other', type: 'permanent' },
+        }),
+      ).rejects.toThrow('A redirect for this source path already exists.')
+    })
+  })
+
+  test('the shared parent default picks up a sibling created in the same transaction', async ({
+    skip,
+  }) => {
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: { ...virtualFields, title: 'Shared', slug: 'tx-shared', content: 'Shared' },
+    })
+
+    await inCallerTransaction({ skip }, async (req) => {
+      await payload.create({
+        collection: 'announcements',
+        locale: 'de',
+        req,
+        data: {
+          ...virtualFields,
+          title: 'First',
+          slug: 'tx-first',
+          parent: { relationTo: 'pages', value: parentPage.id },
+        } as any,
+      })
+
+      // No parent is passed, so the shared default has to supply the one of the sibling above.
+      const second = await payload.create({
+        collection: 'announcements',
+        depth: 0,
+        locale: 'de',
+        req,
+        data: { ...virtualFields, title: 'Second', slug: 'tx-second' } as any,
+      })
+
+      expect(second.parent).toEqual({ relationTo: 'pages', value: parentPage.id })
+      expect(second.path).toBe('/de/tx-shared/tx-second')
+    })
+  })
+})
+
+/**
+ * Runs `work` against a transaction the caller owns — the shape of a script or endpoint that
+ * batches several writes — and rolls it back afterwards. A query which does not receive this
+ * `req` runs on a separate connection and cannot see anything written inside it.
+ */
+const inCallerTransaction = async (
+  { skip }: { skip: (note?: string) => void },
+  work: (req: PayloadRequest) => Promise<void>,
+) => {
+  const transactionID = await payload.db.beginTransaction()
+
+  // A standalone MongoDB — what the test setup connects to — has no transactions, so there is no
+  // uncommitted state to observe. These behaviors are covered by the SQLite run.
+  if (!transactionID) {
+    skip('the database adapter runs without transactions')
+    return
+  }
+
+  const req = { transactionID } as unknown as PayloadRequest
+
+  try {
+    await work(req)
+  } finally {
+    await payload.db.rollbackTransaction(transactionID)
+  }
+}
 
 /**
  * Asserts a rejected write failed validation.
