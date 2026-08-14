@@ -2347,7 +2347,7 @@ describe('A mutation computes the virtual fields under a select which asks for n
     clearCapturedAfterChanges()
   })
 
-  test('an update selecting only an unrelated field still hands afterChange hooks the path', async () => {
+  test('an update selecting only an unrelated field still hands afterChange hooks the virtual fields', async () => {
     await payload.update({
       collection: 'pages',
       id: childPageId,
@@ -2363,22 +2363,6 @@ describe('A mutation computes the virtual fields under a select which asks for n
     const { doc, previousDoc } = getLastAfterChangeHookArgs()
     expect(doc.path).toBe('/de/child-page')
     expect(previousDoc.path).toBe('/de/child-page')
-  })
-
-  test('an update selecting only an unrelated field still hands afterChange hooks the breadcrumbs', async () => {
-    await payload.update({
-      collection: 'pages',
-      id: childPageId,
-      locale: 'de',
-      data: {
-        title: 'Child Page Updated',
-      },
-      select: {
-        title: true,
-      },
-    })
-
-    const { doc } = getLastAfterChangeHookArgs()
     expect(doc.breadcrumbs).toHaveLength(2)
     expect((doc.breadcrumbs as { label: string }[])[1].label).toBe('Child Page Updated')
   })
@@ -2425,8 +2409,8 @@ describe('A mutation computes the virtual fields under a select which asks for n
     expect(doc).not.toHaveProperty('content')
   })
 
-  test('an update excluding both the virtual fields and a dependent field still computes the path', async () => {
-    await payload.update({
+  test('an update excluding the virtual fields and a dependent field computes the path but excludes both from the response', async () => {
+    const responseDoc = await payload.update({
       collection: 'pages',
       id: childPageId,
       locale: 'de',
@@ -2443,28 +2427,11 @@ describe('A mutation computes the virtual fields under a select which asks for n
 
     const { doc } = getLastAfterChangeHookArgs()
     expect(doc.path).toBe('/de/child-page')
-  })
 
-  test('an exclude-mode update still excludes exactly what the caller excluded', async () => {
-    const doc = await payload.update({
-      collection: 'pages',
-      id: childPageId,
-      locale: 'de',
-      data: {
-        title: 'Child Page Updated',
-      },
-      select: {
-        breadcrumbs: false,
-        meta: false,
-        path: false,
-        slug: false,
-      },
-    })
-
-    expect(doc).not.toHaveProperty('slug')
-    expect(doc).not.toHaveProperty('path')
-    expect(doc.title).toBe('Child Page Updated')
-    expect(doc.content).toBe('Child content')
+    expect(responseDoc).not.toHaveProperty('slug')
+    expect(responseDoc).not.toHaveProperty('path')
+    expect(responseDoc.title).toBe('Child Page Updated')
+    expect(responseDoc.content).toBe('Child content')
   })
 
   test('an update selecting one virtual field does not return the other virtual fields', async () => {
@@ -2506,7 +2473,7 @@ describe('A mutation computes the virtual fields under a select which asks for n
     expect(doc.title).toBe('Child Page Updated')
   })
 
-  test('a read passing a select which asks for none of the virtual fields does not compute them', async () => {
+  test('a read passing a select which asks for none of the virtual fields does not return them', async () => {
     const doc = await payload.findByID({
       collection: 'pages',
       id: childPageId,
@@ -2519,6 +2486,55 @@ describe('A mutation computes the virtual fields under a select which asks for n
     expect(doc.title).toBe('Child Page')
     expect(doc).not.toHaveProperty('path')
     expect(doc).not.toHaveProperty('breadcrumbs')
+  })
+
+  test('a bulk update passing a narrow select still hands afterChange hooks the path and returns only the selected field', async () => {
+    const result = await payload.update({
+      collection: 'pages',
+      locale: 'de',
+      where: {
+        slug: {
+          equals: 'child-page',
+        },
+      },
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+
+    expect(result.errors).toHaveLength(0)
+    expect(result.docs).toHaveLength(1)
+    expect(result.docs[0].title).toBe('Child Page Updated')
+    expect(result.docs[0]).not.toHaveProperty('slug')
+    expect(result.docs[0]).not.toHaveProperty('path')
+  })
+
+  test('a draft update passing a narrow select still hands afterChange hooks the path and returns only the selected field', async () => {
+    const responseDoc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Child Page Draft',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+
+    expect(responseDoc.title).toBe('Child Page Draft')
+    expect(responseDoc).not.toHaveProperty('slug')
+    expect(responseDoc).not.toHaveProperty('path')
   })
 })
 

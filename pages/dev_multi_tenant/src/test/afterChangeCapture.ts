@@ -18,7 +18,7 @@ export const clearCapturedAfterChanges = () => {
  */
 export const getLastAfterChangeHookArgs = (): CapturedAfterChange => {
   if (capturedAfterChanges.length === 0) {
-    throw new Error('No afterChange hook invocations captured. Did you forget to clear first?')
+    throw new Error('No afterChange hook invocations captured. Did the mutation run?')
   }
   return capturedAfterChanges[capturedAfterChanges.length - 1]
 }
