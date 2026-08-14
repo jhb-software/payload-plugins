@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 - feat: export `createPromptResolver`, which builds a resolver for any LLM provider from a single `generate` function
 - feat: the OpenAI resolver's new `instructions` option appends project-specific rules (e.g. protected brand names) to the built-in ones, and may be async. The texts are sent as the user message, so customized instructions cannot alter them.
