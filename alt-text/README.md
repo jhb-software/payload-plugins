@@ -205,6 +205,18 @@ buildConfig({
 
 Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 
+#### Skipping cache revalidation for individual writes
+
+The plugin invalidates the cached health scan via `afterChange` and `afterDelete` hooks. For writes that don't need to invalidate the cache — typically seed data created from `payload.onInit`, batch imports, or migrations — pass `context: { disableRevalidate: true }` to skip the revalidation:
+
+```ts
+await payload.create({
+  collection: 'media',
+  data: {/* ... */},
+  context: { disableRevalidate: true },
+})
+```
+
 ### Resolvers
 
 This plugin is designed to work seamlessly with various AI providers by accepting a customizable resolver as a configuration option.

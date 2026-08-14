@@ -43,8 +43,7 @@ const pluginConfig = (
 const altFieldOf = (config: Config, slug: string) => {
   const collection = config.collections?.find((entry) => entry.slug === slug)
   return collection?.fields.find((field: Field) => 'name' in field && field.name === 'alt') as
-    | undefined
-    | { admin?: { custom?: Record<string, unknown> } }
+    undefined | { admin?: { custom?: Record<string, unknown> } }
 }
 
 describe('normalizeCollectionsConfig — imageThumbnailMimeType resolution', () => {

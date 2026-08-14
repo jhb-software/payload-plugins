@@ -1,6 +1,7 @@
 import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, PayloadRequest } from 'payload'
 
 import { revalidateTag } from 'next/cache.js'
+import { after } from 'next/server.js'
 
 import {
   ALT_TEXT_HEALTH_PLUGIN_SLUG,
@@ -8,25 +9,39 @@ import {
 } from '../utilities/altTextHealth.js'
 
 function safeRevalidateTag(req: PayloadRequest, tag: string): void {
-  try {
-    // Support both Next 15 and Next 16. Next 15 types `revalidateTag(tag)` as 1-arg; Next 16
-    // added a required second `profile` arg and logs a deprecation warning for 1-arg calls.
-    // Passing 'max' satisfies Next 16 and is ignored at runtime by Next 15. The cast lets the
-    // build succeed regardless of which Next types are resolved from the consuming project.
-    ;(revalidateTag as (tag: string, profile?: string) => void)(tag, 'max')
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+  const runRevalidate = (): void => {
+    try {
+      // Support both Next 15 and Next 16. Next 15 types `revalidateTag(tag)` as 1-arg; Next 16
+      // added a required second `profile` arg and logs a deprecation warning for 1-arg calls.
+      // Passing 'max' satisfies Next 16 and is ignored at runtime by Next 15. The cast lets the
+      // build succeed regardless of which Next types are resolved from the consuming project.
+      ;(revalidateTag as (tag: string, profile?: string) => void)(tag, 'max')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
 
-    if (message.includes('static generation store missing')) {
-      req.payload.logger.warn({
-        msg: 'Skipping alt text health cache revalidation outside a Next.js request context.',
-        plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
-        tag,
-      })
-      return
+      if (message.includes('static generation store missing')) {
+        req.payload.logger.warn({
+          msg: 'Skipping alt text health cache revalidation outside a Next.js request context.',
+          plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
+          tag,
+        })
+        return
+      }
+
+      throw error
     }
+  }
 
-    throw error
+  try {
+    // Defer via `after()` so the call escapes the current render scope.
+    // Next.js disallows synchronous `revalidateTag` from inside a server-component
+    // render — relevant when users seed via `payload.create` from `onInit`,
+    // which runs while the admin route is rendering.
+    after(runRevalidate)
+  } catch {
+    // No request scope (CLI / migrations / scripts). Run inline; the inner
+    // `try/catch` will warn-and-skip if Next.js itself has no context either.
+    runRevalidate()
   }
 }
 

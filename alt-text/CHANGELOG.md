@@ -6,6 +6,7 @@
 - feat: add the `imageThumbnailMimeType` option (plugin-wide or per collection, `null` to opt out) declaring the format `getImageThumbnail` delivers. A resolver only sees the bytes at that URL, so a transcoding thumbnail (e.g. a Cloudinary `f_webp` transformation) no longer has AVIF and HEIC uploads rejected on their stored format. The declaration is validated at config load, so a wrong one fails at boot rather than per image, and is passed to resolvers as `imageThumbnailMimeType` for providers that inline the image bytes and need an explicit media type.
 - feat: `getImageThumbnail` receives `{ collection, req }` as a second argument and may be async, for per-collection URLs and on-demand signing. Existing sync single-argument functions are unaffected.
 - feat: add a `supportedMimeTypes` option to `openAIResolver`, so a `baseUrl` pointing at another OpenAI-compatible provider can declare the formats it accepts instead of inheriting OpenAI's list.
+- fix: defer the alt text health cache invalidation via `after()` so `payload.create` / `payload.update` invoked from `onInit` (or any other render-time path) no longer crash with `revalidateTag … during render`; requires Next.js `>= 15.1`, where `after()` is stable (peer dependency narrowed from `^15.0.0`)
 
 ## 0.9.1
 
