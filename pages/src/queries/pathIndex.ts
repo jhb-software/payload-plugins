@@ -12,7 +12,11 @@ import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { DocPaths } from '../utils/computeDocPaths.js'
 
-import { type PathCapture, pathCaptures } from '../hooks/capturePreviousPaths.js'
+import {
+  isVersionOnlyWrite,
+  type PathCapture,
+  pathCaptures,
+} from '../hooks/capturePreviousPaths.js'
 import { computeDocPaths, noDocPaths } from '../utils/computeDocPaths.js'
 import { assembleDescendantPaths, loadDescendants } from '../utils/loadDescendants.js'
 import {
@@ -113,6 +117,9 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
   const localization = payload.config.localization
   const locale = localization ? (args.locale ?? 'all') : undefined
 
+  // The plugin stores one shared config on every page collection, so any collection's copy —
+  // including its baseFilter — speaks for all of them. This breaks if the plugin ever supports
+  // multiple instances with different configs in one Payload config.
   const pluginConfig = collections[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
   const baseFilter = pluginConfig?.baseFilter?.({ req })
 
@@ -201,7 +208,12 @@ type AfterDeleteArgs = Parameters<CollectionAfterDeleteHook>[0]
  * arguments. A draft save or autosave tick reports no changes; a rename staged in a draft is
  * reported when it is published, carrying the previously published path as `previousPath`
  * (which `previousDoc` cannot supply). Rejects rather than returning a short list — await it,
- * or chain `.catch()` when running it off the critical path:
+ * or chain `.catch()` when running it off the critical path.
+ *
+ * With the parent deletion guard disabled or skipped, a bulk delete that removes a parent
+ * together with one of its descendants reports the descendant twice: once from its own
+ * `afterDelete` and once as the parent's orphaned descendant. Purging a path twice is
+ * harmless, so the entries are not deduplicated across hook invocations:
  *
  * @example
  * ```ts
@@ -246,7 +258,7 @@ export async function pathChanges(args: AfterChangeArgs | AfterDeleteArgs): Prom
   const { doc, operation } = args
 
   // A draft save or autosave tick writes only a version row and cannot change a live path.
-  if (req.context.draft === true && doc._status !== 'published') {
+  if (isVersionOnlyWrite(req.context, doc._status)) {
     return []
   }
 
@@ -260,10 +272,13 @@ export async function pathChanges(args: AfterChangeArgs | AfterDeleteArgs): Prom
     localized,
   })
 
-  // Only a genuine move — live before, live after, at a different path — moves descendant
-  // paths. Publish, unpublish, trash and restore change liveness without moving any slug, so
-  // no subtree query is issued for them.
-  const moved = previous.live && current.live && !recordsEqual(previous.paths, current.paths)
+  // Only a changed path segment moves descendant paths, so pure liveness flips — publish,
+  // unpublish, trash, restore — issue no subtree query: their before and after paths are equal.
+  // A write that renames a slug while also flipping liveness (rename + unpublish in one write,
+  // restore from trash under a new slug) still moves the descendants, whose own liveness is
+  // independent of the ancestor's, so the walk keys on the path difference alone. A create
+  // cannot have descendants and skips the walk outright.
+  const moved = operation !== 'create' && !recordsEqual(previous.paths, current.paths)
 
   if (moved) {
     const root = { id: doc.id as DefaultDocumentIDType, collection: collection.slug }

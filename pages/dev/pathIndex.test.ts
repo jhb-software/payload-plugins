@@ -722,6 +722,88 @@ describe('pathChanges', () => {
       path: '/de/select-parent-renamed/select-child',
     })
   })
+
+  test('a write that renames the slug and unpublishes at once reports the descendants` moved paths', async () => {
+    const parent = await createPage({ title: 'Combo Parent', slug: 'combo-parent' })
+    const child = await createPage({ title: 'Combo Child', slug: 'combo-child', parent: parent.id })
+
+    clearPathChangeRecords()
+    await payload.update({
+      collection: 'pages',
+      id: parent.id,
+      locale: 'de',
+      data: { slug: 'combo-parent-renamed', _status: 'draft' },
+    })
+
+    // the still-published child now resolves under the renamed segment only
+    const req = await createLocalReq({}, payload)
+    expect(
+      (await findPageByPath({ cache: false, path: '/de/combo-parent-renamed/combo-child', req }))
+        ?.doc.id,
+    ).toBe(child.id)
+    expect(
+      await findPageByPath({ cache: false, path: '/de/combo-parent/combo-child', req }),
+    ).toBeNull()
+
+    expect(recordedPathChangeErrors()).toEqual([])
+    const changes = recordedPathChanges()
+    const byId = new Map(changes.map((change) => [change.id, change]))
+
+    expect(changes).toHaveLength(2)
+    expect(byId.get(parent.id)).toMatchObject({ previousPath: '/de/combo-parent', path: null })
+    expect(byId.get(child.id)).toMatchObject({
+      previousPath: '/de/combo-parent/combo-child',
+      path: '/de/combo-parent-renamed/combo-child',
+    })
+  })
+
+  test('restoring a previous version reports the move back to the restored slug', async () => {
+    const page = await createPage({ title: 'Versioned', slug: 'version-one' })
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale: 'de',
+      data: { slug: 'version-two', _status: 'published' },
+    })
+
+    const { docs: versions } = await payload.findVersions({
+      collection: 'pages',
+      locale: 'de',
+      sort: '-createdAt',
+      where: { parent: { equals: page.id } },
+    })
+    const versionOne = versions.find((version) => version.version.slug === 'version-one')!
+
+    clearPathChangeRecords()
+    await payload.restoreVersion({ collection: 'pages', id: versionOne.id })
+
+    expect(recordedPathChangeErrors()).toEqual([])
+    expect(recordedPathChanges()).toEqual([
+      expect.objectContaining({
+        collection: 'pages',
+        id: page.id,
+        locale: 'de',
+        previousPath: '/de/version-two',
+        path: '/de/version-one',
+      }),
+    ])
+  })
+
+  test('a draft save whose data omits _status reports nothing', async () => {
+    const page = await createPage({ title: 'Implicit Draft', slug: 'implicit-draft' })
+
+    clearPathChangeRecords()
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale: 'de',
+      draft: true,
+      data: { title: 'Implicit Draft Edited' },
+    })
+
+    expect(recordedPathChangeErrors()).toEqual([])
+    expect(recordedPathChanges()).toEqual([])
+  })
 })
 
 describe('enumeration and change detection agree', () => {

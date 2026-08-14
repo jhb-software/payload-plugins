@@ -32,6 +32,17 @@ export function pathCaptures(context: Record<string, unknown>): Record<string, P
 }
 
 /**
+ * Whether a write only stores a version row and cannot change a live path: a draft save or
+ * autosave tick that does not publish (`_status: 'published'` publishes regardless of the
+ * draft flag). The capture skips such writes in `beforeChange` judging the incoming `data`,
+ * `pathChanges` skips them in `afterChange` judging the resulting `doc` — the two sources
+ * agree because Payload materializes `_status: 'draft'` on a draft save that omits it.
+ */
+export function isVersionOnlyWrite(context: Record<string, unknown>, status: unknown): boolean {
+  return context.draft === true && status !== 'published'
+}
+
+/**
  * Records the paths a page document resolves before an update is written.
  *
  * Returns immediately for a draft save or autosave tick (unless it carries
@@ -49,7 +60,7 @@ export const capturePreviousPathsBeforeChange: CollectionBeforeChangeHook = asyn
   if (operation !== 'update') {
     return data
   }
-  if (req.context.draft === true && data?._status !== 'published') {
+  if (isVersionOnlyWrite(req.context, data?._status)) {
     return data
   }
 
