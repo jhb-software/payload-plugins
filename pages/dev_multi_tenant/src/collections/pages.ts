@@ -1,9 +1,18 @@
 import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
+import { captureAfterChangeDoc } from '../test/afterChangeCapture'
+import {
+  recordPathChangesAfterChange,
+  recordPathChangesAfterDelete,
+} from '../test/pathChangesCapture'
 
 export const Pages: PageCollectionConfig = {
   slug: 'pages',
   admin: {
     useAsTitle: 'title',
+  },
+  hooks: {
+    afterChange: [captureAfterChangeDoc, recordPathChangesAfterChange],
+    afterDelete: [recordPathChangesAfterDelete],
   },
   page: {
     parent: {
@@ -16,6 +25,7 @@ export const Pages: PageCollectionConfig = {
       unique: false,
     },
   },
+  trash: true,
   versions: {
     drafts: true,
   },

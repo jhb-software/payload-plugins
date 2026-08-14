@@ -16,7 +16,7 @@ import {
   createRevalidateAltTextHealthAfterDeleteHook,
 } from './hooks/revalidateAltTextHealth.js'
 import { translations } from './translations/index.js'
-import { normalizeCollectionsConfig } from './utilities/mimeTypes.js'
+import { isValidMimeType, normalizeCollectionsConfig } from './utilities/mimeTypes.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
 const altTextHealthWidgetDefinition = {
@@ -50,7 +50,36 @@ export const payloadAltTextPlugin =
 
     const enableHealthCheck = incomingPluginConfig.healthCheck !== false
 
-    const normalizedCollections = normalizeCollectionsConfig(incomingPluginConfig.collections)
+    const normalizedCollections = normalizeCollectionsConfig(incomingPluginConfig.collections, {
+      imageThumbnailMimeType: incomingPluginConfig.imageThumbnailMimeType,
+    })
+
+    // A declared thumbnail MIME type replaces the per-document source check, so a
+    // wrong one fails at boot rather than as a silently missing guard or a 500 per
+    // image.
+    const supportedMimeTypes = incomingPluginConfig.resolver.supportedMimeTypes
+    for (const collection of normalizedCollections) {
+      const declared = collection.imageThumbnailMimeType
+      if (declared === undefined) {
+        continue
+      }
+
+      if (!isValidMimeType(declared)) {
+        throw new Error(
+          `The alt-text plugin is configured with imageThumbnailMimeType "${declared}" for the "${collection.slug}" collection, ` +
+            'but that is not a valid MIME type. Expected something like "image/webp".',
+        )
+      }
+
+      if (supportedMimeTypes && !supportedMimeTypes.includes(declared)) {
+        throw new Error(
+          `The alt-text plugin is configured with imageThumbnailMimeType "${declared}" for the "${collection.slug}" collection, ` +
+            `but the "${incomingPluginConfig.resolver.key}" resolver does not support it. ` +
+            `Supported types: ${supportedMimeTypes.join(', ')}. ` +
+            "Either change the transformation in getImageThumbnail, or remove the declaration to fall back to checking each document's own mime type.",
+        )
+      }
+    }
 
     const access = incomingPluginConfig.access ?? (({ req }) => !!req.user)
 
@@ -106,7 +135,12 @@ export const payloadAltTextPlugin =
         const defaultFields = [
           altTextField({
             localized: Boolean(config.localization),
-            supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
+            // When the collection declares what getImageThumbnail delivers, the
+            // document's own mime type says nothing about whether generation can
+            // succeed — so don't let the admin UI disable the button on it.
+            supportedMimeTypes: altTextCollectionConfig.imageThumbnailMimeType
+              ? undefined
+              : pluginConfig.resolver.supportedMimeTypes,
             trackedMimeTypes: altTextCollectionConfig.mimeTypes,
             validate: altTextCollectionConfig.validate,
           }),

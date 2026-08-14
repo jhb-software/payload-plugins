@@ -28,7 +28,20 @@ export type OpenAIResolverConfig = {
    * @default 'gpt-4.1-nano'
    */
   model?: string
+  /**
+   * The MIME types the provider accepts for the image URL.
+   *
+   * Defaults to the formats documented for OpenAI's vision models. Override it
+   * when pointing `baseUrl` at another provider whose accepted formats differ —
+   * the person choosing the provider is the one who knows.
+   *
+   * @default ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+   */
+  supportedMimeTypes?: string[]
 }
+
+/** @see https://platform.openai.com/docs/guides/images-vision */
+const OPENAI_SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
 /**
  * Creates a chat completion `JSONSchema` response format object from
@@ -233,7 +246,6 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
         }
       }
     },
-    // https://platform.openai.com/docs/guides/images-vision
-    supportedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+    supportedMimeTypes: config.supportedMimeTypes ?? OPENAI_SUPPORTED_MIME_TYPES,
   }
 }

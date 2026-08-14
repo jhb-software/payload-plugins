@@ -1,4 +1,4 @@
-import type { Field, PayloadRequest } from 'payload'
+import type { CollectionSlug, Field, PayloadRequest } from 'payload'
 
 import type { AltTextResolver } from '../resolvers/types.js'
 import type {
@@ -8,6 +8,23 @@ import type {
 } from '../utilities/mimeTypes.js'
 
 export type { AltTextCollectionConfig, NormalizedAltTextCollectionConfig }
+
+/**
+ * Builds the thumbnail URL the resolver fetches. Must be publicly reachable.
+ *
+ * May be async, so the URL can be signed on demand (S3 presigning, short-lived
+ * CDN tokens).
+ *
+ * @param doc The upload document to build the URL for.
+ * @param args.collection The slug of the collection `doc` belongs to — use it to
+ * build different URLs per collection (e.g. a Cloudinary transformation for one
+ * collection and a plain S3 URL for another).
+ * @param args.req The request the generation runs under.
+ */
+export type GetImageThumbnail = (
+  doc: Record<string, unknown>,
+  args: { collection: CollectionSlug; req: PayloadRequest },
+) => Promise<string> | string
 
 /** Configuration options for the alt text plugin. */
 export type IncomingAltTextPluginConfig = {
@@ -43,14 +60,15 @@ export type IncomingAltTextPluginConfig = {
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
   /**
-   * Function to get the thumbnail URL of an image document.
-   * This URL will be sent to the LLM for analysis.
+   * Builds the image URL sent to the resolver. See {@link GetImageThumbnail}.
    *
    * @remarks
-   * - The URL must be publicly accessible so the LLM can fetch it
-   * - Use a thumbnail/preview version of the image when possible (e.g. from the sizes field)
+   * - Prefer a thumbnail/preview size over the original (e.g. from the sizes field)
+   * - When the URL transcodes, declare the delivered format via
+   *   `imageThumbnailMimeType` so source formats the resolver does not accept are
+   *   not rejected
    */
-  getImageThumbnail: (doc: Record<string, unknown>) => string
+  getImageThumbnail: GetImageThumbnail
 
   /**
    * Controls the alt text health feature (REST endpoint, cache revalidation hooks, and dashboard widget).
@@ -67,6 +85,18 @@ export type IncomingAltTextPluginConfig = {
    * @default true
    */
   healthCheck?: ((args: { req: PayloadRequest }) => boolean | Promise<boolean>) | boolean
+
+  /**
+   * The MIME type `getImageThumbnail` delivers, for every configured collection.
+   *
+   * Declaring it takes a document's stored `mimeType` out of the decision of
+   * whether alt text can be generated. Collections may override it or opt out with
+   * `null` — see {@link AltTextCollectionConfig.imageThumbnailMimeType} for the
+   * rationale and the `f_auto` caveat.
+   *
+   * @example 'image/webp'
+   */
+  imageThumbnailMimeType?: string
 
   /**
    * The locale to generate alt texts in when localization is disabled.
@@ -103,7 +133,11 @@ export type AltTextPluginConfig = {
   /** Access control for plugin endpoints. */
   access: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
 
-  /** Collections with resolved MIME type filters. */
+  /**
+   * Collections with resolved MIME type filters and resolved delivered thumbnail
+   * MIME types. The plugin-level `imageThumbnailMimeType` is folded into these
+   * entries during normalization, so this is the only place to read it from.
+   */
   collections: NormalizedAltTextCollectionConfig[]
 
   /** Whether the plugin is enabled. */
@@ -113,7 +147,7 @@ export type AltTextPluginConfig = {
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
   /** Function to get the thumbnail URL of an image document. */
-  getImageThumbnail: (doc: Record<string, unknown>) => string
+  getImageThumbnail: GetImageThumbnail
 
   /** Whether alt text health tracking is enabled. */
   healthCheck: boolean

@@ -1,8 +1,11 @@
 export { payloadAltTextPlugin } from './plugin.js'
+export { mistralResolver } from './resolvers/mistral.js'
+export type { MistralResolverConfig } from './resolvers/mistral.js'
 export { openAIResolver } from './resolvers/openAI.js'
 export * from './resolvers/types.js'
 export type {
   AltTextCollectionConfig,
+  GetImageThumbnail,
   IncomingAltTextPluginConfig as AltTextPluginConfig,
 } from './types/AltTextPluginConfig.js'
 export { getAltTextHealth } from './utilities/altTextHealth.js'

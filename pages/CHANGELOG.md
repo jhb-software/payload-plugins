@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.0-beta.2
+
+- **BREAKING**: a `page.parent.collection` naming a non-page collection now throws at startup, and a collection using `parent.sharedDocument` may no longer list its own slug — both configs could never produce a valid page tree
+- **BREAKING**: the parent deletion guard now also covers the trash: trashing a parent with children is refused, and trashed children block permanent deletion of their parent (restore or reassign them first). `childDocumentsOf` / `hasChildDocuments` include trashed children and propagate query failures instead of reporting no children.
+- feat: `page.parent.collection` accepts a list of collection slugs, so a collection can nest under itself and other page collections at once (`/shop` → `/shop/mens` → `/shop/mens/shirts`); a single slug keeps the previous storage, and the README documents the migration recipe for lists
+- feat: add **experimental** `listPagePaths`, which enumerates every live path (one entry per document and locale) as the data source for a sitemap or llms.txt
+- feat: add **experimental** `pathChanges`, an `afterChange`/`afterDelete` helper reporting which live paths a write started or stopped resolving, including descendants of a moved or renamed ancestor
+- feat: export **experimental** `isPageCollectionConfig` for identifying page collections at config-build time
+- feat: export `SKIP_PARENT_GUARD_CONTEXT_KEY`, a request context flag which disables the parent guards for a whole-subtree teardown
+- feat: the generated fields accept an `admin` override in the matching `page` block, and `page.parent` additionally a `filterOptions`; both are ANDed with the plugin's, so an override narrows rather than replaces
+- perf: virtual path/breadcrumb generation reads ancestors in batched per-level adapter queries instead of one Local API call per ancestor; a dangling deep ancestor reference now logs an error instead of producing a wrong, shorter path
+- fix: redirect validation, the parent deletion guard and the `sharedDocument` parent default now run inside the caller's transaction, so writes batched into the same transaction are no longer invisible to them
+- fix: a `select` no longer returns the raw fields (`slug`, parent, `isRootPage`, breadcrumb label) that are only selected internally to compute the virtual fields — responses contain exactly the requested fields
+- fix: the `slug` field is now read only on a trashed document and on a document locked by another user
+- fix: `afterChange` hooks now receive correct `path` and `breadcrumbs` when a mutation's `select` asks for none of the virtual fields
+
 ## 0.9.0-beta.1
 
 - feat: add `waitUntil` and `onCacheResult` arguments to `findPageByPath` — defer cache maintenance writes off the critical path (e.g. via `waitUntil` from `@vercel/functions` or Cloudflare's `ctx.waitUntil`) and observe the cache lookup status (`hit` / `stale` / `miss`)

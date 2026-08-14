@@ -6,7 +6,7 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 
 - Generate alt text for images using AI in the Payload Admin UI
 - Supports any AI provider using a resolver pattern (e.g., OpenAI, Anthropic, etc.)
-- Comes with a ready-to-use OpenAI resolver out of the box
+- Comes with ready-to-use OpenAI and Mistral resolvers out of the box
 - Automatic keyword extraction for improved admin search
 - Bulk generation for processing multiple images at once
 - Full localization support
@@ -89,16 +89,31 @@ This is also the recommended escape hatch if you hit Payload's Postgres SQL-buil
 | `maxBulkGenerateIds`         | `number`                                   | No       | Maximum number of image IDs accepted per bulk generate request; larger requests are rejected with `400`. Duplicate IDs are collapsed before the limit is applied (default: 100)                                                                                                                                           |
 | `fieldsOverride`             | `Function`                                 | No       | Override the default fields inserted by the plugin                                                                                                                                                                                                                                                                        |
 | `healthCheck`                | `boolean \| Function`                      | No       | Alt text health tracking (REST endpoint, cache revalidation hooks, dashboard widget). `false` disables it; `true` enables it gated by `access`; a `({ req }) => boolean` function enables it and gates both the endpoint and the widget — use it to restrict the collection-wide report, e.g. to admins (default: `true`) |
+| `imageThumbnailMimeType`     | `string`                                   | No       | The MIME type `getImageThumbnail` delivers. Set it when your thumbnail URL transcodes the image, so the stored format no longer decides whether generation is possible (see [Transcoding thumbnails](#transcoding-thumbnails))                                                                                            |
+
+`getImageThumbnail` receives the document and `{ collection, req }`, so a single function can build different URLs per collection:
+
+```ts
+getImageThumbnail: (doc, { collection }) =>
+  collection === 'media' ? cloudinaryThumbnail(doc) : String(doc.url)
+```
+
+It may also be async, so the URL can be signed on demand:
+
+```ts
+getImageThumbnail: async (doc, { req }) => await presignThumbnailUrl(String(doc.url), req)
+```
 
 ### Per-collection options
 
 Each entry in `collections` may be either a bare collection slug (shorthand, defaults to `['image/*']` for `mimeTypes`) or an object with the following fields:
 
-| Option      | Type                      | Required | Description                                                                                                                                                                                       |
-| ----------- | ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `slug`      | `CollectionSlug`          | Yes      | The collection slug                                                                                                                                                                               |
-| `mimeTypes` | `string[]`                | No       | MIME types the plugin tracks, validates, and generates for. Supports wildcards like `image/*`. Defaults to `['image/*']`.                                                                         |
-| `validate`  | `TextareaFieldValidation` | No       | Custom validator that fully replaces the default required-alt check. Import `validateAltText` from the plugin to compose around the default behavior (see [Custom validator](#custom-validator)). |
+| Option                   | Type                      | Required | Description                                                                                                                                                                                       |
+| ------------------------ | ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slug`                   | `CollectionSlug`          | Yes      | The collection slug                                                                                                                                                                               |
+| `mimeTypes`              | `string[]`                | No       | MIME types the plugin tracks, validates, and generates for. Supports wildcards like `image/*`. Defaults to `['image/*']`.                                                                         |
+| `validate`               | `TextareaFieldValidation` | No       | Custom validator that fully replaces the default required-alt check. Import `validateAltText` from the plugin to compose around the default behavior (see [Custom validator](#custom-validator)). |
+| `imageThumbnailMimeType` | `string \| null`          | No       | Overrides the plugin-level option of the same name for this collection. `null` opts the collection out of a plugin-level default (see [Transcoding thumbnails](#transcoding-thumbnails)).         |
 
 ```ts
 payloadAltTextPlugin({
@@ -106,6 +121,39 @@ payloadAltTextPlugin({
     'images', // shorthand — defaults to mimeTypes: ['image/*']
     { slug: 'media', mimeTypes: ['image/*', 'application/pdf'] },
   ],
+  // ...
+})
+```
+
+#### Transcoding thumbnails
+
+The resolver never sees the stored file — it only receives the URL returned by `getImageThumbnail`. When a resolver declares `supportedMimeTypes`, the plugin checks a document's stored `mimeType` against that list, which is a safe default but wrong as soon as your thumbnail URL transcodes: an AVIF or HEIC upload served through a Cloudinary `f_webp` transformation reaches the provider as WebP, yet gets rejected on its stored format.
+
+Declare what your thumbnail URL actually delivers to remove the mismatch:
+
+```ts
+payloadAltTextPlugin({
+  collections: ['media'],
+  resolver: openAIResolver({ apiKey: process.env.OPENAI_API_KEY }),
+  // Always transcodes to WebP, whatever the source format is
+  getImageThumbnail: (doc) => String(doc.url).replace('/upload/', '/upload/w_600,f_webp/'),
+  imageThumbnailMimeType: 'image/webp',
+})
+```
+
+With the declaration in place, the source format no longer gates generation — the admin button stays enabled and the endpoints stop rejecting on `mimeType`. Which source formats get alt text at all is still governed by each collection's `mimeTypes`. The declaration is validated against the resolver's `supportedMimeTypes` once at config load, so transcoding into a format your resolver cannot handle fails at boot instead of once per image.
+
+Only declare a format your transformation **always** produces. A `f_auto`-style transformation negotiates the format from the fetching client's `Accept` header and may serve the source format back, so leave it unset there and let the conservative source check apply. If you want AVIF sources to work, transcode explicitly.
+
+Collections may override the plugin-level value, or opt out of it with `null` when they are served raw:
+
+```ts
+payloadAltTextPlugin({
+  collections: [
+    'media', // inherits image/webp
+    { slug: 'documents', imageThumbnailMimeType: null }, // checked on its stored mimeType
+  ],
+  imageThumbnailMimeType: 'image/webp',
   // ...
 })
 ```
@@ -188,16 +236,47 @@ openAIResolver({
 })
 ```
 
+| Option               | Type       | Required | Description                                                                                                                                                                                 |
+| -------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`             | `string`   | Yes      | API key for authentication                                                                                                                                                                  |
+| `model`              | `string`   | No       | Model to use (default: `gpt-4.1-nano`)                                                                                                                                                      |
+| `baseUrl`            | `string`   | No       | Base URL for an OpenAI-compatible provider (e.g. Nebius, Azure)                                                                                                                             |
+| `supportedMimeTypes` | `string[]` | No       | Image formats the provider accepts (default: `['image/jpeg', 'image/png', 'image/gif', 'image/webp']`, per OpenAI's vision docs). Override it when using a `baseUrl` whose provider differs |
+
+#### Mistral Resolver
+
+```ts
+import { mistralResolver } from '@jhb.software/payload-alt-text-plugin'
+
+mistralResolver({
+  apiKey: process.env.MISTRAL_API_KEY,
+  model: 'mistral-medium-latest', // default; any vision-capable Mistral model works
+})
+```
+
+Unlike the OpenAI resolver, this one downloads the image and sends the bytes
+rather than handing Mistral the thumbnail URL. Mistral's own fetcher needs the
+file to be reachable from the public internet, which is never the case in local
+development and not the case for private buckets; some hosts also refuse it
+outright (`File could not be fetched from url`, error 3310). Sending the bytes
+costs one extra download and removes that whole class of failure.
+
+Because there is no image conversion step, `supportedMimeTypes` is limited to
+what the Mistral API accepts directly: JPEG, PNG, GIF and WebP. Documents in
+other formats — SVG or AVIF, for instance — keep their generate button disabled.
+
 ## Custom Resolver
 
 You can create your own resolver by implementing the `AltTextResolver` interface.
+
+Alongside `imageThumbnailUrl`, the resolver receives `imageThumbnailMimeType` — the format served at that URL, when the collection declares one via [`imageThumbnailMimeType`](#transcoding-thumbnails). Resolvers that hand the URL to the provider can ignore it. Resolvers that inline the bytes need it, because an explicit media type cannot be sniffed from a URL: Anthropic image blocks require `media_type` and Gemini's `inline_data` requires `mime_type`. It is `undefined` when nothing was declared.
 
 ```ts
 import type { AltTextResolver } from '@jhb.software/payload-alt-text-plugin'
 
 export const customResolver = (): AltTextResolver => ({
   key: 'custom',
-  resolve: async ({ imageThumbnailUrl, filename, locale, req }) => {
+  resolve: async ({ imageThumbnailUrl, imageThumbnailMimeType, filename, locale, req }) => {
     // Your custom alt text generation logic here
     const altText = await generateAltText(imageThumbnailUrl, filename, locale, req)
 

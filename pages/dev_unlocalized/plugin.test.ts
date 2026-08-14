@@ -2,6 +2,10 @@ import payload, { CollectionSlug, ValidationError } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
+import {
+  clearCapturedAfterChanges,
+  getLastAfterChangeHookArgs,
+} from './src/test/afterChangeCapture'
 
 type DefaultIDType = Config['db']['defaultIDType']
 
@@ -69,6 +73,42 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
             label: rootPageData.title,
             slug: rootPageData.slug,
           },
+        ]),
+      )
+    })
+
+    test('is the first breadcrumb of its children, with the site root as its path', async () => {
+      const rootPageId = (
+        await payload.create({
+          collection: 'pages',
+          data: {
+            title: 'Root Page',
+            slug: '',
+            content: 'Root Page',
+            isRootPage: true,
+            ...virtualFields,
+          },
+        })
+      ).id
+
+      const child = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Child Page',
+          slug: 'child-page',
+          content: 'Child Page',
+          parent: rootPageId,
+          ...virtualFields,
+        },
+      })
+
+      // The root page contributes no slug segment, so its path is `/` rather than the empty
+      // string its slug would produce.
+      expect(child.path).toBe('/child-page')
+      expect(removeIdsFromArray(child.breadcrumbs)).toEqual(
+        removeIdsFromArray([
+          { id: undefined, path: '/', label: 'Root Page', slug: '' },
+          { id: undefined, path: '/child-page', label: 'Child Page', slug: 'child-page' },
         ]),
       )
     })
@@ -347,6 +387,42 @@ describe('Path and breadcrumb virtual fields are set correctly for find operatio
   })
 })
 
+describe('Parent deletion guard disabled via preventParentDeletion: false', () => {
+  beforeEach(async () => await deleteAllCollections(['users']))
+
+  const createPage = async (data: { title: string; slug: string; parent?: DefaultIDType }) =>
+    await payload.create({
+      collection: 'pages',
+      data: { content: 'Content', ...data, ...virtualFields },
+    })
+
+  test('deletes a parent that is still referenced by a child', async () => {
+    const parent = await createPage({ title: 'Parent', slug: 'parent' })
+    const child = await createPage({ title: 'Child', slug: 'child', parent: parent.id })
+
+    await payload.delete({ collection: 'pages', id: parent.id })
+
+    expect(
+      (await payload.find({ collection: 'pages', where: { id: { equals: parent.id } } })).docs,
+    ).toHaveLength(0)
+    // The child survives the delete, its parent reference is simply left dangling.
+    expect((await payload.findByID({ collection: 'pages', id: child.id })).id).toBe(child.id)
+  })
+
+  test('trashes a parent that is still referenced by a child', async () => {
+    const parent = await createPage({ title: 'Parent', slug: 'trash-parent' })
+    await createPage({ title: 'Child', slug: 'trash-child', parent: parent.id })
+
+    const trashed = await payload.update({
+      collection: 'pages',
+      id: parent.id,
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+    expect(trashed.deletedAt).toBeTruthy()
+  })
+})
+
 describe('Slug field behaves as expected for create and update operations', () => {
   test('Slug remains unchanged when title is updated', async () => {
     // Create initial page
@@ -394,7 +470,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -412,7 +488,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         data: { ...pageData, ...virtualFields },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -434,7 +510,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -474,10 +550,116 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 })
+
+describe('A mutation computes the virtual fields under a select which asks for none of them', () => {
+  let rootPageId: DefaultIDType
+  let childPageId: DefaultIDType
+
+  beforeEach(async () => {
+    // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
+    await deleteCollection('authors')
+    await deleteCollection('pages')
+    clearCapturedAfterChanges()
+
+    const rootPage = await payload.create({
+      collection: 'pages',
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+    rootPageId = rootPage.id
+
+    childPageId = (
+      await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Child Page',
+          slug: 'child-page',
+          content: 'Child content',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+  })
+
+  test('an update selecting only an unrelated field still hands afterChange hooks the path', async () => {
+    await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/child-page')
+    expect(previousDoc.path).toBe('/child-page')
+  })
+
+  test('a create selecting only an unrelated field still hands afterChange hooks the path', async () => {
+    await payload.create({
+      collection: 'pages',
+      data: {
+        title: 'Second Child',
+        slug: 'second-child',
+        content: 'Second child content',
+        parent: rootPageId,
+        ...virtualFields,
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/second-child')
+  })
+
+  test('the response to a narrow-select update contains only the field the caller selected', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    expect(doc.title).toBe('Child Page Updated')
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('content')
+    expect(doc).not.toHaveProperty('path')
+  })
+})
+
+/**
+ * Asserts a rejected write failed validation.
+ *
+ * Matches on the error's `name` instead of `instanceof ValidationError`: an install can end up
+ * with more than one copy of `payload`, in which case an error thrown by the plugin's copy is not
+ * an instance of the class this test file imported.
+ */
+function expectValidationError(error: unknown): asserts error is ValidationError {
+  expect((error as Error | undefined)?.name).toBe('ValidationError')
+}
 
 /**
  * Helper function to remove id field from objects in an array
@@ -523,6 +705,58 @@ const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
   'blogpost-categories',
   'redirects',
 ]
+
+describe('Multi-collection parents without localization', () => {
+  beforeEach(async () => {
+    await payload.delete({ collection: 'topics', where: {} })
+    await payload.delete({ collection: 'pages', where: {} })
+  })
+
+  test('breadcrumbs span pages and topics when localization is disabled', async () => {
+    const shop = await payload.create({
+      collection: 'pages',
+      data: {
+        ...virtualFields,
+        title: 'Shop',
+        content: 'Shop',
+        slug: 'shop',
+        isRootPage: false,
+        parent: null,
+      } as any,
+    })
+
+    const mens = await payload.create({
+      collection: 'topics',
+      data: {
+        ...virtualFields,
+        title: 'Mens',
+        slug: 'mens',
+        parent: { relationTo: 'pages', value: shop.id },
+      } as any,
+    })
+
+    const shirts = await payload.create({
+      collection: 'topics',
+      data: {
+        ...virtualFields,
+        title: 'Shirts',
+        slug: 'shirts',
+        parent: { relationTo: 'topics', value: mens.id },
+      } as any,
+    })
+
+    const doc = await payload.findByID({ collection: 'topics', id: shirts.id })
+
+    expect(doc.path).toBe('/shop/mens/shirts')
+    expect(
+      (doc.breadcrumbs as any[]).map(({ slug, label, path }) => ({ slug, label, path })),
+    ).toEqual([
+      { slug: 'shop', label: 'Shop', path: '/shop' },
+      { slug: 'mens', label: 'Mens', path: '/shop/mens' },
+      { slug: 'shirts', label: 'Shirts', path: '/shop/mens/shirts' },
+    ])
+  })
+})
 
 const deleteAllCollections = async (except: CollectionSlug[] = []) => {
   const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []

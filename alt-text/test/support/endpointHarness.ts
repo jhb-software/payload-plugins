@@ -51,12 +51,13 @@ export function buildPluginConfig(
 /**
  * Builds a fake `PayloadRequest` for an endpoint handler. `findByID` returns a
  * minimal image document by default; pass `pluginConfig` to use a config other
- * than the shared default. The returned `findByIDCalls`/`updateCalls` arrays
- * record the arguments of every Local API call the endpoint makes.
+ * than the shared default, or `doc` to vary the stored document (e.g. its
+ * `mimeType`). The returned `findByIDCalls`/`updateCalls` arrays record the
+ * arguments of every Local API call the endpoint makes.
  */
 export function buildEndpointRequest(
   body: unknown,
-  options: { pluginConfig?: AltTextPluginConfig } = {},
+  options: { doc?: Record<string, unknown>; pluginConfig?: AltTextPluginConfig } = {},
 ): {
   findByIDCalls: LocalApiCall[]
   req: PayloadRequest
@@ -72,7 +73,7 @@ export function buildEndpointRequest(
       config: { custom: { altTextPluginConfig: pluginConfig } },
       findByID: async (args: LocalApiCall) => {
         findByIDCalls.push(args)
-        return { id: args.id, filename: 'photo.png', mimeType: 'image/png' }
+        return { id: args.id, filename: 'photo.png', mimeType: 'image/png', ...options.doc }
       },
       update: async (args: LocalApiCall) => {
         updateCalls.push(args)

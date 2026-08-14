@@ -28,6 +28,7 @@ export const validateRedirect: CollectionBeforeValidateHook = async ({
   // Check if there's already a redirect for the source path
   const existingRedirect = await req.payload.count({
     collection: 'redirects',
+    req,
     where: {
       and: [
         { sourcePath: { equals: sourcePath } },
@@ -44,6 +45,7 @@ export const validateRedirect: CollectionBeforeValidateHook = async ({
   // Check for opposite redirects which would create a redirect loop: a redirect that goes from our destination back to our source
   const oppositeRedirect = await req.payload.count({
     collection: 'redirects',
+    req,
     where: {
       and: [
         { sourcePath: { equals: destinationPath } },
@@ -64,6 +66,7 @@ export const validateRedirect: CollectionBeforeValidateHook = async ({
   // Check for opposite redirects which would create a redirect loop: a redirect that goes from our destination back to our source
   const oppositeTransitiveRedirects = await req.payload.count({
     collection: 'redirects',
+    req,
     where: {
       and: [
         {
