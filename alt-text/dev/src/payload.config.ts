@@ -1,4 +1,5 @@
 import {
+  mistralResolver,
   openAIResolver,
   payloadAltTextPlugin,
   validateAltText,
@@ -76,10 +77,17 @@ export default buildConfig({
           },
         },
       ],
-      resolver: openAIResolver({
-        apiKey: process.env.OPENAI_API_KEY!,
-        model: 'gpt-4.1-mini',
-      }),
+      // Set MISTRAL_API_KEY to exercise the Mistral resolver, which sends the
+      // image bytes as a data URI instead of handing the provider a URL.
+      resolver: process.env.MISTRAL_API_KEY
+        ? mistralResolver({
+            apiKey: process.env.MISTRAL_API_KEY,
+            model: 'mistral-medium-latest',
+          })
+        : openAIResolver({
+            apiKey: process.env.OPENAI_API_KEY!,
+            model: 'gpt-4.1-mini',
+          }),
       // Cap how many images a single bulk-generate request may process.
       // Selecting more than this in the list view returns a 400 instead of
       // fanning out into an unbounded number of paid resolver calls.
