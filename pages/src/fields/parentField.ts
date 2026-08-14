@@ -1,8 +1,9 @@
-import type { Field, PayloadRequest, Where } from 'payload'
+import type { Field, PayloadRequest, SingleRelationshipField, Where } from 'payload'
 
 import type { IncomingPageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
+import { composeFilterOptions, mergeFieldAdmin } from '../utils/fieldOverrides.js'
 import { getPageCollectionConfigAttributes } from '../utils/getPageCollectionConfigAttributes.js'
 import { translatedLabel } from '../utils/translatedLabel.js'
 
@@ -10,11 +11,12 @@ export function parentField(
   pageConfig: IncomingPageCollectionConfigAttributes,
   collectionSlug: string,
   baseFilter?: PagesPluginConfig['baseFilter'],
+  overrides?: Pick<IncomingPageCollectionConfigAttributes['parent'], 'admin' | 'filterOptions'>,
 ): Field {
   return {
     name: pageConfig.parent.name,
     type: 'relationship',
-    filterOptions: ({ data }) => {
+    filterOptions: composeFilterOptions(({ data }) => {
       if (!data.id) {
         // Before the document is created, there is no id, therefore do not filter
         return true
@@ -31,19 +33,24 @@ export function parentField(
       }
 
       return true
-    },
+    }, overrides?.filterOptions),
     label: translatedLabel('parent'),
     relationTo: pageConfig.parent.collection,
     required: !pageConfig.isRootCollection,
 
-    admin: {
-      components: {
-        Field: '@jhb.software/payload-pages-plugin/server#ParentField',
+    admin: mergeFieldAdmin<NonNullable<SingleRelationshipField['admin']>>(
+      {
+        components: {
+          Field: '@jhb.software/payload-pages-plugin/server#ParentField',
+        },
+        position: 'sidebar',
+        // hide this field on the root page
+        condition: pageConfig.isRootCollection
+          ? (data: Partial<{ isRootPage?: boolean }>) => !data?.isRootPage
+          : undefined,
       },
-      position: 'sidebar',
-      // hide this field on the root page
-      condition: pageConfig.isRootCollection ? (data) => !data?.isRootPage : undefined,
-    },
+      overrides?.admin,
+    ),
     // When this collection has a shared parent document, set the parent field:
     defaultValue: async ({ req }: { req: PayloadRequest }) => {
       const {
