@@ -183,3 +183,79 @@ describe('afterRead hook executions caused by the ancestor walk', () => {
     expect(fieldAfterReadCount('content', root.id)).toBe(0)
   })
 })
+
+describe('database reads caused by an ancestor walk that crosses collections', () => {
+  /**
+   * Counts `payload.db.find` calls per collection while running `fn`.
+   *
+   * The ancestor walk batches by collection, so a chain alternating between `pages` and
+   * `topics` splits each level into two queries. What must not change is that the count stays
+   * proportional to the depth of the tree rather than to the number of documents read.
+   */
+  const countDbFinds = async <T>(fn: () => Promise<T>): Promise<[T, number]> => {
+    const db = payload.db as any
+    const original = db.find.bind(db)
+    let count = 0
+    db.find = (...args: unknown[]) => {
+      count++
+      return original(...args)
+    }
+
+    try {
+      return [await fn(), count]
+    } finally {
+      db.find = original
+    }
+  }
+
+  beforeEach(async () => {
+    await deleteCollection('topics')
+    await deleteCollection('pages')
+  })
+
+  test('reading a list of topics costs the same number of queries as reading one', async () => {
+    const root = await createPage({ title: 'Root', slug: '', isRootPage: true })
+    const shop = await createPage({ title: 'Shop', slug: 'shop', parent: root.id })
+
+    const createTopic = async (title: string, slug: string, parent: any) =>
+      await payload.create({
+        collection: 'topics',
+        locale: 'de',
+        data: { ...virtualFields, title, slug, parent, _status: 'published' } as any,
+      })
+
+    // A chain which alternates collections at every level: pages -> topics -> topics.
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    // Twenty siblings sharing that chain.
+    for (let i = 0; i < 20; i++) {
+      await createTopic(`Shirt ${i}`, `shirt-${i}`, { relationTo: 'topics', value: mens.id })
+    }
+
+    const [single, singleQueries] = await countDbFinds(() =>
+      payload.find({
+        collection: 'topics',
+        locale: 'de',
+        depth: 0,
+        limit: 1,
+        where: { slug: { equals: 'shirt-0' } },
+      }),
+    )
+    expect(single.docs[0].path).toBe('/de/shop/mens/shirt-0')
+
+    const [list, listQueries] = await countDbFinds(() =>
+      payload.find({
+        collection: 'topics',
+        locale: 'de',
+        depth: 0,
+        limit: 0,
+        where: { slug: { not_equals: 'mens' } },
+      }),
+    )
+    expect(list.docs).toHaveLength(20)
+
+    // Batching means the twenty siblings share the ancestor loads, so the list costs no more
+    // ancestor queries than the single read. Without it, each document would walk on its own.
+    expect(listQueries).toBeLessThanOrEqual(singleQueries)
+  })
+})

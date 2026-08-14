@@ -77,7 +77,7 @@ function validateParentCollections(collections: CollectionConfig[]): void {
       continue
     }
 
-    const slugs = parentCollections(collection.page)
+    const slugs: string[] = parentCollections(collection.page)
 
     for (const slug of slugs) {
       if (!pageCollectionSlugs.has(slug)) {

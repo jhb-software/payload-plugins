@@ -560,6 +560,58 @@ const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
   'redirects',
 ]
 
+describe('Multi-collection parents without localization', () => {
+  beforeEach(async () => {
+    await payload.delete({ collection: 'topics', where: {} })
+    await payload.delete({ collection: 'pages', where: {} })
+  })
+
+  test('breadcrumbs span pages and topics when localization is disabled', async () => {
+    const shop = await payload.create({
+      collection: 'pages',
+      data: {
+        ...virtualFields,
+        title: 'Shop',
+        content: 'Shop',
+        slug: 'shop',
+        isRootPage: false,
+        parent: null,
+      } as any,
+    })
+
+    const mens = await payload.create({
+      collection: 'topics',
+      data: {
+        ...virtualFields,
+        title: 'Mens',
+        slug: 'mens',
+        parent: { relationTo: 'pages', value: shop.id },
+      } as any,
+    })
+
+    const shirts = await payload.create({
+      collection: 'topics',
+      data: {
+        ...virtualFields,
+        title: 'Shirts',
+        slug: 'shirts',
+        parent: { relationTo: 'topics', value: mens.id },
+      } as any,
+    })
+
+    const doc = await payload.findByID({ collection: 'topics', id: shirts.id })
+
+    expect(doc.path).toBe('/shop/mens/shirts')
+    expect(
+      (doc.breadcrumbs as any[]).map(({ slug, label, path }) => ({ slug, label, path })),
+    ).toEqual([
+      { slug: 'shop', label: 'Shop', path: '/shop' },
+      { slug: 'mens', label: 'Mens', path: '/shop/mens' },
+      { slug: 'shirts', label: 'Shirts', path: '/shop/mens/shirts' },
+    ])
+  })
+})
+
 const deleteAllCollections = async (except: CollectionSlug[] = []) => {
   const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
   const collectionSlugs = new Set(collections.map((c) => c.slug))

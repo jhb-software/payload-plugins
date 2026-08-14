@@ -7,6 +7,7 @@ import { Blogposts } from './collections/blogposts'
 import { Countries } from './collections/countries'
 import { CountryTravelTips } from './collections/country-travel-tips'
 import { Pages } from './collections/pages'
+import { Topics } from './collections/topics'
 import { Redirects } from './collections/redirects'
 import { BlogpostCategories } from './collections/blogpost-categories'
 import { databaseAdapter } from './test/databaseAdapter'
@@ -25,6 +26,7 @@ export default buildConfig({
   },
   collections: [
     Pages,
+    Topics,
     Authors,
     Blogposts,
     BlogpostCategories,

@@ -512,6 +512,59 @@ describe('Multi-tenant baseFilter functionality', () => {
         }),
       ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
     })
+
+    test('a polymorphic child in another tenant does not block the delete of a same-slug parent', async () => {
+      const parentT1 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Catalog - Tenant 1',
+          slug: 'catalog',
+          content: 'Catalog tenant 1',
+          tenant: tenant1Id,
+          ...virtualFields,
+        },
+      })
+
+      const parentT2 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Catalog - Tenant 2',
+          slug: 'catalog',
+          content: 'Catalog tenant 2',
+          tenant: tenant2Id,
+          ...virtualFields,
+        },
+      })
+
+      // Only tenant 2's page has a topic hanging off it.
+      await payload.create({
+        collection: 'topics',
+        data: {
+          title: 'Shoes',
+          slug: 'shoes',
+          parent: { relationTo: 'pages', value: parentT2.id },
+          tenant: tenant2Id,
+          ...virtualFields,
+        } as any,
+      })
+
+      const trashed = await payload.update({
+        collection: 'pages',
+        id: parentT1.id,
+        req: await tenantReq(tenant1Id),
+        data: { deletedAt: new Date().toISOString() },
+      })
+      expect(trashed.deletedAt).toBeTruthy()
+
+      await expect(
+        payload.update({
+          collection: 'pages',
+          id: parentT2.id,
+          req: await tenantReq(tenant2Id),
+          data: { deletedAt: new Date().toISOString() },
+        }),
+      ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+    })
   })
 })
 

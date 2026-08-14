@@ -98,7 +98,7 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
 
     const hopParentField = hopConfig.parent.name
 
-    const ancestor: null | Record<string, unknown> = await req.payload.findByID({
+    const ancestor = (await req.payload.findByID({
       id: cursor.id,
       collection: cursor.collection,
       depth: 0,
@@ -111,7 +111,7 @@ export const preventCircularParentReference: CollectionBeforeChangeHook = async 
       overrideAccess: true,
       req,
       select: { [hopParentField]: true },
-    })
+    })) as null | Record<string, unknown>
 
     cursor = ancestor ? resolveParentRef(ancestor[hopParentField], hopConfig) : null
   }

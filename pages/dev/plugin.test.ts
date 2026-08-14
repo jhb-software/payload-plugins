@@ -3370,3 +3370,231 @@ const removeIdsFromArray = <T extends { id?: any; [key: string]: any }>(
 ): Omit<T, 'id'>[] => {
   return array.map(({ id, ...rest }) => rest)
 }
+
+describe('Multi-collection parents', () => {
+  /** Creates a published root page, since a topic needs somewhere to hang off. */
+  const createRootPage = async () =>
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        ...virtualFields,
+        title: 'Shop',
+        content: 'Shop',
+        slug: 'shop',
+        isRootPage: false,
+        parent: null,
+        _status: 'published',
+      } as any,
+    })
+
+  const createTopic = async (
+    title: string,
+    slug: string,
+    parent: { relationTo: 'pages' | 'topics'; value: DefaultIDType },
+  ) =>
+    await payload.create({
+      collection: 'topics',
+      locale: 'de',
+      data: { ...virtualFields, title, slug, parent, _status: 'published' } as any,
+    })
+
+  beforeEach(async () => {
+    await deleteCollection('topics')
+    await deleteCollection('pages')
+  })
+
+  test('a topic parented to a page resolves its path and breadcrumbs through the page', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    const [doc] = (
+      await payload.find({
+        collection: 'topics',
+        locale: 'de',
+        where: { id: { equals: mens.id } },
+      })
+    ).docs
+
+    expect(doc.path).toBe('/de/shop/mens')
+    expect(removeIdsFromArray(doc.breadcrumbs as any[])).toEqual([
+      { path: '/de/shop', label: 'Shop', slug: 'shop' },
+      { path: '/de/shop/mens', label: 'Mens', slug: 'mens' },
+    ])
+  })
+
+  test('a topic parented to a topic keeps walking across both collections', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const shirts = await createTopic('Shirts', 'shirts', {
+      relationTo: 'topics',
+      value: mens.id,
+    })
+
+    const [doc] = (
+      await payload.find({
+        collection: 'topics',
+        locale: 'de',
+        where: { id: { equals: shirts.id } },
+      })
+    ).docs
+
+    expect(doc.path).toBe('/de/shop/mens/shirts')
+    expect(removeIdsFromArray(doc.breadcrumbs as any[])).toEqual([
+      { path: '/de/shop', label: 'Shop', slug: 'shop' },
+      { path: '/de/shop/mens', label: 'Mens', slug: 'mens' },
+      { path: '/de/shop/mens/shirts', label: 'Shirts', slug: 'shirts' },
+    ])
+  })
+
+  test('siblings under different parents may share a slug', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const womens = await createTopic('Womens', 'womens', { relationTo: 'pages', value: shop.id })
+
+    await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+    await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: womens.id })
+
+    const paths = (
+      await payload.find({
+        collection: 'topics',
+        locale: 'de',
+        where: { slug: { equals: 'shirts' } },
+      })
+    ).docs
+      .map((doc) => doc.path)
+      .sort()
+
+    expect(paths).toEqual(['/de/shop/mens/shirts', '/de/shop/womens/shirts'])
+  })
+
+  test('a document parented across collections resolves through findPageByPath, cold and cached', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+
+    const req = { payload } as any
+
+    const cold = await findPageByPath({ path: '/de/shop/mens/shirts', req })
+    expect(cold?.collection).toBe('topics')
+    expect(cold?.doc?.path).toBe('/de/shop/mens/shirts')
+
+    const cached = await findPageByPath({ path: '/de/shop/mens/shirts', req })
+    expect(cached?.doc?.id).toBe(cold?.doc?.id)
+  })
+
+  test('a cycle spanning two collections is rejected, naming the chain', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const shirts = await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+
+    // Re-parenting `mens` under its own descendant closes the loop
+    // topics:mens -> topics:shirts -> topics:mens.
+    const error = await parentFieldErrorOf(
+      payload.update({
+        collection: 'topics',
+        id: mens.id,
+        locale: 'de',
+        data: { parent: { relationTo: 'topics', value: shirts.id } } as any,
+      }),
+    )
+
+    expect(error).toBe(
+      `Circular parent reference detected: topics:${mens.id} -> topics:${shirts.id} -> topics:${mens.id}`,
+    )
+  })
+
+  test('a document cannot be parented to itself when the parent field is polymorphic', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    const error = await parentFieldErrorOf(
+      payload.update({
+        collection: 'topics',
+        id: mens.id,
+        locale: 'de',
+        data: { parent: { relationTo: 'topics', value: mens.id } } as any,
+      }),
+    )
+
+    expect(error).toBe('A document cannot be its own parent')
+  })
+
+  test('deleting a page a topic hangs off is refused', async () => {
+    const shop = await createRootPage()
+    await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    await expect(payload.delete({ collection: 'pages', id: shop.id })).rejects.toThrow()
+  })
+
+  test('a page whose id collides with a topic parent id in another collection is still deletable', async () => {
+    // The child query must match on `{ relationTo, value }`, not on the id alone. The SQL
+    // adapters number `pages` and `topics` independently, so a page and a topic readily share
+    // an id — and an id-only query would then report the topic's children as the page's,
+    // refusing a delete that is perfectly safe.
+    if (payload.db.defaultIDType !== 'number') {
+      // MongoDB ObjectIds never collide, so the hazard does not exist there.
+      return
+    }
+
+    const shop = await createRootPage()
+
+    const nextPage = async (slug: string) =>
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          ...virtualFields,
+          title: slug,
+          content: slug,
+          slug,
+          isRootPage: false,
+          parent: shop.id,
+          _status: 'published',
+        } as any,
+      })
+
+    // Both collections number their rows independently, so the sequences are advanced with
+    // filler documents until the next page and the next topic would receive the same id.
+    let page = (await nextPage('probe')) as { id: number }
+    let topic = (await createTopic('Probe', 'probe', {
+      relationTo: 'pages',
+      value: shop.id,
+    })) as { id: number }
+
+    for (let i = 0; i < 500 && page.id !== topic.id; i++) {
+      if (page.id < topic.id) {
+        page = (await nextPage(`filler-page-${i}`)) as { id: number }
+      } else {
+        topic = (await createTopic(`Filler ${i}`, `filler-topic-${i}`, {
+          relationTo: 'pages',
+          value: shop.id,
+        })) as { id: number }
+      }
+    }
+
+    expect(page.id, 'expected the page and topic id sequences to meet').toBe(topic.id)
+
+    // A topic parented to `topics:<id>` — the same id the page carries.
+    await createTopic('Child', 'child', { relationTo: 'topics', value: topic.id })
+
+    // Nothing is parented to `pages:<id>`, so the delete must go through. An id-only child
+    // query would see the topic above and refuse it.
+    await expect(payload.delete({ collection: 'pages', id: page.id })).resolves.toBeTruthy()
+  })
+})
+
+/**
+ * Resolves to the `parent` field's validation message of a rejected write, or undefined if the
+ * write succeeded. `ValidationError.message` is the generic "The following field is invalid",
+ * so the field-level message is what carries the plugin's diagnosis.
+ */
+const parentFieldErrorOf = async (operation: Promise<unknown>): Promise<string | undefined> => {
+  try {
+    await operation
+    return undefined
+  } catch (error) {
+    expect(error).toBeInstanceOf(ValidationError)
+    return (error as ValidationError).data.errors.find((e) => e.path === 'parent')?.message
+  }
+}
