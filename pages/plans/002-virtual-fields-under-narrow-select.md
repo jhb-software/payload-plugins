@@ -1,6 +1,6 @@
 ---
-title: Compute virtual fields under any caller `select`
-description: The plugin widens a caller's `select` to cover its own hook dependencies only when a virtual field was explicitly selected. Every other narrow `select` silently computes `path` and `breadcrumbs` from a stripped document.
+title: Compute virtual fields when a mutation passes a narrow `select`
+description: On create and update the plugin widens a caller's `select` to cover its own hook dependencies only when a virtual field was explicitly selected. Every other narrow `select` silently computes `path` and `breadcrumbs` from a stripped document. Reads keep the gate — a read that did not ask for a virtual field still does not compute one.
 type: fix
 readiness: ready
 ---
