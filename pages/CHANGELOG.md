@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0-beta.2
 
 - **BREAKING**: a `page.parent.collection` naming a non-page collection now throws at startup, and a collection using `parent.sharedDocument` may no longer list its own slug — both configs could never produce a valid page tree
 - **BREAKING**: the parent deletion guard now also covers the trash: trashing a parent with children is refused, and trashed children block permanent deletion of their parent (restore or reassign them first). `childDocumentsOf` / `hasChildDocuments` include trashed children and propagate query failures instead of reporting no children.
