@@ -6,7 +6,7 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 
 - Generate alt text for images using AI in the Payload Admin UI
 - Supports any AI provider using a resolver pattern (e.g., OpenAI, Anthropic, etc.)
-- Comes with a ready-to-use OpenAI resolver out of the box
+- Comes with ready-to-use OpenAI and Mistral resolvers out of the box
 - Automatic keyword extraction for improved admin search
 - Bulk generation for processing multiple images at once
 - Full localization support
@@ -173,6 +173,28 @@ openAIResolver({
   model: 'gpt-4.1-mini', // or 'gpt-4.1-nano' (default)
 })
 ```
+
+#### Mistral Resolver
+
+```ts
+import { mistralResolver } from '@jhb.software/payload-alt-text-plugin'
+
+mistralResolver({
+  apiKey: process.env.MISTRAL_API_KEY,
+  model: 'mistral-medium-latest', // default; any vision-capable Mistral model works
+})
+```
+
+Unlike the OpenAI resolver, this one downloads the image and sends the bytes
+rather than handing Mistral the thumbnail URL. Mistral's own fetcher needs the
+file to be reachable from the public internet, which is never the case in local
+development and not the case for private buckets; some hosts also refuse it
+outright (`File could not be fetched from url`, error 3310). Sending the bytes
+costs one extra download and removes that whole class of failure.
+
+Because there is no image conversion step, `supportedMimeTypes` is limited to
+what the Mistral API accepts directly: JPEG, PNG, GIF and WebP. Documents in
+other formats — SVG or AVIF, for instance — keep their generate button disabled.
 
 ## Custom Resolver
 

@@ -11,13 +11,18 @@ import { parentField } from '../fields/parentField.js'
 import { pathField } from '../fields/pathField.js'
 import { pageSlugField } from '../fields/slugField.js'
 import { beforeDuplicateTitle } from '../hooks/beforeDuplicate.js'
+import {
+  capturePreviousPathsBeforeChange,
+  capturePreviousPathsBeforeDelete,
+} from '../hooks/capturePreviousPaths.js'
 import { preventCircularParentReference } from '../hooks/preventCircularParentReference.js'
-import { preventParentDeletion } from '../hooks/preventParentDeletion.js'
+import { preventParentDeletion, preventParentTrashing } from '../hooks/preventParentDeletion.js'
 import { selectDependentFieldsBeforeOperation } from '../hooks/selectDependentFieldsBeforeOperation.js'
 import {
   setVirtualFieldsAfterChange,
   setVirtualFieldsBeforeRead,
 } from '../hooks/setVirtualFields.js'
+import { stripAutoSelectedFieldsAfterOperation } from '../hooks/stripAutoSelectedFieldsAfterOperation.js'
 
 /**
  * Creates a collection config for a page-like collection by adding:
@@ -98,18 +103,26 @@ export const createPageCollectionConfig = ({
       ...(pageConfig.isRootCollection
         ? [
             isRootPageField({
+              admin: incomingCollectionConfig.page.isRootPage?.admin,
               baseFilter: pluginConfig.baseFilter,
             }),
           ]
         : []),
+      // Overrides are read from the incoming config, not from `pageConfig`:
+      // that one is exposed to the admin client via `custom.pageConfig` below,
+      // where functions would not survive serialization.
       pageSlugField({
+        admin: incomingCollectionConfig.page.slug?.admin,
         fallbackField: pageConfig.slug.fallbackField,
         staticValue: pageConfig.slug.staticValue,
         unique: pageConfig.slug.unique,
       }),
-      parentField(pageConfig, incomingCollectionConfig.slug, pluginConfig.baseFilter),
-      pathField(),
-      breadcrumbsField(),
+      parentField(pageConfig, incomingCollectionConfig.slug, pluginConfig.baseFilter, {
+        admin: incomingCollectionConfig.page.parent.admin,
+        filterOptions: incomingCollectionConfig.page.parent.filterOptions,
+      }),
+      pathField({ admin: incomingCollectionConfig.page.path?.admin }),
+      breadcrumbsField({ admin: incomingCollectionConfig.page.breadcrumbs?.admin }),
       // add the user defined fields below the fields defined by the plugin to ensure a correct order in the sidebar
 
       // add the beforeDuplicate hook to the title field
@@ -133,13 +146,22 @@ export const createPageCollectionConfig = ({
         setVirtualFieldsAfterChange,
         ...(incomingCollectionConfig.hooks?.afterChange || []),
       ],
+      // Runs last so that a user hook cannot reintroduce the auto-selected fields into the response
+      afterOperation: [
+        ...(incomingCollectionConfig.hooks?.afterOperation || []),
+        stripAutoSelectedFieldsAfterOperation,
+      ],
       beforeChange: [
         ...(incomingCollectionConfig.hooks?.beforeChange || []),
         preventCircularParentReference,
+        ...(pluginConfig.preventParentDeletion !== false ? [preventParentTrashing] : []),
+        // Runs after the guards so a refused write never pays for a capture read
+        capturePreviousPathsBeforeChange,
       ],
       beforeDelete: [
         ...(incomingCollectionConfig.hooks?.beforeDelete || []),
         ...(pluginConfig.preventParentDeletion !== false ? [preventParentDeletion] : []),
+        capturePreviousPathsBeforeDelete,
       ],
       beforeOperation: [
         ...(incomingCollectionConfig.hooks?.beforeOperation || []),

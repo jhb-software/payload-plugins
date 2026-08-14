@@ -78,6 +78,8 @@ export interface Config {
   blocks: {};
   collections: {
     pages: Page;
+    topics: Topic;
+    announcements: Announcement;
     authors: Author;
     blogposts: Blogpost;
     'blogpost-categories': BlogpostCategory;
@@ -93,6 +95,8 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     pages: PagesSelect<false> | PagesSelect<true>;
+    topics: TopicsSelect<false> | TopicsSelect<true>;
+    announcements: AnnouncementsSelect<false> | AnnouncementsSelect<true>;
     authors: AuthorsSelect<false> | AuthorsSelect<true>;
     blogposts: BlogpostsSelect<false> | BlogpostsSelect<true>;
     'blogpost-categories': BlogpostCategoriesSelect<false> | BlogpostCategoriesSelect<true>;
@@ -163,6 +167,54 @@ export interface Page {
   };
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "topics".
+ */
+export interface Topic {
+  id: number;
+  slug: string;
+  parent:
+    | {
+        relationTo: 'pages';
+        value: number | Page;
+      }
+    | {
+        relationTo: 'topics';
+        value: number | Topic;
+      };
+  path: string;
+  breadcrumbs: Breadcrumbs;
+  title: string;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "announcements".
+ */
+export interface Announcement {
+  id: number;
+  slug: string;
+  parent:
+    | {
+        relationTo: 'pages';
+        value: number | Page;
+      }
+    | {
+        relationTo: 'topics';
+        value: number | Topic;
+      };
+  path: string;
+  breadcrumbs: Breadcrumbs;
+  title: string;
+  updatedAt: string;
+  createdAt: string;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -194,6 +246,9 @@ export interface Author {
 export interface Blogpost {
   id: number;
   slug: string;
+  /**
+   * Blog posts can only be attached to a published page.
+   */
   parent: number | Page;
   path: string;
   breadcrumbs: Breadcrumbs;
@@ -249,6 +304,7 @@ export interface Country {
   };
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -272,6 +328,7 @@ export interface CountryTravelTip {
   };
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -326,6 +383,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pages';
         value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'topics';
+        value: number | Topic;
+      } | null)
+    | ({
+        relationTo: 'announcements';
+        value: number | Announcement;
       } | null)
     | ({
         relationTo: 'authors';
@@ -424,6 +489,7 @@ export interface PagesSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -435,6 +501,35 @@ export interface BreadcrumbsSelect<T extends boolean = true> {
   path?: T;
   label?: T;
   id?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "topics_select".
+ */
+export interface TopicsSelect<T extends boolean = true> {
+  slug?: T;
+  parent?: T;
+  path?: T;
+  breadcrumbs?: T | BreadcrumbsSelect<T>;
+  title?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "announcements_select".
+ */
+export interface AnnouncementsSelect<T extends boolean = true> {
+  slug?: T;
+  parent?: T;
+  path?: T;
+  breadcrumbs?: T | BreadcrumbsSelect<T>;
+  title?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -523,6 +618,7 @@ export interface CountriesSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -549,6 +645,7 @@ export interface CountryTravelTipsSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**

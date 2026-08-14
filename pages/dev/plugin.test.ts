@@ -1,11 +1,18 @@
-import payload, { CollectionSlug, SanitizedConfig, ValidationError } from 'payload'
+import payload, { type PayloadRequest, ValidationError } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  clearPathCache,
+  findPageByPath,
+  type PathCacheLookupResult,
+  SKIP_PARENT_GUARD_CONTEXT_KEY,
+} from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 import {
   clearCapturedAfterChanges,
   getLastAfterChangeHookArgs,
 } from './src/test/afterChangeCapture'
+import { deleteAllCollections, deleteCollection } from './src/test/deleteCollections'
 
 type DefaultIDType = Config['db']['defaultIDType']
 
@@ -859,7 +866,7 @@ describe('Find operation gracefully handles missing parent documents.', () => {
     }
   })
 
-  test('deeply nested page handles missing grandparent gracefully', async () => {
+  test('deeply nested page handles missing direct parent gracefully', async () => {
     const rootPage = await payload.create({
       collection: 'pages',
       locale: 'de',
@@ -939,6 +946,111 @@ describe('Find operation gracefully handles missing parent documents.', () => {
       )
     }
   })
+
+  test('logs error and returns doc without virtual fields when an ancestor two levels up is missing', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root',
+        slug: '',
+        content: 'Root',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Parent',
+        slug: 'parent',
+        content: 'Parent',
+        parent: rootPage.id,
+        ...virtualFields,
+      },
+    })
+
+    const grandchild = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Grandchild',
+        slug: 'grandchild',
+        content: 'Grandchild',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    // Verify correct virtual fields before deletion
+    const grandchildBefore = await payload.findByID({
+      collection: 'pages',
+      id: grandchild.id,
+      locale: 'de',
+    })
+    expect(grandchildBefore.path).toBe('/de/parent/grandchild')
+    expect(grandchildBefore.breadcrumbs).toHaveLength(3)
+
+    // Delete the ROOT directly via the DB adapter — unlike the tests above, the broken
+    // reference now sits one level above the read document's direct parent
+    await payload.db.deleteMany({
+      collection: 'pages',
+      where: { id: { equals: rootPage.id } },
+    })
+
+    const loggerErrorSpy = vi.spyOn(payload.logger, 'error')
+
+    // Grandchild should still be readable, and its direct parent still exists
+    const result = await payload.findByID({
+      collection: 'pages',
+      id: grandchild.id,
+      locale: 'de',
+    })
+
+    expect(result.id).toBe(grandchild.id)
+    expect(result.title).toBe('Grandchild')
+
+    // Probe the parent's raw row: FK-backed adapters null the reference on delete,
+    // MongoDB leaves it dangling
+    const rawParent = (
+      await payload.db.find({
+        collection: 'pages',
+        pagination: false,
+        where: { id: { equals: parentPage.id } },
+      })
+    ).docs[0] as { parent?: null | number | string }
+
+    // the direct parent itself still exists — only its own parent reference is broken
+    expect(rawParent).toBeDefined()
+
+    if (rawParent.parent === null) {
+      // SQLite/Postgres: ON DELETE SET NULL turned the parent into a legitimate top-level
+      // page, so the chain stays consistent (the root contributed no path segment anyway)
+      expect(result.path).toBe('/de/parent/grandchild')
+      expect(result.breadcrumbs).toHaveLength(2)
+      expect(result.breadcrumbs[0].slug).toBe('parent')
+      expect(result.breadcrumbs[1].slug).toBe('grandchild')
+      expect(loggerErrorSpy).not.toHaveBeenCalled()
+    } else {
+      // MongoDB: the parent's reference dangles, so the ancestor walk fails one level up.
+      // The document is returned without virtual fields — never with a truncated path that
+      // silently drops the existing parent segment.
+      expect(result.path).toBeUndefined()
+      expect(result.breadcrumbs).toEqual([])
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('Failed to compute virtual fields for doc'),
+      )
+
+      // the error reports the missing root as the parent of the intermediate page (not of the
+      // read document), proving the walk failed one level up the chain
+      const message = (loggerErrorSpy.mock.calls.at(-1)![0] as { err: Error }).err.message
+      expect(message).toContain(`Parent document with id ${rootPage.id}`)
+      expect(message).toContain(`of document with id ${parentPage.id}`)
+    }
+  })
 })
 
 describe('Slug field behaves as expected for create and update operations', () => {
@@ -989,7 +1101,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -1006,7 +1118,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -1024,7 +1136,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 
@@ -1055,7 +1167,7 @@ describe('Slug field behaves as expected for create and update operations', () =
         },
       })
     } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError)
+      expectValidationError(error)
     }
   })
 })
@@ -1219,6 +1331,234 @@ describe('Parent deletion prevention hook', () => {
         collection: 'pages',
         id: parentPage.id,
       }),
+    ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+  })
+})
+
+describe('Parent deletion prevention hook on trashed documents', () => {
+  beforeEach(async () => await deleteAllCollections(config, ['users']))
+
+  /** Soft-deletes a document the way the admin panel's delete action does. */
+  const trash = async (collection: 'countries' | 'pages', id: DefaultIDType) =>
+    await payload.update({
+      collection,
+      id,
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+  /** Restores a soft-deleted document the way the Trash view's restore action does. */
+  const restore = async (collection: 'countries' | 'pages', id: DefaultIDType) =>
+    await payload.update({
+      collection,
+      id,
+      trash: true,
+      data: { deletedAt: null, _status: 'published' },
+    })
+
+  const createPage = async (data: { title: string; slug: string; parent?: DefaultIDType }) =>
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: { content: 'Content', ...data, ...virtualFields },
+    })
+
+  test('refuses to trash a parent that has a child in another collection', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'trash-parent' })
+
+    const childCountry = await payload.create({
+      collection: 'countries',
+      locale: 'de',
+      data: {
+        title: 'Child Country',
+        slug: 'trash-child-country',
+        content: 'Child content',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    await expect(trash('pages', parentPage.id)).rejects.toThrow(
+      'Cannot delete this document because it is referenced as a parent by',
+    )
+
+    // A trashed parent is invisible to the ancestor lookup, which leaves the child without any
+    // computed virtual fields. The refusal keeps the child's path and breadcrumbs intact.
+    const child = await payload.findByID({
+      collection: 'countries',
+      id: childCountry.id,
+      locale: 'de',
+    })
+    expect(child.path).toBe('/de/trash-parent/trash-child-country')
+    expect(child.breadcrumbs).toHaveLength(2)
+  })
+
+  test('refuses to trash a parent whose only children are themselves trashed', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'trash-parent-trashed-children' })
+    const childPage = await createPage({
+      title: 'Child',
+      slug: 'trash-child-already-trashed',
+      parent: parentPage.id,
+    })
+
+    await trash('pages', childPage.id)
+
+    await expect(trash('pages', parentPage.id)).rejects.toThrow(
+      'Cannot delete this document because it is referenced as a parent by',
+    )
+  })
+
+  test('refuses to hard-delete a parent whose only children are trashed', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'delete-parent-trashed-children' })
+    const childPage = await createPage({
+      title: 'Child',
+      slug: 'delete-child-already-trashed',
+      parent: parentPage.id,
+    })
+
+    await trash('pages', childPage.id)
+
+    await expect(
+      payload.delete({ collection: 'pages', id: parentPage.id, trash: true }),
+    ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+  })
+
+  test('allows restoring a trashed parent that has children', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'restore-parent' })
+    await createPage({ title: 'Child', slug: 'restore-child', parent: parentPage.id })
+
+    // Trash the parent through the DB adapter to reproduce the state installs are left in by
+    // trashing a parent before this guard existed — the guard refuses this through the Local API.
+    await payload.db.updateOne({
+      collection: 'pages',
+      where: { id: { equals: parentPage.id } },
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+    const restored = await restore('pages', parentPage.id)
+    expect(restored.deletedAt).toBeFalsy()
+  })
+
+  test('trashes a parentless page and resolves it again after restore', async () => {
+    const page = await createPage({ title: 'Lonely', slug: 'lonely-page' })
+
+    await trash('pages', page.id)
+    expect(await findPageByPath({ payload, path: '/de/lonely-page' })).toBeNull()
+
+    await restore('pages', page.id)
+    const resolved = await findPageByPath({ payload, path: '/de/lonely-page' })
+    expect(resolved?.doc.id).toBe(page.id)
+  })
+
+  test('counts children living in a collection that has no trash support', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'parent-of-author' })
+
+    await payload.create({
+      collection: 'authors',
+      locale: 'de',
+      data: {
+        name: 'Child Author',
+        slug: 'child-author',
+        content: 'Author content',
+        parent: parentPage.id,
+        ...virtualFields,
+      },
+    })
+
+    await expect(payload.delete({ collection: 'pages', id: parentPage.id })).rejects.toThrow(
+      'Cannot delete this document because it is referenced as a parent by',
+    )
+  })
+
+  test('refuses to trash a referenced parent selected in a bulk trash', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'bulk-trash-parent' })
+    await createPage({ title: 'Child', slug: 'bulk-trash-child', parent: parentPage.id })
+
+    const result = await payload.update({
+      collection: 'pages',
+      where: { id: { equals: parentPage.id } },
+      data: { deletedAt: new Date().toISOString() },
+    })
+
+    expect(result.docs).toHaveLength(0)
+    expect(JSON.stringify(result.errors)).toContain('referenced as a parent by')
+
+    const parent = await payload.findByID({ collection: 'pages', id: parentPage.id, locale: 'de' })
+    expect(parent.deletedAt).toBeFalsy()
+  })
+
+  test('refuses to trash a referenced parent on an adapter the permanent-delete guard skips', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'foreign-adapter-parent' })
+    await createPage({ title: 'Child', slug: 'foreign-adapter-child', parent: parentPage.id })
+
+    const originalPackageName = payload.db.packageName
+    // Trashing writes deletedAt through an update, so an adapter's foreign keys never see it —
+    // the guard has to run no matter which adapter is configured.
+    payload.db.packageName = '@payloadcms/db-vercel-postgres'
+
+    try {
+      await expect(trash('pages', parentPage.id)).rejects.toThrow(
+        'Cannot delete this document because it is referenced as a parent by',
+      )
+    } finally {
+      payload.db.packageName = originalPackageName
+    }
+  })
+})
+
+describe('Parent guard opt-out via request context', () => {
+  beforeEach(async () => await deleteAllCollections(config, ['users']))
+
+  const createPage = async (data: { title: string; slug: string; parent?: DefaultIDType }) =>
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: { content: 'Content', ...data, ...virtualFields },
+    })
+
+  const skipGuard = { [SKIP_PARENT_GUARD_CONTEXT_KEY]: true }
+
+  test('deletes a referenced parent when the caller opts out of the guard', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'teardown-parent' })
+    const childPage = await createPage({
+      title: 'Child',
+      slug: 'teardown-child',
+      parent: parentPage.id,
+    })
+
+    // A teardown removes the whole subtree, so the parent may go before its children.
+    await payload.delete({ collection: 'pages', id: parentPage.id, context: skipGuard })
+    await payload.delete({ collection: 'pages', id: childPage.id, context: skipGuard })
+
+    const remaining = await payload.find({ collection: 'pages', limit: 0 })
+    expect(remaining.totalDocs).toBe(0)
+  })
+
+  test('trashes a referenced parent when the caller opts out of the guard', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'skip-guard-trash-parent' })
+    await createPage({ title: 'Child', slug: 'skip-guard-trash-child', parent: parentPage.id })
+
+    await payload.update({
+      collection: 'pages',
+      id: parentPage.id,
+      data: { deletedAt: new Date().toISOString() },
+      context: skipGuard,
+    })
+
+    const parent = await payload.findByID({
+      collection: 'pages',
+      id: parentPage.id,
+      locale: 'de',
+      trash: true,
+    })
+    expect(parent.deletedAt).toBeTruthy()
+  })
+
+  test('keeps the guard armed for a request which does not carry the flag', async () => {
+    const parentPage = await createPage({ title: 'Parent', slug: 'guard-still-armed-parent' })
+    await createPage({ title: 'Child', slug: 'guard-still-armed-child', parent: parentPage.id })
+
+    await expect(
+      payload.delete({ collection: 'pages', id: parentPage.id, context: { unrelated: true } }),
     ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
   })
 })
@@ -1898,6 +2238,365 @@ describe('Select during create and update operations', () => {
   })
 })
 
+describe('Select does not leak the fields the plugin needs to compute the virtual fields', () => {
+  let childPageId: DefaultIDType
+
+  beforeEach(async () => {
+    await deleteCollection('pages')
+
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    childPageId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child Page',
+          slug: 'child-page',
+          content: 'Child content',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+    ).id
+  })
+
+  test('findByID with select: { path: true } returns the path without the dependent raw fields', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        path: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('title')
+  })
+
+  test('findByID keeps a dependent field which the caller selected explicitly', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        path: true,
+        slug: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc.slug).toBe('child-page')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('title')
+  })
+
+  test('findByID with select: { slug: false } excludes the slug and still computes the virtual fields', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        slug: false,
+      },
+    })
+
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc.breadcrumbs).toHaveLength(2)
+    // Fields the caller did not exclude are untouched
+    expect(doc.title).toBe('Child Page')
+  })
+
+  test('find with select: { path: true } returns the path without the dependent raw fields', async () => {
+    const result = await payload.find({
+      collection: 'pages',
+      locale: 'de',
+      where: {
+        slug: { equals: 'child-page' },
+      },
+      select: {
+        path: true,
+      },
+    })
+
+    expect(result.docs).toHaveLength(1)
+    const doc = result.docs[0]
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('title')
+  })
+
+  test('update with select: { path: true } returns the path without the dependent raw fields', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        content: 'Updated content',
+      },
+      select: {
+        path: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('title')
+  })
+})
+
+describe('A mutation computes the virtual fields under a select which asks for none of them', () => {
+  let rootPageId: DefaultIDType
+  let childPageId: DefaultIDType
+
+  beforeEach(async () => {
+    // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
+    await deleteCollection('authors')
+    await deleteCollection('pages')
+    clearCapturedAfterChanges()
+
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+    rootPageId = rootPage.id
+
+    childPageId = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child Page',
+          slug: 'child-page',
+          content: 'Child content',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+    ).id
+
+    clearCapturedAfterChanges()
+  })
+
+  test('an update selecting only an unrelated field still hands afterChange hooks the virtual fields', async () => {
+    await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+    expect(previousDoc.path).toBe('/de/child-page')
+    expect(doc.breadcrumbs).toHaveLength(2)
+    expect((doc.breadcrumbs as { label: string }[])[1].label).toBe('Child Page Updated')
+  })
+
+  test('a create selecting only an unrelated field still hands afterChange hooks the path', async () => {
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Second Child',
+        slug: 'second-child',
+        content: 'Second child content',
+        parent: rootPageId,
+        ...virtualFields,
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/second-child')
+  })
+
+  test('the response to a narrow-select update contains only the field the caller selected', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    expect(doc.title).toBe('Child Page Updated')
+    // The dependent fields the plugin selected on its own behalf must not reach the caller —
+    // this is what distinguishes widening the select here from a collection-level `forceSelect`.
+    expect(doc).not.toHaveProperty('slug')
+    expect(doc).not.toHaveProperty('parent')
+    expect(doc).not.toHaveProperty('isRootPage')
+    expect(doc).not.toHaveProperty('content')
+  })
+
+  test('an update excluding the virtual fields and a dependent field computes the path but excludes both from the response', async () => {
+    const responseDoc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        breadcrumbs: false,
+        meta: false,
+        path: false,
+        slug: false,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+
+    expect(responseDoc).not.toHaveProperty('slug')
+    expect(responseDoc).not.toHaveProperty('path')
+    expect(responseDoc.title).toBe('Child Page Updated')
+    expect(responseDoc.content).toBe('Child content')
+  })
+
+  test('an update selecting one virtual field does not return the other virtual fields', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        path: true,
+        title: true,
+      },
+    })
+
+    expect(doc.path).toBe('/de/child-page')
+    expect(doc.title).toBe('Child Page Updated')
+    expect(doc).not.toHaveProperty('breadcrumbs')
+    expect(doc).not.toHaveProperty('meta')
+    expect(doc).not.toHaveProperty('slug')
+  })
+
+  test('an update excluding a single virtual field does not return it', async () => {
+    const doc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        path: false,
+      },
+    })
+
+    expect(doc).not.toHaveProperty('path')
+    expect(doc.breadcrumbs).toHaveLength(2)
+    expect(doc.title).toBe('Child Page Updated')
+  })
+
+  test('a read passing a select which asks for none of the virtual fields does not return them', async () => {
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      select: {
+        title: true,
+      },
+    })
+
+    expect(doc.title).toBe('Child Page')
+    expect(doc).not.toHaveProperty('path')
+    expect(doc).not.toHaveProperty('breadcrumbs')
+  })
+
+  test('a bulk update passing a narrow select still hands afterChange hooks the path and returns only the selected field', async () => {
+    const result = await payload.update({
+      collection: 'pages',
+      locale: 'de',
+      where: {
+        slug: {
+          equals: 'child-page',
+        },
+      },
+      data: {
+        title: 'Child Page Updated',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+
+    expect(result.errors).toHaveLength(0)
+    expect(result.docs).toHaveLength(1)
+    expect(result.docs[0].title).toBe('Child Page Updated')
+    expect(result.docs[0]).not.toHaveProperty('slug')
+    expect(result.docs[0]).not.toHaveProperty('path')
+  })
+
+  test('a draft update passing a narrow select still hands afterChange hooks the path and returns only the selected field', async () => {
+    const responseDoc = await payload.update({
+      collection: 'pages',
+      id: childPageId,
+      locale: 'de',
+      draft: true,
+      data: {
+        title: 'Child Page Draft',
+      },
+      select: {
+        title: true,
+      },
+    })
+
+    const { doc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/child-page')
+
+    expect(responseDoc.title).toBe('Child Page Draft')
+    expect(responseDoc).not.toHaveProperty('slug')
+    expect(responseDoc).not.toHaveProperty('path')
+  })
+})
+
 describe('The afterChange hook doc and previousDoc contain the path of the page.', () => {
   beforeEach(async () => {
     // authors has a non-nullable FK to pages (SQLite/Postgres), so delete it first.
@@ -2425,8 +3124,8 @@ describe('Request-scoped ancestor caching', () => {
     }
   })
 
-  test('shared parent is only fetched once when listing siblings', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('reads the shared parent once for the whole sibling list, not once per sibling', async () => {
+    const reads = captureAncestorReads()
 
     await payload.find({
       collection: 'pages',
@@ -2434,14 +3133,11 @@ describe('Request-scoped ancestor caching', () => {
       where: { parent: { equals: parent.id } },
     })
 
-    const parentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === parent.id && call[0].collection === 'pages',
-    )
-    expect(parentFetches).toHaveLength(1)
+    expect(reads.forId(parent.id)).toHaveLength(1)
   })
 
-  test('shared grandparent is only fetched once when listing siblings', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('reads the shared grandparent once for the whole sibling list', async () => {
+    const reads = captureAncestorReads()
 
     await payload.find({
       collection: 'pages',
@@ -2449,12 +3145,9 @@ describe('Request-scoped ancestor caching', () => {
       where: { parent: { equals: parent.id } },
     })
 
-    // Each child fetches the parent, which in turn fetches the grandparent for its breadcrumbs.
-    // The grandparent should be fetched only once because the cache is passed through via req.context.
-    const grandparentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === grandparent.id && call[0].collection === 'pages',
-    )
-    expect(grandparentFetches).toHaveLength(1)
+    // Every child walks up to the grandparent. All walks reach that level within the same
+    // batching window, so it is read once for the whole list.
+    expect(reads.forId(grandparent.id)).toHaveLength(1)
   })
 
   test('virtual fields are still computed correctly despite caching', async () => {
@@ -2476,7 +3169,7 @@ describe('Request-scoped ancestor caching', () => {
     }
   })
 
-  test('different locales are cached separately', async () => {
+  test('reads the shared parent once when listing siblings for all locales at once', async () => {
     // Add English locale to the parent
     await payload.update({
       collection: 'pages',
@@ -2491,24 +3184,45 @@ describe('Request-scoped ancestor caching', () => {
       },
     })
 
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+    const reads = captureAncestorReads()
 
-    // Fetch children with locale 'all' — this fetches the parent once per locale
     await payload.find({
       collection: 'pages',
       locale: 'all',
       where: { parent: { equals: parent.id } },
     })
 
-    // The parent should be fetched once for locale 'all' (not once per child)
-    const parentFetches = findByIDSpy.mock.calls.filter(
-      (call) => call[0].id === parent.id && call[0].collection === 'pages',
-    )
-    expect(parentFetches).toHaveLength(1)
+    // One read covers every locale of the parent, because the walk reads the raw row
+    expect(reads.forId(parent.id)).toHaveLength(1)
   })
 })
 
-describe('Request context is forwarded to nested findByID calls during breadcrumb computation', () => {
+/**
+ * Captures the batched ancestor reads the breadcrumb walk issues against the database adapter.
+ * The walk reads all ancestor ids of one level in a single `find` on `id: { in: [...] }`, so
+ * those queries are the ancestor reads a document read pays for.
+ *
+ * The spy is removed by the global `afterEach` (`vi.restoreAllMocks`).
+ */
+const captureAncestorReads = () => {
+  const reads: { ids: unknown[]; req: unknown }[] = []
+  const find = payload.db.find.bind(payload.db)
+
+  vi.spyOn(payload.db, 'find').mockImplementation(async (args: Parameters<typeof find>[0]) => {
+    const ids = (args.where as { id?: { in?: unknown } } | undefined)?.id?.in
+    if (args.collection === 'pages' && Array.isArray(ids)) {
+      reads.push({ ids, req: args.req })
+    }
+    return find(args)
+  })
+
+  return {
+    reads,
+    forId: (id: DefaultIDType) => reads.filter((read) => read.ids.includes(id)),
+  }
+}
+
+describe('The request is forwarded to the ancestor queries during breadcrumb computation', () => {
   let parentPage: { id: DefaultIDType }
 
   beforeAll(async () => {
@@ -2526,40 +3240,60 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
     })
   })
 
-  test('nested findByID receives the full req including user and context', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+  test('breadcrumbs of a child name a parent that only exists inside the caller transaction', async ({
+    skip,
+  }) => {
+    await inCallerTransaction({ skip }, async (req) => {
+      const uncommittedParent = await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        req,
+        data: {
+          ...virtualFields,
+          title: 'Uncommitted Parent',
+          slug: 'uncommitted-parent',
+          content: 'parent',
+        },
+      })
 
+      // Without the request, the ancestor query would run outside the write transaction and
+      // could not see the parent it has to name in the breadcrumbs.
+      const child = await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        req,
+        data: {
+          ...virtualFields,
+          title: 'Uncommitted Child',
+          slug: 'uncommitted-child',
+          content: 'child',
+          parent: uncommittedParent.id,
+        },
+      })
+
+      expect(child.path).toBe('/de/uncommitted-parent/uncommitted-child')
+      expect(removeIdsFromArray(child.breadcrumbs!).at(0)).toEqual({
+        slug: 'uncommitted-parent',
+        label: 'Uncommitted Parent',
+        path: '/de/uncommitted-parent',
+      })
+    })
+  })
+
+  test('custom req.context properties are preserved for the ancestor queries', async () => {
     await payload.create({
       collection: 'pages',
       locale: 'de',
       data: {
+        ...virtualFields,
         title: 'Context Child',
         slug: 'context-child',
         content: 'child',
         parent: parentPage.id,
-        ...virtualFields,
       },
     })
 
-    // Find the nested findByID call that fetches the parent during breadcrumb computation
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
-    )
-
-    expect(parentFetch).toBeDefined()
-    const reqArg = parentFetch![0].req
-
-    // The nested call should receive a req with the payload instance (not a bare object)
-    expect(reqArg).toBeDefined()
-    expect(reqArg!.payload).toBeDefined()
-    expect(reqArg!.transactionID).toBeDefined()
-
-    // The full req should include context (not just the ancestor cache)
-    expect(reqArg!.context).toBeDefined()
-  })
-
-  test('custom req.context properties are preserved in nested findByID calls', async () => {
-    const findByIDSpy = vi.spyOn(payload, 'findByID')
+    const reads = captureAncestorReads()
 
     // Use payload.find with a custom context property
     await payload.find({
@@ -2569,16 +3303,11 @@ describe('Request context is forwarded to nested findByID calls during breadcrum
       context: { customProperty: 'test-value' },
     })
 
-    // Find the nested findByID call for the parent
-    const parentFetch = findByIDSpy.mock.calls.find(
-      (call) => call[0].id === parentPage.id && call[0].collection === 'pages',
-    )
+    const parentRead = reads.forId(parentPage.id).at(0)
+    expect(parentRead).toBeDefined()
 
-    expect(parentFetch).toBeDefined()
-    const reqArg = parentFetch![0].req
-
-    // The custom context property should be forwarded through to the nested call
-    expect(reqArg!.context).toHaveProperty('customProperty', 'test-value')
+    const req = parentRead!.req as { context: Record<string, unknown> }
+    expect(req.context).toHaveProperty('customProperty', 'test-value')
   })
 
   test('breadcrumbs include parent data even when access control would deny reading the parent', async () => {
@@ -2723,6 +3452,72 @@ describe('Circular parent reference prevention', () => {
         },
       }),
     ).rejects.toThrow()
+  })
+
+  test('reports a cycle that bypassed the write-time guard instead of walking it forever', async () => {
+    const pageA = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page A Raw',
+        slug: 'page-a-raw',
+        content: 'Content A',
+        ...virtualFields,
+      },
+    })
+
+    const pageB = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Page B Raw',
+        slug: 'page-b-raw',
+        content: 'Content B',
+        parent: pageA.id,
+        ...virtualFields,
+      },
+    })
+
+    // Write A -> B directly via the adapter, which bypasses the beforeChange guard and leaves
+    // the cycle A -> B -> A in the database (a state a restored backup or a migration can produce)
+    const rawA = (
+      await payload.db.find({
+        collection: 'pages',
+        pagination: false,
+        where: { id: { equals: pageA.id } },
+      })
+    ).docs[0]
+    await payload.db.updateOne({
+      collection: 'pages',
+      id: pageA.id,
+      data: { ...rawA, parent: pageB.id },
+    })
+
+    const loggerErrorSpy = vi.spyOn(payload.logger, 'error')
+
+    // Reading a document of the cycle must terminate with a diagnosable error rather than
+    // walking the chain until the process runs out of memory
+    const result = await payload.findByID({
+      collection: 'pages',
+      id: pageB.id,
+      locale: 'de',
+      depth: 0,
+    })
+
+    expect(result.path).toBeUndefined()
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        err: expect.objectContaining({
+          message: expect.stringContaining('Circular parent reference detected'),
+        }),
+      }),
+      expect.stringContaining('Failed to compute virtual fields for doc'),
+    )
+
+    // the error names the documents forming the cycle
+    const message = loggerErrorSpy.mock.calls.at(-1)![0].err.message as string
+    expect(message).toContain(`pages:${pageA.id}`)
+    expect(message).toContain(`pages:${pageB.id}`)
   })
 
   test('allows setting a valid (non-circular) parent', async () => {
@@ -2896,61 +3691,469 @@ const removeIdsFromArray = <T extends { id?: any; [key: string]: any }>(
   return array.map(({ id, ...rest }) => rest)
 }
 
-/**
- * Helper function to delete all documents from a collection.
- */
-const deleteCollection = async (collection: CollectionSlug) => {
-  // use db.deleteMany instead of payload.delete to avoid running hooks
-  await payload.db.deleteMany({
-    collection: collection,
-    where: {},
+describe('Multi-collection parents', () => {
+  /** Creates a published root page, since a topic needs somewhere to hang off. */
+  const createRootPage = async () =>
+    await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        ...virtualFields,
+        title: 'Shop',
+        content: 'Shop',
+        slug: 'shop',
+        isRootPage: false,
+        parent: null,
+        _status: 'published',
+      } as any,
+    })
+
+  const createTopic = async (
+    title: string,
+    slug: string,
+    parent: { relationTo: 'pages' | 'topics'; value: DefaultIDType },
+  ) =>
+    await payload.create({
+      collection: 'topics',
+      locale: 'de',
+      data: { ...virtualFields, title, slug, parent, _status: 'published' } as any,
+    })
+
+  beforeEach(async () => {
+    await deleteCollection('announcements')
+    await deleteCollection('topics')
+    await deleteCollection('pages')
   })
 
-  // this will fail for collections which have no versions enabled, therefore wrapped in a try catch
-  try {
-    await payload.db.deleteVersions({
-      collection: collection,
-      where: {},
+  test('a topic parented to a page resolves its path and breadcrumbs through the page', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    const [doc] = (
+      await payload.find({
+        collection: 'topics',
+        locale: 'de',
+        where: { id: { equals: mens.id } },
+      })
+    ).docs
+
+    expect(doc.path).toBe('/de/shop/mens')
+    expect(removeIdsFromArray(doc.breadcrumbs as any[])).toEqual([
+      { path: '/de/shop', label: 'Shop', slug: 'shop' },
+      { path: '/de/shop/mens', label: 'Mens', slug: 'mens' },
+    ])
+  })
+
+  test('a topic parented to a topic keeps walking across both collections', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const shirts = await createTopic('Shirts', 'shirts', {
+      relationTo: 'topics',
+      value: mens.id,
     })
-  } catch {}
+
+    const [doc] = (
+      await payload.find({
+        collection: 'topics',
+        locale: 'de',
+        where: { id: { equals: shirts.id } },
+      })
+    ).docs
+
+    expect(doc.path).toBe('/de/shop/mens/shirts')
+    expect(removeIdsFromArray(doc.breadcrumbs as any[])).toEqual([
+      { path: '/de/shop', label: 'Shop', slug: 'shop' },
+      { path: '/de/shop/mens', label: 'Mens', slug: 'mens' },
+      { path: '/de/shop/mens/shirts', label: 'Shirts', slug: 'shirts' },
+    ])
+  })
+
+  test('previousDoc.path reflects the old path when a polymorphic parent changes', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const womens = await createTopic('Womens', 'womens', { relationTo: 'pages', value: shop.id })
+    const shirts = await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+
+    clearCapturedAfterChanges()
+
+    await payload.update({
+      collection: 'topics',
+      id: shirts.id,
+      locale: 'de',
+      data: { parent: { relationTo: 'topics', value: womens.id } } as any,
+    })
+
+    const { doc, previousDoc } = getLastAfterChangeHookArgs()
+    expect(doc.path).toBe('/de/shop/womens/shirts')
+    expect(previousDoc.path).toBe('/de/shop/mens/shirts')
+  })
+
+  test('siblings under different parents may share a slug', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const womens = await createTopic('Womens', 'womens', { relationTo: 'pages', value: shop.id })
+
+    await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+    await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: womens.id })
+
+    const paths = (
+      await payload.find({
+        collection: 'topics',
+        locale: 'de',
+        where: { slug: { equals: 'shirts' } },
+      })
+    ).docs
+      .map((doc) => doc.path)
+      .sort()
+
+    expect(paths).toEqual(['/de/shop/mens/shirts', '/de/shop/womens/shirts'])
+  })
+
+  test('a document parented across collections resolves through findPageByPath, cold and cached', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+
+    await clearPathCache(payload)
+
+    const req = { payload } as any
+    const cacheResults: PathCacheLookupResult[] = []
+    const lookup = () =>
+      findPageByPath({
+        path: '/de/shop/mens/shirts',
+        req,
+        onCacheResult: (result) => cacheResults.push(result),
+      })
+
+    const cold = await lookup()
+    expect(cold?.collection).toBe('topics')
+    expect(cold?.doc?.path).toBe('/de/shop/mens/shirts')
+
+    // The cold lookup scans the candidate collections and remembers which one won, so the
+    // second lookup skips the scan and resolves the topic straight from the cached entry.
+    expect(await payload.kv.get(cacheResults[0].cacheKey)).toMatchObject({
+      collection: 'topics',
+      id: cold!.doc.id,
+    })
+
+    const cached = await lookup()
+    expect(cached?.collection).toBe('topics')
+    expect(cached?.doc?.id).toBe(cold?.doc?.id)
+    expect(cacheResults.map((result) => result.status)).toEqual(['miss', 'hit'])
+  })
+
+  test('a cycle spanning two collections is rejected, naming the chain', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const shirts = await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+
+    // Re-parenting `mens` under its own descendant closes the loop
+    // topics:mens -> topics:shirts -> topics:mens.
+    const error = await parentFieldErrorOf(
+      payload.update({
+        collection: 'topics',
+        id: mens.id,
+        locale: 'de',
+        data: { parent: { relationTo: 'topics', value: shirts.id } } as any,
+      }),
+    )
+
+    expect(error).toBe(
+      `Circular parent reference detected: topics:${mens.id} -> topics:${shirts.id} -> topics:${mens.id}`,
+    )
+  })
+
+  test('a document cannot be parented to itself when the parent field is polymorphic', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    const error = await parentFieldErrorOf(
+      payload.update({
+        collection: 'topics',
+        id: mens.id,
+        locale: 'de',
+        data: { parent: { relationTo: 'topics', value: mens.id } } as any,
+      }),
+    )
+
+    expect(error).toBe('A document cannot be its own parent')
+  })
+
+  test('deleting a page a topic hangs off is refused', async () => {
+    const shop = await createRootPage()
+    await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    await expect(payload.delete({ collection: 'pages', id: shop.id })).rejects.toThrow()
+  })
+
+  test('a page whose id collides with a topic parent id in another collection is still deletable', async () => {
+    // The child query must match on `{ relationTo, value }`, not on the id alone. The SQL
+    // adapters number `pages` and `topics` independently, so a page and a topic readily share
+    // an id — and an id-only query would then report the topic's children as the page's,
+    // refusing a delete that is perfectly safe.
+    if (payload.db.defaultIDType !== 'number') {
+      // MongoDB ObjectIds never collide, so the hazard does not exist there.
+      return
+    }
+
+    const shop = await createRootPage()
+
+    const nextPage = async (slug: string) =>
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          ...virtualFields,
+          title: slug,
+          content: slug,
+          slug,
+          isRootPage: false,
+          parent: shop.id,
+          _status: 'published',
+        } as any,
+      })
+
+    // Both collections number their rows independently, so the sequences are advanced with
+    // filler documents until the next page and the next topic would receive the same id.
+    let page = (await nextPage('probe')) as { id: number }
+    let topic = (await createTopic('Probe', 'probe', {
+      relationTo: 'pages',
+      value: shop.id,
+    })) as { id: number }
+
+    for (let i = 0; i < 500 && page.id !== topic.id; i++) {
+      if (page.id < topic.id) {
+        page = (await nextPage(`filler-page-${i}`)) as { id: number }
+      } else {
+        topic = (await createTopic(`Filler ${i}`, `filler-topic-${i}`, {
+          relationTo: 'pages',
+          value: shop.id,
+        })) as { id: number }
+      }
+    }
+
+    expect(page.id, 'expected the page and topic id sequences to meet').toBe(topic.id)
+
+    // A topic parented to `topics:<id>` — the same id the page carries.
+    await createTopic('Child', 'child', { relationTo: 'topics', value: topic.id })
+
+    // Nothing is parented to `pages:<id>`, so the delete must go through. An id-only child
+    // query would see the topic above and refuse it.
+    await expect(payload.delete({ collection: 'pages', id: page.id })).resolves.toBeTruthy()
+  })
+  test('a cycle spanning more than two documents is rejected, naming the whole chain', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+    const shirts = await createTopic('Shirts', 'shirts', { relationTo: 'topics', value: mens.id })
+    const tees = await createTopic('Tees', 'tees', { relationTo: 'topics', value: shirts.id })
+
+    // Re-parenting `mens` under its grandchild closes a loop the walk only reaches after
+    // following two hops, unlike a document parented to its own direct child.
+    const error = await parentFieldErrorOf(
+      payload.update({
+        collection: 'topics',
+        id: mens.id,
+        locale: 'de',
+        data: { parent: { relationTo: 'topics', value: tees.id } } as any,
+      }),
+    )
+
+    expect(error).toBe(
+      `Circular parent reference detected: topics:${mens.id} -> topics:${tees.id} -> topics:${shirts.id} -> topics:${mens.id}`,
+    )
+  })
+
+  test('a parent id which does not name its collection is refused instead of stored', async () => {
+    const shop = await createRootPage()
+
+    // Payload skips relationship validation on draft saves, which is how a bare id — the shape
+    // the field had before the collection was switched to a list — reaches the database.
+    const error = await parentFieldErrorOf(
+      payload.create({
+        collection: 'topics',
+        locale: 'de',
+        data: {
+          ...virtualFields,
+          title: 'Mens',
+          slug: 'mens',
+          parent: shop.id,
+          _status: 'draft',
+        } as any,
+      }),
+    )
+
+    expect(error).toContain('does not name the collection it points at')
+
+    const topics = await payload.find({ collection: 'topics', locale: 'de', draft: true })
+    expect(topics.docs).toHaveLength(0)
+  })
+
+  test('a shared parent document is inherited together with the collection it lives in', async () => {
+    const shop = await createRootPage()
+    const mens = await createTopic('Mens', 'mens', { relationTo: 'pages', value: shop.id })
+
+    const createAnnouncement = async (title: string, slug: string, parent?: unknown) =>
+      await payload.create({
+        collection: 'announcements',
+        locale: 'de',
+        data: { ...virtualFields, title, slug, parent, _status: 'published' } as any,
+      })
+
+    await createAnnouncement('First', 'first', { relationTo: 'topics', value: mens.id })
+
+    // The second document gets no parent, so the shared default has to supply one.
+    const second = await createAnnouncement('Second', 'second')
+
+    const stored = await payload.findByID({
+      collection: 'announcements',
+      id: second.id,
+      locale: 'de',
+      depth: 0,
+    })
+
+    expect(stored.parent).toEqual({ relationTo: 'topics', value: mens.id })
+    expect(stored.path).toBe('/de/shop/mens/second')
+  })
+})
+
+describe('Queries backing the guards join the transaction of the caller', () => {
+  beforeEach(async () => await deleteAllCollections(config, ['users']))
+
+  test('the deletion guard refuses a parent whose child was created in the same transaction', async ({
+    skip,
+  }) => {
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: { ...virtualFields, title: 'Parent', slug: 'tx-parent', content: 'Parent' },
+    })
+
+    await inCallerTransaction({ skip }, async (req) => {
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        req,
+        data: {
+          ...virtualFields,
+          title: 'Child',
+          slug: 'tx-child',
+          content: 'Child',
+          parent: parentPage.id,
+        },
+      })
+
+      await expect(payload.delete({ collection: 'pages', id: parentPage.id, req })).rejects.toThrow(
+        'Cannot delete this document because it is referenced as a parent by',
+      )
+    })
+  })
+
+  test('redirect validation refuses a source path already taken in the same transaction', async ({
+    skip,
+  }) => {
+    await inCallerTransaction({ skip }, async (req) => {
+      await payload.create({
+        collection: 'redirects',
+        req,
+        data: { sourcePath: '/de/tx-old', destinationPath: '/de/tx-new', type: 'permanent' },
+      })
+
+      await expect(
+        payload.create({
+          collection: 'redirects',
+          req,
+          data: { sourcePath: '/de/tx-old', destinationPath: '/de/tx-other', type: 'permanent' },
+        }),
+      ).rejects.toThrow('A redirect for this source path already exists.')
+    })
+  })
+
+  test('the shared parent default picks up a sibling created in the same transaction', async ({
+    skip,
+  }) => {
+    const parentPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: { ...virtualFields, title: 'Shared', slug: 'tx-shared', content: 'Shared' },
+    })
+
+    await inCallerTransaction({ skip }, async (req) => {
+      await payload.create({
+        collection: 'announcements',
+        locale: 'de',
+        req,
+        data: {
+          ...virtualFields,
+          title: 'First',
+          slug: 'tx-first',
+          parent: { relationTo: 'pages', value: parentPage.id },
+        } as any,
+      })
+
+      // No parent is passed, so the shared default has to supply the one of the sibling above.
+      const second = await payload.create({
+        collection: 'announcements',
+        depth: 0,
+        locale: 'de',
+        req,
+        data: { ...virtualFields, title: 'Second', slug: 'tx-second' } as any,
+      })
+
+      expect(second.parent).toEqual({ relationTo: 'pages', value: parentPage.id })
+      expect(second.path).toBe('/de/tx-shared/tx-second')
+    })
+  })
+})
+
+/**
+ * Runs `work` against a transaction the caller owns — the shape of a script or endpoint that
+ * batches several writes — and rolls it back afterwards. A query which does not receive this
+ * `req` runs on a separate connection and cannot see anything written inside it.
+ */
+const inCallerTransaction = async (
+  { skip }: { skip: (note?: string) => void },
+  work: (req: PayloadRequest) => Promise<void>,
+) => {
+  const transactionID = await payload.db.beginTransaction()
+
+  // A standalone MongoDB — what the test setup connects to — has no transactions, so there is no
+  // uncommitted state to observe. These behaviors are covered by the SQLite run.
+  if (!transactionID) {
+    skip('the database adapter runs without transactions')
+    return
+  }
+
+  const req = { transactionID } as unknown as PayloadRequest
+
+  try {
+    await work(req)
+  } finally {
+    await payload.db.rollbackTransaction(transactionID)
+  }
 }
 
 /**
- * Deletion order for collections to respect foreign key constraints.
- * Collections are deleted in this order: children before parents.
- * Collections not in this list will be deleted at the end in arbitrary order.
+ * Asserts a rejected write failed validation.
+ *
+ * Matches on the error's `name` instead of `instanceof ValidationError`: an install can end up
+ * with more than one copy of `payload`, in which case an error thrown by the plugin's copy is not
+ * an instance of the class this test file imported.
  */
-const COLLECTION_DELETION_ORDER: CollectionSlug[] = [
-  // Level 3: deepest nested (depends on level 2)
-  'country-travel-tips',
-  // Level 2: depends on level 1 collections
-  'blogposts',
-  'authors',
-  'countries',
-  // Level 1: root collections (pages can self-reference)
-  'pages',
-  // Level 0: no dependencies
-  'blogpost-categories',
-  'redirects',
-]
+function expectValidationError(error: unknown): asserts error is ValidationError {
+  expect((error as Error | undefined)?.name).toBe('ValidationError')
+}
 
-const deleteAllCollections = async (
-  config: Promise<SanitizedConfig>,
-  except: CollectionSlug[] = [],
-) => {
-  const collections = (await config).collections?.filter((c) => !except.includes(c.slug)) ?? []
-  const collectionSlugs = new Set(collections.map((c) => c.slug))
-
-  // Delete in the specified order first
-  for (const slug of COLLECTION_DELETION_ORDER) {
-    if (collectionSlugs.has(slug)) {
-      await deleteCollection(slug)
-      collectionSlugs.delete(slug)
-    }
-  }
-
-  // Delete any remaining collections not in the order list
-  for (const slug of Array.from(collectionSlugs)) {
-    await deleteCollection(slug)
+/**
+ * Resolves to the `parent` field's validation message of a rejected write, or undefined if the
+ * write succeeded. `ValidationError.message` is the generic "The following field is invalid",
+ * so the field-level message is what carries the plugin's diagnosis.
+ */
+const parentFieldErrorOf = async (operation: Promise<unknown>): Promise<string | undefined> => {
+  try {
+    await operation
+    return undefined
+  } catch (error) {
+    expectValidationError(error)
+    return error.data.errors.find((e) => e.path === 'parent')?.message
   }
 }

@@ -1,8 +1,17 @@
 import payload, { CollectionSlug, createLocalReq } from 'payload'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { findPageByPath } from '@jhb.software/payload-pages-plugin'
+import { findPageByPath, listPagePaths } from '@jhb.software/payload-pages-plugin'
+import {
+  clearPathChangeRecords,
+  recordedPathChangeErrors,
+  recordedPathChanges,
+} from './src/test/pathChangesCapture'
 import config from './src/payload.config'
 import type { Page, Tenant, Config } from 'payload/generated-types'
+import {
+  clearCapturedAfterChanges,
+  getLastAfterChangeHookArgs,
+} from './src/test/afterChangeCapture'
 
 // NOTE: this file only contains test that are specific to the multi-tenant setup. The main plugin tests are located in the /dev project.
 
@@ -16,6 +25,13 @@ const virtualFields = {
 }
 
 type DefaultIDType = Config['db']['defaultIDType']
+
+/** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
+const tenantReq = async (tenantId: DefaultIDType) => {
+  const req = await createLocalReq({}, payload)
+  req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
+  return req
+}
 
 beforeAll(async () => {
   await payload.init({
@@ -400,13 +416,6 @@ describe('Multi-tenant baseFilter functionality', () => {
   })
 
   describe('findPageByPath is scoped by the plugin baseFilter', () => {
-    /** Builds a request whose cookie selects the given tenant, as the plugin's baseFilter reads it. */
-    const tenantReq = async (tenantId: DefaultIDType) => {
-      const req = await createLocalReq({}, payload)
-      req.headers = new Headers({ cookie: `payload-tenant=${tenantId}` })
-      return req
-    }
-
     test('resolves the same path to the page of the requesting tenant, without an explicit where', async () => {
       const page1 = await payload.create({
         collection: 'pages',
@@ -449,6 +458,284 @@ describe('Multi-tenant baseFilter functionality', () => {
 
     test('throws when called without req while a baseFilter is configured', async () => {
       await expect(findPageByPath({ payload, path: '/pricing' })).rejects.toThrow()
+    })
+  })
+
+  describe('The parent deletion guard is scoped by the plugin baseFilter', () => {
+    test('trashes a childless parent even when another tenant holds a same-slug parent with children', async () => {
+      const parentT1 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Support - Tenant 1',
+          slug: 'support',
+          content: 'Support tenant 1',
+          tenant: tenant1Id,
+          ...virtualFields,
+        },
+      })
+
+      const parentT2 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Support - Tenant 2',
+          slug: 'support',
+          content: 'Support tenant 2',
+          tenant: tenant2Id,
+          ...virtualFields,
+        },
+      })
+
+      await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Onboarding - Tenant 2',
+          slug: 'onboarding',
+          content: 'Onboarding tenant 2',
+          parent: parentT2.id,
+          tenant: tenant2Id,
+          ...virtualFields,
+        },
+      })
+
+      const trashed = await payload.update({
+        collection: 'pages',
+        id: parentT1.id,
+        req: await tenantReq(tenant1Id),
+        data: { deletedAt: new Date().toISOString() },
+      })
+      expect(trashed.deletedAt).toBeTruthy()
+
+      await expect(
+        payload.update({
+          collection: 'pages',
+          id: parentT2.id,
+          req: await tenantReq(tenant2Id),
+          data: { deletedAt: new Date().toISOString() },
+        }),
+      ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+    })
+
+    test('a polymorphic child in another tenant does not block the delete of a same-slug parent', async () => {
+      const parentT1 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Catalog - Tenant 1',
+          slug: 'catalog',
+          content: 'Catalog tenant 1',
+          tenant: tenant1Id,
+          ...virtualFields,
+        },
+      })
+
+      const parentT2 = await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Catalog - Tenant 2',
+          slug: 'catalog',
+          content: 'Catalog tenant 2',
+          tenant: tenant2Id,
+          ...virtualFields,
+        },
+      })
+
+      // Only tenant 2's page has a topic hanging off it.
+      await payload.create({
+        collection: 'topics',
+        data: {
+          title: 'Shoes',
+          slug: 'shoes',
+          parent: { relationTo: 'pages', value: parentT2.id },
+          tenant: tenant2Id,
+          ...virtualFields,
+        } as any,
+      })
+
+      const trashed = await payload.update({
+        collection: 'pages',
+        id: parentT1.id,
+        req: await tenantReq(tenant1Id),
+        data: { deletedAt: new Date().toISOString() },
+      })
+      expect(trashed.deletedAt).toBeTruthy()
+
+      await expect(
+        payload.update({
+          collection: 'pages',
+          id: parentT2.id,
+          req: await tenantReq(tenant2Id),
+          data: { deletedAt: new Date().toISOString() },
+        }),
+      ).rejects.toThrow('Cannot delete this document because it is referenced as a parent by')
+    })
+  })
+
+  describe('A mutation computes the virtual fields under a select which asks for none of them', () => {
+    test('a narrow-select update still resolves the parent through the baseFilter', async () => {
+      const rootPage = await payload.create({
+        collection: 'pages',
+        req: await tenantReq(tenant1Id),
+        data: {
+          title: 'Narrow Select Root',
+          slug: 'narrow-select-root',
+          content: 'Root content',
+          tenant: tenant1Id,
+          ...virtualFields,
+        },
+      })
+
+      const childPage = await payload.create({
+        collection: 'pages',
+        req: await tenantReq(tenant1Id),
+        data: {
+          title: 'Narrow Select Child',
+          slug: 'narrow-select-child',
+          content: 'Child content',
+          parent: rootPage.id,
+          tenant: tenant1Id,
+          ...virtualFields,
+        },
+      })
+
+      clearCapturedAfterChanges()
+
+      await payload.update({
+        collection: 'pages',
+        id: childPage.id,
+        req: await tenantReq(tenant1Id),
+        data: {
+          title: 'Narrow Select Child Updated',
+        },
+        select: {
+          title: true,
+        },
+      })
+
+      const { doc } = getLastAfterChangeHookArgs()
+      expect(doc.path).toBe('/narrow-select-root/narrow-select-child')
+      expect(doc.breadcrumbs).toHaveLength(2)
+    })
+  })
+
+  describe('path index', () => {
+    let tenant1Id: DefaultIDType
+    let tenant2Id: DefaultIDType
+    let tenant1Parent: DefaultIDType
+    let tenant1Child: DefaultIDType
+    let tenant2Parent: DefaultIDType
+
+    beforeAll(async () => {
+      tenant1Id = (
+        await payload.create({
+          collection: 'tenants',
+          data: {
+            slug: 'path-index-tenant-1',
+            name: 'Path Index Tenant 1',
+            websiteUrl: 'https://tenant1.example.com',
+          },
+        })
+      ).id
+      tenant2Id = (
+        await payload.create({
+          collection: 'tenants',
+          data: {
+            slug: 'path-index-tenant-2',
+            name: 'Path Index Tenant 2',
+            websiteUrl: 'https://tenant2.example.com',
+          },
+        })
+      ).id
+
+      // identical trees in both tenants, sharing every slug
+      const createTree = async (tenant: DefaultIDType) => {
+        const parent = await payload.create({
+          collection: 'pages',
+          data: {
+            title: 'Shared',
+            slug: 'shared',
+            content: 'Content',
+            tenant,
+            _status: 'published',
+            ...virtualFields,
+          },
+        })
+        const child = await payload.create({
+          collection: 'pages',
+          data: {
+            title: 'Shared Child',
+            slug: 'shared-child',
+            content: 'Content',
+            tenant,
+            parent: parent.id,
+            _status: 'published',
+            ...virtualFields,
+          },
+        })
+        return { child: child.id, parent: parent.id }
+      }
+
+      const tree1 = await createTree(tenant1Id)
+      tenant1Parent = tree1.parent
+      tenant1Child = tree1.child
+      tenant2Parent = (await createTree(tenant2Id)).parent
+    })
+
+    test('listPagePaths returns only the current tenant`s paths', async () => {
+      const entries = await listPagePaths({ req: await tenantReq(tenant1Id) })
+
+      expect(new Set(entries.map((entry) => entry.path))).toEqual(
+        new Set(['/shared', '/shared/shared-child']),
+      )
+      expect(new Set(entries.map((entry) => entry.id))).toEqual(
+        new Set([tenant1Parent, tenant1Child]),
+      )
+    })
+
+    test('baseFilter: false enumerates the paths of every tenant in one call', async () => {
+      const entries = await listPagePaths({
+        baseFilter: false,
+        req: await createLocalReq({}, payload),
+      })
+
+      const ids = entries.map((entry) => entry.id)
+      expect(ids).toContain(tenant1Parent)
+      expect(ids).toContain(tenant2Parent)
+    })
+
+    test('baseFilter: false with an explicit tenant where enumerates a tenant other than the request`s', async () => {
+      const entries = await listPagePaths({
+        baseFilter: false,
+        req: await tenantReq(tenant1Id),
+        where: { tenant: { equals: tenant2Id } },
+      })
+
+      expect(new Set(entries.map((entry) => entry.path))).toEqual(
+        new Set(['/shared', '/shared/shared-child']),
+      )
+      expect(entries.map((entry) => entry.id)).toContain(tenant2Parent)
+      expect(entries.map((entry) => entry.id)).not.toContain(tenant1Parent)
+    })
+
+    test('a rename in one tenant produces no entries for the other tenant', async () => {
+      clearPathChangeRecords()
+      await payload.update({
+        collection: 'pages',
+        id: tenant1Parent,
+        data: { slug: 'shared-renamed', _status: 'published' },
+      })
+
+      expect(recordedPathChangeErrors()).toEqual([])
+      const changes = recordedPathChanges()
+
+      expect(new Set(changes.map((change) => change.id))).toEqual(
+        new Set([tenant1Parent, tenant1Child]),
+      )
+      expect(changes.map((change) => change.id)).not.toContain(tenant2Parent)
+
+      // the other tenant's identically slugged tree is untouched
+      const tenant2Entries = await listPagePaths({ req: await tenantReq(tenant2Id) })
+      expect(new Set(tenant2Entries.map((entry) => entry.path))).toEqual(
+        new Set(['/shared', '/shared/shared-child']),
+      )
     })
   })
 })

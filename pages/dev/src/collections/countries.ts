@@ -12,6 +12,7 @@ export const Countries: PageCollectionConfig = {
       sharedDocument: true,
     },
   },
+  trash: true,
   versions: {
     drafts: true,
   },
