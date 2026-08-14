@@ -138,7 +138,7 @@ Two keys compose with the plugin's instead of replacing it:
 
 Two caveats when hiding `path`:
 
-- `admin.hidden` removes the field from the admin entirely, so `PathField` stops computing the path into form state — which the slug field's "Create Redirect" flow reads. To hide it visually but keep it mounted, point `components.Field` at a wrapper that renders `PathField` inside a hidden element.
+- `admin.hidden` removes the field from the admin entirely, which unmounts `PathField` — the only component that keeps the `breadcrumbs` form state in sync while the slug or parent is edited. The breadcrumbs modal then shows stale crumbs, and the slug field's "Create Redirect" button, which derives both paths from the parent breadcrumbs, computes the wrong new path if the parent changed in the same session. A plain slug rename is unaffected. To hide the field but keep it mounted, point `components.Field` at a wrapper that renders `PathField` inside a hidden element.
 - Prefer either over `admin.condition`: Payload's type generation marks conditionally-rendered fields optional, degrading `path` to `string | null | undefined` for every consumer.
 
 ### SEO Plugin Integration
