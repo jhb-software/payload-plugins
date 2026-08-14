@@ -1,5 +1,6 @@
 import type {
   ArrayField,
+  CheckboxField,
   CollectionSlug,
   FilterOptions,
   SingleRelationshipField,
@@ -8,19 +9,14 @@ import type {
 
 import type { Locale } from './Locale.js'
 
-/**
- * Overrides for the `admin` config of a generated field, deep merged over the
- * plugin's own — `components.Field` can be replaced without losing
- * `position: 'sidebar'`. `condition` is ANDed rather than replaced, so an
- * override can only hide the field in more cases, never in fewer.
- */
-type FieldAdminOverride<TField extends { admin?: unknown }> = TField['admin']
-
 /** The incoming attributes for the page collection config. */
 export type IncomingPageCollectionConfigAttributes = {
   breadcrumbs?: {
-    /** Admin overrides for the generated breadcrumbs field. */
-    admin?: FieldAdminOverride<ArrayField>
+    /**
+     * Overrides for the `admin` config of the generated breadcrumbs field, deep
+     * merged over the plugin's own.
+     */
+    admin?: ArrayField['admin']
 
     /**
      * Name of the field to use to generate the breadcrumb label.
@@ -34,12 +30,26 @@ export type IncomingPageCollectionConfigAttributes = {
   /** Whether this collection contains the root page and therefore the parent field is optional. Defaults to `false`. */
   isRootCollection?: boolean
 
+  isRootPage?: {
+    /**
+     * Overrides for the `admin` config of the generated isRootPage field, deep
+     * merged over the plugin's own. Only applies when `isRootCollection` is `true`,
+     * because the field is only generated for the root collection.
+     */
+    admin?: CheckboxField['admin']
+  }
+
   /** Whether Payloads live preview feature should be enabled for this collection. Defaults to `true`. */
   livePreview?: boolean
 
   parent: {
-    /** Admin overrides for the generated parent field. */
-    admin?: FieldAdminOverride<SingleRelationshipField>
+    /**
+     * Overrides for the `admin` config of the generated parent field, deep merged
+     * over the plugin's own. `condition` is ANDed with the plugin's (which hides
+     * the field on the root page) rather than replacing it, so an override can
+     * only hide the field in more cases, never reveal it in fewer.
+     */
+    admin?: SingleRelationshipField['admin']
 
     /** Collection in which the parent document is stored. */
     collection: CollectionSlug
@@ -59,16 +69,25 @@ export type IncomingPageCollectionConfigAttributes = {
   }
 
   path?: {
-    /** Admin overrides for the generated path field. */
-    admin?: FieldAdminOverride<TextField>
+    /**
+     * Overrides for the `admin` config of the generated path field, deep merged
+     * over the plugin's own. Note that `PathField` renders neither `description`
+     * nor `readOnly`; to change how the field looks, replace `components.Field`.
+     */
+    admin?: TextField['admin']
   }
 
   /** Whether Payloads feature should be enabled for this collection. Defaults to `true`. */
   preview?: boolean
 
   slug?: {
-    /** Admin overrides for the generated slug field. */
-    admin?: FieldAdminOverride<TextField>
+    /**
+     * Overrides for the `admin` config of the generated slug field, deep merged
+     * over the plugin's own. Note that `SlugField` renders neither `description`
+     * nor `readOnly` (which follows `staticValue`); to change how the field looks,
+     * replace `components.Field`.
+     */
+    admin?: TextField['admin']
 
     /** Name of the field to use as fallback for the slug field. Defaults to the `useAsTitle` field. */
     fallbackField?: string

@@ -99,6 +99,7 @@ export const createPageCollectionConfig = ({
       ...(pageConfig.isRootCollection
         ? [
             isRootPageField({
+              admin: incomingCollectionConfig.page.isRootPage?.admin,
               baseFilter: pluginConfig.baseFilter,
             }),
           ]

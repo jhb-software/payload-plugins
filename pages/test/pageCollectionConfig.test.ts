@@ -113,6 +113,21 @@ describe('createPageCollectionConfig field overrides', () => {
     })
   })
 
+  test('overrides reach the isRootPage field of a root collection', () => {
+    const { fields } = buildPages({
+      isRootPage: { admin: { description: 'Only one page may be the root page.' } },
+      parent: { collection: 'pages', name: 'parent' },
+    })
+
+    expect(fieldNamed(fields, 'isRootPage').admin).toMatchObject({
+      components: {
+        Field: { path: '@jhb.software/payload-pages-plugin/server#IsRootPageField' },
+      },
+      description: 'Only one page may be the root page.',
+      position: 'sidebar',
+    })
+  })
+
   test('overrides are kept out of custom.pageConfig, which is serialized to the client', () => {
     const config = buildPages({
       parent: {
