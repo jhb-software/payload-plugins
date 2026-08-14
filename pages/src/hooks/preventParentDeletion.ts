@@ -18,6 +18,26 @@ const ADAPTERS_REQUIRING_CUSTOM_LOGIC = [
   '@payloadcms/db-postgres',
 ]
 
+/**
+ * Context key which disables both parent guards for the request it is set on.
+ *
+ * A caller which removes a whole subtree in one operation cannot orphan anything — every child is
+ * going too — so the guards' premise does not hold and ordering the deletes leaf-first only adds
+ * fragility. Pass it through the `context` argument of the delete or update call:
+ *
+ * ```ts
+ * await payload.delete({
+ *   collection: 'pages',
+ *   id: subtreeRootId,
+ *   context: { [SKIP_PARENT_GUARD_CONTEXT_KEY]: true },
+ * })
+ * ```
+ *
+ * The flag lives on the request, so every delete and trash operation sharing that request skips
+ * the guards, not only the subtree that motivated it. The admin panel never sets it.
+ */
+export const SKIP_PARENT_GUARD_CONTEXT_KEY = 'pagesPluginSkipParentGuard'
+
 /** Throws when the given document is still referenced as a parent by other documents. */
 async function assertNoChildDocuments({
   id,
@@ -73,6 +93,10 @@ export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
   collection,
   req,
 }) => {
+  if (req.context?.[SKIP_PARENT_GUARD_CONTEXT_KEY] === true) {
+    return
+  }
+
   const databaseAdapter = req.payload.db.packageName || req.payload.db.name
   if (!ADAPTERS_REQUIRING_CUSTOM_LOGIC.includes(databaseAdapter)) {
     return
@@ -97,6 +121,10 @@ export const preventParentTrashing: CollectionBeforeChangeHook = async ({
   originalDoc,
   req,
 }) => {
+  if (req.context?.[SKIP_PARENT_GUARD_CONTEXT_KEY] === true) {
+    return data
+  }
+
   const isBeingTrashed = Boolean(data.deletedAt) && !originalDoc?.deletedAt
 
   if (!isBeingTrashed || originalDoc?.id == null) {

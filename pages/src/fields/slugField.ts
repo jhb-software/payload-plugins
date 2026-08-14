@@ -37,17 +37,21 @@ export function internalSlugField({
       {
         components: {
           Field: {
+            // `readOnly` is deliberately absent: Payload spreads these props last, so passing it
+            // here would overwrite the read only state it derives for trashed and locked
+            // documents. `SlugField` reads the static value instead.
             clientProps: {
               defaultValue: staticValue,
               fallbackField,
               pageSlug,
-              readOnly: !!staticValue,
-            } satisfies Omit<SlugFieldProps, 'redirectsCollectionSlug'>,
+            } satisfies Omit<SlugFieldProps, 'readOnly' | 'redirectsCollectionSlug'>,
             path: '@jhb.software/payload-pages-plugin/server#SlugField',
           },
         },
         position: 'sidebar',
-        readOnly: !!staticValue,
+        // An explicit `false` would opt the field out of an inherited read only state, so the
+        // key is only set when the static value actually makes the field read only.
+        ...(staticValue ? { readOnly: true } : {}),
         // The condition option is not used to hide the field when the page is the root page because then the type of the slug field would be optional.
       },
       admin,
