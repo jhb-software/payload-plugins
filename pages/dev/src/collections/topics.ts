@@ -1,5 +1,9 @@
 import { PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 import { captureAfterChangeDoc } from '../test/afterChangeCapture'
+import {
+  recordPathChangesAfterChange,
+  recordPathChangesAfterDelete,
+} from '../test/pathChangesCapture'
 
 /**
  * A collection which nests both under `pages` and under itself, so a topic can hang off a page
@@ -11,7 +15,8 @@ export const Topics: PageCollectionConfig = {
     useAsTitle: 'title',
   },
   hooks: {
-    afterChange: [captureAfterChangeDoc],
+    afterChange: [captureAfterChangeDoc, recordPathChangesAfterChange],
+    afterDelete: [recordPathChangesAfterDelete],
   },
   page: {
     parent: {

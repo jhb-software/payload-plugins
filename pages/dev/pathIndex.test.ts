@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import {
   findPageByPath,
   listPagePaths,
+  pathChanges,
   SKIP_PARENT_GUARD_CONTEXT_KEY,
 } from '@jhb.software/payload-pages-plugin'
 import config from './src/payload.config'
@@ -250,6 +251,9 @@ describe('listPagePaths', () => {
     expect(new Set(entries.map((entry) => `${entry.locale}:${entry.path}`))).toEqual(
       new Set(['de:/de/localized-de', 'en:/en/localized-en', 'de:/de/german-only']),
     )
+    // the title is picked per entry from the locale the path belongs to
+    expect(entries.find((entry) => entry.path === '/de/localized-de')?.title).toBe('Localized')
+    expect(entries.find((entry) => entry.path === '/en/localized-en')?.title).toBe('Localized EN')
 
     const enEntries = await listPagePaths({ locale: 'en', req })
     expect(enEntries.map((entry) => entry.path)).toEqual(['/en/localized-en'])
@@ -273,6 +277,29 @@ describe('listPagePaths', () => {
     const req = await createLocalReq({}, payload)
     const entries = await listPagePaths({ collections: ['pages'], req })
     expect(entries.map((entry) => entry.path)).toEqual(['/de/only-pages'])
+  })
+
+  test('rejects a collections argument naming a non-page collection', async () => {
+    const req = await createLocalReq({}, payload)
+    await expect(listPagePaths({ collections: ['users'], req })).rejects.toThrow(
+      'The collection "users" is not a page collection.',
+    )
+  })
+
+  test('includes the root page under its bare locale prefix', async () => {
+    const root = await createPage({ title: 'Root', slug: '', isRootPage: true })
+    await createPage({ title: 'Under Root', slug: 'under-root', parent: root.id })
+
+    const req = await createLocalReq({}, payload)
+    const entries = await listPagePaths({ req })
+
+    expect(new Set(entries.map((entry) => entry.path))).toEqual(new Set(['/de', '/de/under-root']))
+    expect(entries.find((entry) => entry.path === '/de')).toMatchObject({
+      collection: 'pages',
+      id: root.id,
+      locale: 'de',
+      title: 'Root',
+    })
   })
 })
 
@@ -334,7 +361,8 @@ describe('pathChanges', () => {
     // the capture read is the only query which selects the main row's slug on this parentless page
     expect(
       ops.filter(
-        (op) => op.collection === 'pages' && op.method === 'find' && op.select?.includes('"slug"'),
+        (op) =>
+          op.collection === 'pages' && op.method === 'find' && op.selectFields?.includes('slug'),
       ),
     ).toEqual([])
   })
@@ -441,7 +469,13 @@ describe('pathChanges', () => {
     expect(recordedPathChangeErrors()).toEqual([])
     expect(recordedPathChanges()).toEqual([])
     // a subtree query filters on the parent field
-    expect(ops.filter((op) => op.method === 'find' && op.where?.includes('"parent'))).toEqual([])
+    expect(
+      ops.filter(
+        (op) =>
+          op.method === 'find' &&
+          op.whereFields?.some((field) => field === 'parent' || field.startsWith('parent.')),
+      ),
+    ).toEqual([])
   })
 
   test('a create returns one entry with previousPath null, a draft create returns none', async () => {
@@ -493,11 +527,19 @@ describe('pathChanges', () => {
 
     expect(recordedPathChangeErrors()).toEqual([])
     const changes = recordedPathChanges()
-    expect(new Set(changes.map((change) => change.previousPath))).toEqual(
-      new Set(['/de/bulk-one', '/de/bulk-two']),
-    )
-    expect(changes.map((change) => change.path)).toEqual([null, null])
-    expect(new Set(changes.map((change) => change.id))).toEqual(new Set([one.id, two.id]))
+    const byId = new Map(changes.map((change) => [change.id, change]))
+
+    expect(changes).toHaveLength(2)
+    expect(byId.get(one.id)).toMatchObject({
+      collection: 'pages',
+      previousPath: '/de/bulk-one',
+      path: null,
+    })
+    expect(byId.get(two.id)).toMatchObject({
+      collection: 'pages',
+      previousPath: '/de/bulk-two',
+      path: null,
+    })
   })
 
   test('unpublishing returns path null and republishing returns previousPath null', async () => {
@@ -512,7 +554,13 @@ describe('pathChanges', () => {
     })
     expect(recordedPathChangeErrors()).toEqual([])
     expect(recordedPathChanges()).toEqual([
-      expect.objectContaining({ previousPath: '/de/pub-cycle', path: null }),
+      expect.objectContaining({
+        collection: 'pages',
+        id: page.id,
+        locale: 'de',
+        previousPath: '/de/pub-cycle',
+        path: null,
+      }),
     ])
 
     clearPathChangeRecords()
@@ -524,7 +572,13 @@ describe('pathChanges', () => {
     })
     expect(recordedPathChangeErrors()).toEqual([])
     expect(recordedPathChanges()).toEqual([
-      expect.objectContaining({ previousPath: null, path: '/de/pub-cycle' }),
+      expect.objectContaining({
+        collection: 'pages',
+        id: page.id,
+        locale: 'de',
+        previousPath: null,
+        path: '/de/pub-cycle',
+      }),
     ])
   })
 
@@ -540,7 +594,13 @@ describe('pathChanges', () => {
     })
     expect(recordedPathChangeErrors()).toEqual([])
     expect(recordedPathChanges()).toEqual([
-      expect.objectContaining({ previousPath: '/de/trash-cycle', path: null }),
+      expect.objectContaining({
+        collection: 'pages',
+        id: page.id,
+        locale: 'de',
+        previousPath: '/de/trash-cycle',
+        path: null,
+      }),
     ])
 
     clearPathChangeRecords()
@@ -553,7 +613,13 @@ describe('pathChanges', () => {
     })
     expect(recordedPathChangeErrors()).toEqual([])
     expect(recordedPathChanges()).toEqual([
-      expect.objectContaining({ previousPath: null, path: '/de/trash-cycle' }),
+      expect.objectContaining({
+        collection: 'pages',
+        id: page.id,
+        locale: 'de',
+        previousPath: null,
+        path: '/de/trash-cycle',
+      }),
     ])
   })
 
@@ -803,6 +869,154 @@ describe('pathChanges', () => {
 
     expect(recordedPathChangeErrors()).toEqual([])
     expect(recordedPathChanges()).toEqual([])
+  })
+
+  test('publishing and unpublishing the root page reports its bare locale-prefix path', async () => {
+    const root = await createPage({ title: 'Root', slug: '', isRootPage: true })
+    expect(recordedPathChangeErrors()).toEqual([])
+    expect(recordedPathChanges()).toEqual([
+      expect.objectContaining({
+        collection: 'pages',
+        id: root.id,
+        locale: 'de',
+        previousPath: null,
+        path: '/de',
+      }),
+    ])
+
+    clearPathChangeRecords()
+    await payload.update({
+      collection: 'pages',
+      id: root.id,
+      locale: 'de',
+      data: { _status: 'draft' },
+    })
+    expect(recordedPathChangeErrors()).toEqual([])
+    expect(recordedPathChanges()).toEqual([
+      expect.objectContaining({
+        collection: 'pages',
+        id: root.id,
+        locale: 'de',
+        previousPath: '/de',
+        path: null,
+      }),
+    ])
+  })
+
+  test('re-parenting a document across its polymorphic parent`s collections reports the moved paths', async () => {
+    const page = await createPage({ title: 'Poly Root', slug: 'poly-root' })
+    const topicParent = await createTopic({
+      title: 'Topic A',
+      slug: 'topic-a',
+      parent: { relationTo: 'pages', value: page.id },
+    })
+    const mover = await createTopic({
+      title: 'Mover',
+      slug: 'mover',
+      parent: { relationTo: 'pages', value: page.id },
+    })
+    const leaf = await createTopic({
+      title: 'Leaf',
+      slug: 'leaf',
+      parent: { relationTo: 'topics', value: mover.id },
+    })
+
+    clearPathChangeRecords()
+    await payload.update({
+      collection: 'topics',
+      id: mover.id,
+      locale: 'de',
+      data: { parent: { relationTo: 'topics', value: topicParent.id }, _status: 'published' },
+    })
+
+    expect(recordedPathChangeErrors()).toEqual([])
+    const changes = recordedPathChanges()
+    const byId = new Map(changes.map((change) => [change.id, change]))
+
+    expect(changes).toHaveLength(2)
+    expect(byId.get(mover.id)).toMatchObject({
+      previousPath: '/de/poly-root/mover',
+      path: '/de/poly-root/topic-a/mover',
+    })
+    expect(byId.get(leaf.id)).toMatchObject({
+      previousPath: '/de/poly-root/mover/leaf',
+      path: '/de/poly-root/topic-a/mover/leaf',
+    })
+  })
+
+  test('a bulk delete removing a parent together with its descendant reports the descendant from both hook invocations', async () => {
+    // created (and therefore deleted) before the child, so the parent's descendant capture
+    // still sees the child — the double report the API documents as harmless
+    const parent = await createPage({ title: 'Dup Parent', slug: 'dup-parent' })
+    const child = await createPage({ title: 'Dup Child', slug: 'dup-child', parent: parent.id })
+
+    clearPathChangeRecords()
+    await payload.delete({
+      collection: 'pages',
+      where: { slug: { in: ['dup-parent', 'dup-child'] } },
+      locale: 'de',
+      context: { [SKIP_PARENT_GUARD_CONTEXT_KEY]: true },
+    })
+
+    expect(recordedPathChangeErrors()).toEqual([])
+    const changes = recordedPathChanges()
+
+    expect(changes.filter((change) => change.id === parent.id)).toEqual([
+      expect.objectContaining({ previousPath: '/de/dup-parent', path: null }),
+    ])
+    expect(changes.filter((change) => change.id === child.id)).toEqual([
+      expect.objectContaining({ previousPath: '/de/dup-parent/dup-child', path: null }),
+      expect.objectContaining({ previousPath: '/de/dup-parent/dup-child', path: null }),
+    ])
+  })
+
+  test('a failed pre-write capture surfaces as a rejection instead of silently shortening the result', async () => {
+    const page = await createPage({ title: 'Capture Fail', slug: 'capture-fail' })
+
+    // fail exactly the capture read: the find by the page's own id selecting its slug
+    const originalFind = payload.db.find
+    payload.db.find = (async (args: any) => {
+      if (
+        args?.collection === 'pages' &&
+        args?.select?.slug === true &&
+        args?.where?.id?.equals === page.id
+      ) {
+        throw new Error('injected capture failure')
+      }
+      return originalFind.call(payload.db, args)
+    }) as typeof payload.db.find
+
+    clearPathChangeRecords()
+    try {
+      await payload.update({
+        collection: 'pages',
+        id: page.id,
+        locale: 'de',
+        data: { slug: 'capture-fail-renamed', _status: 'published' },
+      })
+    } finally {
+      payload.db.find = originalFind
+    }
+
+    expect(recordedPathChanges()).toEqual([])
+    const errors = recordedPathChangeErrors()
+    expect(errors).toHaveLength(1)
+    expect((errors[0] as Error).message).toBe('injected capture failure')
+  })
+
+  test('rejects when called without a pre-write capture instead of returning a short list', async () => {
+    const page = await createPage({ title: 'Misuse', slug: 'misuse' })
+    const req = await createLocalReq({}, payload)
+
+    await expect(
+      pathChanges({
+        collection: payload.collections.pages.config,
+        doc: { id: page.id, _status: 'published' },
+        previousDoc: {},
+        operation: 'update',
+        req,
+      } as any),
+    ).rejects.toThrow(/no captured pre-write state/)
   })
 })
 

@@ -10,7 +10,11 @@ export type DbOp = {
   collection?: string
   method: string
   select?: string
+  /** Top-level keys of the query's `select`, for structural assertions. */
+  selectFields?: string[]
   where?: string
+  /** The field paths the query's `where` filters on (excluding `and`/`or`), for structural assertions. */
+  whereFields?: string[]
 }
 
 const DATA_METHODS = [
@@ -43,6 +47,18 @@ const DATA_METHODS = [
 const TX_METHODS = ['beginTransaction', 'commitTransaction', 'rollbackTransaction']
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function collectWhereFields(where: unknown, fields: string[] = []): string[] {
+  if (!where || typeof where !== 'object') return fields
+  for (const [key, value] of Object.entries(where as Record<string, unknown>)) {
+    if (key === 'and' || key === 'or') {
+      for (const nested of (value as unknown[]) ?? []) collectWhereFields(nested, fields)
+    } else {
+      fields.push(key)
+    }
+  }
+  return fields
+}
 
 function summarizeWhere(where: unknown): string | undefined {
   if (!where) return undefined
@@ -89,7 +105,9 @@ export function instrumentDbOps(
           collection: args?.collection ?? args?.global ?? args?.globalSlug,
           method,
           select: args?.select ? JSON.stringify(args.select) : undefined,
+          selectFields: args?.select ? Object.keys(args.select) : undefined,
           where: summarizeWhere(args?.where),
+          whereFields: args?.where ? collectWhereFields(args.where) : undefined,
         }
         ops.push(op)
         onOp?.(op)
