@@ -462,6 +462,8 @@ On a localized install the result carries one entry per (document, locale); a lo
 - `draft`: Whether to enumerate the latest versions instead of the published ones (default `false`), mirroring `findPageByPath`.
 - `where`: An additional filter, merged per collection with `and` — it can narrow the enumeration but never widen it past the plugin's own conditions. The filtered fields must be queryable on every enumerated collection. On a localized install the default enumeration queries all locales at once, where Payload cannot filter on localized fields — filter on unlocalized fields, or pass `locale` to filter on localized ones.
 
+The queries run with access control overridden (the Local API default): entries are scoped by liveness and the `baseFilter`, not by the request user's read access. This fits a sitemap or llms.txt; do not use the result to render navigation for a user whose read access is narrower.
+
 ## Reacting to path changes
 
 `pathChanges` reports which live paths a write started or stopped resolving — for the written document and, when a live path moved, for every descendant whose path moved with it. Call it from a page collection's own `afterChange` and `afterDelete` hooks with the hook's arguments:
