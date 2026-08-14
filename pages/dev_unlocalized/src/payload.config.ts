@@ -7,6 +7,7 @@ import { Blogposts } from './collections/blogposts'
 import { Countries } from './collections/countries'
 import { CountryTravelTips } from './collections/country-travel-tips'
 import { Pages } from './collections/pages'
+import { Topics } from './collections/topics'
 import { Redirects } from './collections/redirects'
 import { BlogpostCategories } from './collections/blogpost-categories'
 import { databaseAdapter } from './test/databaseAdapter'
@@ -25,6 +26,7 @@ export default buildConfig({
   },
   collections: [
     Pages,
+    Topics,
     Authors,
     Blogposts,
     BlogpostCategories,
@@ -45,6 +47,9 @@ export default buildConfig({
   localization: false,
   plugins: [
     payloadPagesPlugin({
+      // Demonstrates opting out of the parent deletion guard: in this app a parent document can
+      // be deleted or trashed even while children still reference it.
+      preventParentDeletion: false,
       generatePageURL: ({ path, preview }) =>
         path && process.env.NEXT_PUBLIC_FRONTEND_URL
           ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`

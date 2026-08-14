@@ -1,9 +1,15 @@
-import type { CollectionConfig, CollectionSlug, PayloadRequest } from 'payload'
+import type {
+  CollectionConfig,
+  CollectionSlug,
+  DefaultDocumentIDType,
+  PayloadRequest,
+} from 'payload'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
+import { hasPolymorphicParent, parentCollections } from '../utils/parentRef.js'
 
 /**
  * Finds all child documents that reference a given parent document.
@@ -11,11 +17,11 @@ import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
  */
 export async function childDocumentsOf(
   req: PayloadRequest,
-  docId: number | string,
+  docId: DefaultDocumentIDType,
   collectionSlug: CollectionSlug,
   baseFilter?: PagesPluginConfig['baseFilter'],
-): Promise<{ collection: CollectionSlug; id: number | string }[]> {
-  const childReferences: { collection: CollectionSlug; id: number | string }[] = []
+): Promise<{ collection: CollectionSlug; id: DefaultDocumentIDType }[]> {
+  const childReferences: { collection: CollectionSlug; id: DefaultDocumentIDType }[] = []
 
   const allCollections = req.payload.config.collections || []
 
@@ -28,28 +34,37 @@ export async function childDocumentsOf(
 
     const baseFilterWhere = typeof baseFilter === 'function' ? baseFilter({ req }) : undefined
 
-    try {
-      const childDocuments = await req.payload.find({
-        collection: targetCollection.slug,
-        depth: 0,
-        limit: 0,
-        select: {},
-        where: {
-          and: [
-            { [parentFieldName]: { equals: docId } },
-            ...(baseFilterWhere ? [baseFilterWhere] : []),
-          ],
-        },
-      })
+    // A polymorphic parent stores `{ relationTo, value }`, so matching on the id alone would
+    // also match a document in another collection that happens to share the id — which the
+    // SQL adapters' serial ids readily do. Both adapters understand the object notation.
+    const parentValue = hasPolymorphicParent(targetCollection.page)
+      ? { relationTo: collectionSlug, value: docId }
+      : docId
 
-      for (const doc of childDocuments.docs) {
-        childReferences.push({
-          id: doc.id,
-          collection: targetCollection.slug,
-        })
-      }
-    } catch (error) {
-      console.warn(`Error checking collection ${targetCollection.slug} for child documents:`, error)
+    const childDocuments = await req.payload.find({
+      collection: targetCollection.slug,
+      depth: 0,
+      limit: 0,
+      // The guard runs inside the caller's delete/trash transaction, so the lookup has to join
+      // it — on its own connection it cannot see the uncommitted state it is guarding.
+      req,
+      select: {},
+      // A trashed child is still a reference: it can be restored, and until it is purged its
+      // parent id is live data.
+      trash: true,
+      where: {
+        and: [
+          { [parentFieldName]: { equals: parentValue } },
+          ...(baseFilterWhere ? [baseFilterWhere] : []),
+        ],
+      },
+    })
+
+    for (const doc of childDocuments.docs) {
+      childReferences.push({
+        id: doc.id,
+        collection: targetCollection.slug,
+      })
     }
   }
 
@@ -61,7 +76,7 @@ export async function childDocumentsOf(
  */
 export async function hasChildDocuments(
   req: PayloadRequest,
-  docId: number | string,
+  docId: DefaultDocumentIDType,
   collectionSlug: CollectionSlug,
   baseFilter?: PagesPluginConfig['baseFilter'],
 ): Promise<boolean> {
@@ -81,5 +96,5 @@ function isPageCollectionWithParent(
     return false
   }
 
-  return collection.page.parent.collection === expectedParentCollectionSlug
+  return parentCollections(collection.page).includes(expectedParentCollectionSlug)
 }

@@ -1,5 +1,6 @@
-import type { Field } from 'payload'
+import type { ArrayField, Field } from 'payload'
 
+import { mergeFieldAdmin } from '../utils/fieldOverrides.js'
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 /**
@@ -7,7 +8,7 @@ import { translatedLabel } from '../utils/translatedLabel.js'
  *
  * It is not stored in the database, because this would not automatically reflect changes in the parent(s) slug(s).
  */
-export function breadcrumbsField(): Field {
+export function breadcrumbsField({ admin }: { admin?: ArrayField['admin'] } = {}): Field {
   return {
     name: 'breadcrumbs',
     type: 'array',
@@ -21,14 +22,17 @@ export function breadcrumbsField(): Field {
     required: true,
     virtual: true,
     // Validate by default to allow the document to be updated, without having to set the breadcrumbs field.
-    admin: {
-      components: {
-        Field: '@jhb.software/payload-pages-plugin/client#BreadcrumbsField',
+    admin: mergeFieldAdmin<NonNullable<ArrayField['admin']>>(
+      {
+        components: {
+          Field: '@jhb.software/payload-pages-plugin/client#BreadcrumbsField',
+        },
+        disableBulkEdit: true,
+        position: 'sidebar',
+        readOnly: true,
       },
-      disableBulkEdit: true,
-      position: 'sidebar',
-      readOnly: true,
-    },
+      admin,
+    ),
     fields: [
       {
         type: 'row',

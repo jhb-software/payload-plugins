@@ -3,7 +3,7 @@ import type { CollectionBeforeOperationHook } from 'payload'
 import { getSelectMode } from 'payload/shared'
 
 import { recordAutoSelectedFields } from '../utils/autoSelectedFields.js'
-import { hasVirtualFieldSelected } from '../utils/hasVirtualFieldSelected.js'
+import { hasVirtualFieldSelected, virtualFieldNames } from '../utils/hasVirtualFieldSelected.js'
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 import { dependentFields } from './setVirtualFields.js'
 
@@ -44,7 +44,25 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
     const dependendSelectedFields = dependentFields(pageConfig)
     const hasVirtualFieldsSelected = hasVirtualFieldSelected(args.select)
 
-    if (hasVirtualFieldsSelected && selectMode === 'include') {
+    // On a read the virtual fields are only computed when the caller asked for one, so the
+    // dependent fields are only needed then. On a mutation `setVirtualFieldsAfterChange` runs
+    // regardless of the select and hands its result to every downstream afterChange hook, so
+    // the dependent fields must survive the select filtering whatever the caller selected.
+    const needsDependentFields = isMutationOperation || hasVirtualFieldsSelected
+
+    // `setVirtualFieldsAfterChange` writes all virtual fields onto the document *after* Payload
+    // has applied the select, so on a mutation every virtual field the select did not ask for
+    // would reach the caller regardless. Strip exactly those alongside the dependent fields.
+    // (On a read the select is applied after `setVirtualFieldsBeforeRead`, so Payload removes
+    // them itself and there is nothing to strip.)
+    const callerSelect = args.select
+    const unselectedVirtualFields = !isMutationOperation
+      ? []
+      : selectMode === 'include'
+        ? virtualFieldNames.filter((field) => !callerSelect[field])
+        : virtualFieldNames.filter((field) => field in callerSelect)
+
+    if (needsDependentFields && selectMode === 'include') {
       const select = args.select
       // Fields the caller selected itself must not be stripped from the response afterwards
       const addedFields = dependendSelectedFields.filter((field) => !select[field])
@@ -55,11 +73,8 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
         ...addedFields.reduce((acc, field) => ({ ...acc, [field]: true }), {}),
       }
 
-      recordAutoSelectedFields(args, addedFields)
-
-      // Indicate that the virtual fields should be generated in the setVirtualFields hook
-      context.generateVirtualFields = true
-    } else if (hasVirtualFieldsSelected && selectMode === 'exclude') {
+      recordAutoSelectedFields(args, [...addedFields, ...unselectedVirtualFields])
+    } else if (needsDependentFields && selectMode === 'exclude') {
       const deselectedFields = dependendSelectedFields.filter((field) => field in args.select!)
 
       // remove deselection of the dependent fields
@@ -72,9 +87,14 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
         args.select = undefined
       }
 
-      recordAutoSelectedFields(args, deselectedFields)
+      recordAutoSelectedFields(args, [...deselectedFields, ...unselectedVirtualFields])
+    }
 
-      // Indicate that the virtual fields should be generated in the setVirtualFields hook
+    if (hasVirtualFieldsSelected) {
+      // Indicate that the virtual fields should be generated in the setVirtualFields hook.
+      // Deliberately not set for a mutation which selected no virtual field: the afterChange
+      // hook computes them without consulting the flag, while a nested read sharing this
+      // request context must not start computing virtual fields nobody asked for.
       context.generateVirtualFields = true
     }
   } else if (isReadOperation && !args.select) {

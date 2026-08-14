@@ -1,26 +1,33 @@
-import type { CollectionBeforeDeleteHook } from 'payload'
+import type {
+  CollectionBeforeChangeHook,
+  CollectionBeforeDeleteHook,
+  DefaultDocumentIDType,
+  PayloadRequest,
+  SanitizedCollectionConfig,
+} from 'payload'
 
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { AdminPanelError } from '../utils/AdminPanelError.js'
 import { childDocumentsOf } from '../utils/childDocumentsOf.js'
 
+/** Database adapters the permanent-delete guard has been verified against. */
 const ADAPTERS_REQUIRING_CUSTOM_LOGIC = [
   '@payloadcms/db-mongodb',
   '@payloadcms/db-sqlite',
   '@payloadcms/db-postgres',
 ]
 
-export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
+/** Throws when the given document is still referenced as a parent by other documents. */
+async function assertNoChildDocuments({
   id,
   collection,
   req,
-}) => {
-  const databaseAdapter = req.payload.db.packageName || req.payload.db.name
-  if (!ADAPTERS_REQUIRING_CUSTOM_LOGIC.includes(databaseAdapter)) {
-    return
-  }
-
+}: {
+  collection: SanitizedCollectionConfig
+  id: DefaultDocumentIDType
+  req: PayloadRequest
+}) {
   const pagesPluginConfig = collection.custom?.pagesPluginConfig as PagesPluginConfig
 
   const childDocuments = await childDocumentsOf(
@@ -39,7 +46,7 @@ export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
         acc[child.collection].push(child.id)
         return acc
       },
-      {} as Record<string, (number | string)[]>,
+      {} as Record<string, DefaultDocumentIDType[]>,
     )
 
     const collectionMessages = Object.entries(childrenByCollection)
@@ -53,4 +60,50 @@ export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
 
     throw new AdminPanelError(errorMessage)
   }
+}
+
+/**
+ * Refuses a permanent delete of a document which is still referenced as a parent.
+ *
+ * Runs only on the adapters listed above; on any other adapter the delete is left to whatever
+ * referential integrity the database enforces itself.
+ */
+export const preventParentDeletion: CollectionBeforeDeleteHook = async ({
+  id,
+  collection,
+  req,
+}) => {
+  const databaseAdapter = req.payload.db.packageName || req.payload.db.name
+  if (!ADAPTERS_REQUIRING_CUSTOM_LOGIC.includes(databaseAdapter)) {
+    return
+  }
+
+  await assertNoChildDocuments({ id, collection, req })
+}
+
+/**
+ * Refuses moving a document which is still referenced as a parent to the trash.
+ *
+ * Payload soft-deletes through `update`, so a trash operation never reaches `beforeDelete`.
+ * Without this hook the guard would not run for the delete path an editor actually uses on a
+ * collection with `trash: true`. Restoring a document is never blocked.
+ *
+ * Runs on every adapter, unlike the permanent-delete guard: a soft delete writes `deletedAt` through
+ * an update, which no database constrains, so there is no referential integrity to fall back on.
+ */
+export const preventParentTrashing: CollectionBeforeChangeHook = async ({
+  collection,
+  data,
+  originalDoc,
+  req,
+}) => {
+  const isBeingTrashed = Boolean(data.deletedAt) && !originalDoc?.deletedAt
+
+  if (!isBeingTrashed || originalDoc?.id == null) {
+    return data
+  }
+
+  await assertNoChildDocuments({ id: originalDoc.id, collection, req })
+
+  return data
 }

@@ -7,6 +7,7 @@ import { Blogposts } from './collections/blogposts'
 import { Countries } from './collections/countries'
 import { CountryTravelTips } from './collections/country-travel-tips'
 import { Pages } from './collections/pages'
+import { Topics } from './collections/topics'
 import { Redirects } from './collections/redirects'
 import { BlogpostCategories } from './collections/blogpost-categories'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
@@ -28,6 +29,7 @@ export default buildConfig({
   },
   collections: [
     Pages,
+    Topics,
     Authors,
     Blogposts,
     BlogpostCategories,
@@ -85,6 +87,7 @@ export default buildConfig({
         'country-travel-tips': {},
         pages: {},
         redirects: {},
+        topics: {},
       },
       userHasAccessToAllTenants: (user) => user.email === 'dev@payloadcms.com',
     }),
