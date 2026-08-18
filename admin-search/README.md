@@ -83,6 +83,47 @@ adminSearchPlugin({
 })
 ```
 
+### `baseFilter`
+
+- **Type**: `({ req }) => Where | Promise<Where>`
+- **Default**: none
+- **Description**: Restricts document results to a constraint resolved against the current request. The filter runs on the server, and its result is combined with the typed query using `and` — so results stay in scope even before anything is typed.
+
+The main use is multi-tenancy: scope the search to the tenant selected in the admin panel, whose id [@payloadcms/plugin-multi-tenant](https://payloadcms.com/docs/plugins/multi-tenant) keeps in the `payload-tenant` cookie.
+
+```ts
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+
+adminSearchPlugin({
+  baseFilter: ({ req }) => {
+    const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+    // Returning `{}` leaves the search unscoped. Constraining `tenant` to `null` instead
+    // would match nothing whenever no tenant is selected.
+    return tenant ? { tenant: { equals: tenant } } : {}
+  },
+})
+```
+
+The `search` collection must carry the field the filter constrains, which means adding it in `searchOverrides` and populating it in `beforeSync`:
+
+```ts
+searchPlugin({
+  searchOverrides: {
+    fields: ({ defaultFields }) => [
+      ...defaultFields,
+      { name: 'tenant', type: 'relationship', index: true, relationTo: 'tenants' },
+    ],
+  },
+  beforeSync: ({ originalDoc, searchDoc }) => ({
+    ...searchDoc,
+    tenant: originalDoc.tenant ?? null,
+  }),
+})
+```
+
+> **This scopes what the search offers, not what the API permits.** The filter narrows the query the admin UI sends; it is not access control. Anyone who can read `GET /api/search` directly still sees whatever that endpoint returns — see [Security](#security) for constraining it server-side via `searchOverrides.access.read`.
+
 ## Contributing
 
 We welcome contributions! Please open an issue to report bugs or suggest improvements, or submit a pull request with your changes.

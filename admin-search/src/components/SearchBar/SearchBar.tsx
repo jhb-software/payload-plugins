@@ -1,4 +1,5 @@
 'use client'
+import type { Where } from 'payload'
 import type React from 'react'
 
 import { Button, Pill, SearchIcon, useHotkey, useTranslation } from '@payloadcms/ui'
@@ -15,7 +16,7 @@ import './SearchBar.css'
 
 const baseClass = 'admin-search-plugin-bar'
 
-export function SearchBar(): React.ReactElement {
+export function SearchBar({ baseFilter }: { baseFilter?: Where }): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [shortcut, setShortcut] = useState('')
   const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()
@@ -52,7 +53,9 @@ export function SearchBar(): React.ReactElement {
           <Pill className="admin-search-plugin-bar__shortcut">{shortcut || '⌘K'}</Pill>
         </div>
       </Button>
-      {isModalOpen && <SearchModal handleClose={() => setIsModalOpen(false)} />}
+      {isModalOpen && (
+        <SearchModal baseFilter={baseFilter} handleClose={() => setIsModalOpen(false)} />
+      )}
     </>
   )
 }
