@@ -2,6 +2,7 @@ import type { PayloadHandler, PayloadRequest } from 'payload'
 
 import type { VercelDeploymentsPluginConfig } from '../types.js'
 
+import { resolveTarget } from '../utilities/resolveTarget.js'
 import { VercelApiClient } from '../utilities/vercelApiClient.js'
 
 export type DeploymentsInfo = {
@@ -57,6 +58,15 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
     return Response.json({ error: 'Invalid deployment id' }, { status: 400 })
   }
 
+  const { projectId } = await resolveTarget({ pluginConfig, req })
+
+  if (!projectId) {
+    return Response.json(
+      { error: 'No Vercel project configured for this request' },
+      { status: 400 },
+    )
+  }
+
   try {
     const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
 
@@ -76,7 +86,7 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
     // List latest production deployments
     const deploymentsResponse = await vercelClient.getDeployments({
       limit: 10,
-      projectId: pluginConfig.vercel.projectId,
+      projectId,
       target: 'production',
       teamId: pluginConfig.vercel.teamId,
     })

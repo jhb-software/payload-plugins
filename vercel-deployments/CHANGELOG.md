@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: `vercel.projectId` and `widget.websiteUrl` additionally accept a function resolved against the current request, so a multi-tenant admin panel can report and deploy the Vercel project of the selected tenant. Existing static configuration is unaffected. Resolving to `undefined` renders the widget without deployment rows and without the deploy button, and answers the endpoints with `400` instead of querying Vercel for a missing project.
+
 ## 0.3.2
 
 - fix: validate the `id` query parameter on the deployments endpoint and encode it before building the Vercel API request path, so only well-formed deployment ids are accepted
