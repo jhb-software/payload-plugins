@@ -23,13 +23,21 @@ export const adminSearchPlugin =
           actions: [
             ...(incomingConfig.admin?.components?.actions || []),
             {
-              clientProps: {
+              // A server component, so it can evaluate `baseFilter` against the request
+              // before handing the resulting constraint to the client search UI.
+              path: '@jhb.software/payload-admin-search/rsc#SearchWrapper',
+              serverProps: {
                 style: headerSearchComponentStyle,
               },
-              path: '@jhb.software/payload-admin-search/client#SearchWrapper',
             },
           ],
         },
+      },
+      // The action component is referenced by path and cannot close over the options, so
+      // the server component reads them back from here.
+      custom: {
+        ...incomingConfig.custom,
+        adminSearchPluginConfig: pluginOptions,
       },
       i18n: {
         ...incomingConfig.i18n,
