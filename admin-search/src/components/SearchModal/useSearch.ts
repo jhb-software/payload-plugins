@@ -71,6 +71,9 @@ export const useSearch = ({ baseFilter }: { baseFilter?: Where } = {}): UseSearc
 
   const getSearchParams = useCallback(
     (searchQuery?: string) => buildSearchQuery({ baseFilter, query: searchQuery }),
+    // Deliberately keyed on the serialized filter rather than on `baseFilter` itself: the
+    // server hands over a fresh object on every render, so depending on it directly would
+    // rebuild this callback each time and re-fire the search effect in a loop.
     [baseFilterKey],
   )
 
