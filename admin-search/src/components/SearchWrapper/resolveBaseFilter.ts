@@ -32,5 +32,18 @@ export const resolveBaseFilter = async ({
   // Reuse the admin panel's i18n rather than letting createLocalReq initialize its own.
   const req = await createLocalReq({ req: { headers, i18n }, user }, payload)
 
-  return baseFilter({ req })
+  try {
+    return await baseFilter({ req })
+  } catch (error) {
+    // The filter runs while the admin panel renders, so letting it throw would replace the
+    // whole page with an error, not just the search. It narrows a query rather than granting
+    // access, so falling back to an unscoped search is the lesser failure — but a silent one,
+    // hence the log.
+    payload.logger.error(
+      { err: error },
+      'admin-search: baseFilter threw, falling back to an unscoped search.',
+    )
+
+    return undefined
+  }
 }

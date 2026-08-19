@@ -5,7 +5,8 @@ export default defineConfig({
     jsx: 'automatic',
   },
   test: {
-    // Only the sources — `dist` holds compiled copies of the same tests.
+    // Only the sources. `dist` never holds tests (the build excludes them), so this keeps
+    // a stray build output from being picked up as a second, stale copy of the suite.
     include: ['src/**/*.test.{ts,tsx}'],
   },
 })

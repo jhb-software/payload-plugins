@@ -6,13 +6,14 @@ import type { AdminSearchPluginConfig } from '../../types/AdminSearchPluginConfi
 
 import { resolveBaseFilter } from './resolveBaseFilter.js'
 
-const payloadWith = (pluginConfig?: AdminSearchPluginConfig) =>
+const payloadWith = (pluginConfig?: AdminSearchPluginConfig, logged: unknown[] = []) =>
   ({
     config: {
       admin: { user: 'users' },
       custom: pluginConfig ? { adminSearchPluginConfig: pluginConfig } : {},
       i18n: { fallbackLanguage: 'en' },
     },
+    logger: { error: (...args: unknown[]) => logged.push(args) },
   }) as unknown as Payload
 
 /** Stands in for the admin panel's i18n, which the resolver reuses instead of building one. */
@@ -48,5 +49,36 @@ describe('resolveBaseFilter', () => {
     })
 
     expect(filter).toEqual({ owner: { equals: 'user-1' } })
+  })
+
+  it('falls back to an unscoped search when the filter throws, instead of failing the render', async () => {
+    const logged: unknown[] = []
+
+    await expect(
+      resolveBaseFilter({
+        headers: new Headers(),
+        i18n,
+        payload: payloadWith(
+          {
+            baseFilter: () => {
+              throw new Error('tenant cookie was malformed')
+            },
+          },
+          logged,
+        ),
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(logged).toHaveLength(1)
+  })
+
+  it('falls back to an unscoped search when an async filter rejects', async () => {
+    await expect(
+      resolveBaseFilter({
+        headers: new Headers(),
+        i18n,
+        payload: payloadWith({ baseFilter: () => Promise.reject(new Error('db unreachable')) }),
+      }),
+    ).resolves.toBeUndefined()
   })
 })

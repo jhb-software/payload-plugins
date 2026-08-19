@@ -1,8 +1,6 @@
 import type { Where } from 'payload'
 
-const SEARCH_RESULTS_LIMIT = 5
-
-export { SEARCH_RESULTS_LIMIT }
+export const SEARCH_RESULTS_LIMIT = 5
 
 /**
  * Builds the query the search modal sends to the search collection. The base filter and the
