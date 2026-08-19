@@ -83,6 +83,65 @@ adminSearchPlugin({
 })
 ```
 
+### `baseFilter`
+
+- **Type**: `({ req }) => Where | Promise<Where>`
+- **Default**: none
+- **Description**: Restricts document results to a constraint resolved against the current request. The filter runs on the server, and its result is combined with the typed query using `and` — so results stay in scope even before anything is typed.
+
+`req` is the request the admin panel is being rendered for, so it carries the incoming cookies, the signed-in user and the locale currently being viewed.
+
+The main use is multi-tenancy: scope the search to the tenant selected in the admin panel, whose id [@payloadcms/plugin-multi-tenant](https://payloadcms.com/docs/plugins/multi-tenant) keeps in the `payload-tenant` cookie.
+
+```ts
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+
+adminSearchPlugin({
+  baseFilter: ({ req }) => {
+    const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+    // Returning `{}` leaves the search unscoped. Constraining `tenant` to `null` instead
+    // would match nothing whenever no tenant is selected.
+    if (!tenant) {
+      return {}
+    }
+
+    // The `exists: false` branch keeps documents that carry no tenant at all. Without it,
+    // selecting a tenant hides every indexed collection the multi-tenant plugin does not
+    // scope — shared media, authors and the like vanish from the search.
+    return { or: [{ tenant: { equals: tenant } }, { tenant: { exists: false } }] }
+  },
+})
+```
+
+Note the `or`. A filter of just `{ tenant: { equals: tenant } }` restricts results to documents that carry the selected tenant, which also removes every document that has no tenant — search indexes are usually wider than the set of tenant-scoped collections, so those documents disappear the moment a tenant is picked. Include the un-tenanted ones explicitly unless hiding them is what you want.
+
+The `search` collection must carry the field the filter constrains, which means adding it in `searchOverrides` and populating it in `beforeSync`:
+
+```ts
+searchPlugin({
+  searchOverrides: {
+    fields: ({ defaultFields }) => [
+      ...defaultFields,
+      { name: 'tenant', type: 'relationship', index: true, relationTo: 'tenants' },
+    ],
+  },
+  beforeSync: ({ originalDoc, searchDoc }) => ({
+    ...searchDoc,
+    tenant: originalDoc.tenant ?? null,
+  }),
+})
+```
+
+> **This scopes what the search offers, not what the API permits.** The filter narrows the query the admin UI sends; it is not access control. Anyone who can read `GET /api/search` directly still sees whatever that endpoint returns — see [Security](#security) for constraining it server-side via `searchOverrides.access.read`.
+
+Two consequences of the filter being resolved on the server and applied by the client:
+
+- The resolved constraint is serialized into the page and readable in the browser's devtools. Keep anything secret out of the `Where` it returns.
+- Only the component the plugin mounts (`@jhb.software/payload-admin-search/rsc#SearchWrapper`) resolves the filter. Mounting `@jhb.software/payload-admin-search/client#SearchWrapperClient` by hand gives an unscoped search, with no warning.
+
+If the filter throws, the error is logged and the search falls back to unscoped rather than failing the admin panel's render.
+
 ## Contributing
 
 We welcome contributions! Please open an issue to report bugs or suggest improvements, or submit a pull request with your changes.

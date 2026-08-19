@@ -1,5 +1,7 @@
 'use client'
 
+import type { Where } from 'payload'
+
 import { getTranslation } from '@payloadcms/translations'
 import {
   useConfig,
@@ -12,8 +14,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { SearchResult, SearchResultDocument } from '../../types/SearchResult.js'
 
+import { buildSearchQuery, SEARCH_RESULTS_LIMIT } from './buildSearchQuery.js'
+
 const SEARCH_DEBOUNCE_MS = 300
-const SEARCH_RESULTS_LIMIT = 5
 
 export interface UseSearchReturn {
   displayedQuery: string
@@ -25,7 +28,7 @@ export interface UseSearchReturn {
   setQuery: (query: string) => void
 }
 
-export const useSearch = (): UseSearchReturn => {
+export const useSearch = ({ baseFilter }: { baseFilter?: Where } = {}): UseSearchReturn => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [displayedQuery, setDisplayedQuery] = useState('')
@@ -54,32 +57,24 @@ export const useSearch = (): UseSearchReturn => {
     return { collections, globals }
   }, [config.collections, config.globals, i18n])
 
+  // The base filter scopes every request, so re-memoize whenever its constraints change
+  // rather than whenever the caller happens to hand over a new object.
+  const baseFilterKey = JSON.stringify(baseFilter ?? null)
+
   const [{ data, isError, isLoading }, { setParams }] = usePayloadAPI(
     `${config.routes.api}/search`,
     {
-      initialParams: {
-        depth: 0,
-        limit: 10,
-        pagination: false,
-        sort: '-priority',
-      },
+      // Scoped as well, so the results shown before anything is typed stay inside the filter.
+      initialParams: { ...buildSearchQuery({ baseFilter }), pagination: false },
     },
   )
 
   const getSearchParams = useCallback(
-    (searchQuery?: string) => ({
-      depth: 0,
-      limit: SEARCH_RESULTS_LIMIT,
-      sort: '-priority',
-      ...(searchQuery && {
-        where: {
-          title: {
-            like: searchQuery,
-          },
-        },
-      }),
-    }),
-    [],
+    (searchQuery?: string) => buildSearchQuery({ baseFilter, query: searchQuery }),
+    // Deliberately keyed on the serialized filter rather than on `baseFilter` itself: the
+    // server hands over a fresh object on every render, so depending on it directly would
+    // rebuild this callback each time and re-fire the search effect in a loop.
+    [baseFilterKey],
   )
 
   const triggerSearch = useCallback(

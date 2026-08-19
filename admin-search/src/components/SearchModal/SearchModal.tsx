@@ -1,5 +1,7 @@
 'use client'
 
+import type { Where } from 'payload'
+
 import { Banner, SearchIcon, useConfig, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { formatAdminURL } from 'payload/shared'
@@ -17,11 +19,14 @@ import './SearchModal.css'
 import { useSearch } from './useSearch.js'
 
 interface SearchModalProps {
+  baseFilter?: Where
   handleClose: () => void
 }
 
-export const SearchModal: React.FC<SearchModalProps> = ({ handleClose }) => {
-  const { displayedQuery, isError, isLoading, query, results, resultsLimit, setQuery } = useSearch()
+export const SearchModal: React.FC<SearchModalProps> = ({ baseFilter, handleClose }) => {
+  const { displayedQuery, isError, isLoading, query, results, resultsLimit, setQuery } = useSearch({
+    baseFilter,
+  })
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [isKeyboardNav, setIsKeyboardNav] = useState(false)
 
