@@ -83,7 +83,14 @@ export default buildConfig({
       baseFilter: ({ req }) => {
         const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
-        return tenant ? { tenant: { equals: tenant } } : {}
+        if (!tenant) {
+          return {}
+        }
+
+        // Only `pages` and `posts` are tenant-scoped below, but `authors` and `media` are
+        // indexed too. The `exists: false` branch keeps those in the results; without it,
+        // picking a tenant makes every author and media item disappear from the search.
+        return { or: [{ tenant: { equals: tenant } }, { tenant: { exists: false } }] }
       },
       headerSearchComponentStyle: 'bar',
     }),
