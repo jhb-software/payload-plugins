@@ -1,24 +1,20 @@
-import type { Payload, PayloadRequest, TypedUser, Where } from 'payload'
+import type { Payload, PayloadRequest, Where } from 'payload'
 
 import type { AdminSearchPluginConfig } from '../../types/AdminSearchPluginConfig.js'
 
 /**
- * Evaluates the configured `baseFilter` against the current admin request.
+ * Evaluates the configured `baseFilter` against the request the admin panel is rendering.
  *
- * Admin components receive `payload` and `user`, but no request — so one is built from the
- * incoming headers, which is what carries the scope a filter reads (e.g. the `payload-tenant`
- * cookie set by the multi-tenant plugin).
+ * The request is not built here: Payload already builds one for this render (see `initReq`
+ * in `@payloadcms/next`, which resolves the locale on top of it) and passes it to admin
+ * components as a server prop. Rebuilding it would drop that resolved locale.
  */
 export const resolveBaseFilter = async ({
-  headers,
-  i18n,
   payload,
-  user,
+  req,
 }: {
-  headers: Headers
-  i18n?: PayloadRequest['i18n']
   payload: Payload
-  user?: TypedUser
+  req?: PayloadRequest
 }): Promise<undefined | Where> => {
   const baseFilter = (
     payload.config.custom?.adminSearchPluginConfig as AdminSearchPluginConfig | undefined
@@ -28,9 +24,16 @@ export const resolveBaseFilter = async ({
     return undefined
   }
 
-  const { createLocalReq } = await import('payload')
-  // Reuse the admin panel's i18n rather than letting createLocalReq initialize its own.
-  const req = await createLocalReq({ req: { headers, i18n }, user }, payload)
+  if (!req) {
+    // `req` is not part of Payload's exported `ServerProps` type, only of what it passes at
+    // runtime. If a future version stops passing it, the search silently widens to every
+    // document — so say so loudly rather than letting it pass unnoticed.
+    payload.logger.error(
+      'admin-search: no request was passed to the search component, so `baseFilter` could not be evaluated. The search is unscoped.',
+    )
+
+    return undefined
+  }
 
   try {
     return await baseFilter({ req })
