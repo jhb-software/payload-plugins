@@ -7,6 +7,7 @@ import { Suspense } from 'react'
 import type { DeploymentsInfo } from '../endpoints/getDeployments.js'
 import type { VercelDeploymentsTranslationKeys } from '../translations/index.js'
 import type { VercelDeploymentsPluginConfig } from '../types.js'
+import type { ResolvedTarget } from '../utilities/resolveTarget.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
 import { Card } from './Card.js'
@@ -22,9 +23,11 @@ import { TriggerFrontendDeploymentButton } from './TriggerDeploymentButton.js'
 export function DeploymentInfoCard({
   i18n,
   pluginConfig,
+  target,
 }: {
   i18n: I18nClient
   pluginConfig: VercelDeploymentsPluginConfig
+  target: ResolvedTarget
 }) {
   const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
@@ -33,12 +36,12 @@ export function DeploymentInfoCard({
   return (
     <DeploymentStatusPoller>
       <Card
-        actions={<TriggerFrontendDeploymentButton />}
+        actions={target.projectId ? <TriggerFrontendDeploymentButton /> : null}
         icon={<CloudIcon />}
         title={t('vercel-dashboard:deploymentInfoTitle')}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {pluginConfig.widget?.websiteUrl ? (
+          {target.websiteUrl ? (
             <div
               style={{
                 alignItems: 'center',
@@ -54,7 +57,7 @@ export function DeploymentInfoCard({
                 </span>
               </span>
               <a
-                href={pluginConfig.widget.websiteUrl}
+                href={target.websiteUrl}
                 rel="noopener noreferrer"
                 style={{
                   color: 'var(--theme-text)',
@@ -62,7 +65,7 @@ export function DeploymentInfoCard({
                 }}
                 target="_blank"
               >
-                {pluginConfig.widget.websiteUrl.replace(/^https?:\/\//, '')}
+                {target.websiteUrl.replace(/^https?:\/\//, '')}
               </a>
             </div>
           ) : null}
@@ -77,7 +80,7 @@ export function DeploymentInfoCard({
               </div>
             }
           >
-            <DeploymentInfo i18n={i18n} pluginConfig={pluginConfig} />
+            <DeploymentInfo i18n={i18n} pluginConfig={pluginConfig} target={target} />
           </Suspense>
 
           {description ? (
@@ -107,9 +110,11 @@ function resolveDescription(
 export default async function DeploymentInfo({
   i18n,
   pluginConfig,
+  target,
 }: {
   i18n: I18nClient
   pluginConfig: VercelDeploymentsPluginConfig
+  target: ResolvedTarget
 }) {
   const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
@@ -117,13 +122,19 @@ export default async function DeploymentInfo({
   let latestDeployment: DeploymentsInfo['latestDeployment'] = undefined
   let error: string | undefined = undefined
 
+  // No project resolved for this request (e.g. no tenant selected) — there is nothing
+  // to report on, and the card renders without deployment rows.
+  if (!target.projectId) {
+    return null
+  }
+
   try {
     const { VercelApiClient } = await import('../utilities/vercelApiClient.js')
     const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
 
     const deploymentsResponse = await vercelClient.getDeployments({
       limit: 10,
-      projectId: pluginConfig.vercel.projectId,
+      projectId: target.projectId,
       target: 'production',
       teamId: pluginConfig.vercel.teamId,
     })

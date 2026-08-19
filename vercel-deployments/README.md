@@ -51,15 +51,43 @@ export default buildConfig({
 
 ### Plugin Options
 
-| Option             | Type                                       | Required | Description                                                                                                                                           |
-| ------------------ | ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `vercel.apiToken`  | `string`                                   | Yes      | Vercel API Bearer Token                                                                                                                               |
-| `vercel.projectId` | `string`                                   | Yes      | Vercel Project ID to monitor                                                                                                                          |
-| `vercel.teamId`    | `string`                                   | No       | Vercel Team ID (required for team projects)                                                                                                           |
-| `widget.minWidth`  | `WidgetWidth`                              | No       | Minimum widget width (default: 'medium')                                                                                                              |
-| `widget.maxWidth`  | `WidgetWidth`                              | No       | Maximum widget width (default: 'full')                                                                                                                |
-| `enabled`          | `boolean`                                  | No       | Enable/disable the plugin (default: true)                                                                                                             |
-| `access`           | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's API endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication) |
+| Option              | Type                                       | Required | Description                                                                                                                                           |
+| ------------------- | ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vercel.apiToken`   | `string`                                   | Yes      | Vercel API Bearer Token                                                                                                                               |
+| `vercel.projectId`  | `Resolvable<string \| undefined>`          | Yes      | Vercel Project ID to monitor. Pass a function to resolve it per request — see [Multi-tenant support](#multi-tenant-support)                           |
+| `vercel.teamId`     | `string`                                   | No       | Vercel Team ID (required for team projects)                                                                                                           |
+| `widget.websiteUrl` | `Resolvable<string \| undefined>`          | No       | URL of the frontend website, shown as a link in the widget. Pass a function to resolve it per request                                                 |
+| `widget.minWidth`   | `WidgetWidth`                              | No       | Minimum widget width (default: 'medium')                                                                                                              |
+| `widget.maxWidth`   | `WidgetWidth`                              | No       | Maximum widget width (default: 'full')                                                                                                                |
+| `enabled`           | `boolean`                                  | No       | Enable/disable the plugin (default: true)                                                                                                             |
+| `access`            | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's API endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication) |
+
+### Multi-tenant support
+
+`vercel.projectId` and `widget.websiteUrl` accept a function instead of a string, resolved against the current request. In a setup where each tenant deploys to its own Vercel project, return the values of the tenant selected in the admin panel:
+
+```typescript
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+import type { PayloadRequest } from 'payload'
+
+const selectedTenant = async (req: PayloadRequest) => {
+  const id = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+  return id ? req.payload.findByID({ id, collection: 'tenants', req }) : undefined
+}
+
+vercelDeploymentsPlugin({
+  vercel: {
+    apiToken: process.env.VERCEL_API_TOKEN!,
+    projectId: async ({ req }) => (await selectedTenant(req))?.vercelProjectId ?? undefined,
+  },
+  widget: {
+    websiteUrl: async ({ req }) => (await selectedTenant(req))?.websiteUrl ?? undefined,
+  },
+})
+```
+
+Resolving to `undefined` means the request has no deployment target: the widget renders without deployment rows and hides the deploy button, and both API endpoints answer `400`. A tenant that has not been deployed yet therefore needs no special casing.
 
 ### WidgetWidth Values
 

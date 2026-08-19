@@ -1,5 +1,11 @@
 import type { PayloadRequest } from 'payload'
 
+/**
+ * A value that is either static, or resolved per request — e.g. from the tenant
+ * selected in a multi-tenant admin panel.
+ */
+export type Resolvable<T> = ((args: { req: PayloadRequest }) => Promise<T> | T) | T
+
 export type VercelDeploymentsPluginConfig = {
   /**
    * Custom access control function for the plugin's API endpoints.
@@ -23,9 +29,12 @@ export type VercelDeploymentsPluginConfig = {
     apiToken: string
 
     /**
-     * Vercel Project ID to monitor
+     * Vercel Project ID to monitor. Pass a function to resolve it per request, e.g. from
+     * the tenant selected in a multi-tenant admin panel. Resolving to `undefined` means
+     * the request has no deployment target: the widget hides its deploy action and the
+     * endpoints answer 400.
      */
-    projectId: string
+    projectId: Resolvable<string | undefined>
 
     /**
      * Vercel Team ID (required for team projects)
@@ -56,7 +65,8 @@ export type VercelDeploymentsPluginConfig = {
 
     /**
      * URL of the frontend website. Displayed as a link in the widget.
+     * Pass a function to resolve it per request.
      */
-    websiteUrl?: string
+    websiteUrl?: Resolvable<string | undefined>
   }
 }
