@@ -89,6 +89,8 @@ adminSearchPlugin({
 - **Default**: none
 - **Description**: Restricts document results to a constraint resolved against the current request. The filter runs on the server, and its result is combined with the typed query using `and` — so results stay in scope even before anything is typed.
 
+`req` is the request the admin panel is being rendered for, so it carries the incoming cookies, the signed-in user and the locale currently being viewed.
+
 The main use is multi-tenancy: scope the search to the tenant selected in the admin panel, whose id [@payloadcms/plugin-multi-tenant](https://payloadcms.com/docs/plugins/multi-tenant) keeps in the `payload-tenant` cookie.
 
 ```ts
