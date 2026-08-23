@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0-beta.3
 
 - **BREAKING**: locale codes are rejected as slugs on localized installs — a page slugged e.g. `en` fails validation on its next save and must be renamed
 - feat: `localeRouting` option — per-request primary locale, optional unprefixed primary locale, `x-default` in `alternatePaths`
