@@ -142,9 +142,8 @@ describe('resolveLocaleRouting', () => {
 describe('parseLocalizedPath', () => {
   const parse = (path: string, routing: LocaleRouting | undefined, explicitLocale?: string) =>
     parseLocalizedPath({
-      defaultLocale: 'en',
       explicitLocale,
-      localeCodes: ['de', 'en'],
+      localization: { defaultLocale: 'en', localeCodes: ['de', 'en'] },
       routing,
       segments: path.split('/').slice(1),
     })

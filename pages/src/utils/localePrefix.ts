@@ -63,6 +63,15 @@ export function prefixForLocale(
   return localePrefixes?.[locale] ?? `/${locale}`
 }
 
+/** {@link rootPathForLocale}, for a caller holding a {@link localePrefixMap} instead of the routing. */
+export function rootPathFromPrefixes(
+  localePrefixes: Record<Locale, string> | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  locale: 'all' | Locale | undefined,
+): string {
+  return prefixForLocale(localePrefixes, locale) || '/'
+}
+
 /**
  * Splits a requested path into the locale it addresses and the slug segments below the locale
  * prefix.
@@ -72,26 +81,34 @@ export function prefixForLocale(
  * read `de` (which slug validation rejects, so it resolves to nothing). Without a prefix the
  * locale falls back to the primary locale, or to Payload's default locale when no routing is
  * configured. An explicit locale argument always wins.
+ *
+ * On an unlocalized install there is no prefix to strip and no locale to infer.
  */
 export function parseLocalizedPath({
-  defaultLocale,
   explicitLocale,
-  localeCodes,
+  localization,
   routing,
   segments,
 }: {
-  defaultLocale: Locale
   explicitLocale: Locale | undefined
-  localeCodes: Locale[]
+  localization: { defaultLocale: Locale; localeCodes: Locale[] } | false
   routing: LocaleRouting | undefined
   segments: string[]
-}): { locale: Locale; slugSegments: string[] } {
+}): { locale: Locale | undefined; slugSegments: string[] } {
+  if (!localization) {
+    return { locale: explicitLocale, slugSegments: segments }
+  }
+
   const prefix = segments[0]
   const prefixed =
-    Boolean(prefix) && localeCodes.includes(prefix) && isPrefixedLocale(prefix, routing)
+    Boolean(prefix) &&
+    localization.localeCodes.includes(prefix) &&
+    isPrefixedLocale(prefix, routing)
 
   return {
-    locale: explicitLocale ?? (prefixed ? prefix : (routing?.primaryLocale ?? defaultLocale)),
+    locale:
+      explicitLocale ??
+      (prefixed ? prefix : (routing?.primaryLocale ?? localization.defaultLocale)),
     slugSegments: prefixed ? segments.slice(1) : segments,
   }
 }

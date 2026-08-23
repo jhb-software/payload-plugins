@@ -1,10 +1,8 @@
 import type { TextFieldServerProps } from 'payload'
 
-import type { PagesPluginConfig } from '../../types/PagesPluginConfig.js'
 import type { SlugFieldProps } from '../client/SlugFieldClient.js'
 
-import { localePrefixMap } from '../../utils/localePrefix.js'
-import { resolveLocaleRouting } from '../../utils/resolveLocaleRouting.js'
+import { resolveLocalePrefixes } from '../../utils/resolveLocaleRouting.js'
 import SlugFieldClient from '../client/SlugFieldClient.js'
 
 /**
@@ -41,22 +39,14 @@ export const SlugField = async ({
 
   // The redirect banner builds both the old and the new path, so it needs the same locale
   // prefixes the server computes — which the client cannot resolve on its own.
-  const collection = payload.config.collections?.find(
-    (candidate) => candidate.slug === collectionSlug,
-  )
-  const routing = await resolveLocaleRouting({
-    payload,
-    pluginConfig: collection?.custom?.pagesPluginConfig as PagesPluginConfig | undefined,
-    req,
-  })
-  const localization = payload.config.localization
+  const localePrefixes = await resolveLocalePrefixes({ collectionSlug, payload, req })
 
   return (
     <SlugFieldClient
       defaultValue={defaultValue}
       fallbackField={fallbackField}
       field={clientField}
-      localePrefixes={localePrefixMap(localization ? localization.localeCodes : undefined, routing)}
+      localePrefixes={localePrefixes}
       pageSlug={pageSlug}
       path={path}
       readOnly={isReadOnly}

@@ -1,10 +1,12 @@
 import type { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payload'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
-import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
-import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
+import {
+  asPageCollectionConfigOrThrow,
+  pagesPluginConfigOf,
+} from '../utils/pageCollectionConfigHelpers.js'
 import { parentRefKey, tryResolveParentRef } from '../utils/parentRef.js'
 import { resolveLocaleRouting } from '../utils/resolveLocaleRouting.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
@@ -44,7 +46,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   const locales = localesFromRequest(req)
   const routing = await resolveLocaleRouting({
     payload: req.payload,
-    pluginConfig: collection.custom?.pagesPluginConfig as PagesPluginConfig | undefined,
+    pluginConfig: pagesPluginConfigOf(collection),
     req,
   })
 
@@ -110,7 +112,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   const parentField = pageConfig.page.parent.name
   const routing = await resolveLocaleRouting({
     payload: req.payload,
-    pluginConfig: collection.custom?.pagesPluginConfig as PagesPluginConfig | undefined,
+    pluginConfig: pagesPluginConfigOf(collection),
     req,
   })
 

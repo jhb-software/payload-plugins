@@ -12,6 +12,7 @@ import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { ParentRef } from './parentRef.js'
 
 import { livePerLocale } from '../queries/liveness.js'
+import { localeCodesOf } from './localeFromRequest.js'
 import { isPageCollectionConfig } from './pageCollectionConfigHelpers.js'
 import {
   hasPolymorphicParent,
@@ -54,7 +55,7 @@ export async function loadDescendants({
     isPageCollectionConfig(collection),
   ) as PageCollectionConfig[]
 
-  const locales = payload.config.localization ? payload.config.localization.localeCodes : undefined
+  const locales = localeCodesOf(payload)
   const localized = Boolean(locales)
   const rows: DescendantRow[] = []
   const visited = new Set<string>([parentRefKey(root)])

@@ -4,11 +4,14 @@ import { createLocalReq } from 'payload'
 import { getSelectMode } from 'payload/shared'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
-import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { FindPageByPathArgs, PageDocument, PageDocumentResult } from './types.js'
 
+import { localeCodesOf } from '../utils/localeFromRequest.js'
 import { parseLocalizedPath } from '../utils/localePrefix.js'
-import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
+import {
+  isPageCollectionConfig,
+  pagesPluginConfigOf,
+} from '../utils/pageCollectionConfigHelpers.js'
 import { resolveLocaleRouting } from '../utils/resolveLocaleRouting.js'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
 import { livenessConditions } from './liveness.js'
@@ -66,28 +69,19 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     throw new Error('The Payload config does not contain any page collections.')
   }
 
-  const pluginConfig = candidates[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
+  const pluginConfig = pagesPluginConfigOf(candidates[0])
 
   // A request-dependent resolver throws without a `req`: falling back to the default routing
   // would silently turn an unprefixed path into an unexplained `null`.
   const routing = await resolveLocaleRouting({ payload, pluginConfig, req: args.req })
 
   // Determine the locale and the slug of the last path segment
-  const localization = payload.config.localization
-  const segments = path.split('/').slice(1)
-
-  const parsed = localization
-    ? parseLocalizedPath({
-        defaultLocale: localization.defaultLocale,
-        explicitLocale: args.locale,
-        localeCodes: localization.localeCodes,
-        routing,
-        segments,
-      })
-    : undefined
-
-  const slugSegments = parsed?.slugSegments ?? segments
-  const locale = parsed?.locale ?? args.locale
+  const { locale, slugSegments } = parseLocalizedPath({
+    explicitLocale: args.locale,
+    localization: payload.config.localization,
+    routing,
+    segments: path.split('/').slice(1),
+  })
 
   const slug = slugSegments.at(-1) ?? ROOT_PAGE_SLUG
 
@@ -162,13 +156,7 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       and.push(args.where)
     }
     if (!draft) {
-      and.push(
-        ...livenessConditions(
-          collection,
-          locale,
-          localization ? localization.localeCodes : undefined,
-        ),
-      )
+      and.push(...livenessConditions({ collection, locale, localeCodes: localeCodesOf(payload) }))
     }
     return { and }
   }

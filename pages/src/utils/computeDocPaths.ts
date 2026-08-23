@@ -7,12 +7,16 @@ import type {
 
 import { hasDraftsEnabled } from 'payload/shared'
 
-import type { LocaleRouting, PagesPluginConfig } from '../types/PagesPluginConfig.js'
+import type { LocaleRouting } from '../types/PagesPluginConfig.js'
 
 import { livePerLocale } from '../queries/liveness.js'
 import { MissingAncestorError } from './loadAncestors.js'
+import { localeCodesOf } from './localeFromRequest.js'
 import { rootPathForLocale } from './localePrefix.js'
-import { asPageCollectionConfigOrThrow } from './pageCollectionConfigHelpers.js'
+import {
+  asPageCollectionConfigOrThrow,
+  pagesPluginConfigOf,
+} from './pageCollectionConfigHelpers.js'
 import { resolveLocaleRouting } from './resolveLocaleRouting.js'
 import { setPageDocumentVirtualFields } from './setPageVirtualFields.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
@@ -54,8 +58,7 @@ export async function computeDocPaths({
   const pageConfig = asPageCollectionConfigOrThrow(collectionConfig)
   const pageAttributes = pageConfig.page
 
-  const localization = req.payload.config.localization
-  const locales = localization ? localization.localeCodes : undefined
+  const locales = localeCodesOf(req.payload)
 
   const select: SelectType = {
     slug: true,
@@ -84,7 +87,7 @@ export async function computeDocPaths({
 
   const routing = await resolveLocaleRouting({
     payload: req.payload,
-    pluginConfig: collectionConfig.custom?.pagesPluginConfig as PagesPluginConfig | undefined,
+    pluginConfig: pagesPluginConfigOf(collectionConfig),
     req,
   })
 

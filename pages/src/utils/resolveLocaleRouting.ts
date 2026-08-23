@@ -5,6 +5,10 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Locale } from '../types/Locale.js'
 import type { LocaleRouting, PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
+import { localeCodesOf } from './localeFromRequest.js'
+import { localePrefixMap } from './localePrefix.js'
+import { pagesPluginConfigOf } from './pageCollectionConfigHelpers.js'
+
 /**
  * Marks the asynchronous scope a `localeRouting` resolver runs in. Everything the resolver awaits
  * inherits the mark, which is what separates a read performed *by* the resolver from a path
@@ -73,6 +77,32 @@ export async function resolveLocaleRouting({
   routingByRequest.set(req, pending)
 
   return pending
+}
+
+/**
+ * The locale prefixes in effect for the given collection and request, as plain data a field's
+ * server component can hand to its client component — which has no `req` and therefore cannot
+ * resolve a per-request routing itself.
+ */
+export async function resolveLocalePrefixes({
+  collectionSlug,
+  payload,
+  req,
+}: {
+  collectionSlug: string | undefined
+  payload: Payload
+  req: PayloadRequest | undefined
+}): Promise<Record<Locale, string> | undefined> {
+  const collection = payload.config.collections.find(
+    (candidate) => candidate.slug === collectionSlug,
+  )
+  const routing = await resolveLocaleRouting({
+    payload,
+    pluginConfig: pagesPluginConfigOf(collection),
+    req,
+  })
+
+  return localePrefixMap(localeCodesOf(payload), routing)
 }
 
 /** A typo in `primaryLocale` would silently rewrite every path, so it is rejected loudly. */

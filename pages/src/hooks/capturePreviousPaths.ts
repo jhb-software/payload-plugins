@@ -1,11 +1,11 @@
 import type { CollectionBeforeChangeHook, CollectionBeforeDeleteHook } from 'payload'
 
-import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { DocPaths } from '../utils/computeDocPaths.js'
 import type { DescendantPaths } from '../utils/loadDescendants.js'
 
 import { computeDocPaths, noDocPaths } from '../utils/computeDocPaths.js'
 import { assembleDescendantPaths, loadDescendants } from '../utils/loadDescendants.js'
+import { pagesPluginConfigOf } from '../utils/pageCollectionConfigHelpers.js'
 import { SKIP_PARENT_GUARD_CONTEXT_KEY } from './preventParentDeletion.js'
 
 /**
@@ -116,7 +116,7 @@ export const capturePreviousPathsBeforeDelete: CollectionBeforeDeleteHook = asyn
     const capture: PathCapture =
       (await computeDocPaths({ id, collectionConfig: collection, req })) ?? noDocPaths()
 
-    const pluginConfig = collection.custom?.pagesPluginConfig as PagesPluginConfig | undefined
+    const pluginConfig = pagesPluginConfigOf(collection)
     const guardInactive =
       pluginConfig?.preventParentDeletion === false ||
       req.context[SKIP_PARENT_GUARD_CONTEXT_KEY] === true

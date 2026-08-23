@@ -11,7 +11,6 @@ import { hasDraftsEnabled } from 'payload/shared'
 
 import type { Locale } from '../types/Locale.js'
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
-import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { DocPaths } from '../utils/computeDocPaths.js'
 
 import {
@@ -21,9 +20,11 @@ import {
 } from '../hooks/capturePreviousPaths.js'
 import { computeDocPaths, noDocPaths } from '../utils/computeDocPaths.js'
 import { assembleDescendantPaths, loadDescendants } from '../utils/loadDescendants.js'
+import { localeCodesOf } from '../utils/localeFromRequest.js'
 import {
   asPageCollectionConfigOrThrow,
   isPageCollectionConfig,
+  pagesPluginConfigOf,
 } from '../utils/pageCollectionConfigHelpers.js'
 import { isLiveRow, livenessConditions } from './liveness.js'
 
@@ -138,13 +139,13 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
     : pageCollections
 
   const draft = args.draft ?? false
-  const localization = payload.config.localization
-  const locale = localization ? (args.locale ?? 'all') : undefined
+  const localeCodes = localeCodesOf(payload)
+  const locale = localeCodes ? (args.locale ?? 'all') : undefined
 
-  // The plugin stores one shared config on every page collection, so any collection's copy —
-  // including its baseFilter — speaks for all of them. This breaks if the plugin ever supports
-  // multiple instances with different configs in one Payload config.
-  const pluginConfig = collections[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
+  // Any page collection's copy of the shared plugin config — including its baseFilter — speaks
+  // for all of them. This breaks if the plugin ever supports multiple instances with different
+  // configs in one Payload config.
+  const pluginConfig = pagesPluginConfigOf(collections[0])
   const baseFilter = args.baseFilter === false ? undefined : pluginConfig?.baseFilter?.({ req })
 
   const enumerateCollection = async (
@@ -152,9 +153,7 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
   ): Promise<PagePathEntry[]> => {
     const labelField = collection.page.breadcrumbs.labelField
 
-    const and: Where[] = draft
-      ? []
-      : livenessConditions(collection, locale, localization ? localization.localeCodes : undefined)
+    const and: Where[] = draft ? [] : livenessConditions({ collection, locale, localeCodes })
     if (baseFilter) {
       and.push(baseFilter)
     }

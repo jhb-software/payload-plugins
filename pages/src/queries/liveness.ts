@@ -28,12 +28,16 @@ type Collection = PageCollectionConfig | SanitizedCollectionConfig
  * locale — callers then narrow per locale via {@link isLiveRow}. This mirrors the query
  * Payload's own `replaceWithDraftIfAvailable` issues.
  */
-export function livenessConditions(
-  collection: Collection,
+export function livenessConditions({
+  collection,
+  locale,
+  localeCodes,
+}: {
+  collection: Collection
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  locale?: 'all' | Locale,
-  localeCodes?: Locale[],
-): Where[] {
+  locale?: 'all' | Locale
+  localeCodes?: Locale[]
+}): Where[] {
   if (!hasDraftsEnabled(collection)) {
     return []
   }
@@ -75,7 +79,7 @@ export function isLiveRow(
 
   if (hasLocalizeStatusEnabled(collection) && typeof row._status !== 'string') {
     const status = row._status as null | Record<string, unknown> | undefined
-    return Boolean(locale) && status?.[locale!] === 'published'
+    return locale !== undefined && status?.[locale] === 'published'
   }
 
   return row._status === 'published'
