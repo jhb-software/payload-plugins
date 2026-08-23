@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **BREAKING**: locale codes are rejected as slugs on localized installs — a page slugged e.g. `en` fails validation on its next save and must be renamed
+- feat: `localeRouting` option — per-request primary locale, optional unprefixed primary locale, `x-default` in `alternatePaths`
+- feat: per-locale liveness with a localized `_status` (`localizeStatus`), so a page published in one locale only resolves that locale's path
+
 ## 0.9.0-beta.2
 
 - **BREAKING**: a `page.parent.collection` naming a non-page collection now throws at startup, and a collection using `parent.sharedDocument` may no longer list its own slug — both configs could never produce a valid page tree
