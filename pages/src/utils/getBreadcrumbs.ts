@@ -8,6 +8,7 @@ import type { PageCollectionConfigAttributes } from '../types/PageCollectionConf
 import type { Ancestor } from './loadAncestors.js'
 
 import { loadAncestorChain } from './loadAncestors.js'
+import { rootPathFromPrefixes } from './localePrefix.js'
 import { resolveParentRef } from './parentRef.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
@@ -17,6 +18,7 @@ export async function getBreadcrumbs({
   apiURL,
   data,
   locale,
+  localePrefixes,
   locales,
   pageConfig,
   req,
@@ -30,6 +32,8 @@ export async function getBreadcrumbs({
   data: Record<string, any>
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
+  /** Each locale's path prefix. Without it every locale is prefixed with `/<locale>`. */
+  localePrefixes?: Record<Locale, string>
   locales: Locale[] | undefined
   /** Page config of the collection `data` belongs to. Every ancestor resolves its own. */
   pageConfig: PageCollectionConfigAttributes
@@ -45,6 +49,7 @@ export async function getBreadcrumbs({
           additionalSlug: data.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(data.slug, locale),
           breadcrumbs: parentBreadcrumbs,
           locale,
+          localePrefixes,
         }),
       },
       locale,
@@ -80,7 +85,7 @@ export async function getBreadcrumbs({
       req,
     })
 
-    parentBreadcrumbsFor = (locale) => ancestorsToBreadcrumbs(ancestors, locale)
+    parentBreadcrumbsFor = (locale) => ancestorsToBreadcrumbs(ancestors, locale, localePrefixes)
   } else {
     // Client components have no `req`, so the parent's already-computed breadcrumbs are read
     // through the REST API instead of walking the chain.
@@ -142,7 +147,11 @@ export async function getBreadcrumbs({
  * Each ancestor's path is built from the breadcrumbs above it, which is what the previous
  * implementation achieved by reading each ancestor's own computed `breadcrumbs` field.
  */
-function ancestorsToBreadcrumbs(ancestors: Ancestor[], locale: Locale | undefined): Breadcrumb[] {
+function ancestorsToBreadcrumbs(
+  ancestors: Ancestor[],
+  locale: Locale | undefined,
+  localePrefixes: Record<Locale, string> | undefined,
+): Breadcrumb[] {
   const breadcrumbs: Breadcrumb[] = []
 
   for (const ancestor of ancestors) {
@@ -151,26 +160,16 @@ function ancestorsToBreadcrumbs(ancestors: Ancestor[], locale: Locale | undefine
     breadcrumbs.push({
       slug,
       label: pickFieldValue(ancestor.label, locale)!,
+      // A root page is the site root of every locale — its path is the locale prefix (or `/`)
+      // rather than a path assembled from slugs, and it does not depend on the locale carrying
+      // a stored slug. Mirrors `setRootPageDocumentVirtualFields`.
       path: ancestor.isRootPage
-        ? rootPagePath(ancestor, locale)!
-        : pathFromBreadcrumbs({ additionalSlug: slug, breadcrumbs, locale }),
+        ? rootPathFromPrefixes(localePrefixes, locale)
+        : pathFromBreadcrumbs({ additionalSlug: slug, breadcrumbs, locale, localePrefixes }),
     })
   }
 
   return breadcrumbs
-}
-
-/**
- * The path of a root page, which is the locale prefix (or `/`) rather than a path assembled
- * from slugs. A locale the root page has no slug for has no path, mirroring
- * `setRootPageDocumentVirtualFields`.
- */
-function rootPagePath(ancestor: Ancestor, locale: Locale | undefined): string | undefined {
-  if (!locale) {
-    return '/'
-  }
-
-  return pickFieldValue(ancestor.slug, locale) === ROOT_PAGE_SLUG ? `/${locale}` : undefined
 }
 
 /** Converts a localized or unlocalized document to a breadcrumb item. */

@@ -21,6 +21,7 @@ import {
  */
 const virtualFields = {
   breadcrumbs: [],
+  meta: { alternatePaths: [] },
   path: '',
 }
 
@@ -270,8 +271,8 @@ describe('Multi-tenant baseFilter functionality', () => {
       expect(fetchedChildT2.breadcrumbs[1].label).toBe('Development')
 
       // Paths should be correctly generated
-      expect(fetchedChildT1.path).toBe('/services/consulting')
-      expect(fetchedChildT2.path).toBe('/services/development')
+      expect(fetchedChildT1.path).toBe('/en/services/consulting')
+      expect(fetchedChildT2.path).toBe('/en/services/development')
     })
 
     test('Cross-collection breadcrumbs and paths are correctly generated', async () => {
@@ -335,10 +336,10 @@ describe('Multi-tenant baseFilter functionality', () => {
       })
 
       expect(fetchedAuthor1.breadcrumbs[0].label).toBe('Authors T1')
-      expect(fetchedAuthor1.path).toBe('/authors/author-one')
+      expect(fetchedAuthor1.path).toBe('/en/authors/author-one')
 
       expect(fetchedAuthor2.breadcrumbs[0].label).toBe('Writers T2')
-      expect(fetchedAuthor2.path).toBe('/writers/author-two')
+      expect(fetchedAuthor2.path).toBe('/en/writers/author-two')
     })
   })
 
@@ -448,8 +449,8 @@ describe('Multi-tenant baseFilter functionality', () => {
       // served from it. The baseFilter result is part of the cache key, so the cached entries
       // of the two tenants must not collide.
       for (let i = 0; i < 2; i++) {
-        const result1 = await findPageByPath({ req: req1, path: '/pricing' })
-        const result2 = await findPageByPath({ req: req2, path: '/pricing' })
+        const result1 = await findPageByPath({ req: req1, path: '/en/pricing' })
+        const result2 = await findPageByPath({ req: req2, path: '/en/pricing' })
 
         expect(result1?.doc.id).toBe(page1.id)
         expect(result2?.doc.id).toBe(page2.id)
@@ -457,7 +458,7 @@ describe('Multi-tenant baseFilter functionality', () => {
     })
 
     test('throws when called without req while a baseFilter is configured', async () => {
-      await expect(findPageByPath({ payload, path: '/pricing' })).rejects.toThrow()
+      await expect(findPageByPath({ payload, path: '/en/pricing' })).rejects.toThrow()
     })
   })
 
@@ -611,7 +612,7 @@ describe('Multi-tenant baseFilter functionality', () => {
       })
 
       const { doc } = getLastAfterChangeHookArgs()
-      expect(doc.path).toBe('/narrow-select-root/narrow-select-child')
+      expect(doc.path).toBe('/en/narrow-select-root/narrow-select-child')
       expect(doc.breadcrumbs).toHaveLength(2)
     })
   })
@@ -679,11 +680,11 @@ describe('Multi-tenant baseFilter functionality', () => {
       tenant2Parent = (await createTree(tenant2Id)).parent
     })
 
-    test('listPagePaths returns only the current tenant`s paths', async () => {
+    test('listPagePaths returns only the current tenant’s paths', async () => {
       const entries = await listPagePaths({ req: await tenantReq(tenant1Id) })
 
       expect(new Set(entries.map((entry) => entry.path))).toEqual(
-        new Set(['/shared', '/shared/shared-child']),
+        new Set(['/en/shared', '/en/shared/shared-child']),
       )
       expect(new Set(entries.map((entry) => entry.id))).toEqual(
         new Set([tenant1Parent, tenant1Child]),
@@ -701,7 +702,7 @@ describe('Multi-tenant baseFilter functionality', () => {
       expect(ids).toContain(tenant2Parent)
     })
 
-    test('baseFilter: false with an explicit tenant where enumerates a tenant other than the request`s', async () => {
+    test('baseFilter: false with an explicit tenant where enumerates a tenant other than the request’s', async () => {
       const entries = await listPagePaths({
         baseFilter: false,
         req: await tenantReq(tenant1Id),
@@ -709,7 +710,7 @@ describe('Multi-tenant baseFilter functionality', () => {
       })
 
       expect(new Set(entries.map((entry) => entry.path))).toEqual(
-        new Set(['/shared', '/shared/shared-child']),
+        new Set(['/en/shared', '/en/shared/shared-child']),
       )
       expect(entries.map((entry) => entry.id)).toContain(tenant2Parent)
       expect(entries.map((entry) => entry.id)).not.toContain(tenant1Parent)
@@ -734,7 +735,7 @@ describe('Multi-tenant baseFilter functionality', () => {
       // the other tenant's identically slugged tree is untouched
       const tenant2Entries = await listPagePaths({ req: await tenantReq(tenant2Id) })
       expect(new Set(tenant2Entries.map((entry) => entry.path))).toEqual(
-        new Set(['/shared', '/shared/shared-child']),
+        new Set(['/en/shared', '/en/shared/shared-child']),
       )
     })
   })

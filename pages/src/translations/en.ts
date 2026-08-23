@@ -22,6 +22,8 @@ export const en: GenericTranslationsObject = {
     revertSlug: 'Revert change',
     rootPage: 'Root Page',
     showBreadcrumbs: 'Show Breadcrumbs',
+    slugCannotBeALocaleCode:
+      'The slug "{{slug}}" is reserved: it is a locale code, which paths use as the locale prefix.',
     slugWasChangedFromXToY:
       'The slug was changed from <code>{{from}}</code> to <code>{{to}}</code>. A redirect from the old to the new path is required.',
     syncSlugWithX: 'Sync with {{field}}',

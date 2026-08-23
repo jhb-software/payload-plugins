@@ -4,10 +4,15 @@ import { createLocalReq } from 'payload'
 import { getSelectMode } from 'payload/shared'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
-import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { FindPageByPathArgs, PageDocument, PageDocumentResult } from './types.js'
 
-import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
+import { localeCodesOf } from '../utils/localeFromRequest.js'
+import { parseLocalizedPath } from '../utils/localePrefix.js'
+import {
+  isPageCollectionConfig,
+  pagesPluginConfigOf,
+} from '../utils/pageCollectionConfigHelpers.js'
+import { resolveLocaleRouting } from '../utils/resolveLocaleRouting.js'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
 import { livenessConditions } from './liveness.js'
 import { buildPathCacheKey, type PathCacheEntry } from './pathCache.js'
@@ -64,19 +69,19 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     throw new Error('The Payload config does not contain any page collections.')
   }
 
-  // Determine the locale and the slug of the last path segment
-  const localization = payload.config.localization
-  const segments = path.split('/').slice(1)
-  let slugSegments = segments
-  let locale = args.locale
+  const pluginConfig = pagesPluginConfigOf(candidates[0])
 
-  if (localization) {
-    if (segments[0] && localization.localeCodes.includes(segments[0])) {
-      slugSegments = segments.slice(1)
-      locale = locale ?? segments[0]
-    }
-    locale = locale ?? localization.defaultLocale
-  }
+  // A request-dependent resolver throws without a `req`: falling back to the default routing
+  // would silently turn an unprefixed path into an unexplained `null`.
+  const routing = await resolveLocaleRouting({ payload, pluginConfig, req: args.req })
+
+  // Determine the locale and the slug of the last path segment
+  const { locale, slugSegments } = parseLocalizedPath({
+    explicitLocale: args.locale,
+    localization: payload.config.localization,
+    routing,
+    segments: path.split('/').slice(1),
+  })
 
   const slug = slugSegments.at(-1) ?? ROOT_PAGE_SLUG
 
@@ -87,7 +92,6 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     )
   }
 
-  const pluginConfig = candidates[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
   const cacheEnabled = args.cache ?? true
 
   // The plugin's `baseFilter` scopes every page query (e.g. to a tenant), so it must scope the
@@ -104,7 +108,14 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     baseFilter = pluginConfig.baseFilter({ req: args.req })
   }
 
-  const cacheKey = buildPathCacheKey({ baseFilter, draft, locale, path, where: args.where })
+  const cacheKey = buildPathCacheKey({
+    baseFilter,
+    draft,
+    locale,
+    path,
+    routing,
+    where: args.where,
+  })
 
   /**
    * The request every internal query runs on. Computing the virtual `path` walks the ancestor
@@ -145,7 +156,7 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       and.push(args.where)
     }
     if (!draft) {
-      and.push(...livenessConditions(collection))
+      and.push(...livenessConditions({ collection, locale, localeCodes: localeCodesOf(payload) }))
     }
     return { and }
   }
@@ -197,6 +208,19 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     }
   }
 
+  /**
+   * The condition matching the last path segment against a collection's documents.
+   *
+   * The root path carries no slug segment. A root page's slug is the constant `ROOT_PAGE_SLUG`,
+   * stored only for the locales the document has been written in, so matching it by slug would
+   * miss the site root in every other locale. `isRootPage` is unlocalized and identifies the
+   * same document in all of them.
+   */
+  const segmentCondition = (collection: PageCollectionConfig): Where =>
+    slug === ROOT_PAGE_SLUG && collection.page.isRootCollection
+      ? { isRootPage: { equals: true } }
+      : { slug: { equals: slug } }
+
   /** Queries a single collection for the documents whose slug matches the last path segment. */
   const scanCollection = async (collection: PageCollectionConfig): Promise<PageDocument[]> => {
     const result = await payload.find({
@@ -208,7 +232,7 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       pagination: false,
       req: await getReq(),
       select: { slug: true, path: true },
-      where: buildWhere({ slug: { equals: slug } }, collection),
+      where: buildWhere(segmentCondition(collection), collection),
     })
 
     return result.docs

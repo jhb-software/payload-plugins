@@ -91,15 +91,55 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
           },
         ]),
       )
+      // A root page has no slug to translate, so it is the site root in every configured
+      // locale — even the ones it has not been written in yet.
       expect(removeIdsFromArray(rootPage.meta?.alternatePaths)).toEqual(
         removeIdsFromArray([
           {
             id: undefined,
-            hreflang: locale,
-            path,
+            hreflang: 'de',
+            path: '/de',
+          },
+          {
+            id: undefined,
+            hreflang: 'en',
+            path: '/en',
           },
         ]),
       )
+    })
+
+    test('is linkable in a child`s breadcrumbs in a locale it was never saved in', async () => {
+      const rootPage = await payload.create({
+        collection: 'pages',
+        locale: 'en',
+        data: {
+          title: 'Home',
+          slug: '',
+          content: 'Home',
+          isRootPage: true,
+          ...virtualFields,
+        },
+      })
+      const child = await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child',
+          slug: 'child',
+          content: 'Child',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+
+      const fetched = await payload.findByID({ collection: 'pages', id: child.id, locale: 'de' })
+
+      // Without a path the root page cannot be linked in a breadcrumb navigation.
+      expect(fetched.breadcrumbs.map(({ slug, path }) => ({ slug, path }))).toEqual([
+        { slug: '', path: '/de' },
+        { slug: 'child', path: '/de/child' },
+      ])
     })
 
     test('has the correct virtual fields when all locales are present', async () => {
