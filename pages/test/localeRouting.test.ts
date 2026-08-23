@@ -2,10 +2,12 @@ import { describe, expect, test } from 'vitest'
 
 import type { LocaleRouting } from '../src/types/PagesPluginConfig.js'
 
+import { buildPathCacheKey } from '../src/queries/pathCache.js'
 import {
   localePathPrefix,
   localePrefixMap,
   localeRoutingCacheToken,
+  parseLocalizedPath,
   resolveLocaleRouting,
   rootPathForLocale,
 } from '../src/utils/localeRouting.js'
@@ -134,5 +136,91 @@ describe('resolveLocaleRouting', () => {
         req: undefined,
       }),
     ).rejects.toThrow(/req/)
+  })
+})
+
+describe('parseLocalizedPath', () => {
+  const parse = (path: string, routing: LocaleRouting | undefined, explicitLocale?: string) =>
+    parseLocalizedPath({
+      defaultLocale: 'en',
+      explicitLocale,
+      localeCodes: ['de', 'en'],
+      routing,
+      segments: path.split('/').slice(1),
+    })
+
+  test('strips a locale prefix and infers the locale from it', () => {
+    expect(parse('/de/kontakt', undefined)).toEqual({ locale: 'de', slugSegments: ['kontakt'] })
+    expect(parse('/en/contact/us', undefined)).toEqual({
+      locale: 'en',
+      slugSegments: ['contact', 'us'],
+    })
+  })
+
+  test('falls back to the default locale for an unprefixed path when no routing is configured', () => {
+    expect(parse('/kontakt', undefined)).toEqual({ locale: 'en', slugSegments: ['kontakt'] })
+  })
+
+  test('infers the primary locale for an unprefixed path', () => {
+    expect(parse('/kontakt', { primaryLocale: 'de', prefixPrimaryLocale: false })).toEqual({
+      locale: 'de',
+      slugSegments: ['kontakt'],
+    })
+    expect(parse('/', { primaryLocale: 'de', prefixPrimaryLocale: false })).toEqual({
+      locale: 'de',
+      slugSegments: [''],
+    })
+  })
+
+  test('keeps a leading locale code as a slug when that locale is served unprefixed', () => {
+    expect(parse('/de/kontakt', { primaryLocale: 'de', prefixPrimaryLocale: false })).toEqual({
+      locale: 'de',
+      slugSegments: ['de', 'kontakt'],
+    })
+  })
+
+  test('still strips the prefix of a locale which is not the unprefixed primary one', () => {
+    expect(parse('/en/contact', { primaryLocale: 'de', prefixPrimaryLocale: false })).toEqual({
+      locale: 'en',
+      slugSegments: ['contact'],
+    })
+  })
+
+  test('lets an explicit locale argument win over the inferred one', () => {
+    expect(parse('/kontakt', { primaryLocale: 'de', prefixPrimaryLocale: false }, 'en')).toEqual({
+      locale: 'en',
+      slugSegments: ['kontakt'],
+    })
+    expect(parse('/de/kontakt', undefined, 'en')).toEqual({
+      locale: 'en',
+      slugSegments: ['kontakt'],
+    })
+  })
+})
+
+describe('buildPathCacheKey', () => {
+  const key = (routing: LocaleRouting | undefined) =>
+    buildPathCacheKey({
+      baseFilter: undefined,
+      draft: false,
+      locale: 'de',
+      path: '/kontakt',
+      routing,
+      where: undefined,
+    })
+
+  test('gives the same path a different cache slot per routing', () => {
+    const keys = [
+      key(undefined),
+      key({ primaryLocale: 'de' }),
+      key({ primaryLocale: 'de', prefixPrimaryLocale: false }),
+      key({ primaryLocale: 'en' }),
+    ]
+
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  test('stays on the v1 prefix so existing entries remain sweepable by clearPathCache', () => {
+    expect(key(undefined).startsWith('payload-pages:path:v1:')).toBe(true)
   })
 })

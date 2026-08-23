@@ -14,6 +14,7 @@ import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import Tenants from './collections/tenants'
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { databaseAdapter } from './test/databaseAdapter'
+import { recordLocaleRoutingCall } from './test/localeRoutingCalls'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -48,7 +49,13 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  localization: false,
+  localization: {
+    locales: ['de', 'en'],
+    defaultLocale: 'en',
+  },
+  experimental: {
+    localizeStatus: true,
+  },
   plugins: [
     payloadPagesPlugin({
       generatePageURL: async ({ path, preview, data, req }) => {
@@ -77,6 +84,35 @@ export default buildConfig({
       redirectValidationFilter: ({ doc }) => {
         return { tenant: { equals: doc.tenant } }
       },
+      // Each tenant decides which locale leads its site and whether that locale is prefixed.
+      // Resolved once per request and cached on `req.context`, so a 50-page find pays for one
+      // tenant lookup, not fifty.
+      localeRouting: async ({ req }) => {
+        recordLocaleRoutingCall()
+
+        const tenantId = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+        if (!tenantId) {
+          return undefined
+        }
+
+        const tenant = await req.payload.findByID({
+          collection: 'tenants',
+          id: tenantId,
+          depth: 0,
+          disableErrors: true,
+          req,
+        })
+
+        if (!tenant) {
+          return undefined
+        }
+
+        return {
+          primaryLocale: tenant.primaryLocale,
+          prefixPrimaryLocale: Boolean(tenant.prefixAllLocales),
+        }
+      },
     }),
     multiTenantPlugin({
       collections: {
@@ -94,10 +130,11 @@ export default buildConfig({
   ],
   endpoints: [
     {
-      // Demonstrates that findPageByPath is scoped by the plugin's tenant baseFilter:
-      // select a tenant in the admin (sets the `payload-tenant` cookie), then open e.g.
-      // http://localhost:3000/api/resolve-page?path=/pricing — the resolved page belongs to
-      // the selected tenant. The same path resolves to a different page for another tenant.
+      // Demonstrates that findPageByPath is scoped by the plugin's tenant baseFilter and by the
+      // tenant's locale routing: select a tenant in the admin (sets the `payload-tenant` cookie),
+      // then open e.g. http://localhost:3000/api/resolve-page?path=/pricing — the resolved page
+      // belongs to the selected tenant. The "unprefixed" tenant resolves `/pricing`, the
+      // "all-prefixed" one resolves `/de/pricing` for the very same page.
       path: '/resolve-page',
       method: 'get',
       handler: async (req) => {
@@ -123,6 +160,37 @@ export default buildConfig({
       collection: 'users',
       limit: 1,
     })
+
+    // Two tenants whose locale routing differs, so the path preview, the redirect banner,
+    // /api/resolve-page and /demo/path-index can be compared by switching the tenant cookie.
+    const seedTenants = [
+      {
+        slug: 'unprefixed-de',
+        name: 'Unprefixed German',
+        websiteUrl: 'https://unprefixed.example.com',
+        primaryLocale: 'de',
+        prefixAllLocales: false,
+      },
+      {
+        slug: 'all-prefixed',
+        name: 'All Locales Prefixed',
+        websiteUrl: 'https://prefixed.example.com',
+        primaryLocale: 'en',
+        prefixAllLocales: true,
+      },
+    ] as const
+
+    for (const data of seedTenants) {
+      const existing = await payload.find({
+        collection: 'tenants',
+        limit: 1,
+        where: { slug: { equals: data.slug } },
+      })
+
+      if (existing.docs.length === 0) {
+        await payload.create({ collection: 'tenants', data })
+      }
+    }
 
     if (existingUsers.docs.length === 0) {
       await payload.create({

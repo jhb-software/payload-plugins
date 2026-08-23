@@ -7,7 +7,7 @@ import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { FindPageByPathArgs, PageDocument, PageDocumentResult } from './types.js'
 
-import { isPrefixedLocale, resolveLocaleRouting } from '../utils/localeRouting.js'
+import { parseLocalizedPath, resolveLocaleRouting } from '../utils/localeRouting.js'
 import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
 import { livenessConditions } from './liveness.js'
@@ -80,22 +80,19 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
   // Determine the locale and the slug of the last path segment
   const localization = payload.config.localization
   const segments = path.split('/').slice(1)
-  let slugSegments = segments
-  let locale = args.locale
 
-  if (localization) {
-    // A leading segment only names a locale when that locale is actually served prefixed: on a
-    // tenant serving `de` unprefixed, `/de/...` is a path whose first slug happens to read `de`.
-    if (
-      segments[0] &&
-      localization.localeCodes.includes(segments[0]) &&
-      isPrefixedLocale(segments[0], routing)
-    ) {
-      slugSegments = segments.slice(1)
-      locale = locale ?? segments[0]
-    }
-    locale = locale ?? routing?.primaryLocale ?? localization.defaultLocale
-  }
+  const parsed = localization
+    ? parseLocalizedPath({
+        defaultLocale: localization.defaultLocale,
+        explicitLocale: args.locale,
+        localeCodes: localization.localeCodes,
+        routing,
+        segments,
+      })
+    : undefined
+
+  const slugSegments = parsed?.slugSegments ?? segments
+  const locale = parsed?.locale ?? args.locale
 
   const slug = slugSegments.at(-1) ?? ROOT_PAGE_SLUG
 

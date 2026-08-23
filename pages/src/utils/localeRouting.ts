@@ -49,9 +49,11 @@ export async function resolveLocaleRouting({
     return cached
   }
 
-  const pending = Promise.resolve(option({ req })).then((routing) =>
-    routing ? validateRouting(routing, localization.localeCodes) : undefined,
-  )
+  // Deferring the call by a microtask lets the cache entry land first, so a resolver which
+  // itself reads a page collection cannot re-enter this function and loop.
+  const pending = Promise.resolve()
+    .then(() => option({ req }))
+    .then((routing) => (routing ? validateRouting(routing, localization.localeCodes) : undefined))
   context[LOCALE_ROUTING_CONTEXT_KEY] = pending
 
   return pending
@@ -111,6 +113,39 @@ export function prefixForLocale(
     return ''
   }
   return localePrefixes?.[locale] ?? `/${locale}`
+}
+
+/**
+ * Splits a requested path into the locale it addresses and the slug segments below the locale
+ * prefix.
+ *
+ * A leading segment is only read as a locale prefix when that locale is actually served
+ * prefixed — on a site serving `de` unprefixed, `/de/...` is a path whose first slug happens to
+ * read `de` (which slug validation rejects, so it resolves to nothing). Without a prefix the
+ * locale falls back to the primary locale, or to Payload's default locale when no routing is
+ * configured. An explicit locale argument always wins.
+ */
+export function parseLocalizedPath({
+  defaultLocale,
+  explicitLocale,
+  localeCodes,
+  routing,
+  segments,
+}: {
+  defaultLocale: Locale
+  explicitLocale: Locale | undefined
+  localeCodes: Locale[]
+  routing: LocaleRouting | undefined
+  segments: string[]
+}): { locale: Locale; slugSegments: string[] } {
+  const prefix = segments[0]
+  const prefixed =
+    Boolean(prefix) && localeCodes.includes(prefix) && isPrefixedLocale(prefix, routing)
+
+  return {
+    locale: explicitLocale ?? (prefixed ? prefix : (routing?.primaryLocale ?? defaultLocale)),
+    slugSegments: prefixed ? segments.slice(1) : segments,
+  }
 }
 
 /**

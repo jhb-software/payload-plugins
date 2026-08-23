@@ -21,20 +21,19 @@ export const Pages: PageCollectionConfig = {
     },
     isRootCollection: true,
     slug: {
-      // Disable the slug uniqueness because of the multi-tenant setup (see indexes below)
+      // Disable the slug uniqueness because of the multi-tenant setup. A compound
+      // ['slug', 'tenant'] index is not an option here: the SQL adapters reject a compound index
+      // mixing the localized `slug` with the unlocalized `tenant`.
       unique: false,
     },
   },
   trash: true,
   versions: {
-    drafts: true,
-  },
-  indexes: [
-    {
-      fields: ['slug', 'tenant'],
-      unique: true,
+    drafts: {
+      // Each locale publishes on its own, so `/en/...` can be live while `/de/...` is still a draft.
+      localizeStatus: true,
     },
-  ],
+  },
   fields: [
     {
       name: 'title',

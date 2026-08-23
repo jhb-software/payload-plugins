@@ -453,6 +453,21 @@ describe('Slug field behaves as expected for create and update operations', () =
     expect(updatedPage.title).toBe('Updated Title')
   })
 
+  test('a slug which reads like a locale code is accepted on an unlocalized install', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      data: {
+        title: 'Deutschland',
+        content: 'Some content',
+        slug: 'de',
+        ...virtualFields,
+      },
+    })
+
+    expect(page.slug).toBe('de')
+    expect(page.path).toBe('/de')
+  })
+
   test('Validation Error is thrown when creating a page without providing a slug', async () => {
     // Create page without providing a slug
     const pageData = {

@@ -112,10 +112,10 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
-  fallbackLocale: null;
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('de' | 'en') | ('de' | 'en')[];
   globals: {};
   globalsSelect: {};
-  locale: null;
+  locale: 'de' | 'en';
   widgets: {
     collections: CollectionsWidget;
   };
@@ -171,6 +171,8 @@ export interface Tenant {
   slug: string;
   name: string;
   websiteUrl: string;
+  primaryLocale: 'de' | 'en';
+  prefixAllLocales?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -568,6 +570,8 @@ export interface TenantsSelect<T extends boolean = true> {
   slug?: T;
   name?: T;
   websiteUrl?: T;
+  primaryLocale?: T;
+  prefixAllLocales?: T;
   updatedAt?: T;
   createdAt?: T;
 }
