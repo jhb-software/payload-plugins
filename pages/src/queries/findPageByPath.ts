@@ -67,14 +67,8 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
 
   const pluginConfig = candidates[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
 
-  // A request-dependent resolver cannot be evaluated without a request, and falling back to the
-  // default routing would silently turn an unprefixed path into an unexplained `null`.
-  if (typeof pluginConfig?.localeRouting === 'function' && !args.req) {
-    throw new Error(
-      'Resolving a page by path requires `req` when the plugin is configured with a `localeRouting` function, so the routing can be evaluated against the request.',
-    )
-  }
-
+  // A request-dependent resolver throws without a `req`: falling back to the default routing
+  // would silently turn an unprefixed path into an unexplained `null`.
   const routing = await resolveLocaleRouting({ payload, pluginConfig, req: args.req })
 
   // Determine the locale and the slug of the last path segment

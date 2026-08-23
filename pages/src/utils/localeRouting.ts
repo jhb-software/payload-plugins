@@ -53,7 +53,7 @@ export async function resolveLocaleRouting({
 
   if (!req) {
     throw new Error(
-      '[Pages Plugin] A function `localeRouting` can only be resolved with a `req`, as it is evaluated against the request.',
+      'Resolving a page by path requires `req` when the plugin is configured with a `localeRouting` function, so the routing can be evaluated against the request.',
     )
   }
 
