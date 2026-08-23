@@ -3,7 +3,7 @@ import type { Payload, Where } from 'payload'
 import type { Locale } from '../types/Locale.js'
 import type { LocaleRouting } from '../types/PagesPluginConfig.js'
 
-import { localeRoutingCacheToken } from '../utils/localeRouting.js'
+import { localeRoutingCacheToken } from '../utils/localePrefix.js'
 
 /** Prefix of all KV keys written by the path cache. */
 export const PATH_CACHE_KEY_PREFIX = 'payload-pages:path:v1'

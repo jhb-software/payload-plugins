@@ -8,9 +8,9 @@ import {
   localePrefixMap,
   localeRoutingCacheToken,
   parseLocalizedPath,
-  resolveLocaleRouting,
   rootPathForLocale,
-} from '../src/utils/localeRouting.js'
+} from '../src/utils/localePrefix.js'
+import { resolveLocaleRouting } from '../src/utils/resolveLocaleRouting.js'
 
 const payloadWith = (localeCodes: string[] | undefined) =>
   ({

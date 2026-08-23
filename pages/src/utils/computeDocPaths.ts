@@ -11,8 +11,9 @@ import type { LocaleRouting, PagesPluginConfig } from '../types/PagesPluginConfi
 
 import { livePerLocale } from '../queries/liveness.js'
 import { MissingAncestorError } from './loadAncestors.js'
-import { resolveLocaleRouting, rootPathForLocale } from './localeRouting.js'
+import { rootPathForLocale } from './localePrefix.js'
 import { asPageCollectionConfigOrThrow } from './pageCollectionConfigHelpers.js'
+import { resolveLocaleRouting } from './resolveLocaleRouting.js'
 import { setPageDocumentVirtualFields } from './setPageVirtualFields.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 

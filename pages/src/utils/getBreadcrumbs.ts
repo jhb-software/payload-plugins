@@ -8,7 +8,7 @@ import type { PageCollectionConfigAttributes } from '../types/PageCollectionConf
 import type { Ancestor } from './loadAncestors.js'
 
 import { loadAncestorChain } from './loadAncestors.js'
-import { prefixForLocale } from './localeRouting.js'
+import { prefixForLocale } from './localePrefix.js'
 import { resolveParentRef } from './parentRef.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'

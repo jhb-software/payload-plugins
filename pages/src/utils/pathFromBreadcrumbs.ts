@@ -1,7 +1,7 @@
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
 
-import { prefixForLocale } from './localeRouting.js'
+import { prefixForLocale } from './localePrefix.js'
 
 /** Converts the given breadcrumbs and the locale to a path */
 export function pathFromBreadcrumbs({

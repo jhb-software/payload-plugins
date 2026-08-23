@@ -7,7 +7,7 @@ import type { LocaleRouting } from '../types/PagesPluginConfig.js'
 
 import { alternatePathsFor } from './alternatePaths.js'
 import { getBreadcrumbs } from './getBreadcrumbs.js'
-import { localePrefixMap } from './localeRouting.js'
+import { localePrefixMap } from './localePrefix.js'
 
 /** Sets the virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
 export async function setPageDocumentVirtualFields({

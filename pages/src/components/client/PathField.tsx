@@ -14,7 +14,7 @@ import type { Breadcrumb } from '../../types/Breadcrumb.js'
 import type { Locale } from '../../types/Locale.js'
 
 import { getBreadcrumbs as getBreadcrumbsForDoc } from '../../utils/getBreadcrumbs.js'
-import { prefixForLocale } from '../../utils/localeRouting.js'
+import { prefixForLocale } from '../../utils/localePrefix.js'
 import { parentRefKey, tryResolveParentRef } from '../../utils/parentRef.js'
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useDidUpdateEffect } from '../../utils/useDidUpdateEffect.js'

@@ -3,7 +3,8 @@ import type { TextFieldServerProps } from 'payload'
 import type { PagesPluginConfig } from '../../types/PagesPluginConfig.js'
 import type { SlugFieldProps } from '../client/SlugFieldClient.js'
 
-import { localePrefixMap, resolveLocaleRouting } from '../../utils/localeRouting.js'
+import { localePrefixMap } from '../../utils/localePrefix.js'
+import { resolveLocaleRouting } from '../../utils/resolveLocaleRouting.js'
 import SlugFieldClient from '../client/SlugFieldClient.js'
 
 /**

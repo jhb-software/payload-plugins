@@ -2,7 +2,8 @@ import type { TextFieldServerProps } from 'payload'
 
 import type { PagesPluginConfig } from '../../types/PagesPluginConfig.js'
 
-import { localePrefixMap, resolveLocaleRouting } from '../../utils/localeRouting.js'
+import { localePrefixMap } from '../../utils/localePrefix.js'
+import { resolveLocaleRouting } from '../../utils/resolveLocaleRouting.js'
 import { PathField as PathFieldClient } from '../client/PathField.js'
 
 /**

@@ -3,7 +3,7 @@ import type { Locale } from '../types/Locale.js'
 import type { LocaleRouting } from '../types/PagesPluginConfig.js'
 
 import { alternatePathsFor } from './alternatePaths.js'
-import { rootPathForLocale } from './localeRouting.js'
+import { rootPathForLocale } from './localePrefix.js'
 
 /**
  * The slug of the root page.

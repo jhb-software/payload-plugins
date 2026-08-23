@@ -4,9 +4,9 @@ import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
-import { resolveLocaleRouting } from '../utils/localeRouting.js'
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 import { parentRefKey, tryResolveParentRef } from '../utils/parentRef.js'
+import { resolveLocaleRouting } from '../utils/resolveLocaleRouting.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
 
