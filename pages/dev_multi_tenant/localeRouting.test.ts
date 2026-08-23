@@ -315,6 +315,16 @@ describe('per-locale liveness with a localized _status', () => {
     expect(own.map((entry) => `${entry.locale}:${entry.path}`)).toEqual(['en:/en/published-en'])
   })
 
+  test('enumerates a locale-narrowed listing by that locale`s own published status', async () => {
+    const english = await listPagePaths({ locale: 'en', req: await tenantReq(prefixedTenant) })
+    expect(
+      english.filter((entry) => entry.id === halfPublished).map((entry) => entry.path),
+    ).toEqual(['/en/published-en'])
+
+    const german = await listPagePaths({ locale: 'de', req: await tenantReq(prefixedTenant) })
+    expect(german.some((entry) => entry.id === halfPublished)).toBe(false)
+  })
+
   test('resolves the published locale`s path and not the draft locale`s', async () => {
     const req = await tenantReq(prefixedTenant)
 

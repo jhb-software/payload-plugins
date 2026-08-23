@@ -52,8 +52,13 @@ export function livenessConditions(
 }
 
 /**
- * Row-level liveness for reads through `payload.db`, which see trashed rows and draft-only rows
- * the Local API would filter out.
+ * Row-level liveness, for reads through `payload.db` (which see trashed rows and draft-only rows
+ * the Local API would filter out) and for narrowing a Local API document to one locale.
+ *
+ * A localized `_status` arrives in two shapes: as the locale-keyed object of an all-locales read,
+ * and as a plain string once the read was narrowed to a single locale (the Local API flattens
+ * localized values). A string therefore already answers for the requested locale and is compared
+ * directly.
  */
 export function isLiveRow(
   row: Record<string, unknown>,
@@ -68,7 +73,7 @@ export function isLiveRow(
     return true
   }
 
-  if (hasLocalizeStatusEnabled(collection)) {
+  if (hasLocalizeStatusEnabled(collection) && typeof row._status !== 'string') {
     const status = row._status as null | Record<string, unknown> | undefined
     return Boolean(locale) && status?.[locale!] === 'published'
   }
