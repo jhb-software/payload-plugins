@@ -245,9 +245,9 @@ payloadPagesPlugin({
 | `{ primaryLocale: 'de' }`                             | `/de/kontakt` | `/de`     | `/en/contact` | `/en`     |
 | `{ primaryLocale: 'de', prefixPrimaryLocale: false }` | `/kontakt`    | `/`       | `/en/contact` | `/en`     |
 
-`primaryLocale` must be one of `localization.localeCodes` — anything else throws, because a typo would silently rewrite every path. It is independent of Payload's `localization.defaultLocale`, which stays a storage and fallback concern. The option is ignored when localization is disabled.
+`primaryLocale` must be one of `localization.localeCodes` — anything else throws. It is independent of Payload's `localization.defaultLocale`, which is a storage and fallback concern. The option is ignored when localization is disabled.
 
-Pass a function instead of an object to derive the routing from the request, e.g. from the active tenant. It is evaluated once per request, so computing the paths of fifty documents costs one tenant lookup, not fifty. Return `undefined` for the default (every locale prefixed):
+Pass a function instead of an object to derive the routing from the request, e.g. from the active tenant. It is evaluated once per request, so computing the paths of many documents costs a single tenant lookup. Return `undefined` for the default (every locale prefixed):
 
 ```ts
 payloadPagesPlugin({
@@ -266,13 +266,13 @@ payloadPagesPlugin({
 })
 ```
 
-With a function resolver, `findPageByPath` requires a `req` — the same rule `baseFilter` imposes. A lookup without one throws instead of silently falling back to the default routing, which would turn `/kontakt` on an unprefixed-`de` site into an unexplained `null`.
+With a function resolver, `findPageByPath` requires a `req` — the same rule `baseFilter` imposes. A lookup without one throws.
 
-A resolver may read page collections, but the `path` of a document it reads is computed under the default routing (every locale prefixed) rather than under the routing being resolved — the resolver cannot wait for its own result. Reads of any other collection are unaffected.
+A resolver may read page collections, but the `path` of a document it reads is computed under the default routing (every locale prefixed) rather than under the routing being resolved. Reads of any other collection are unaffected.
 
 #### Reserved slugs
 
-On a localized install a slug equal to a configured locale code is rejected: the first path segment is the locale prefix, so a page slugged `en` could never be addressed unambiguously. The rule applies regardless of the routing, so re-parenting a page can never make a stored slug ambiguous. An existing page with such a slug keeps working until it is saved again, at which point it has to be renamed.
+On a localized install a slug equal to a configured locale code is rejected: the first path segment is the locale prefix, so a page slugged `en` could never be addressed unambiguously. The rule applies regardless of the routing. Validation runs on save, so a page that already carries such a slug has to be renamed the next time it is saved.
 
 #### Alternate paths and `x-default`
 
@@ -286,7 +286,7 @@ With Payload's [`localizeStatus`](https://payloadcms.com/docs/versions/drafts) (
 
 #### Known limitation: routing is per request, not per document
 
-The routing is a function of the request, never of the document. In the admin, a user who sees documents of several tenants at once — a super-admin without a tenant cookie, or a list view spanning tenants — sees every `path` computed under the _request's_ routing, and `listPagePaths` indexes one tenant per call. This is the price of resolving the routing once per request instead of once per document.
+The routing is a function of the request, never of the document. In the admin, a user who sees documents of several tenants at once — a super-admin without a tenant cookie, or a list view spanning tenants — sees every `path` computed under the _request's_ routing, and `listPagePaths` indexes one tenant per call.
 
 ### Multi-tenant support
 
