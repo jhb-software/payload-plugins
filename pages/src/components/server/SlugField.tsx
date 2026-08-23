@@ -1,14 +1,17 @@
 import type { TextFieldServerProps } from 'payload'
 
+import type { PagesPluginConfig } from '../../types/PagesPluginConfig.js'
 import type { SlugFieldProps } from '../client/SlugFieldClient.js'
 
+import { localePrefixMap, resolveLocaleRouting } from '../../utils/localeRouting.js'
 import SlugFieldClient from '../client/SlugFieldClient.js'
 
 /**
  * Server component which wraps the `SlugFieldClient` component and handles access-aware readOnly state.
  */
-export const SlugField = ({
+export const SlugField = async ({
   clientField,
+  collectionSlug,
   defaultValue,
   fallbackField,
   pageSlug,
@@ -16,6 +19,7 @@ export const SlugField = ({
   payload,
   permissions,
   readOnly,
+  req,
 }: SlugFieldProps & TextFieldServerProps) => {
   // `readOnly` covers both the field access and the states in which Payload freezes the whole
   // document (trashed, locked by another user); a static slug is read only on its own.
@@ -34,11 +38,24 @@ export const SlugField = ({
 
   redirectsCollectionSlug = redirectsCollectionSlug || 'redirects'
 
+  // The redirect banner builds both the old and the new path, so it needs the same locale
+  // prefixes the server computes — which the client cannot resolve on its own.
+  const collection = payload.config.collections?.find(
+    (candidate) => candidate.slug === collectionSlug,
+  )
+  const routing = await resolveLocaleRouting({
+    payload,
+    pluginConfig: collection?.custom?.pagesPluginConfig as PagesPluginConfig | undefined,
+    req,
+  })
+  const localization = payload.config.localization
+
   return (
     <SlugFieldClient
       defaultValue={defaultValue}
       fallbackField={fallbackField}
       field={clientField}
+      localePrefixes={localePrefixMap(localization ? localization.localeCodes : undefined, routing)}
       pageSlug={pageSlug}
       path={path}
       readOnly={isReadOnly}

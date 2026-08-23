@@ -3,9 +3,11 @@ import type { PayloadRequest } from 'payload'
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
 import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
-import type { SeoMetadata } from '../types/SeoMetadata.js'
+import type { LocaleRouting } from '../types/PagesPluginConfig.js'
 
+import { alternatePathsFor } from './alternatePaths.js'
 import { getBreadcrumbs } from './getBreadcrumbs.js'
+import { localePrefixMap } from './localeRouting.js'
 
 /** Sets the virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
 export async function setPageDocumentVirtualFields({
@@ -14,6 +16,7 @@ export async function setPageDocumentVirtualFields({
   locales,
   pageConfigAttributes,
   req,
+  routing,
 }: {
   doc: Record<string, any>
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -21,10 +24,14 @@ export async function setPageDocumentVirtualFields({
   locales: Locale[] | undefined
   pageConfigAttributes: PageCollectionConfigAttributes
   req: PayloadRequest | undefined
+  routing: LocaleRouting | undefined
 }) {
+  const localePrefixes = localePrefixMap(locales, routing)
+
   if (locales && locale) {
     const breadcrumbs = (await getBreadcrumbs({
       data: doc,
+      localePrefixes,
       locales,
       pageConfig: pageConfigAttributes,
       req,
@@ -46,12 +53,7 @@ export async function setPageDocumentVirtualFields({
       {} as Record<Locale, string>,
     )
 
-    const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
-      ([locale, path]) => ({
-        hreflang: locale,
-        path,
-      }),
-    )
+    const alternatePaths = alternatePathsFor(paths, routing)
 
     if (locale === 'all') {
       return {
@@ -78,6 +80,7 @@ export async function setPageDocumentVirtualFields({
     const breadcrumbs = (await getBreadcrumbs({
       data: doc,
       locale: undefined,
+      localePrefixes,
       locales,
       pageConfig: pageConfigAttributes,
       req,

@@ -1,6 +1,9 @@
 import type { Payload, Where } from 'payload'
 
 import type { Locale } from '../types/Locale.js'
+import type { LocaleRouting } from '../types/PagesPluginConfig.js'
+
+import { localeRoutingCacheToken } from '../utils/localeRouting.js'
 
 /** Prefix of all KV keys written by the path cache. */
 export const PATH_CACHE_KEY_PREFIX = 'payload-pages:path:v1'
@@ -17,12 +20,14 @@ export function buildPathCacheKey({
   draft,
   locale,
   path,
+  routing,
   where,
 }: {
   baseFilter: undefined | Where
   draft: boolean
   locale: Locale | undefined
   path: string
+  routing: LocaleRouting | undefined
   where: undefined | Where
 }): string {
   // The `baseFilter` (e.g. tenant scoping) and the caller's `where` scope the lookup, so they
@@ -34,7 +39,13 @@ export function buildPathCacheKey({
   // must never share a cache slot.
   const status = draft ? 'draft' : 'published'
 
-  return `${PATH_CACHE_KEY_PREFIX}:${status}:${locale ?? '-'}:${scopeHash}:${path}`
+  // The routing decides which document a path resolves to, so it scopes the entry as well —
+  // even when no `baseFilter` is set. The version stays `v1`: both new segments are non-empty
+  // and `path` starts with a slash, so an old-shape key can never collide with a new one, and
+  // the orphaned entries stay inside `clearPathCache`'s sweep.
+  const routingToken = localeRoutingCacheToken(routing)
+
+  return `${PATH_CACHE_KEY_PREFIX}:${status}:${locale ?? '-'}:${routingToken}:${scopeHash}:${path}`
 }
 
 /**

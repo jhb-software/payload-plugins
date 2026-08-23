@@ -7,6 +7,7 @@ import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { FindPageByPathArgs, PageDocument, PageDocumentResult } from './types.js'
 
+import { isPrefixedLocale, resolveLocaleRouting } from '../utils/localeRouting.js'
 import { isPageCollectionConfig } from '../utils/pageCollectionConfigHelpers.js'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
 import { livenessConditions } from './liveness.js'
@@ -64,6 +65,18 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     throw new Error('The Payload config does not contain any page collections.')
   }
 
+  const pluginConfig = candidates[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
+
+  // A request-dependent resolver cannot be evaluated without a request, and falling back to the
+  // default routing would silently turn an unprefixed path into an unexplained `null`.
+  if (typeof pluginConfig?.localeRouting === 'function' && !args.req) {
+    throw new Error(
+      'Resolving a page by path requires `req` when the plugin is configured with a `localeRouting` function, so the routing can be evaluated against the request.',
+    )
+  }
+
+  const routing = await resolveLocaleRouting({ payload, pluginConfig, req: args.req })
+
   // Determine the locale and the slug of the last path segment
   const localization = payload.config.localization
   const segments = path.split('/').slice(1)
@@ -71,11 +84,17 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
   let locale = args.locale
 
   if (localization) {
-    if (segments[0] && localization.localeCodes.includes(segments[0])) {
+    // A leading segment only names a locale when that locale is actually served prefixed: on a
+    // tenant serving `de` unprefixed, `/de/...` is a path whose first slug happens to read `de`.
+    if (
+      segments[0] &&
+      localization.localeCodes.includes(segments[0]) &&
+      isPrefixedLocale(segments[0], routing)
+    ) {
       slugSegments = segments.slice(1)
       locale = locale ?? segments[0]
     }
-    locale = locale ?? localization.defaultLocale
+    locale = locale ?? routing?.primaryLocale ?? localization.defaultLocale
   }
 
   const slug = slugSegments.at(-1) ?? ROOT_PAGE_SLUG
@@ -87,7 +106,6 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     )
   }
 
-  const pluginConfig = candidates[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
   const cacheEnabled = args.cache ?? true
 
   // The plugin's `baseFilter` scopes every page query (e.g. to a tenant), so it must scope the
@@ -104,7 +122,14 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     baseFilter = pluginConfig.baseFilter({ req: args.req })
   }
 
-  const cacheKey = buildPathCacheKey({ baseFilter, draft, locale, path, where: args.where })
+  const cacheKey = buildPathCacheKey({
+    baseFilter,
+    draft,
+    locale,
+    path,
+    routing,
+    where: args.where,
+  })
 
   /**
    * The request every internal query runs on. Computing the virtual `path` walks the ancestor
@@ -145,7 +170,13 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       and.push(args.where)
     }
     if (!draft) {
-      and.push(...livenessConditions(collection))
+      and.push(
+        ...livenessConditions(
+          collection,
+          locale,
+          localization ? localization.localeCodes : undefined,
+        ),
+      )
     }
     return { and }
   }

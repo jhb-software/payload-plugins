@@ -1,8 +1,10 @@
 import type { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payload'
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
+import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
+import { resolveLocaleRouting } from '../utils/localeRouting.js'
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
 import { parentRefKey, tryResolveParentRef } from '../utils/parentRef.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
@@ -40,6 +42,11 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
 
   const locale = localeFromRequest(req)
   const locales = localesFromRequest(req)
+  const routing = await resolveLocaleRouting({
+    payload: req.payload,
+    pluginConfig: collection.custom?.pagesPluginConfig as PagesPluginConfig | undefined,
+    req,
+  })
 
   if (doc.isRootPage) {
     // Root pages don't need async lookups, so no try-catch needed
@@ -48,6 +55,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
       doc,
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
+      routing,
     })
   }
 
@@ -69,6 +77,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
       locales,
       pageConfigAttributes: pageConfig.page,
       req,
+      routing,
     })
   } catch (error) {
     req.payload.logger.error(
@@ -99,6 +108,11 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
 
   const pageConfig = asPageCollectionConfigOrThrow(collection)
   const parentField = pageConfig.page.parent.name
+  const routing = await resolveLocaleRouting({
+    payload: req.payload,
+    pluginConfig: collection.custom?.pagesPluginConfig as PagesPluginConfig | undefined,
+    req,
+  })
 
   let docWithVirtualFields: Record<string, unknown>
 
@@ -108,6 +122,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
       doc,
       locale,
       locales,
+      routing,
     })
   } else if (!doc.slug) {
     // When the slug is not (yet) set, it is not possible to generate the path and breadcrumbs
@@ -120,6 +135,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
         locales,
         pageConfigAttributes: pageConfig.page,
         req,
+        routing,
       })
     } catch (error) {
       req.payload.logger.error(
@@ -171,6 +187,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
         doc: previousDoc,
         locale,
         locales,
+        routing,
       })
       Object.assign(previousDoc, result)
     } else if (previousDoc.slug) {
@@ -180,6 +197,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
         locales,
         pageConfigAttributes: pageConfig.page,
         req,
+        routing,
       })
       Object.assign(previousDoc, result)
     }

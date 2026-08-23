@@ -1,6 +1,9 @@
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
-import type { SeoMetadata } from '../types/SeoMetadata.js'
+import type { LocaleRouting } from '../types/PagesPluginConfig.js'
+
+import { alternatePathsFor } from './alternatePaths.js'
+import { rootPathForLocale } from './localeRouting.js'
 
 /**
  * The slug of the root page.
@@ -18,11 +21,13 @@ export function setRootPageDocumentVirtualFields({
   doc,
   locale,
   locales,
+  routing,
 }: {
   breadcrumbLabelField: string
   doc: Record<string, any>
   locale: Locale | undefined
   locales: Locale[] | undefined
+  routing: LocaleRouting | undefined
 }) {
   if (locales && locale) {
     const paths = locales.reduce(
@@ -32,19 +37,14 @@ export function setRootPageDocumentVirtualFields({
           (typeof doc.slug === 'object' && doc.slug[locale] === ROOT_PAGE_SLUG) ||
           (typeof doc.slug === 'string' && doc.slug === ROOT_PAGE_SLUG)
         ) {
-          acc[locale] = `/${locale}`
+          acc[locale] = rootPathForLocale(locale, routing)
         }
         return acc
       },
       {} as Record<Locale, string>,
     )
 
-    const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
-      ([locale, path]) => ({
-        hreflang: locale,
-        path,
-      }),
-    )
+    const alternatePaths = alternatePathsFor(paths, routing)
 
     if (locale === 'all') {
       const breadcrumbs: Record<Locale, Breadcrumb[]> = locales.reduce(
@@ -77,7 +77,7 @@ export function setRootPageDocumentVirtualFields({
           {
             slug: ROOT_PAGE_SLUG,
             label: doc[breadcrumbLabelField],
-            path: `/${locale}`,
+            path: rootPathForLocale(locale, routing),
           },
         ],
         meta: {

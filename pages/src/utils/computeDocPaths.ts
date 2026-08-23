@@ -5,16 +5,25 @@ import type {
   SelectType,
 } from 'payload'
 
-import { hasDraftsEnabled, isLiveRow } from '../queries/liveness.js'
+import { hasDraftsEnabled } from 'payload/shared'
+
+import type { LocaleRouting, PagesPluginConfig } from '../types/PagesPluginConfig.js'
+
+import { livePerLocale } from '../queries/liveness.js'
 import { MissingAncestorError } from './loadAncestors.js'
+import { resolveLocaleRouting, rootPathForLocale } from './localeRouting.js'
 import { asPageCollectionConfigOrThrow } from './pageCollectionConfigHelpers.js'
 import { setPageDocumentVirtualFields } from './setPageVirtualFields.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
 /** The current paths of one document, computed from the main table row. */
 export type DocPaths = {
-  /** Whether the document's path resolves: published (with drafts enabled) and not trashed. */
-  live: boolean
+  /**
+   * Whether the document's path resolves per locale (keyed `''` on an unlocalized install):
+   * published (with drafts enabled) and not trashed. With a localized `_status` each locale
+   * answers independently.
+   */
+  live: Record<string, boolean>
   /**
    * The path per locale (keyed `''` on an unlocalized install). Empty when no path is
    * computable — the slug is unset, or the ancestor chain is broken.
@@ -23,7 +32,7 @@ export type DocPaths = {
 }
 
 /** A `DocPaths` value for a document which does not resolve and has no computable path. */
-export const noDocPaths = (): DocPaths => ({ live: false, paths: {} })
+export const noDocPaths = (): DocPaths => ({ live: {}, paths: {} })
 
 /**
  * Reads a document's main table row and computes its paths for every locale.
@@ -70,10 +79,16 @@ export async function computeDocPaths({
     return null
   }
 
-  const live = isLiveRow(row, collectionConfig)
+  const live = livePerLocale(row, collectionConfig, locales)
+
+  const routing = await resolveLocaleRouting({
+    payload: req.payload,
+    pluginConfig: collectionConfig.custom?.pagesPluginConfig as PagesPluginConfig | undefined,
+    req,
+  })
 
   if (row.isRootPage === true) {
-    return { live, paths: rootPagePaths(row, locales) }
+    return { live, paths: rootPagePaths(row, locales, routing) }
   }
 
   if (!row.slug) {
@@ -87,6 +102,7 @@ export async function computeDocPaths({
       locales,
       pageConfigAttributes: pageAttributes,
       req,
+      routing,
     })
 
     const path = withVirtualFields.path
@@ -105,6 +121,7 @@ export async function computeDocPaths({
 function rootPagePaths(
   row: Record<string, any>,
   locales: string[] | undefined,
+  routing: LocaleRouting | undefined,
 ): Record<string, string> {
   if (!locales) {
     return { '': '/' }
@@ -114,7 +131,7 @@ function rootPagePaths(
   for (const locale of locales) {
     const slug = typeof row.slug === 'object' && row.slug !== null ? row.slug[locale] : row.slug
     if (slug === ROOT_PAGE_SLUG) {
-      paths[locale] = `/${locale}`
+      paths[locale] = rootPathForLocale(locale, routing)
     }
   }
   return paths

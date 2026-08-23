@@ -1,5 +1,29 @@
 import type { PayloadRequest, Where } from 'payload'
 
+import type { Locale } from './Locale.js'
+
+/** How a localized install maps locales onto path prefixes. */
+export type LocaleRouting = {
+  /**
+   * Whether the primary locale's paths carry the `/<locale>` prefix.
+   *
+   * `false` serves the primary locale at `/kontakt` and every other locale at
+   * `/<locale>/kontakt`.
+   *
+   * @default true
+   */
+  prefixPrimaryLocale?: boolean
+
+  /**
+   * The site's primary locale. Must be one of `localization.localeCodes`.
+   *
+   * Emitted as `x-default` in `alternatePaths`, and used as the locale of an unprefixed path in
+   * `findPageByPath` when no `locale` argument is given. Independent of Payload's
+   * `localization.defaultLocale`, which stays a storage and fallback concern.
+   */
+  primaryLocale: Locale
+}
+
 /** Configuration options for the pages plugin. */
 export type PagesPluginConfig = {
   /**
@@ -33,6 +57,27 @@ export type PagesPluginConfig = {
     preview: boolean
     req: PayloadRequest
   }) => (null | string) | Promise<null | string>
+
+  /**
+   * Locale routing for localized installs.
+   *
+   * A static value applies to the whole install; a function is evaluated once per request (the
+   * result is cached on `req.context`) so it can derive the routing from the request — e.g. from
+   * the tenant — without a per-document cost. Return `undefined` for the default: every locale
+   * prefixed, no `x-default`.
+   *
+   * Ignored when Payload localization is disabled.
+   *
+   * @example
+   * ```ts
+   * localeRouting: { primaryLocale: 'de', prefixPrimaryLocale: false }
+   * ```
+   */
+  localeRouting?:
+    | ((args: {
+        req: PayloadRequest
+      }) => LocaleRouting | Promise<LocaleRouting | undefined> | undefined)
+    | LocaleRouting
 
   /**
    * Whether to prevent deletion of parent documents that have child documents referencing them.

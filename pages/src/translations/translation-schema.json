@@ -72,6 +72,9 @@
         },
         "revertSlug": {
           "type": "string"
+        },
+        "slugCannotBeALocaleCode": {
+          "type": "string"
         }
       },
       "required": [
@@ -95,7 +98,8 @@
         "redirectCreationFailed",
         "redirectReasonSlugChange",
         "creating",
-        "revertSlug"
+        "revertSlug",
+        "slugCannotBeALocaleCode"
       ]
     }
   },

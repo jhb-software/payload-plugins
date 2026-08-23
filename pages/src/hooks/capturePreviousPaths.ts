@@ -37,9 +37,19 @@ export function pathCaptures(context: Record<string, unknown>): Record<string, P
  * draft flag). The capture skips such writes in `beforeChange` judging the incoming `data`,
  * `pathChanges` skips them in `afterChange` judging the resulting `doc` — the two sources
  * agree because Payload materializes `_status: 'draft'` on a draft save that omits it.
+ *
+ * With a localized `_status` the value is an object, and the write is version-only only when no
+ * locale is published.
  */
 export function isVersionOnlyWrite(context: Record<string, unknown>, status: unknown): boolean {
-  return context.draft === true && status !== 'published'
+  return context.draft === true && !publishesAnyLocale(status)
+}
+
+function publishesAnyLocale(status: unknown): boolean {
+  if (status && typeof status === 'object') {
+    return Object.values(status).includes('published')
+  }
+  return status === 'published'
 }
 
 /**
