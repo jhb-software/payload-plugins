@@ -1,19 +1,35 @@
 import type { Payload, PayloadRequest } from 'payload'
 
+import { AsyncLocalStorage } from 'node:async_hooks'
+
 import type { Locale } from '../types/Locale.js'
 import type { LocaleRouting, PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 /**
- * Request context key under which the resolved routing is cached, so a function resolver runs
- * once per request no matter how many documents' paths are computed on it.
+ * Marks the asynchronous scope a `localeRouting` resolver runs in. Everything the resolver awaits
+ * inherits the mark, which is what separates a read performed *by* the resolver from a path
+ * computation running concurrently *next to* it — the former must not wait for the resolver's
+ * result, the latter must.
  */
-export const LOCALE_ROUTING_CONTEXT_KEY = 'pagesPluginLocaleRouting'
+const resolvingRouting = new AsyncLocalStorage<true>()
+
+/**
+ * The evaluation in flight or completed for one request. Keyed by the request object rather than
+ * stored on `req.context`, which Payload replaces with a shallow copy on every nested local API
+ * call — including the ones a resolver makes, which would fork the cache entry away mid-flight.
+ */
+const routingByRequest = new WeakMap<PayloadRequest, Promise<LocaleRouting | undefined>>()
 
 /**
  * The locale routing in effect for the given request.
  *
- * A function resolver is evaluated once and its (possibly still pending) result is stashed on
- * `req.context`, so concurrent path computations share a single evaluation.
+ * A function resolver is evaluated once per request and its (possibly still pending) result is
+ * shared, so computing the paths of fifty documents costs one evaluation.
+ *
+ * A resolver which itself reads a page collection would otherwise wait for its own result: the
+ * read's `beforeRead` hook computes paths, which asks for the routing that is still being
+ * resolved. Such reads are answered with the default routing (every locale prefixed) instead, so
+ * paths seen inside a resolver carry no routing of their own.
  */
 export async function resolveLocaleRouting({
   payload,
@@ -41,20 +57,20 @@ export async function resolveLocaleRouting({
     )
   }
 
-  const context = req.context as Record<string, unknown>
-  const cached = context[LOCALE_ROUTING_CONTEXT_KEY] as
-    Promise<LocaleRouting | undefined> | undefined
+  if (resolvingRouting.getStore()) {
+    return undefined
+  }
+
+  const cached = routingByRequest.get(req)
 
   if (cached) {
     return cached
   }
 
-  // Deferring the call by a microtask lets the cache entry land first, so a resolver which
-  // itself reads a page collection cannot re-enter this function and loop.
-  const pending = Promise.resolve()
-    .then(() => option({ req }))
+  const pending = resolvingRouting
+    .run(true, async () => await option({ req }))
     .then((routing) => (routing ? validateRouting(routing, localization.localeCodes) : undefined))
-  context[LOCALE_ROUTING_CONTEXT_KEY] = pending
+  routingByRequest.set(req, pending)
 
   return pending
 }

@@ -247,7 +247,7 @@ payloadPagesPlugin({
 
 `primaryLocale` must be one of `localization.localeCodes` — anything else throws, because a typo would silently rewrite every path. It is independent of Payload's `localization.defaultLocale`, which stays a storage and fallback concern. The option is ignored when localization is disabled.
 
-Pass a function instead of an object to derive the routing from the request, e.g. from the active tenant. It is evaluated once per request and cached on `req.context`, so computing the paths of fifty documents costs one tenant lookup, not fifty. Return `undefined` for the default (every locale prefixed):
+Pass a function instead of an object to derive the routing from the request, e.g. from the active tenant. It is evaluated once per request, so computing the paths of fifty documents costs one tenant lookup, not fifty. Return `undefined` for the default (every locale prefixed):
 
 ```ts
 payloadPagesPlugin({
@@ -267,6 +267,8 @@ payloadPagesPlugin({
 ```
 
 With a function resolver, `findPageByPath` requires a `req` — the same rule `baseFilter` imposes. A lookup without one throws instead of silently falling back to the default routing, which would turn `/kontakt` on an unprefixed-`de` site into an unexplained `null`.
+
+A resolver may read page collections, but the `path` of a document it reads is computed under the default routing (every locale prefixed) rather than under the routing being resolved — the resolver cannot wait for its own result. Reads of any other collection are unaffected.
 
 #### Reserved slugs
 

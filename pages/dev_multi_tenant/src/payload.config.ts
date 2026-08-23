@@ -15,6 +15,7 @@ import Tenants from './collections/tenants'
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { databaseAdapter } from './test/databaseAdapter'
 import { recordLocaleRoutingCall } from './test/localeRoutingCalls'
+import { RESOLVER_READS_PAGES_HEADER } from './test/resolverReadsPages'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -85,10 +86,15 @@ export default buildConfig({
         return { tenant: { equals: doc.tenant } }
       },
       // Each tenant decides which locale leads its site and whether that locale is prefixed.
-      // Resolved once per request and cached on `req.context`, so a 50-page find pays for one
-      // tenant lookup, not fifty.
+      // Resolved once per request, so a 50-page find pays for one tenant lookup, not fifty.
       localeRouting: async ({ req }) => {
         recordLocaleRoutingCall()
+
+        // Test-only: a resolver which reads a page collection with the same request. Such reads
+        // see the default routing instead of re-entering the resolver.
+        if (req.headers.get(RESOLVER_READS_PAGES_HEADER) === 'true') {
+          await req.payload.find({ collection: 'pages', depth: 0, limit: 1, req })
+        }
 
         const tenantId = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 

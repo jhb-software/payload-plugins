@@ -4,6 +4,7 @@ import type { Config } from 'payload/generated-types'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
 import { clearLocaleRoutingCalls, localeRoutingCalls } from './src/test/localeRoutingCalls'
+import { RESOLVER_READS_PAGES_HEADER } from './src/test/resolverReadsPages'
 import {
   clearPathChangeRecords,
   recordedPathChangeErrors,
@@ -289,6 +290,22 @@ describe('locale routing', () => {
       { hreflang: 'de', path: '/de/kontakt' },
       { hreflang: 'en', path: '/en/contact' },
     ])
+  })
+
+  // Without re-entrancy handling the resolver waits for the paths of the pages it reads, which
+  // wait for the routing it is resolving — the call never returns and this test times out.
+  test('completes a routing resolver which reads a page collection with the same request', async () => {
+    const req = await tenantReq(unprefixedTenant)
+    req.headers = new Headers({
+      cookie: `payload-tenant=${unprefixedTenant}`,
+      [RESOLVER_READS_PAGES_HEADER]: 'true',
+    })
+
+    const paths = await listPagePaths({ req })
+
+    expect(new Set(paths.map((entry) => `${entry.locale}:${entry.path}`))).toEqual(
+      new Set(['de:/', 'en:/en', 'de:/kontakt', 'en:/en/contact']),
+    )
   })
 
   test('throws when resolving a path without a req while a routing function is configured', async () => {

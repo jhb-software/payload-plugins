@@ -62,9 +62,12 @@ export type PagesPluginConfig = {
    * Locale routing for localized installs.
    *
    * A static value applies to the whole install; a function is evaluated once per request (the
-   * result is cached on `req.context`) so it can derive the routing from the request — e.g. from
+   * result is shared across that request) so it can derive the routing from the request — e.g. from
    * the tenant — without a per-document cost. Return `undefined` for the default: every locale
    * prefixed, no `x-default`.
+   *
+   * A function may read page collections, but those reads see the default routing: the routing
+   * they would ask for is the one still being resolved.
    *
    * Ignored when Payload localization is disabled.
    *
