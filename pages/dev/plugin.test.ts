@@ -91,12 +91,19 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
           },
         ]),
       )
+      // A root page has no slug to translate, so it is the site root in every configured
+      // locale — even the ones it has not been written in yet.
       expect(removeIdsFromArray(rootPage.meta?.alternatePaths)).toEqual(
         removeIdsFromArray([
           {
             id: undefined,
-            hreflang: locale,
-            path,
+            hreflang: 'de',
+            path: '/de',
+          },
+          {
+            id: undefined,
+            hreflang: 'en',
+            path: '/en',
           },
         ]),
       )

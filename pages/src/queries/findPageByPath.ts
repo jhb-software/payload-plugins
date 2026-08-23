@@ -208,6 +208,19 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
     }
   }
 
+  /**
+   * The condition matching the last path segment against a collection's documents.
+   *
+   * The root path carries no slug segment. A root page's slug is the constant `ROOT_PAGE_SLUG`,
+   * stored only for the locales the document has been written in, so matching it by slug would
+   * miss the site root in every other locale. `isRootPage` is unlocalized and identifies the
+   * same document in all of them.
+   */
+  const segmentCondition = (collection: PageCollectionConfig): Where =>
+    slug === ROOT_PAGE_SLUG && collection.page.isRootCollection
+      ? { isRootPage: { equals: true } }
+      : { slug: { equals: slug } }
+
   /** Queries a single collection for the documents whose slug matches the last path segment. */
   const scanCollection = async (collection: PageCollectionConfig): Promise<PageDocument[]> => {
     const result = await payload.find({
@@ -219,7 +232,7 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
       pagination: false,
       req: await getReq(),
       select: { slug: true, path: true },
-      where: buildWhere({ slug: { equals: slug } }, collection),
+      where: buildWhere(segmentCondition(collection), collection),
     })
 
     return result.docs

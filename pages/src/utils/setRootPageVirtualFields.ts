@@ -30,15 +30,13 @@ export function setRootPageDocumentVirtualFields({
   routing: LocaleRouting | undefined
 }) {
   if (locales && locale) {
+    // Every locale gets a path. Unlike a regular page, whose per-locale slug decides whether it
+    // has a path in that locale, a root page's slug is the constant `ROOT_PAGE_SLUG` — it is the
+    // site root in every locale, including the ones the document has never been written in
+    // (where the stored slug is still null).
     const paths = locales.reduce(
       (acc, locale) => {
-        // If the doc does not have a slug for this locale, exclude the path to not generate a 404 path
-        if (
-          (typeof doc.slug === 'object' && doc.slug[locale] === ROOT_PAGE_SLUG) ||
-          (typeof doc.slug === 'string' && doc.slug === ROOT_PAGE_SLUG)
-        ) {
-          acc[locale] = rootPathForLocale(locale, routing)
-        }
+        acc[locale] = rootPathForLocale(locale, routing)
         return acc
       },
       {} as Record<Locale, string>,
