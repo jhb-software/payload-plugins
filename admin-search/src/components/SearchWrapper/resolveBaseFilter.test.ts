@@ -29,7 +29,7 @@ describe('resolveBaseFilter', () => {
   it('leaves the search unscoped when no base filter is configured', async () => {
     await expect(
       resolveBaseFilter({ payload: payloadWith({}), req: requestWith() }),
-    ).resolves.toBeUndefined()
+    ).resolves.toEqual({ status: 'resolved' })
   })
 
   it('scopes by the tenant cookie the admin panel was requested with', async () => {
@@ -42,7 +42,7 @@ describe('resolveBaseFilter', () => {
       req: requestWith({ cookie: 'payload-tenant=acme' }),
     })
 
-    expect(filter).toEqual({ tenant: { equals: 'acme' } })
+    expect(filter).toEqual({ filter: { tenant: { equals: 'acme' } }, status: 'resolved' })
   })
 
   it('scopes by the signed-in user', async () => {
@@ -51,7 +51,7 @@ describe('resolveBaseFilter', () => {
       req: requestWith({ user: { id: 'user-1' } }),
     })
 
-    expect(filter).toEqual({ owner: { equals: 'user-1' } })
+    expect(filter).toEqual({ filter: { owner: { equals: 'user-1' } }, status: 'resolved' })
   })
 
   it('gives the filter the locale the admin panel is being viewed in, not the default one', async () => {
@@ -60,10 +60,10 @@ describe('resolveBaseFilter', () => {
       req: requestWith({ locale: 'de' }),
     })
 
-    expect(filter).toEqual({ language: { equals: 'de' } })
+    expect(filter).toEqual({ filter: { language: { equals: 'de' } }, status: 'resolved' })
   })
 
-  it('falls back to an unscoped search when the filter throws, instead of failing the render', async () => {
+  it('matches nothing when the filter throws, rather than widening to documents the filter would have hidden', async () => {
     const logged: unknown[] = []
 
     await expect(
@@ -78,21 +78,21 @@ describe('resolveBaseFilter', () => {
         ),
         req: requestWith(),
       }),
-    ).resolves.toBeUndefined()
+    ).resolves.toEqual({ status: 'unavailable' })
 
     expect(logged).toHaveLength(1)
   })
 
-  it('falls back to an unscoped search when an async filter rejects', async () => {
+  it('matches nothing when an async filter rejects', async () => {
     await expect(
       resolveBaseFilter({
         payload: payloadWith({ baseFilter: () => Promise.reject(new Error('db unreachable')) }),
         req: requestWith(),
       }),
-    ).resolves.toBeUndefined()
+    ).resolves.toEqual({ status: 'unavailable' })
   })
 
-  it('reports a configured filter that could not run because no request was passed', async () => {
+  it('matches nothing when a filter is configured but no request was passed to evaluate it with', async () => {
     const logged: unknown[] = []
 
     await expect(
@@ -100,7 +100,7 @@ describe('resolveBaseFilter', () => {
         payload: payloadWith({ baseFilter: () => ({ tenant: { equals: 'acme' } }) }, logged),
         req: undefined,
       }),
-    ).resolves.toBeUndefined()
+    ).resolves.toEqual({ status: 'unavailable' })
 
     expect(logged).toHaveLength(1)
   })
@@ -108,7 +108,9 @@ describe('resolveBaseFilter', () => {
   it('stays quiet when no request is passed and no filter is configured', async () => {
     const logged: unknown[] = []
 
-    await resolveBaseFilter({ payload: payloadWith({}, logged), req: undefined })
+    await expect(
+      resolveBaseFilter({ payload: payloadWith({}, logged), req: undefined }),
+    ).resolves.toEqual({ status: 'resolved' })
 
     expect(logged).toHaveLength(0)
   })

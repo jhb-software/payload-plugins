@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- feat: add a `baseFilter` option that restricts search results to a constraint resolved against the current request, e.g. the tenant selected in a multi-tenant admin panel. A filter that throws is logged and the search falls back to unscoped, rather than failing the admin panel's render
+- feat: add a `baseFilter` option that restricts search results to a constraint resolved against the current request, e.g. the tenant selected in a multi-tenant admin panel. A filter that cannot be evaluated is logged and the search returns no results, rather than widening to the documents the filter was meant to hide
+- fix: the result list shown before anything is typed now honours the same five-result limit as a typed search, instead of listing ten
 - **BREAKING**: the header component is now a server component, so it can evaluate `baseFilter` before rendering. It moved from `@jhb.software/payload-admin-search/client#SearchWrapper` to `@jhb.software/payload-admin-search/rsc#SearchWrapper`: **run `payload generate:importmap` after upgrading**, otherwise the search component resolves to nothing and disappears from the admin header. The `/client` export now provides `SearchWrapperClient` in place of `SearchWrapper`.
 
 ## 0.3.0

@@ -1,12 +1,13 @@
 'use client'
-import type { Where } from 'payload'
 import type React from 'react'
+
+import type { BaseFilterState } from '../../types/BaseFilterState.js'
 
 import { SearchBar } from '../SearchBar/SearchBar.js'
 import { SearchButton } from '../SearchButton/SearchButton.js'
 
 export interface SearchWrapperClientProps {
-  baseFilter?: Where
+  baseFilter: BaseFilterState
   style?: 'bar' | 'button'
 }
 

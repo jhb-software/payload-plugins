@@ -1,5 +1,4 @@
 'use client'
-import type { Where } from 'payload'
 import type React from 'react'
 
 import { Button, SearchIcon, useHotkey, useTranslation } from '@payloadcms/ui'
@@ -9,11 +8,12 @@ import type {
   PluginAdminSearchTranslationKeys,
   PluginAdminSearchTranslations,
 } from '../../translations/index.js'
+import type { BaseFilterState } from '../../types/BaseFilterState.js'
 
 import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 
-export function SearchButton({ baseFilter }: { baseFilter?: Where }): React.ReactElement {
+export function SearchButton({ baseFilter }: { baseFilter: BaseFilterState }): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()
 

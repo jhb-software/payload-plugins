@@ -1,5 +1,4 @@
 'use client'
-import type { Where } from 'payload'
 import type React from 'react'
 
 import { Button, Pill, SearchIcon, useHotkey, useTranslation } from '@payloadcms/ui'
@@ -9,6 +8,7 @@ import type {
   PluginAdminSearchTranslationKeys,
   PluginAdminSearchTranslations,
 } from '../../translations/index.js'
+import type { BaseFilterState } from '../../types/BaseFilterState.js'
 
 import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
@@ -16,7 +16,7 @@ import './SearchBar.css'
 
 const baseClass = 'admin-search-plugin-bar'
 
-export function SearchBar({ baseFilter }: { baseFilter?: Where }): React.ReactElement {
+export function SearchBar({ baseFilter }: { baseFilter: BaseFilterState }): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [shortcut, setShortcut] = useState('')
   const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()

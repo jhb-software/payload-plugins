@@ -140,7 +140,17 @@ Two consequences of the filter being resolved on the server and applied by the c
 - The resolved constraint is serialized into the page and readable in the browser's devtools. Keep anything secret out of the `Where` it returns.
 - Only the component the plugin mounts (`@jhb.software/payload-admin-search/rsc#SearchWrapper`) resolves the filter. Mounting `@jhb.software/payload-admin-search/client#SearchWrapperClient` by hand gives an unscoped search, with no warning.
 
-If the filter throws, the error is logged and the search falls back to unscoped rather than failing the admin panel's render.
+#### When the filter cannot be evaluated
+
+If the filter throws or rejects, the error is logged and the search returns no results at all, showing its error state. It does not fall back to an unscoped search: the whole point of the filter is to keep documents out of the list, so widening on failure would expose exactly what it was meant to hide. The admin panel itself keeps rendering — only the search is affected.
+
+#### Cost
+
+The filter is evaluated during the server render of **every admin page**, not when the search is opened: the constraint has to be on the page before the modal can query anything. There is no cheaper hook that still sees the request, so keep the filter cheap.
+
+- Reading `req.headers` cookies or `req.user` — as in the example above — costs nothing measurable.
+- A filter that queries the database adds that query to every admin page load, and because it is awaited during the render, a slow one delays the page. Cache the lookup if you need one.
+- Leaving `baseFilter` unset costs nothing: nothing is resolved and nothing is passed to the client.
 
 ## Contributing
 

@@ -1,6 +1,21 @@
 import type { Where } from 'payload'
 
+import type { BaseFilterState } from '../../types/BaseFilterState.js'
+
 export const SEARCH_RESULTS_LIMIT = 5
+
+/**
+ * The URL the search modal queries, or an empty one when the base filter could not be
+ * resolved. `usePayloadAPI` skips the request entirely for an empty URL, so an unresolvable
+ * filter yields no documents at all rather than an unscoped list of them.
+ */
+export const buildSearchURL = ({
+  apiRoute,
+  baseFilter,
+}: {
+  apiRoute: string
+  baseFilter: BaseFilterState
+}): string => (baseFilter.status === 'unavailable' ? '' : `${apiRoute}/search`)
 
 /**
  * Builds the query the search modal sends to the search collection. The base filter and the
@@ -11,12 +26,14 @@ export const buildSearchQuery = ({
   baseFilter,
   query,
 }: {
-  baseFilter?: Where
+  baseFilter: BaseFilterState
   query?: string
 }): { depth: number; limit: number; sort: string; where?: Where } => {
+  const filter = baseFilter.status === 'resolved' ? baseFilter.filter : undefined
+
   const constraints: Where[] = [
     ...(query ? [{ title: { like: query } }] : []),
-    ...(baseFilter && Object.keys(baseFilter).length > 0 ? [baseFilter] : []),
+    ...(filter && Object.keys(filter).length > 0 ? [filter] : []),
   ]
 
   return {

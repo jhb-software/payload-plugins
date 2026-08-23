@@ -1,6 +1,8 @@
 import type { PayloadRequest, ServerProps } from 'payload'
 import type React from 'react'
 
+import type { BaseFilterState } from '../../types/BaseFilterState.js'
+
 import { resolveBaseFilter } from './resolveBaseFilter.js'
 import { SearchWrapperClient } from './SearchWrapperClient.js'
 
@@ -23,7 +25,12 @@ export async function SearchWrapper({
   req,
   style = 'button',
 }: SearchWrapperProps): Promise<React.ReactElement> {
-  const baseFilter = payload ? await resolveBaseFilter({ payload, req }) : undefined
+  // Without `payload` the plugin cannot read its own options back off the config, so whether
+  // a filter is configured at all is unknowable. Treating that as `unavailable` would break
+  // the search for everyone who never configured one, so leave it unscoped instead.
+  const baseFilter: BaseFilterState = payload
+    ? await resolveBaseFilter({ payload, req })
+    : { status: 'resolved' }
 
   return <SearchWrapperClient baseFilter={baseFilter} style={style} />
 }

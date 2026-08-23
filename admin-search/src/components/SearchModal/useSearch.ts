@@ -1,7 +1,5 @@
 'use client'
 
-import type { Where } from 'payload'
-
 import { getTranslation } from '@payloadcms/translations'
 import {
   useConfig,
@@ -12,9 +10,10 @@ import {
 } from '@payloadcms/ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import type { BaseFilterState } from '../../types/BaseFilterState.js'
 import type { SearchResult, SearchResultDocument } from '../../types/SearchResult.js'
 
-import { buildSearchQuery, SEARCH_RESULTS_LIMIT } from './buildSearchQuery.js'
+import { buildSearchQuery, buildSearchURL, SEARCH_RESULTS_LIMIT } from './buildSearchQuery.js'
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -28,7 +27,7 @@ export interface UseSearchReturn {
   setQuery: (query: string) => void
 }
 
-export const useSearch = ({ baseFilter }: { baseFilter?: Where } = {}): UseSearchReturn => {
+export const useSearch = ({ baseFilter }: { baseFilter: BaseFilterState }): UseSearchReturn => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [displayedQuery, setDisplayedQuery] = useState('')
@@ -59,10 +58,14 @@ export const useSearch = ({ baseFilter }: { baseFilter?: Where } = {}): UseSearc
 
   // The base filter scopes every request, so re-memoize whenever its constraints change
   // rather than whenever the caller happens to hand over a new object.
-  const baseFilterKey = JSON.stringify(baseFilter ?? null)
+  const baseFilterKey = JSON.stringify(baseFilter)
+
+  // An unresolvable filter empties the URL, which stops `usePayloadAPI` from requesting
+  // anything at all — no document can surface while the intended scope is unknown.
+  const isBaseFilterUnavailable = baseFilter.status === 'unavailable'
 
   const [{ data, isError, isLoading }, { setParams }] = usePayloadAPI(
-    `${config.routes.api}/search`,
+    buildSearchURL({ apiRoute: config.routes.api, baseFilter }),
     {
       // Scoped as well, so the results shown before anything is typed stay inside the filter.
       initialParams: { ...buildSearchQuery({ baseFilter }), pagination: false },
@@ -143,7 +146,9 @@ export const useSearch = ({ baseFilter }: { baseFilter?: Where } = {}): UseSearc
 
   return {
     displayedQuery,
-    isError,
+    // Surfaced as an error rather than as an empty result list: an admin who cannot search
+    // should be told so, not left guessing why their documents stopped showing up.
+    isError: isError || isBaseFilterUnavailable,
     isLoading,
     query,
     results,

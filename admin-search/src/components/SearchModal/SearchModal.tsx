@@ -1,7 +1,5 @@
 'use client'
 
-import type { Where } from 'payload'
-
 import { Banner, SearchIcon, useConfig, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { formatAdminURL } from 'payload/shared'
@@ -11,6 +9,7 @@ import type {
   PluginAdminSearchTranslationKeys,
   PluginAdminSearchTranslations,
 } from '../../translations/index.js'
+import type { BaseFilterState } from '../../types/BaseFilterState.js'
 import type { SearchResult } from '../../types/SearchResult.js'
 
 import { SearchResultItem } from '../SearchResultItem/SearchResultItem.js'
@@ -19,7 +18,7 @@ import './SearchModal.css'
 import { useSearch } from './useSearch.js'
 
 interface SearchModalProps {
-  baseFilter?: Where
+  baseFilter: BaseFilterState
   handleClose: () => void
 }
 
