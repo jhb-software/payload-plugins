@@ -33,9 +33,12 @@ import { vercelDeploymentsPlugin } from '@jhb.software/payload-vercel-deployment
 export default buildConfig({
   plugins: [
     vercelDeploymentsPlugin({
+      deploymentTarget: {
+        projectId: process.env.VERCEL_PROJECT_ID!,
+        websiteUrl: 'https://www.example.com', // Optional, shown as a link in the widget
+      },
       vercel: {
         apiToken: process.env.VERCEL_API_TOKEN!,
-        projectId: process.env.VERCEL_PROJECT_ID!,
         teamId: process.env.VERCEL_TEAM_ID, // Optional, required for team projects
       },
       widget: {
@@ -51,43 +54,58 @@ export default buildConfig({
 
 ### Plugin Options
 
-| Option              | Type                                       | Required | Description                                                                                                                                           |
-| ------------------- | ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `vercel.apiToken`   | `string`                                   | Yes      | Vercel API Bearer Token                                                                                                                               |
-| `vercel.projectId`  | `Resolvable<string \| undefined>`          | Yes      | Vercel Project ID to monitor. Pass a function to resolve it per request — see [Multi-tenant support](#multi-tenant-support)                           |
-| `vercel.teamId`     | `string`                                   | No       | Vercel Team ID (required for team projects)                                                                                                           |
-| `widget.websiteUrl` | `Resolvable<string \| undefined>`          | No       | URL of the frontend website, shown as a link in the widget. Pass a function to resolve it per request                                                 |
-| `widget.minWidth`   | `WidgetWidth`                              | No       | Minimum widget width (default: 'medium')                                                                                                              |
-| `widget.maxWidth`   | `WidgetWidth`                              | No       | Maximum widget width (default: 'full')                                                                                                                |
-| `enabled`           | `boolean`                                  | No       | Enable/disable the plugin (default: true)                                                                                                             |
-| `access`            | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's API endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication) |
+| Option                        | Type                                          | Required | Description                                                                                                                                                                     |
+| ----------------------------- | --------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deploymentTarget`            | `DeploymentTarget \| ResolveDeploymentTarget` | Yes      | The Vercel project to report on and deploy to, and the website it is served from. Pass a function to resolve it per request — see [Multi-tenant support](#multi-tenant-support) |
+| `deploymentTarget.projectId`  | `string \| undefined`                         | Yes      | Vercel Project ID to monitor. `undefined` means this request has no deployment target                                                                                           |
+| `deploymentTarget.websiteUrl` | `string`                                      | No       | URL of the frontend website, shown as a link in the widget                                                                                                                      |
+| `vercel.apiToken`             | `string`                                      | Yes      | Vercel API Bearer Token                                                                                                                                                         |
+| `vercel.teamId`               | `string`                                      | No       | Vercel Team ID (required for team projects)                                                                                                                                     |
+| `widget.minWidth`             | `WidgetWidth`                                 | No       | Minimum widget width (default: 'medium')                                                                                                                                        |
+| `widget.maxWidth`             | `WidgetWidth`                                 | No       | Maximum widget width (default: 'full')                                                                                                                                          |
+| `enabled`                     | `boolean`                                     | No       | Enable/disable the plugin (default: true)                                                                                                                                       |
+| `access`                      | `({ req }) => boolean \| Promise<boolean>`    | No       | Access control for the plugin's API endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                           |
 
 ### Multi-tenant support
 
-`vercel.projectId` and `widget.websiteUrl` accept a function instead of a string, resolved against the current request. In a setup where each tenant deploys to its own Vercel project, return the values of the tenant selected in the admin panel:
+Pass a function as `deploymentTarget` to resolve the project and website URL against the current request. It is called once per request, so a single lookup serves both values. In a setup where each tenant deploys to its own Vercel project, return the values of the tenant selected in the admin panel:
 
 ```typescript
-import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
-import type { PayloadRequest } from 'payload'
+import type { ResolveDeploymentTarget } from '@jhb.software/payload-vercel-deployments'
 
-const selectedTenant = async (req: PayloadRequest) => {
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+
+const selectedTenantTarget: ResolveDeploymentTarget = async ({ req }) => {
   const id = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
-  return id ? req.payload.findByID({ id, collection: 'tenants', req }) : undefined
+  if (!id) {
+    return { projectId: undefined }
+  }
+
+  const tenant = await req.payload.findByID({
+    id,
+    collection: 'tenants',
+    // A stale cookie can point at a deleted tenant — treat that as no target.
+    disableErrors: true,
+    depth: 0,
+    req,
+    // Select only the fields the widget needs.
+    select: { vercelProjectId: true, websiteUrl: true },
+  })
+
+  return {
+    projectId: tenant?.vercelProjectId ?? undefined,
+    websiteUrl: tenant?.websiteUrl ?? undefined,
+  }
 }
 
 vercelDeploymentsPlugin({
-  vercel: {
-    apiToken: process.env.VERCEL_API_TOKEN!,
-    projectId: async ({ req }) => (await selectedTenant(req))?.vercelProjectId ?? undefined,
-  },
-  widget: {
-    websiteUrl: async ({ req }) => (await selectedTenant(req))?.websiteUrl ?? undefined,
-  },
+  deploymentTarget: selectedTenantTarget,
+  vercel: { apiToken: process.env.VERCEL_API_TOKEN! },
 })
 ```
 
-Resolving to `undefined` means the request has no deployment target: the widget renders without deployment rows and hides the deploy button, and both API endpoints answer `400`. A tenant that has not been deployed yet therefore needs no special casing.
+Returning a `projectId` of `undefined` means the request has no deployment target: the widget renders without deployment rows and hides the deploy button, and both API endpoints answer `400`. A tenant that has not been deployed yet therefore needs no special casing. If the resolver throws, the widget shows the error instead of failing to render.
 
 ### WidgetWidth Values
 

@@ -1,6 +1,6 @@
 import type { PayloadRequest } from 'payload'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { VercelDeploymentsPluginConfig } from '../types.js'
 
@@ -9,10 +9,10 @@ import { resolveTarget } from './resolveTarget.js'
 const req = { headers: new Headers() } as PayloadRequest
 
 describe('resolveTarget', () => {
-  it('passes static configuration through unchanged', async () => {
+  it('passes a static target through unchanged', async () => {
     const pluginConfig: VercelDeploymentsPluginConfig = {
-      vercel: { apiToken: 'token', projectId: 'prj_static' },
-      widget: { websiteUrl: 'https://example.com' },
+      deploymentTarget: { projectId: 'prj_static', websiteUrl: 'https://example.com' },
+      vercel: { apiToken: 'token' },
     }
 
     await expect(resolveTarget({ pluginConfig, req })).resolves.toEqual({
@@ -21,16 +21,16 @@ describe('resolveTarget', () => {
     })
   })
 
-  it('resolves the project and website of the request when they are configured as functions', async () => {
+  it('resolves the project and website of the request from a single lookup', async () => {
+    const lookup = vi.fn((tenant: null | string) =>
+      Promise.resolve({
+        projectId: `prj_${tenant}`,
+        websiteUrl: `https://${tenant}.example.com`,
+      }),
+    )
     const pluginConfig: VercelDeploymentsPluginConfig = {
-      vercel: {
-        apiToken: 'token',
-        projectId: ({ req }) => `prj_${req.headers.get('x-tenant')}`,
-      },
-      widget: {
-        websiteUrl: ({ req }) =>
-          Promise.resolve(`https://${req.headers.get('x-tenant')}.example.com`),
-      },
+      deploymentTarget: ({ req }) => lookup(req.headers.get('x-tenant')),
+      vercel: { apiToken: 'token' },
     }
 
     const target = await resolveTarget({
@@ -42,16 +42,17 @@ describe('resolveTarget', () => {
       projectId: 'prj_acme',
       websiteUrl: 'https://acme.example.com',
     })
+    expect(lookup).toHaveBeenCalledTimes(1)
   })
 
   it('reports no target when the resolver finds no project for the request', async () => {
     const pluginConfig: VercelDeploymentsPluginConfig = {
-      vercel: { apiToken: 'token', projectId: () => undefined },
+      deploymentTarget: () => ({ projectId: undefined }),
+      vercel: { apiToken: 'token' },
     }
 
     await expect(resolveTarget({ pluginConfig, req })).resolves.toEqual({
       projectId: undefined,
-      websiteUrl: undefined,
     })
   })
 })

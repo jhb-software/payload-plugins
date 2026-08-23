@@ -58,19 +58,12 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
     return Response.json({ error: 'Invalid deployment id' }, { status: 400 })
   }
 
-  const { projectId } = await resolveTarget({ pluginConfig, req })
-
-  if (!projectId) {
-    return Response.json(
-      { error: 'No Vercel project configured for this request' },
-      { status: 400 },
-    )
-  }
-
   try {
     const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
 
-    // Single deployment lookup
+    // Single deployment lookup. Addressed by deployment id, so it needs no project and
+    // does not pay for resolving one — this is the path the poller hits every 5s while
+    // a build runs.
     if (id) {
       const deployment = await vercelClient.getDeployment({
         idOrUrl: id,
@@ -81,6 +74,15 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
         id: deployment.id,
         status: deployment.status,
       })
+    }
+
+    const { projectId } = await resolveTarget({ pluginConfig, req })
+
+    if (!projectId) {
+      return Response.json(
+        { error: 'No Vercel project configured for this request' },
+        { status: 400 },
+      )
     }
 
     // List latest production deployments

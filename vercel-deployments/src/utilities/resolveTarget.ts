@@ -1,16 +1,13 @@
 import type { PayloadRequest } from 'payload'
 
-import type { Resolvable, VercelDeploymentsPluginConfig } from '../types.js'
-
-export type ResolvedTarget = {
-  projectId: string | undefined
-  websiteUrl: string | undefined
-}
+import type { DeploymentTarget, VercelDeploymentsPluginConfig } from '../types.js'
 
 /**
  * Resolves the deployment target of a request: the Vercel project to read from or deploy
- * to, and the website URL shown in the widget. Both may be configured as a function, which
- * a multi-tenant CMS uses to return the values of the currently selected tenant.
+ * to, and the website URL shown in the widget.
+ *
+ * A `deploymentTarget` function is called exactly once per request, so a multi-tenant CMS
+ * pays a single lookup for both values.
  */
 export const resolveTarget = async ({
   pluginConfig,
@@ -18,14 +15,7 @@ export const resolveTarget = async ({
 }: {
   pluginConfig: VercelDeploymentsPluginConfig
   req: PayloadRequest
-}): Promise<ResolvedTarget> => {
-  const resolve = async <T>(value: Resolvable<T>): Promise<T> =>
-    typeof value === 'function'
-      ? await (value as (args: { req: PayloadRequest }) => T)({ req })
-      : value
-
-  return {
-    projectId: await resolve(pluginConfig.vercel.projectId),
-    websiteUrl: await resolve(pluginConfig.widget?.websiteUrl),
-  }
-}
+}): Promise<DeploymentTarget> =>
+  typeof pluginConfig.deploymentTarget === 'function'
+    ? await pluginConfig.deploymentTarget({ req })
+    : pluginConfig.deploymentTarget

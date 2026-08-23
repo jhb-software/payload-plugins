@@ -6,8 +6,7 @@ import { Suspense } from 'react'
 
 import type { DeploymentsInfo } from '../endpoints/getDeployments.js'
 import type { VercelDeploymentsTranslationKeys } from '../translations/index.js'
-import type { VercelDeploymentsPluginConfig } from '../types.js'
-import type { ResolvedTarget } from '../utilities/resolveTarget.js'
+import type { DeploymentTarget, VercelDeploymentsPluginConfig } from '../types.js'
 import type { VercelDeployment } from '../utilities/vercelApiClient.js'
 
 import { Card } from './Card.js'
@@ -20,6 +19,12 @@ import { GlobeIcon } from './icons/globe.js'
 import { SpinnerIcon } from './icons/spinner.js'
 import { TriggerFrontendDeploymentButton } from './TriggerDeploymentButton.js'
 
+/**
+ * The deployment target of the current request, as a promise so the card can render
+ * before it resolves. `error` carries a resolver failure to the card.
+ */
+export type WidgetTarget = Promise<{ error?: string } & DeploymentTarget>
+
 export function DeploymentInfoCard({
   i18n,
   pluginConfig,
@@ -27,7 +32,7 @@ export function DeploymentInfoCard({
 }: {
   i18n: I18nClient
   pluginConfig: VercelDeploymentsPluginConfig
-  target: ResolvedTarget
+  target: WidgetTarget
 }) {
   const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
@@ -36,39 +41,18 @@ export function DeploymentInfoCard({
   return (
     <DeploymentStatusPoller>
       <Card
-        actions={target.projectId ? <TriggerFrontendDeploymentButton /> : null}
+        actions={
+          <Suspense fallback={null}>
+            <DeployAction target={target} />
+          </Suspense>
+        }
         icon={<CloudIcon />}
         title={t('vercel-dashboard:deploymentInfoTitle')}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {target.websiteUrl ? (
-            <div
-              style={{
-                alignItems: 'center',
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.5rem 0.75rem',
-              }}
-            >
-              <span style={{ alignItems: 'center', display: 'flex', gap: '0.375rem' }}>
-                <GlobeIcon />
-                <span style={{ fontWeight: 500 }}>
-                  {t('vercel-dashboard:deploymentInfoWebsite')}:
-                </span>
-              </span>
-              <a
-                href={target.websiteUrl}
-                rel="noopener noreferrer"
-                style={{
-                  color: 'var(--theme-text)',
-                  textDecoration: 'none',
-                }}
-                target="_blank"
-              >
-                {target.websiteUrl.replace(/^https?:\/\//, '')}
-              </a>
-            </div>
-          ) : null}
+          <Suspense fallback={null}>
+            <WebsiteLink i18n={i18n} target={target} />
+          </Suspense>
 
           <Suspense
             fallback={
@@ -94,6 +78,70 @@ export function DeploymentInfoCard({
   )
 }
 
+/** Renders a failure of either the target resolver or the Vercel API. */
+function DeploymentInfoError({ error, i18n }: { error: string; i18n: I18nClient }) {
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
+
+  return (
+    <div
+      style={{
+        alignItems: 'center',
+        color: 'var(--theme-error-500)',
+        display: 'flex',
+        gap: '0.5rem',
+      }}
+    >
+      <span>
+        {t('vercel-dashboard:deploymentInfoError')}: {error}
+      </span>
+    </div>
+  )
+}
+
+/** The deploy button, once a project is known to exist for this request. */
+async function DeployAction({ target }: { target: WidgetTarget }) {
+  const { projectId } = await target
+
+  return projectId ? <TriggerFrontendDeploymentButton /> : null
+}
+
+/** Link to the website of the resolved target, if one is configured. */
+async function WebsiteLink({ i18n, target }: { i18n: I18nClient; target: WidgetTarget }) {
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
+  const { websiteUrl } = await target
+
+  if (!websiteUrl) {
+    return null
+  }
+
+  return (
+    <div
+      style={{
+        alignItems: 'center',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.5rem 0.75rem',
+      }}
+    >
+      <span style={{ alignItems: 'center', display: 'flex', gap: '0.375rem' }}>
+        <GlobeIcon />
+        <span style={{ fontWeight: 500 }}>{t('vercel-dashboard:deploymentInfoWebsite')}:</span>
+      </span>
+      <a
+        href={websiteUrl}
+        rel="noopener noreferrer"
+        style={{
+          color: 'var(--theme-text)',
+          textDecoration: 'none',
+        }}
+        target="_blank"
+      >
+        {websiteUrl.replace(/^https?:\/\//, '')}
+      </a>
+    </div>
+  )
+}
+
 function resolveDescription(
   description: Record<string, string> | string | undefined,
   language: string,
@@ -114,7 +162,7 @@ export default async function DeploymentInfo({
 }: {
   i18n: I18nClient
   pluginConfig: VercelDeploymentsPluginConfig
-  target: ResolvedTarget
+  target: WidgetTarget
 }) {
   const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
 
@@ -122,9 +170,17 @@ export default async function DeploymentInfo({
   let latestDeployment: DeploymentsInfo['latestDeployment'] = undefined
   let error: string | undefined = undefined
 
+  const resolvedTarget = await target
+
+  if (resolvedTarget.error) {
+    return <DeploymentInfoError error={resolvedTarget.error} i18n={i18n} />
+  }
+
   // No project resolved for this request (e.g. no tenant selected) — there is nothing
   // to report on, and the card renders without deployment rows.
-  if (!target.projectId) {
+  const { projectId } = resolvedTarget
+
+  if (!projectId) {
     return null
   }
 
@@ -134,7 +190,7 @@ export default async function DeploymentInfo({
 
     const deploymentsResponse = await vercelClient.getDeployments({
       limit: 10,
-      projectId: target.projectId,
+      projectId,
       target: 'production',
       teamId: pluginConfig.vercel.teamId,
     })
@@ -171,20 +227,7 @@ export default async function DeploymentInfo({
   }
 
   if (error) {
-    return (
-      <div
-        style={{
-          alignItems: 'center',
-          color: 'var(--theme-error-500)',
-          display: 'flex',
-          gap: '0.5rem',
-        }}
-      >
-        <span>
-          {t('vercel-dashboard:deploymentInfoError')}: {error}
-        </span>
-      </div>
-    )
+    return <DeploymentInfoError error={error} i18n={i18n} />
   }
 
   return (

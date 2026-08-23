@@ -1,10 +1,29 @@
 import type { PayloadRequest } from 'payload'
 
 /**
- * A value that is either static, or resolved per request — e.g. from the tenant
- * selected in a multi-tenant admin panel.
+ * The Vercel project a request reports on and deploys to, and the website it is served
+ * from. A `projectId` of `undefined` means the request has no deployment target.
  */
-export type Resolvable<T> = ((args: { req: PayloadRequest }) => Promise<T> | T) | T
+export type DeploymentTarget = {
+  /**
+   * Vercel Project ID to monitor.
+   */
+  projectId: string | undefined
+
+  /**
+   * URL of the frontend website. Displayed as a link in the widget.
+   */
+  websiteUrl?: string | undefined
+}
+
+/**
+ * Resolves the deployment target of a request — e.g. from the tenant selected in a
+ * multi-tenant admin panel. Called once per request, so a single lookup serves both
+ * the project and the website URL.
+ */
+export type ResolveDeploymentTarget = (args: {
+  req: PayloadRequest
+}) => DeploymentTarget | Promise<DeploymentTarget>
 
 export type VercelDeploymentsPluginConfig = {
   /**
@@ -13,6 +32,15 @@ export type VercelDeploymentsPluginConfig = {
    * Defaults to checking `req.user` (i.e. any authenticated admin user).
    */
   access?: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+
+  /**
+   * The Vercel project to report on and deploy to, and the website it is served from.
+   *
+   * Pass a function to resolve it per request, e.g. from the tenant selected in a
+   * multi-tenant admin panel. A `projectId` of `undefined` means the request has no
+   * deployment target: the widget hides its deploy action and the endpoints answer 400.
+   */
+  deploymentTarget: DeploymentTarget | ResolveDeploymentTarget
 
   /**
    * Whether the plugin is enabled. Defaults to true.
@@ -27,14 +55,6 @@ export type VercelDeploymentsPluginConfig = {
      * Vercel API Bearer Token
      */
     apiToken: string
-
-    /**
-     * Vercel Project ID to monitor. Pass a function to resolve it per request, e.g. from
-     * the tenant selected in a multi-tenant admin panel. Resolving to `undefined` means
-     * the request has no deployment target: the widget hides its deploy action and the
-     * endpoints answer 400.
-     */
-    projectId: Resolvable<string | undefined>
 
     /**
      * Vercel Team ID (required for team projects)
@@ -62,11 +82,5 @@ export type VercelDeploymentsPluginConfig = {
      * Minimum widget width. Default: 'medium'
      */
     minWidth?: 'full' | 'large' | 'medium' | 'small' | 'x-large' | 'x-small'
-
-    /**
-     * URL of the frontend website. Displayed as a link in the widget.
-     * Pass a function to resolve it per request.
-     */
-    websiteUrl?: Resolvable<string | undefined>
   }
 }

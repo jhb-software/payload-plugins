@@ -8,9 +8,9 @@ import { getDeploymentsEndpoint } from './getDeployments.js'
 import { triggerDeploymentEndpoint } from './triggerDeployment.js'
 
 const mockPluginConfig: VercelDeploymentsPluginConfig = {
+  deploymentTarget: { projectId: 'test-project' },
   vercel: {
     apiToken: 'test-token',
-    projectId: 'test-project',
     teamId: 'test-team',
   },
 }
@@ -99,10 +99,8 @@ describe('getDeploymentsEndpoint', () => {
     const req = createMockReq({
       headers: new Headers({ 'x-tenant': 'acme' }),
       pluginConfig: {
-        vercel: {
-          apiToken: 'test-token',
-          projectId: ({ req }) => `prj_${req.headers.get('x-tenant')}`,
-        },
+        deploymentTarget: ({ req }) => ({ projectId: `prj_${req.headers.get('x-tenant')}` }),
+        vercel: { apiToken: 'test-token' },
       },
       user: { id: 'user-1' },
     })
@@ -116,7 +114,10 @@ describe('getDeploymentsEndpoint', () => {
   it('returns 400 without contacting Vercel when no project resolves for the request', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const req = createMockReq({
-      pluginConfig: { vercel: { apiToken: 'test-token', projectId: () => undefined } },
+      pluginConfig: {
+        deploymentTarget: () => ({ projectId: undefined }),
+        vercel: { apiToken: 'test-token' },
+      },
       user: { id: 'user-1' },
     })
 
@@ -124,6 +125,38 @@ describe('getDeploymentsEndpoint', () => {
 
     expect(response.status).toBe(400)
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('looks up a single deployment by id without resolving a target', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ id: 'dpl_1', status: 'READY' }))
+    const deploymentTarget = vi.fn(() => ({ projectId: 'prj_acme' }))
+    const req = createMockReq({
+      pluginConfig: { deploymentTarget, vercel: { apiToken: 'test-token' } },
+      url: 'http://localhost:3000/api/vercel-deployments?id=dpl_1',
+      user: { id: 'user-1' },
+    })
+
+    const response = await getDeploymentsEndpoint(req)
+
+    expect(response.status).toBe(200)
+    expect(deploymentTarget).not.toHaveBeenCalled()
+  })
+
+  it('answers 500 instead of throwing when the target resolver fails', async () => {
+    const req = createMockReq({
+      pluginConfig: {
+        deploymentTarget: () => {
+          throw new Error('Tenant not found')
+        },
+        vercel: { apiToken: 'test-token' },
+      },
+      user: { id: 'user-1' },
+    })
+
+    const response = await getDeploymentsEndpoint(req)
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).error).toContain('Tenant not found')
   })
 })
 
@@ -167,10 +200,8 @@ describe('triggerDeploymentEndpoint', () => {
     const req = createMockReq({
       headers: new Headers({ 'x-tenant': 'acme' }),
       pluginConfig: {
-        vercel: {
-          apiToken: 'test-token',
-          projectId: ({ req }) => `prj_${req.headers.get('x-tenant')}`,
-        },
+        deploymentTarget: ({ req }) => ({ projectId: `prj_${req.headers.get('x-tenant')}` }),
+        vercel: { apiToken: 'test-token' },
       },
       user: { id: 'user-1' },
     })
@@ -188,7 +219,10 @@ describe('triggerDeploymentEndpoint', () => {
   it('returns 400 without contacting Vercel when no project resolves for the request', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const req = createMockReq({
-      pluginConfig: { vercel: { apiToken: 'test-token', projectId: () => undefined } },
+      pluginConfig: {
+        deploymentTarget: () => ({ projectId: undefined }),
+        vercel: { apiToken: 'test-token' },
+      },
       user: { id: 'user-1' },
     })
 

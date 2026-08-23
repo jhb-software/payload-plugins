@@ -25,16 +25,16 @@ export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequ
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { projectId } = await resolveTarget({ pluginConfig, req })
-
-  if (!projectId) {
-    return Response.json(
-      { error: 'No Vercel project configured for this request' },
-      { status: 400 },
-    )
-  }
-
   try {
+    const { projectId } = await resolveTarget({ pluginConfig, req })
+
+    if (!projectId) {
+      return Response.json(
+        { error: 'No Vercel project configured for this request' },
+        { status: 400 },
+      )
+    }
+
     const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
 
     // Find the latest READY production deployment to redeploy

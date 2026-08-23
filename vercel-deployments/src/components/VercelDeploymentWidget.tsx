@@ -8,7 +8,7 @@ import { DeploymentInfoCard } from './DeploymentInfoCard.js'
 export type VercelDeploymentWidgetProps = WidgetServerProps
 
 /** Main widget component that displays Vercel deployment information on the Payload dashboard. */
-export const VercelDeploymentWidget = async ({ req }: VercelDeploymentWidgetProps) => {
+export const VercelDeploymentWidget = ({ req }: VercelDeploymentWidgetProps) => {
   const pluginConfig = req.payload.config.custom
     ?.vercelDeploymentsPluginConfig as VercelDeploymentsPluginConfig
 
@@ -16,7 +16,13 @@ export const VercelDeploymentWidget = async ({ req }: VercelDeploymentWidgetProp
     throw new Error('Vercel Deployments plugin config not found in payload.config.custom')
   }
 
-  const target = await resolveTarget({ pluginConfig, req })
+  // Deliberately not awaited: the card renders right away and only the parts that need
+  // the target suspend. A failing resolver (e.g. a cookie pointing at a deleted tenant)
+  // becomes an error the card displays instead of taking the dashboard down.
+  const target = resolveTarget({ pluginConfig, req }).catch((error) => ({
+    error: error instanceof Error ? error.message : 'Unknown error',
+    projectId: undefined,
+  }))
 
   return <DeploymentInfoCard i18n={req.i18n} pluginConfig={pluginConfig} target={target} />
 }

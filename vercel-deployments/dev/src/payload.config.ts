@@ -1,11 +1,14 @@
-import { vercelDeploymentsPlugin } from '@jhb.software/payload-vercel-deployments'
+import {
+  vercelDeploymentsPlugin,
+  type ResolveDeploymentTarget,
+} from '@jhb.software/payload-vercel-deployments'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
 import path from 'path'
-import { buildConfig, type PayloadRequest } from 'payload'
+import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Posts } from './collections/posts'
 import { Tenants } from './collections/tenants'
@@ -13,15 +16,33 @@ import { Tenants } from './collections/tenants'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
-/** The tenant currently selected in the admin panel, or undefined when none is. */
-const selectedTenant = async (req: PayloadRequest) => {
+/**
+ * Resolves the Vercel project of the tenant selected in the admin panel. Switch tenants
+ * in the selector and the dashboard widget reports that tenant's deployments; the deploy
+ * button disappears for a tenant without a project.
+ */
+const selectedTenantTarget: ResolveDeploymentTarget = async ({ req }) => {
   const id = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
   if (!id) {
-    return undefined
+    return { projectId: undefined }
   }
 
-  return req.payload.findByID({ id, collection: 'tenants', req })
+  const tenant = await req.payload.findByID({
+    id,
+    collection: 'tenants',
+    // A stale cookie can point at a deleted tenant — treat that as no target.
+    disableErrors: true,
+    // Only the two fields the widget needs, no relationships.
+    depth: 0,
+    req,
+    select: { vercelProjectId: true, websiteUrl: true },
+  })
+
+  return {
+    projectId: tenant?.vercelProjectId ?? undefined,
+    websiteUrl: tenant?.websiteUrl ?? undefined,
+  }
 }
 
 export default buildConfig({
@@ -94,18 +115,14 @@ export default buildConfig({
   },
   plugins: [
     vercelDeploymentsPlugin({
+      deploymentTarget: selectedTenantTarget,
       vercel: {
         apiToken: process.env.VERCEL_API_TOKEN!,
-        // Resolves the Vercel project of the tenant selected in the admin panel. Switch
-        // tenants in the selector and the dashboard widget reports that tenant's
-        // deployments; the deploy button disappears for a tenant without a project.
-        projectId: async ({ req }) => (await selectedTenant(req))?.vercelProjectId ?? undefined,
         teamId: process.env.VERCEL_TEAM_ID,
       },
       widget: {
         maxWidth: 'full',
         minWidth: 'medium',
-        websiteUrl: async ({ req }) => (await selectedTenant(req))?.websiteUrl ?? undefined,
       },
     }),
     multiTenantPlugin({
