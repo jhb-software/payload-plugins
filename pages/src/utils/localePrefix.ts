@@ -35,6 +35,19 @@ export function rootPathForLocale(
 }
 
 /**
+ * Memoized {@link localePrefixMap} results, keyed by the routing object and then by the locale
+ * list. A `beforeRead` hook builds the map once per document, so a list read of fifty documents
+ * would otherwise rebuild the same map fifty times. Both keys are stable within a request: a
+ * static routing is the same object every time, and a resolved one is shared per request.
+ *
+ * The maps are frozen because they are handed out by reference and outlive the request.
+ */
+const prefixMapCache = new WeakMap<object, Map<string, Record<Locale, string>>>()
+
+/** Stands in for `routing: undefined`, which cannot key a WeakMap. */
+const NO_ROUTING = {}
+
+/**
  * The prefix of every configured locale, as plain data the admin client can be handed instead of
  * the routing itself.
  */
@@ -45,7 +58,22 @@ export function localePrefixMap(
   if (!locales) {
     return undefined
   }
-  return Object.fromEntries(locales.map((locale) => [locale, localePathPrefix(locale, routing)]))
+
+  const byLocales = prefixMapCache.get(routing ?? NO_ROUTING) ?? new Map()
+  prefixMapCache.set(routing ?? NO_ROUTING, byLocales)
+
+  const key = locales.join(',')
+  const cached = byLocales.get(key)
+  if (cached) {
+    return cached
+  }
+
+  const map = Object.freeze(
+    Object.fromEntries(locales.map((locale) => [locale, localePathPrefix(locale, routing)])),
+  ) as Record<Locale, string>
+  byLocales.set(key, map)
+
+  return map
 }
 
 /**

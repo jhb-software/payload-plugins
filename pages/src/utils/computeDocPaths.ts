@@ -68,6 +68,23 @@ export async function computeDocPaths({
     ...(collectionConfig.trash ? { deletedAt: true } : {}),
   }
 
+  const resolveRouting = () =>
+    resolveLocaleRouting({
+      payload: req.payload,
+      pluginConfig: pagesPluginConfigOf(collectionConfig),
+      req,
+    })
+
+  // The routing does not depend on the row, so the two reads can overlap — but only on a request
+  // without a transaction. A `localeRouting` resolver reads through the same `req`, and MongoDB
+  // forbids concurrent operations on one session while Postgres serializes them on one
+  // connection, so inside a transaction the resolver has to wait (the guard findPageByPath and
+  // loadDescendants apply). Write hooks usually do carry one; a read path usually does not.
+  const pendingRouting = req.transactionID ? undefined : resolveRouting()
+  // The rejection is rethrown at the await below. This only keeps an early return — a missing
+  // row, or `db.find` throwing first — from surfacing it as an unhandled rejection.
+  pendingRouting?.catch(() => {})
+
   const { docs } = await req.payload.db.find({
     collection: collectionConfig.slug,
     limit: 1,
@@ -85,11 +102,7 @@ export async function computeDocPaths({
 
   const live = livePerLocale(row, collectionConfig, locales)
 
-  const routing = await resolveLocaleRouting({
-    payload: req.payload,
-    pluginConfig: pagesPluginConfigOf(collectionConfig),
-    req,
-  })
+  const routing = await (pendingRouting ?? resolveRouting())
 
   if (row.isRootPage === true) {
     return { live, paths: rootPagePaths(row, locales, routing) }
