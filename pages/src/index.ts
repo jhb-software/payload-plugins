@@ -18,7 +18,7 @@ export type {
   IncomingPageCollectionConfigAttributes as PageCollectionIncomingConfigAttributes,
   PageCollectionConfigAttributes,
 } from './types/PageCollectionConfigAttributes.js'
-export type { PagesPluginConfig } from './types/PagesPluginConfig.js'
+export type { LocaleRouting, PagesPluginConfig } from './types/PagesPluginConfig.js'
 export type { IncomingRedirectsCollectionConfig as RedirectsCollectionConfig } from './types/RedirectsCollectionConfig.js'
 export type {
   IncomingRedirectsCollectionConfigAttributes as RedirectsCollectionIncomingConfigAttributes,

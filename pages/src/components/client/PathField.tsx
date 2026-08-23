@@ -1,5 +1,5 @@
 'use client'
-import type { TextFieldClientComponent } from 'payload'
+import type { TextFieldClientProps } from 'payload'
 
 import {
   FieldLabel,
@@ -14,6 +14,7 @@ import type { Breadcrumb } from '../../types/Breadcrumb.js'
 import type { Locale } from '../../types/Locale.js'
 
 import { getBreadcrumbs as getBreadcrumbsForDoc } from '../../utils/getBreadcrumbs.js'
+import { rootPathFromPrefixes } from '../../utils/localePrefix.js'
 import { parentRefKey, tryResolveParentRef } from '../../utils/parentRef.js'
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useDidUpdateEffect } from '../../utils/useDidUpdateEffect.js'
@@ -21,7 +22,16 @@ import { BreadcrumbsFieldModalButton } from './BreadcrumbsField.js'
 import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConfigAtrributes.js'
 
-export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) => {
+export type PathFieldProps = {
+  /** Each locale's path prefix, resolved on the server from the plugin's `localeRouting`. */
+  localePrefixes?: Record<Locale, string>
+}
+
+export const PathField = ({
+  field,
+  localePrefixes,
+  path: fieldPath,
+}: PathFieldProps & TextFieldClientProps) => {
   const { config } = useConfig()
   const pageConfig = usePageCollectionConfigAttributes()
   const {
@@ -80,6 +90,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
       apiURL: `${config.serverURL ?? ''}${config.routes.api}`,
       data: doc,
       locale,
+      localePrefixes,
       locales:
         typeof config.localization === 'object' && config.localization.localeCodes
           ? config.localization.localeCodes
@@ -102,6 +113,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
         const updatedPath = pathFromBreadcrumbs({
           breadcrumbs: fechtchedBreadcrumbs,
           locale,
+          localePrefixes,
         })
 
         setBreadcrumbs(fechtchedBreadcrumbs)
@@ -112,7 +124,11 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
 
         // remove all breadcrumbs except the last one of this doc if the parent was removed
         const updatedBreadcrumbs = breadcrumbs.length >= 2 ? breadcrumbs.slice(-1) : []
-        const updatedPath = pathFromBreadcrumbs({ breadcrumbs: updatedBreadcrumbs, locale })
+        const updatedPath = pathFromBreadcrumbs({
+          breadcrumbs: updatedBreadcrumbs,
+          locale,
+          localePrefixes,
+        })
 
         setPath(updatedPath)
         setBreadcrumbs(updatedBreadcrumbs)
@@ -167,6 +183,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
       const updatedPath = pathFromBreadcrumbs({
         breadcrumbs: updatedBreadcrumbsSlug,
         locale,
+        localePrefixes,
       })
 
       // update the path in the breadcrumbs
@@ -198,9 +215,10 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
   // - the page was set to be the root page
   useDidUpdateEffect(() => {
     if (isRootPage === true) {
+      const rootPath = rootPathFromPrefixes(localePrefixes, locale)
       setSlug('')
-      setPath('/' + locale + '/')
-      setBreadcrumbs([{ slug: '', label: breadcrumbLabel ?? '', path: '/' + (locale ?? '') }])
+      setPath(rootPath)
+      setBreadcrumbs([{ slug: '', label: breadcrumbLabel ?? '', path: rootPath }])
     }
 
     // this effect should only be executed when isRootPage changes:

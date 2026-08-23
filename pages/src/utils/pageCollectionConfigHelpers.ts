@@ -2,6 +2,7 @@ import type { ClientCollectionConfig, CollectionConfig, SanitizedCollectionConfi
 
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 
 /**
  * Whether the collection config is a page collection registered with the pages plugin.
@@ -74,6 +75,19 @@ export const pageAttributesOf = (
     ? (config.page as PageCollectionConfigAttributes)
     : undefined
 }
+
+/**
+ * Returns the plugin config the plugin stored on every collection it touches, or undefined for a
+ * collection outside the plugin.
+ *
+ * The plugin stores one shared config on every collection, so any collection's copy speaks for
+ * all of them.
+ */
+export const pagesPluginConfigOf = (
+  config: ClientCollectionConfig | CollectionConfig | null | SanitizedCollectionConfig | undefined,
+): PagesPluginConfig | undefined =>
+  (config && 'custom' in config ? config.custom?.pagesPluginConfig : undefined) as
+    PagesPluginConfig | undefined
 
 /**
  * Returns the PageCollectionConfig or throws an error if the config is not a PageCollectionConfig.

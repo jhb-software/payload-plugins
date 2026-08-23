@@ -46,7 +46,7 @@ describe('createPageCollectionConfig field overrides', () => {
     const { fields } = buildPages()
 
     expect(fieldNamed(fields, 'path').admin).toMatchObject({
-      components: { Field: '@jhb.software/payload-pages-plugin/client#PathField' },
+      components: { Field: '@jhb.software/payload-pages-plugin/server#PathField' },
       position: 'sidebar',
       readOnly: true,
     })

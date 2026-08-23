@@ -30,14 +30,24 @@ import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 export type SlugFieldProps = {
   defaultValue: Record<string, string> | string | undefined
   fallbackField: string
+  /** Each locale's path prefix, resolved on the server from the plugin's `localeRouting`. */
+  localePrefixes?: Record<string, string>
   pageSlug: boolean | undefined
   readOnly: boolean | undefined
   redirectsCollectionSlug: string
 }
 
 export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientProps) => {
-  const { defaultValue, fallbackField, field, pageSlug, path, readOnly, redirectsCollectionSlug } =
-    clientProps
+  const {
+    defaultValue,
+    fallbackField,
+    field,
+    localePrefixes,
+    pageSlug,
+    path,
+    readOnly,
+    redirectsCollectionSlug,
+  } = clientProps
 
   const { value: title } = useField<string>({ path: fallbackField })
   const { id, hasPublishedDoc, initialData } = useDocumentInfo()
@@ -76,6 +86,7 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
         additionalSlug: initialSlug,
         breadcrumbs: breadcrumbs.slice(0, -1), // Remove current page
         locale: locale.code,
+        localePrefixes,
       })
 
       // Calculate new path (with current slug)
@@ -83,6 +94,7 @@ export const SlugFieldClient = (clientProps: SlugFieldProps & TextFieldClientPro
         additionalSlug: slug,
         breadcrumbs: breadcrumbs.slice(0, -1), // Remove current page
         locale: locale.code,
+        localePrefixes,
       })
 
       await createRedirect(oldPath, newPath)

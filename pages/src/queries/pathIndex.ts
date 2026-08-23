@@ -7,9 +7,10 @@ import type {
   Where,
 } from 'payload'
 
+import { hasDraftsEnabled } from 'payload/shared'
+
 import type { Locale } from '../types/Locale.js'
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
-import type { PagesPluginConfig } from '../types/PagesPluginConfig.js'
 import type { DocPaths } from '../utils/computeDocPaths.js'
 
 import {
@@ -19,11 +20,13 @@ import {
 } from '../hooks/capturePreviousPaths.js'
 import { computeDocPaths, noDocPaths } from '../utils/computeDocPaths.js'
 import { assembleDescendantPaths, loadDescendants } from '../utils/loadDescendants.js'
+import { localeCodesOf } from '../utils/localeFromRequest.js'
 import {
   asPageCollectionConfigOrThrow,
   isPageCollectionConfig,
+  pagesPluginConfigOf,
 } from '../utils/pageCollectionConfigHelpers.js'
-import { livenessConditions } from './liveness.js'
+import { isLiveRow, livenessConditions } from './liveness.js'
 
 /** One live path of one document, as enumerated by {@link listPagePaths}. */
 export type PagePathEntry = {
@@ -136,13 +139,13 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
     : pageCollections
 
   const draft = args.draft ?? false
-  const localization = payload.config.localization
-  const locale = localization ? (args.locale ?? 'all') : undefined
+  const localeCodes = localeCodesOf(payload)
+  const locale = localeCodes ? (args.locale ?? 'all') : undefined
 
-  // The plugin stores one shared config on every page collection, so any collection's copy —
-  // including its baseFilter — speaks for all of them. This breaks if the plugin ever supports
-  // multiple instances with different configs in one Payload config.
-  const pluginConfig = collections[0].custom?.pagesPluginConfig as PagesPluginConfig | undefined
+  // Any page collection's copy of the shared plugin config — including its baseFilter — speaks
+  // for all of them. This breaks if the plugin ever supports multiple instances with different
+  // configs in one Payload config.
+  const pluginConfig = pagesPluginConfigOf(collections[0])
   const baseFilter = args.baseFilter === false ? undefined : pluginConfig?.baseFilter?.({ req })
 
   const enumerateCollection = async (
@@ -150,7 +153,7 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
   ): Promise<PagePathEntry[]> => {
     const labelField = collection.page.breadcrumbs.labelField
 
-    const and: Where[] = draft ? [] : livenessConditions(collection)
+    const and: Where[] = draft ? [] : livenessConditions({ collection, locale, localeCodes })
     if (baseFilter) {
       and.push(baseFilter)
     }
@@ -169,7 +172,12 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
       overrideAccess: args.overrideAccess,
       pagination: false,
       req,
-      select: { [labelField]: true, path: true, updatedAt: true },
+      select: {
+        [labelField]: true,
+        path: true,
+        updatedAt: true,
+        ...(hasDraftsEnabled(collection) ? { _status: true } : {}),
+      },
       where: and.length > 0 ? { and } : undefined,
     })
 
@@ -181,6 +189,11 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
 
       for (const [pathLocale, path] of Object.entries(paths)) {
         if (typeof path !== 'string' || !path) {
+          continue
+        }
+        // A localized `_status` publishes each locale on its own, and the query above only
+        // guarantees that *some* locale is published.
+        if (!draft && !isLiveRow(doc, collection, pathLocale || undefined)) {
           continue
         }
         entries.push({
@@ -356,15 +369,12 @@ function diffDocPaths(
     localized,
   }: { collection: CollectionSlug; id: DefaultDocumentIDType; localized: boolean },
 ): PathChange[] {
-  const locales = new Set([
-    ...(current.live ? Object.keys(current.paths) : []),
-    ...(previous.live ? Object.keys(previous.paths) : []),
-  ])
+  const locales = new Set([...Object.keys(current.paths), ...Object.keys(previous.paths)])
 
   const changes: PathChange[] = []
   for (const locale of locales) {
-    const previousPath = (previous.live ? previous.paths[locale] : undefined) ?? null
-    const path = (current.live ? current.paths[locale] : undefined) ?? null
+    const previousPath = (previous.live[locale] ? previous.paths[locale] : undefined) ?? null
+    const path = (current.live[locale] ? current.paths[locale] : undefined) ?? null
     if (previousPath !== path) {
       changes.push({
         id,

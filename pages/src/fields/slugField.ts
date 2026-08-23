@@ -68,7 +68,7 @@ export function internalSlugField({
     unique,
     validate: (
       value: null | string | undefined,
-      options: { data: any; id?: number | string; siblingData: any },
+      options: { data: any; id?: number | string; req?: any; siblingData: any },
     ): string | true => {
       if (pageSlug && options.data.isRootPage) {
         return value === ROOT_PAGE_SLUG
@@ -81,6 +81,19 @@ export function internalSlugField({
 
         if (value !== formatSlug(value)) {
           return 'The slug contains invalid characters.'
+        }
+
+        // A locale code as the first path segment is the locale prefix, so a page slugged like
+        // one is unresolvable. The rule holds for every locale code regardless of routing and of
+        // the document's depth, so re-parenting can never make a stored slug ambiguous.
+        const localization = options.req?.payload?.config?.localization
+        if (localization && localization.localeCodes.includes(value)) {
+          return (
+            options.req?.t?.('@jhb.software/payload-pages-plugin:slugCannotBeALocaleCode', {
+              slug: value,
+            }) ??
+            `The slug "${value}" is reserved: it is a locale code, which paths use as the locale prefix.`
+          )
         }
       }
 

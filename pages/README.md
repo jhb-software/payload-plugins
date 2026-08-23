@@ -228,6 +228,68 @@ export default buildConfig({
 })
 ```
 
+### Localization
+
+On a localized Payload config the plugin prefixes every path with the locale it belongs to: `/de/kontakt`, `/en/contact`, and the root page at `/de` and `/en`. The `localeRouting` option changes that by naming a **primary locale** — the locale the site leads with — and deciding whether it carries the prefix:
+
+```ts
+payloadPagesPlugin({
+  generatePageURL,
+  localeRouting: { primaryLocale: 'de', prefixPrimaryLocale: false },
+})
+```
+
+| config                                                | `de` path     | `de` root | `en` path     | `en` root |
+| ----------------------------------------------------- | ------------- | --------- | ------------- | --------- |
+| no `localeRouting`                                    | `/de/kontakt` | `/de`     | `/en/contact` | `/en`     |
+| `{ primaryLocale: 'de' }`                             | `/de/kontakt` | `/de`     | `/en/contact` | `/en`     |
+| `{ primaryLocale: 'de', prefixPrimaryLocale: false }` | `/kontakt`    | `/`       | `/en/contact` | `/en`     |
+
+`primaryLocale` must be one of `localization.localeCodes` — anything else throws. It is independent of Payload's `localization.defaultLocale`, which is a storage and fallback concern. The option is ignored when localization is disabled.
+
+Pass a function instead of an object to derive the routing from the request, e.g. from the active tenant. It is evaluated once per request, so computing the paths of many documents costs a single tenant lookup. Return `undefined` for the default (every locale prefixed):
+
+```ts
+payloadPagesPlugin({
+  generatePageURL,
+  baseFilter: ({ req }) => ({ tenant: { equals: tenantIdFrom(req) } }),
+  localeRouting: async ({ req }) => {
+    const tenant = await loadTenant(req)
+
+    return (
+      tenant && {
+        primaryLocale: tenant.primaryLocale,
+        prefixPrimaryLocale: !tenant.prefixAllLocales,
+      }
+    )
+  },
+})
+```
+
+With a function resolver, `findPageByPath` requires a `req` — the same rule `baseFilter` imposes. A lookup without one throws.
+
+Keep the resolver cheap: it is part of the path cache key, so it runs before `findPageByPath` can consult the cache. Read only the fields the routing is built from, and cache the read where the source allows it.
+
+A resolver may read page collections, but the `path` of a document it reads is computed under the default routing (every locale prefixed) rather than under the routing being resolved. Reads of any other collection are unaffected.
+
+#### Reserved slugs
+
+On a localized install a slug equal to a configured locale code is rejected: the first path segment is the locale prefix, so a page slugged `en` could never be addressed unambiguously. The rule applies regardless of the routing. Validation runs on save, so a page that already carries such a slug has to be renamed the next time it is saved.
+
+#### Alternate paths and `x-default`
+
+Every localized page carries `meta.alternatePaths`, one `{ hreflang, path }` entry per locale that has a path. With `localeRouting` configured, the primary locale's path is repeated as `{ hreflang: 'x-default', path }`.
+
+The plugin does not add a field of its own for this — the value lives in the SEO plugin's `meta` group. Add the exported `alternatePathsField()` to the SEO plugin's `fields` (see [SEO Plugin Integration](#seo-plugin-integration)) so it is typed and selectable.
+
+#### Per-locale publishing
+
+With Payload's [`localizeStatus`](https://payloadcms.com/docs/versions/drafts) (`versions.drafts.localizeStatus`, currently behind `experimental.localizeStatus`) each locale publishes on its own. The plugin follows: `findPageByPath`, `listPagePaths` and `pathChanges` resolve, enumerate and report each locale independently, so a page published in `en` only while `de` is still a draft yields exactly one live path.
+
+#### Known limitation: routing is per request, not per document
+
+The routing is a function of the request, never of the document. In the admin, a user who sees documents of several tenants at once — a super-admin without a tenant cookie, or a list view spanning tenants — sees every `path` computed under the _request's_ routing, and `listPagePaths` indexes one tenant per call.
+
 ### Multi-tenant support
 
 > ⚠️ **Warning**: The multi-tenant support is currently experimental and may change in the future.
@@ -388,7 +450,7 @@ const identity = await findPageByPath({ payload, path: '/de/blog/my-post', depth
 
 `findPageByPath` accepts either a `payload` instance or a `req` (which forwards the active transaction and user), the query options `depth`, `select` and `populate`, and:
 
-- `locale`: The locale to resolve the path in. Defaults to the locale prefix of the path (e.g. `/de/...`), falling back to the default locale.
+- `locale`: The locale to resolve the path in. Defaults to the locale prefix of the path (e.g. `/de/...`), falling back to the primary locale of the configured [`localeRouting`](#localization) and then to Payload's default locale.
 - `draft`: Whether to resolve draft documents (default `false`). Published lookups never return unpublished pages.
 - `where`: An additional filter applied on top of the plugin's configured `baseFilter`. The filtered fields must be queryable on every page collection.
 - `overrideAccess` / `cache` / `waitUntil` / `onCacheResult`: See below.

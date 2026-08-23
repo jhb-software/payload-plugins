@@ -348,7 +348,11 @@ describe('listPagePaths', () => {
     const req = await createLocalReq({}, payload)
     const entries = await listPagePaths({ req })
 
-    expect(new Set(entries.map((entry) => entry.path))).toEqual(new Set(['/de', '/de/under-root']))
+    // The root page is the site root in every locale, so `/en` is enumerated too — its child,
+    // whose slug only exists in `de`, is not.
+    expect(new Set(entries.map((entry) => entry.path))).toEqual(
+      new Set(['/de', '/de/under-root', '/en']),
+    )
     expect(entries.find((entry) => entry.path === '/de')).toMatchObject({
       collection: 'pages',
       id: root.id,

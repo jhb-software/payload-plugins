@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import type { PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
 
 import type { Locale } from '../types/Locale.js'
 
@@ -14,11 +14,13 @@ export function localeFromRequest(req: PayloadRequest): 'all' | Locale | undefin
   return req.locale as 'all' | Locale | undefined
 }
 
+/** Returns the configured locale codes, or undefined on an unlocalized install. */
+export function localeCodesOf(payload: Payload): Locale[] | undefined {
+  const localization = payload.config.localization
+  return localization ? localization.localeCodes : undefined
+}
+
 /** Returns the locales from the request. */
 export function localesFromRequest(req: PayloadRequest): Locale[] | undefined {
-  if (typeof req?.payload.config.localization === 'object' && req?.payload.config.localization) {
-    return req.payload.config.localization.localeCodes
-  } else {
-    return undefined
-  }
+  return req?.payload ? localeCodesOf(req.payload) : undefined
 }

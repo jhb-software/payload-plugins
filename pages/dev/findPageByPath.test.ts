@@ -91,6 +91,17 @@ describe('findPageByPath resolves published pages', () => {
     expect(result?.doc.path).toBe('/de')
   })
 
+  test('resolves the site root in a locale the root page was never saved in', async () => {
+    // A root page has no slug to translate: it is the site root in every locale, even though
+    // only the `de` write ever stored the empty slug.
+    const rootPage = await createPage({ title: 'Root', slug: '', isRootPage: true })
+
+    const result = await findPageByPath({ payload, path: '/en' })
+
+    expect(result?.doc.id).toBe(rootPage.id)
+    expect(result?.doc.path).toBe('/en')
+  })
+
   test('returns null for a path that matches no page', async () => {
     await createPage({ title: 'Parent', slug: 'parent' })
 

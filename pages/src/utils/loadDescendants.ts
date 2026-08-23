@@ -6,10 +6,13 @@ import type {
   Where,
 } from 'payload'
 
+import { hasDraftsEnabled } from 'payload/shared'
+
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { ParentRef } from './parentRef.js'
 
-import { hasDraftsEnabled, isLiveRow } from '../queries/liveness.js'
+import { livePerLocale } from '../queries/liveness.js'
+import { localeCodesOf } from './localeFromRequest.js'
 import { isPageCollectionConfig } from './pageCollectionConfigHelpers.js'
 import {
   hasPolymorphicParent,
@@ -22,8 +25,8 @@ import {
 export type DescendantRow = {
   collection: CollectionSlug
   id: DefaultDocumentIDType
-  /** Whether the document's own path resolves (published and not trashed). */
-  live: boolean
+  /** Whether the document's own path resolves (published and not trashed), per locale. */
+  live: Record<string, boolean>
   /** The document this one is parented to. */
   parent: ParentRef
   /** The raw slug value: locale-keyed on a localized install, a plain string otherwise. */
@@ -52,7 +55,8 @@ export async function loadDescendants({
     isPageCollectionConfig(collection),
   ) as PageCollectionConfig[]
 
-  const localized = Boolean(payload.config.localization)
+  const locales = localeCodesOf(payload)
+  const localized = Boolean(locales)
   const rows: DescendantRow[] = []
   const visited = new Set<string>([parentRefKey(root)])
 
@@ -97,7 +101,7 @@ export async function loadDescendants({
           id: doc.id as DefaultDocumentIDType,
           slug: doc.slug,
           collection: collection.slug,
-          live: isLiveRow(doc, collection),
+          live: livePerLocale(doc, collection, locales),
           parent: resolveParentRef(doc[parentFieldName], collection.page)!,
         }
 
@@ -157,7 +161,7 @@ function childrenOfWhere(
 export type DescendantPaths = {
   collection: CollectionSlug
   id: DefaultDocumentIDType
-  live: boolean
+  live: Record<string, boolean>
   paths: Record<string, string>
 }
 
