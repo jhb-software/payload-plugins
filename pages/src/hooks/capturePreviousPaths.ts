@@ -38,8 +38,11 @@ export function pathCaptures(context: Record<string, unknown>): Record<string, P
  * `pathChanges` skips them in `afterChange` judging the resulting `doc` — the two sources
  * agree because Payload materializes `_status: 'draft'` on a draft save that omits it.
  *
- * With a localized `_status` the value is an object, and the write is version-only only when no
- * locale is published.
+ * With a localized `_status` the value is an object, and any published locale disqualifies the
+ * write. That is a conservative proxy, not an exact answer: a draft save in `de` on a document
+ * whose `en` is published also touches only a version row, yet counts as a full write here. The
+ * cost is one extra `computeDocPaths` whose diff comes out empty; the check never skips a write
+ * that can move a live path.
  */
 export function isVersionOnlyWrite(context: Record<string, unknown>, status: unknown): boolean {
   return context.draft === true && !publishesAnyLocale(status)
