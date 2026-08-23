@@ -95,9 +95,12 @@ The main use is multi-tenancy: scope the search to the tenant selected in the ad
 
 ```ts
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+import type { Where } from 'payload'
 
 adminSearchPlugin({
-  baseFilter: ({ req }) => {
+  // Annotate the return type: without it TypeScript infers a union across the branches, and
+  // `{}` widens to `{ or?: undefined }`, which `Where`'s index signature rejects.
+  baseFilter: ({ req }): Where => {
     const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
     // Returning `{}` leaves the search unscoped. Constraining `tenant` to `null` instead

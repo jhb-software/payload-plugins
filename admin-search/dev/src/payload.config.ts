@@ -5,6 +5,8 @@ import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { searchPlugin } from '@payloadcms/plugin-search'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
+import type { Where } from 'payload'
+
 import { buildConfig } from 'payload'
 import { de } from 'payload/i18n/de'
 import { en } from 'payload/i18n/en'
@@ -80,7 +82,7 @@ export default buildConfig({
       // Restricts search results to the tenant selected in the admin panel. Switch tenants
       // in the selector and the same query returns that tenant's documents only; with no
       // tenant selected the search stays unscoped, matching what the tenant selector shows.
-      baseFilter: ({ req }) => {
+      baseFilter: ({ req }): Where => {
         const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
         if (!tenant) {
