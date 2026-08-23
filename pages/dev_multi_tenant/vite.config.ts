@@ -13,7 +13,9 @@ export default defineConfig(({ mode }) => {
       hookTimeout: 30000,
       testTimeout: 30000,
       setupFiles: [path.resolve(dirname, 'src/test/vitest.setup.ts')],
-      fileParallelism: false, // test files share one database
+      // Every test file runs against the one database `PAYLOAD_DATABASE` points at and empties
+      // it up front, so they must run one after another.
+      fileParallelism: false,
     },
   }
 })

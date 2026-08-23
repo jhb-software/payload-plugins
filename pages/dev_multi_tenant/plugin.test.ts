@@ -21,6 +21,7 @@ import {
  */
 const virtualFields = {
   breadcrumbs: [],
+  meta: { alternatePaths: [] },
   path: '',
 }
 
@@ -679,7 +680,7 @@ describe('Multi-tenant baseFilter functionality', () => {
       tenant2Parent = (await createTree(tenant2Id)).parent
     })
 
-    test('listPagePaths returns only the current tenant`s paths', async () => {
+    test('listPagePaths returns only the current tenant’s paths', async () => {
       const entries = await listPagePaths({ req: await tenantReq(tenant1Id) })
 
       expect(new Set(entries.map((entry) => entry.path))).toEqual(
@@ -701,7 +702,7 @@ describe('Multi-tenant baseFilter functionality', () => {
       expect(ids).toContain(tenant2Parent)
     })
 
-    test('baseFilter: false with an explicit tenant where enumerates a tenant other than the request`s', async () => {
+    test('baseFilter: false with an explicit tenant where enumerates a tenant other than the request’s', async () => {
       const entries = await listPagePaths({
         baseFilter: false,
         req: await tenantReq(tenant1Id),

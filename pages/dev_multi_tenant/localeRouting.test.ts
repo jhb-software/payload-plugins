@@ -1,5 +1,5 @@
 import { findPageByPath, listPagePaths } from '@jhb.software/payload-pages-plugin'
-import payload, { createLocalReq, type CollectionSlug } from 'payload'
+import payload, { createLocalReq, type CollectionSlug, type PayloadRequest } from 'payload'
 import type { Config } from 'payload/generated-types'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
@@ -14,7 +14,7 @@ import {
 type DefaultIDType = Config['db']['defaultIDType']
 
 /** Empty virtual fields the plugin generates, spread in to satisfy TypeScript. */
-const virtualFields = { breadcrumbs: [], path: '' }
+const virtualFields = { breadcrumbs: [], meta: { alternatePaths: [] }, path: '' }
 
 /** Builds a request whose cookie selects the given tenant, as the plugin's resolvers read it. */
 const tenantReq = async (tenantId: DefaultIDType) => {
@@ -87,9 +87,13 @@ let prefixedTenant: DefaultIDType
 let unprefixedRoot: DefaultIDType
 let unprefixedContact: DefaultIDType
 /** every locale prefixed, `en` primary. */
-let prefixedRoot: DefaultIDType
 let prefixedContact: DefaultIDType
 
+/**
+ * Every test file in this app runs against the one database `PAYLOAD_DATABASE` points at and
+ * starts by emptying it, so the files must not overlap — `vite.config.ts` sets
+ * `fileParallelism: false` for that reason.
+ */
 beforeAll(async () => {
   await payload.init({ config })
   await deleteAllCollections(['users'])
@@ -119,7 +123,7 @@ beforeAll(async () => {
     tenant: unprefixedTenant,
   })
 
-  prefixedRoot = await createPage({
+  await createPage({
     de: { slug: '', title: 'Startseite' },
     en: { slug: '', title: 'Home' },
     isRootPage: true,
@@ -139,7 +143,7 @@ afterAll(async () => {
 })
 
 describe('locale routing', () => {
-  test('generates the unprefixed primary locale`s paths without a locale segment', async () => {
+  test('generates the unprefixed primary locale’s paths without a locale segment', async () => {
     const req = await tenantReq(unprefixedTenant)
     const paths = await listPagePaths({ req })
 
@@ -188,7 +192,7 @@ describe('locale routing', () => {
     expect((await findPageByPath({ path: '/', req: await req() }))?.doc.id).toBe(unprefixedRoot)
   })
 
-  test('does not resolve the primary locale`s prefixed path when that locale is served unprefixed', async () => {
+  test('does not resolve the primary locale’s prefixed path when that locale is served unprefixed', async () => {
     expect(
       await findPageByPath({ path: '/de/kontakt', req: await tenantReq(unprefixedTenant) }),
     ).toBeNull()
@@ -230,63 +234,58 @@ describe('locale routing', () => {
     ).toBeNull()
   })
 
-  test(
-    'evaluates the routing resolver once per request, not once per document',
-    { timeout: 180_000 },
-    async () => {
-      const tenant = await createTenant({
-        name: 'Bulk',
-        prefixAllLocales: false,
-        primaryLocale: 'de',
-        slug: 'routing-bulk',
-      })
-
-      for (let index = 0; index < 50; index++) {
-        await payload.create({
-          collection: 'pages',
-          locale: 'de',
-          data: {
-            ...virtualFields,
-            content: `Bulk ${index}`,
-            slug: `bulk-de-${index}`,
-            tenant,
-            title: `Bulk ${index}`,
-            _status: 'published',
-          },
-        })
-      }
-
-      const req = await tenantReq(tenant)
-      clearLocaleRoutingCalls()
-
-      const { docs } = await payload.find({ collection: 'pages', limit: 0, pagination: false, req })
-
-      expect(docs.length).toBeGreaterThanOrEqual(50)
-      expect(localeRoutingCalls()).toBe(1)
-    },
-  )
-
-  test('appends the primary locale`s path as x-default only when routing resolves', async () => {
-    const withRouting = await payload.findByID({
-      collection: 'pages',
-      id: unprefixedContact,
-      req: await tenantReq(unprefixedTenant),
+  test('evaluates the routing resolver once per request, not once per document', async () => {
+    const tenant = await createTenant({
+      name: 'Bulk',
+      prefixAllLocales: false,
+      primaryLocale: 'de',
+      slug: 'routing-bulk',
     })
 
-    expect(withRouting.meta?.alternatePaths).toEqual([
+    // A per-document evaluation would report one call per page; a handful is enough to tell the
+    // two apart.
+    const pageCount = 8
+
+    for (let index = 0; index < pageCount; index++) {
+      await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          ...virtualFields,
+          content: `Bulk ${index}`,
+          slug: `bulk-de-${index}`,
+          tenant,
+          title: `Bulk ${index}`,
+          _status: 'published',
+        },
+      })
+    }
+
+    const req = await tenantReq(tenant)
+    clearLocaleRoutingCalls()
+
+    const { docs } = await payload.find({ collection: 'pages', limit: 0, pagination: false, req })
+
+    expect(docs.length).toBeGreaterThanOrEqual(pageCount)
+    expect(localeRoutingCalls()).toBe(1)
+  })
+
+  test('appends the primary locale’s path as x-default only when routing resolves', async () => {
+    /** The `alternatePaths` rows without the ids Payload assigns to array items. */
+    const alternatePathsOf = async (req: PayloadRequest) => {
+      const doc = await payload.findByID({ collection: 'pages', id: unprefixedContact, req })
+
+      return (doc.meta?.alternatePaths ?? []).map(({ hreflang, path }) => ({ hreflang, path }))
+    }
+
+    expect(await alternatePathsOf(await tenantReq(unprefixedTenant))).toEqual([
       { hreflang: 'de', path: '/kontakt' },
       { hreflang: 'en', path: '/en/contact' },
       { hreflang: 'x-default', path: '/kontakt' },
     ])
 
     // No tenant cookie means the resolver returns undefined, so there is no primary locale.
-    const withoutRouting = await payload.findByID({
-      collection: 'pages',
-      id: unprefixedContact,
-      req: await createLocalReq({}, payload),
-    })
-
-    expect(withoutRouting.meta?.alternatePaths).toEqual([
+    expect(await alternatePathsOf(await createLocalReq({}, payload))).toEqual([
       { hreflang: 'de', path: '/de/kontakt' },
       { hreflang: 'en', path: '/en/contact' },
     ])
@@ -332,7 +331,7 @@ describe('per-locale liveness with a localized _status', () => {
     expect(own.map((entry) => `${entry.locale}:${entry.path}`)).toEqual(['en:/en/published-en'])
   })
 
-  test('enumerates a locale-narrowed listing by that locale`s own published status', async () => {
+  test('enumerates a locale-narrowed listing by that locale’s own published status', async () => {
     const english = await listPagePaths({ locale: 'en', req: await tenantReq(prefixedTenant) })
     expect(
       english.filter((entry) => entry.id === halfPublished).map((entry) => entry.path),
@@ -342,7 +341,7 @@ describe('per-locale liveness with a localized _status', () => {
     expect(german.some((entry) => entry.id === halfPublished)).toBe(false)
   })
 
-  test('resolves the published locale`s path and not the draft locale`s', async () => {
+  test('resolves the published locale’s path and not the draft locale’s', async () => {
     const req = await tenantReq(prefixedTenant)
 
     expect((await findPageByPath({ path: '/en/published-en', req }))?.doc.id).toBe(halfPublished)
@@ -394,12 +393,17 @@ describe('reserved slugs', () => {
       )
 
     expect(error).not.toBeNull()
-    expect(error.data.errors.map((entry: { message: string }) => entry.message)).toEqual([
-      'The slug "de" is reserved: it is a locale code, which paths use as the locale prefix.',
-    ])
+
+    const messages: string[] = error.data.errors.map((entry: { message: string }) => entry.message)
+
+    expect(messages).toHaveLength(1)
+    // Asserted by shape rather than verbatim, so rewording the translation stays a translation
+    // change: the reason names the offending slug and says why it cannot be used.
+    expect(messages[0]).toMatch(/"de"/)
+    expect(messages[0]).toMatch(/locale code/)
   })
 
-  test('accepts a slug which is not a locale code', async () => {
+  test('accepts a slug which merely starts with a locale code', async () => {
     const page = await payload.create({
       collection: 'pages',
       locale: 'de',

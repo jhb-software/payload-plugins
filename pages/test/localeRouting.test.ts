@@ -6,9 +6,10 @@ import { buildPathCacheKey } from '../src/queries/pathCache.js'
 import {
   localePathPrefix,
   localePrefixMap,
-  localeRoutingCacheToken,
   parseLocalizedPath,
+  prefixForLocale,
   rootPathForLocale,
+  rootPathFromPrefixes,
 } from '../src/utils/localePrefix.js'
 import { resolveLocaleRouting } from '../src/utils/resolveLocaleRouting.js'
 
@@ -38,10 +39,16 @@ describe('localePathPrefix', () => {
 })
 
 describe('rootPathForLocale', () => {
-  test('serves the unprefixed primary locale`s root page at the site root', () => {
+  test('serves the unprefixed primary locale’s root page at the site root', () => {
     expect(rootPathForLocale('de', { primaryLocale: 'de', prefixPrimaryLocale: false })).toBe('/')
+  })
+
+  test('serves every other root page under its locale prefix', () => {
     expect(rootPathForLocale('en', { primaryLocale: 'de', prefixPrimaryLocale: false })).toBe('/en')
     expect(rootPathForLocale('de', undefined)).toBe('/de')
+  })
+
+  test('serves the root page at the site root on an unlocalized install', () => {
     expect(rootPathForLocale(undefined, undefined)).toBe('/')
   })
 })
@@ -52,19 +59,44 @@ describe('localePrefixMap', () => {
       localePrefixMap(['de', 'en'], { primaryLocale: 'de', prefixPrimaryLocale: false }),
     ).toEqual({ de: '', en: '/en' })
   })
+
+  test('yields no map on an unlocalized install, where there is nothing to prefix', () => {
+    expect(localePrefixMap(undefined, { primaryLocale: 'de' })).toBeUndefined()
+  })
 })
 
-describe('localeRoutingCacheToken', () => {
-  test('distinguishes no routing, a prefixed primary locale and an unprefixed one', () => {
-    const tokens = [
-      localeRoutingCacheToken(undefined),
-      localeRoutingCacheToken({ primaryLocale: 'de' }),
-      localeRoutingCacheToken({ primaryLocale: 'de', prefixPrimaryLocale: false }),
-      localeRoutingCacheToken({ primaryLocale: 'en' }),
-    ]
+// The admin field components run without a `req` and cannot resolve a per-request routing, so
+// they read the prefixes off the map their server component handed them.
+describe('prefixForLocale', () => {
+  const prefixes = { de: '', en: '/en' }
 
-    expect(new Set(tokens).size).toBe(tokens.length)
-    expect(tokens.every((token) => token.length > 0)).toBe(true)
+  test('reads the prefix of a mapped locale', () => {
+    expect(prefixForLocale(prefixes, 'de')).toBe('')
+    expect(prefixForLocale(prefixes, 'en')).toBe('/en')
+  })
+
+  test('falls back to the locale’s own prefix when the map does not cover it', () => {
+    expect(prefixForLocale(prefixes, 'fr')).toBe('/fr')
+    expect(prefixForLocale(undefined, 'fr')).toBe('/fr')
+  })
+
+  test('yields no prefix while the admin shows all locales at once', () => {
+    expect(prefixForLocale(prefixes, 'all')).toBe('')
+    expect(prefixForLocale(prefixes, undefined)).toBe('')
+  })
+})
+
+describe('rootPathFromPrefixes', () => {
+  test('serves the root page of an unprefixed locale at the site root', () => {
+    expect(rootPathFromPrefixes({ de: '', en: '/en' }, 'de')).toBe('/')
+  })
+
+  test('serves the root page of a prefixed locale under its prefix', () => {
+    expect(rootPathFromPrefixes({ de: '', en: '/en' }, 'en')).toBe('/en')
+  })
+
+  test('serves the root page at the site root while the admin shows all locales at once', () => {
+    expect(rootPathFromPrefixes({ de: '', en: '/en' }, 'all')).toBe('/')
   })
 })
 
@@ -128,15 +160,8 @@ describe('resolveLocaleRouting', () => {
     expect(calls).toBe(2)
   })
 
-  test('throws when a function resolver is evaluated without a request', async () => {
-    await expect(
-      resolveLocaleRouting({
-        payload: payloadWith(['de', 'en']),
-        pluginConfig: { localeRouting: () => ({ primaryLocale: 'de' }) } as any,
-        req: undefined,
-      }),
-    ).rejects.toThrow(/req/)
-  })
+  // The `req`-less case is covered end to end in dev_multi_tenant, where it surfaces out of
+  // `findPageByPath`.
 })
 
 describe('parseLocalizedPath', () => {

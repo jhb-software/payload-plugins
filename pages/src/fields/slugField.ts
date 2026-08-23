@@ -91,7 +91,8 @@ export function internalSlugField({
           return (
             options.req?.t?.('@jhb.software/payload-pages-plugin:slugCannotBeALocaleCode', {
               slug: value,
-            }) ?? `The slug "${value}" is reserved: it is a locale code.`
+            }) ??
+            `The slug "${value}" is reserved: it is a locale code, which paths use as the locale prefix.`
           )
         }
       }
