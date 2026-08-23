@@ -160,32 +160,16 @@ function ancestorsToBreadcrumbs(
     breadcrumbs.push({
       slug,
       label: pickFieldValue(ancestor.label, locale)!,
+      // A root page is the site root of every locale — its path is the locale prefix (or `/`)
+      // rather than a path assembled from slugs, and it does not depend on the locale carrying
+      // a stored slug. Mirrors `setRootPageDocumentVirtualFields`.
       path: ancestor.isRootPage
-        ? rootPagePath(ancestor, locale, localePrefixes)!
+        ? rootPathFromPrefixes(localePrefixes, locale)
         : pathFromBreadcrumbs({ additionalSlug: slug, breadcrumbs, locale, localePrefixes }),
     })
   }
 
   return breadcrumbs
-}
-
-/**
- * The path of a root page, which is the locale prefix (or `/`) rather than a path assembled
- * from slugs. A locale the root page has no slug for has no path, mirroring
- * `setRootPageDocumentVirtualFields`.
- */
-function rootPagePath(
-  ancestor: Ancestor,
-  locale: Locale | undefined,
-  localePrefixes: Record<Locale, string> | undefined,
-): string | undefined {
-  if (!locale) {
-    return '/'
-  }
-
-  return pickFieldValue(ancestor.slug, locale) === ROOT_PAGE_SLUG
-    ? rootPathFromPrefixes(localePrefixes, locale)
-    : undefined
 }
 
 /** Converts a localized or unlocalized document to a breadcrumb item. */

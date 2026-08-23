@@ -109,6 +109,39 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       )
     })
 
+    test('is linkable in a child`s breadcrumbs in a locale it was never saved in', async () => {
+      const rootPage = await payload.create({
+        collection: 'pages',
+        locale: 'en',
+        data: {
+          title: 'Home',
+          slug: '',
+          content: 'Home',
+          isRootPage: true,
+          ...virtualFields,
+        },
+      })
+      const child = await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Child',
+          slug: 'child',
+          content: 'Child',
+          parent: rootPage.id,
+          ...virtualFields,
+        },
+      })
+
+      const fetched = await payload.findByID({ collection: 'pages', id: child.id, locale: 'de' })
+
+      // Without a path the root page cannot be linked in a breadcrumb navigation.
+      expect(fetched.breadcrumbs.map(({ slug, path }) => ({ slug, path }))).toEqual([
+        { slug: '', path: '/de' },
+        { slug: 'child', path: '/de/child' },
+      ])
+    })
+
     test('has the correct virtual fields when all locales are present', async () => {
       const rootPageDataDe = {
         title: 'Root Page DE',

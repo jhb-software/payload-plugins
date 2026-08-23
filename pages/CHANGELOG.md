@@ -5,7 +5,7 @@
 - **BREAKING**: locale codes are rejected as slugs on localized installs — a page slugged e.g. `en` fails validation on its next save and must be renamed
 - feat: `localeRouting` option — per-request primary locale, optional unprefixed primary locale, `x-default` in `alternatePaths`
 - feat: per-locale liveness with a localized `_status` (`localizeStatus`), so a page published in one locale only resolves that locale's path
-- fix: a root page is now the site root in every locale, including the ones it has never been saved in — its path, `alternatePaths` entry, `findPageByPath` resolution and `listPagePaths` entry no longer depend on that locale carrying a stored (empty) slug
+- fix: a root page is now the site root in every locale, including the ones it has never been saved in — its path, `alternatePaths` entry, breadcrumb entry in its descendants, `findPageByPath` resolution and `listPagePaths` entry no longer depend on that locale carrying a stored (empty) slug
 
 ## 0.9.0-beta.2
 
