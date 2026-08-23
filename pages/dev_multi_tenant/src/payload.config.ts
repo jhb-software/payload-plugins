@@ -86,7 +86,9 @@ export default buildConfig({
         return { tenant: { equals: doc.tenant } }
       },
       // Each tenant decides which locale leads its site and whether that locale is prefixed.
-      // Resolved once per request, so a 50-page find pays for one tenant lookup, not fifty.
+      // Resolved once per request, so a 50-page find pays for one tenant lookup, not fifty — but
+      // that one lookup runs before `findPageByPath` reaches the path cache, so it is kept as
+      // narrow as possible: `depth: 0` and a `select` limited to the two fields read below.
       localeRouting: async ({ req }) => {
         recordLocaleRoutingCall()
 
@@ -108,6 +110,7 @@ export default buildConfig({
           depth: 0,
           disableErrors: true,
           req,
+          select: { primaryLocale: true, prefixAllLocales: true },
         })
 
         if (!tenant) {

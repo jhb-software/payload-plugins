@@ -268,6 +268,8 @@ payloadPagesPlugin({
 
 With a function resolver, `findPageByPath` requires a `req` — the same rule `baseFilter` imposes. A lookup without one throws.
 
+Keep the resolver cheap: it is part of the path cache key, so it runs before `findPageByPath` can consult the cache. Read only the fields the routing is built from, and cache the read where the source allows it.
+
 A resolver may read page collections, but the `path` of a document it reads is computed under the default routing (every locale prefixed) rather than under the routing being resolved. Reads of any other collection are unaffected.
 
 #### Reserved slugs
