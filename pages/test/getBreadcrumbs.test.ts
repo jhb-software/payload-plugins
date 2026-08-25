@@ -44,7 +44,6 @@ describe('getBreadcrumbs (client path)', () => {
     await getBreadcrumbs({
       apiURL: '/api',
       data: { id: 'child-1', parent: 'parent-1', slug: 'child', title: 'Child' },
-      draft: false,
       locale: undefined,
       locales: undefined,
       pageConfig: pageConfig('pages'),
@@ -59,7 +58,6 @@ describe('getBreadcrumbs (client path)', () => {
     await getBreadcrumbs({
       apiURL: 'https://cms.example.com/custom-api',
       data: { id: 'child-1', parent: 'parent-1', slug: 'child', title: 'Child' },
-      draft: false,
       locale: undefined,
       locales: undefined,
       pageConfig: pageConfig('pages'),
@@ -79,7 +77,6 @@ describe('getBreadcrumbs (client path)', () => {
         slug: 'child',
         title: 'Child',
       },
-      draft: false,
       locale: undefined,
       locales: undefined,
       pageConfig: pageConfig(['pages', 'topics']),
@@ -93,7 +90,6 @@ describe('getBreadcrumbs (client path)', () => {
     await expect(() =>
       getBreadcrumbs({
         data: { id: 'child-1', parent: 'parent-1', slug: 'child', title: 'Child' },
-        draft: false,
         locale: undefined,
         locales: undefined,
         pageConfig: pageConfig('pages'),

@@ -4,8 +4,8 @@ import { getSelectMode } from 'payload/shared'
 
 import { recordAutoSelectedFields } from '../utils/autoSelectedFields.js'
 import { hasVirtualFieldSelected, virtualFieldNames } from '../utils/hasVirtualFieldSelected.js'
+import { markVirtualFieldsWanted, setOperationDraft } from '../utils/operationContext.js'
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
-import { markVirtualFieldsWanted } from '../utils/virtualFieldsWanted.js'
 import { dependentFields } from './setVirtualFields.js'
 
 /**
@@ -22,12 +22,9 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   context,
   operation,
 }) => {
-  // Store the draft arg on the context so `setVirtualFields` can hand it to the ancestor walk.
-  // `beforeRead` receives no `draft`, so the context is the only channel from here
-  // (see https://github.com/payloadcms/payload/issues/16180).
-  // TODO: once that issue ships, read `draft` from the hook args instead of the context.
+  // Carry the draft arg to the hooks that need it but do not receive it (see operationContext).
   if ('draft' in args) {
-    context.draft = args.draft
+    setOperationDraft(context, args.draft)
   }
 
   // Workaround for a bug in Payload 3.67.0 (see https://github.com/payloadcms/payload/issues/14847)

@@ -13,6 +13,38 @@ import { resolveParentRef } from './parentRef.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
+type GetBreadcrumbsArgs = {
+  data: Record<string, any>
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  locale: 'all' | Locale | undefined
+  /** Each locale's path prefix. Without it every locale is prefixed with `/<locale>`. */
+  localePrefixes?: Record<Locale, string>
+  locales: Locale[] | undefined
+  /** Page config of the collection `data` belongs to. Every ancestor resolves its own. */
+  pageConfig: PageCollectionConfigAttributes
+} & (
+  | {
+      /**
+       * Base URL of the Payload REST API (e.g. `${serverURL}${routes.api}`), used by the client
+       * path, which reads the parent's already computed breadcrumbs instead of resolving
+       * ancestors itself.
+       */
+      apiURL: string
+      draft?: never
+      req?: undefined
+    }
+  | {
+      apiURL?: never
+      /**
+       * Whether the ancestors resolve to their latest version. Belongs to the operation the
+       * breadcrumbs are computed for, so it travels with the call instead of being read off
+       * the request, which outlives that operation.
+       */
+      draft: boolean
+      req: PayloadRequest
+    }
+)
+
 /** Returns the breadcrumbs to the given document. */
 export async function getBreadcrumbs({
   apiURL,
@@ -23,30 +55,7 @@ export async function getBreadcrumbs({
   locales,
   pageConfig,
   req,
-}: {
-  /**
-   * Base URL of the Payload REST API (e.g. `${serverURL}${routes.api}`).
-   * Required when `req` is undefined (i.e. when called from a client component)
-   * so the plugin respects a user-customized `routes.api`.
-   */
-  apiURL?: string
-  data: Record<string, any>
-  /**
-   * Whether the ancestors are resolved to their latest version. Belongs to the operation the
-   * breadcrumbs are computed for, so it travels with the call instead of being read off the
-   * request. Ignored when `req` is undefined: the client path reads the parent's already
-   * computed breadcrumbs through the REST API.
-   */
-  draft: boolean
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  locale: 'all' | Locale | undefined
-  /** Each locale's path prefix. Without it every locale is prefixed with `/<locale>`. */
-  localePrefixes?: Record<Locale, string>
-  locales: Locale[] | undefined
-  /** Page config of the collection `data` belongs to. Every ancestor resolves its own. */
-  pageConfig: PageCollectionConfigAttributes
-  req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
-}): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
+}: GetBreadcrumbsArgs): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
   const breadcrumbLabelField = pageConfig.breadcrumbs.labelField
   const parentField = pageConfig.parent.name
   const getCurrentDocBreadcrumb = (locale: Locale | undefined, parentBreadcrumbs: Breadcrumb[]) =>

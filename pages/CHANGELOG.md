@@ -3,7 +3,7 @@
 ## Unreleased
 
 - fix: ancestors now resolve in the draft mode of the read they belong to — a request that reads both draft and published documents (a preview page rendering a published navigation) no longer builds one's breadcrumbs from the other's ancestors
-- fix: a read that selects no virtual field no longer generates them because an earlier read of another collection on the same request did, which cost an ancestor walk per document whenever the caller selected the parent field for its own purposes
+- fix: a read that selects no virtual field no longer generates them — and no longer pays for an ancestor walk per document — because an earlier read of another collection on the same request did
 
 ## 0.9.0-beta.3
 

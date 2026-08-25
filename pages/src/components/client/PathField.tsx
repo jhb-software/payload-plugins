@@ -89,8 +89,6 @@ export const PathField = ({
     const fechtchedBreadcrumbs = (await getBreadcrumbsForDoc({
       apiURL: `${config.serverURL ?? ''}${config.routes.api}`,
       data: doc,
-      // unused on the client path, which reads the parent's stored breadcrumbs via REST
-      draft: false,
       locale,
       localePrefixes,
       locales:

@@ -3,6 +3,7 @@ import { createLocalReq } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
+import { instrumentDbOps, type DbOpsInstrumentation } from './src/test/dbOps'
 import { deleteAllCollections, deleteCollection } from './src/test/deleteCollections'
 
 /**
@@ -13,6 +14,12 @@ import { deleteAllCollections, deleteCollection } from './src/test/deleteCollect
  * resolved) on `req.context`. A request outlives an operation, so state written for one read
  * must never decide the outcome of the next one — neither the ancestors a draft read resolves
  * nor the work a selective read performs.
+ *
+ * Not covered, and not coverable: reads that overlap rather than follow one another. Payload
+ * hands concurrent and nested operations the same `req.context` and gives `beforeRead` no
+ * `draft` of its own (https://github.com/payloadcms/payload/issues/16180), so one overwrites
+ * the other's draft mode before its ancestor walk starts. Nothing the plugin can store on the
+ * context distinguishes them. Sequential reads — the ordinary case — are covered below.
  */
 
 type DefaultIDType = Config['db']['defaultIDType']
@@ -23,8 +30,11 @@ const virtualFields = {
   path: '',
 }
 
+let dbOps: DbOpsInstrumentation
+
 beforeAll(async () => {
   await payload.init({ config })
+  dbOps = instrumentDbOps(payload.db)
   await deleteAllCollections(config, ['users'])
 })
 
@@ -37,6 +47,7 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
+  await deleteCollection('authors')
   await deleteCollection('pages')
 })
 
@@ -127,42 +138,6 @@ describe('draft resolution of ancestors on a shared request', () => {
     expect(publishedDoc.path).toBe('/de/parent/child')
     expect(draftDoc.path).toBe('/de/parent-draft/child')
   })
-
-  // KNOWN LIMITATION, not a wish: Payload hands every operation on a request the same
-  // `req.context` object and gives `beforeRead` no `draft` of its own, so two concurrent reads
-  // of one collection in different draft modes overwrite each other's decision before either
-  // walk starts. Nothing the plugin can store on the context distinguishes them. Marked
-  // `.fails` so it reports the day the upstream API makes the distinction possible.
-  // Sequential reads in different draft modes — the ordinary case — are covered above.
-  test.fails(
-    'resolves each ancestor chain against its own draft mode when both reads run concurrently',
-    async () => {
-      const { child } = await seedRenamedParent()
-      const req = await createLocalReq({}, payload)
-
-      const [draftDoc, publishedDoc] = await Promise.all([
-        payload.findByID({
-          collection: 'pages',
-          id: child.id,
-          depth: 0,
-          draft: true,
-          locale: 'de',
-          req,
-        }),
-        payload.findByID({
-          collection: 'pages',
-          id: child.id,
-          depth: 0,
-          draft: false,
-          locale: 'de',
-          req,
-        }),
-      ])
-
-      expect(draftDoc.path).toBe('/de/parent-draft/child')
-      expect(publishedDoc.path).toBe('/de/parent/child')
-    },
-  )
 })
 
 describe('virtual field generation on a shared request', () => {
@@ -188,33 +163,23 @@ describe('virtual field generation on a shared request', () => {
     // this read asks for the virtual fields, so it walks the ancestors of `page` — as it should
     await payload.findByID({ collection: 'pages', id: page.id, depth: 0, locale: 'de', req })
 
-    const db = payload.db as any
-    const originalFind = db.find.bind(db)
-    let ancestorQueries = 0
-    db.find = (...args: unknown[]) => {
-      ancestorQueries++
-      return originalFind(...args)
-    }
+    dbOps.start()
+    await payload.findByID({
+      collection: 'authors',
+      id: author.id,
+      depth: 0,
+      locale: 'de',
+      req,
+      // `slug` and `parent` are selected so a decision leaking from the `pages` read finds
+      // everything it needs to start walking, instead of stopping at a missing field. The
+      // author's parent branch was not visited by that read, so nothing it cached answers
+      // the walk.
+      select: { slug: true, parent: true, name: true },
+    })
+    const ops = dbOps.stop()
 
-    try {
-      await payload.findByID({
-        collection: 'authors',
-        id: author.id,
-        depth: 0,
-        locale: 'de',
-        req,
-        // `slug` and `parent` are selected so a decision leaking from the `pages` read finds
-        // everything it needs to start walking, instead of stopping at a missing field. The
-        // author's parent branch was not visited by that read, so nothing it cached answers
-        // the walk.
-        select: { slug: true, parent: true, name: true },
-      })
-    } finally {
-      db.find = originalFind
-    }
-
-    // the caller asked for three stored fields of an author — no virtual field is wanted, so no
-    // ancestor is read, no matter what an earlier read of another collection asked for
-    expect(ancestorQueries).toBe(0)
+    // the caller asked for three stored fields of an author — no virtual field is wanted, so the
+    // ancestor collection is never queried, whatever an earlier read asked for
+    expect(ops.filter((op) => op.collection === 'pages')).toEqual([])
   })
 })

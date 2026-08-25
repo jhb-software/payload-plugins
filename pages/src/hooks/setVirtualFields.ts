@@ -3,6 +3,7 @@ import type { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payloa
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
+import { operationDraft, virtualFieldsWanted } from '../utils/operationContext.js'
 import {
   asPageCollectionConfigOrThrow,
   pagesPluginConfigOf,
@@ -11,7 +12,6 @@ import { parentRefKey, tryResolveParentRef } from '../utils/parentRef.js'
 import { resolveLocaleRouting } from '../utils/resolveLocaleRouting.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
-import { virtualFieldsWanted } from '../utils/virtualFieldsWanted.js'
 
 /**
  * Returns the fields that the setVirtualFields hook depends on to correctly generate the virtual fields.
@@ -77,12 +77,9 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   try {
     return await setPageDocumentVirtualFields({
       doc,
-      // The draft mode of the operation this read belongs to, taken here — where it is still
-      // the value `selectDependentFieldsBeforeOperation` wrote for it — and handed to the
-      // ancestor walk, which must not re-read it from the request once the walk is under way.
-      // The context is the only channel because `beforeRead` receives no `draft`
-      // (https://github.com/payloadcms/payload/issues/16180).
-      draft: context.draft === true,
+      // Read here, where it is still the value written for this operation, and handed down:
+      // the ancestor walk must not re-read it once the walk is under way.
+      draft: operationDraft(context),
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
       pageConfigAttributes: pageConfig.page,
@@ -105,9 +102,6 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
  * `beforeRead` hooks during create/update operations (only `afterRead` hooks fire).
  * Therefore this `afterChange` hook is the only way to compute virtual fields on `doc`
  * and `previousDoc` after a document is created or updated.
- *
- * The draft mode of the operation comes off `req.context` because `afterChange` receives no
- * `draft` either (https://github.com/payloadcms/payload/issues/16180).
  */
 export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   collection,
@@ -144,7 +138,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     try {
       docWithVirtualFields = await setPageDocumentVirtualFields({
         doc,
-        draft: req.context.draft === true,
+        draft: operationDraft(req.context),
         locale,
         locales,
         pageConfigAttributes: pageConfig.page,
@@ -207,7 +201,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     } else if (previousDoc.slug) {
       const result = await setPageDocumentVirtualFields({
         doc: previousDoc,
-        draft: req.context.draft === true,
+        draft: operationDraft(req.context),
         locale,
         locales,
         pageConfigAttributes: pageConfig.page,

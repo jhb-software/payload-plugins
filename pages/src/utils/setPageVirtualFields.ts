@@ -26,7 +26,7 @@ export async function setPageDocumentVirtualFields({
   locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
   pageConfigAttributes: PageCollectionConfigAttributes
-  req: PayloadRequest | undefined
+  req: PayloadRequest
   routing: LocaleRouting | undefined
 }) {
   const localePrefixes = localePrefixMap(locales, routing)

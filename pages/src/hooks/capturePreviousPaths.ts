@@ -5,6 +5,7 @@ import type { DescendantPaths } from '../utils/loadDescendants.js'
 
 import { computeDocPaths, noDocPaths } from '../utils/computeDocPaths.js'
 import { assembleDescendantPaths, loadDescendants } from '../utils/loadDescendants.js'
+import { operationDraft } from '../utils/operationContext.js'
 import { pagesPluginConfigOf } from '../utils/pageCollectionConfigHelpers.js'
 import { SKIP_PARENT_GUARD_CONTEXT_KEY } from './preventParentDeletion.js'
 
@@ -38,9 +39,6 @@ export function pathCaptures(context: Record<string, unknown>): Record<string, P
  * `pathChanges` skips them in `afterChange` judging the resulting `doc` — the two sources
  * agree because Payload materializes `_status: 'draft'` on a draft save that omits it.
  *
- * The draft intent comes off `req.context` because `beforeChange` receives no `draft` either
- * (https://github.com/payloadcms/payload/issues/16180).
- *
  * With a localized `_status` the value is an object, and any published locale disqualifies the
  * write. That is a conservative proxy, not an exact answer: a draft save in `de` on a document
  * whose `en` is published also touches only a version row, yet counts as a full write here. The
@@ -48,7 +46,7 @@ export function pathCaptures(context: Record<string, unknown>): Record<string, P
  * that can move a live path.
  */
 export function isVersionOnlyWrite(context: Record<string, unknown>, status: unknown): boolean {
-  return context.draft === true && !publishesAnyLocale(status)
+  return operationDraft(context) && !publishesAnyLocale(status)
 }
 
 function publishesAnyLocale(status: unknown): boolean {
