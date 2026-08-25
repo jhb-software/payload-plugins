@@ -24,16 +24,30 @@ const ENCLOSING_DRAFT = Symbol('pagesPluginEnclosingOperationDraft')
  * Nested operations make this necessary: a `localeRouting` resolver or a user hook reading a page
  * collection with the same request runs a whole operation of its own — with its own draft mode —
  * between the outer operation's `beforeOperation` and the hooks that still have to consume it.
- * `args` is the only per-operation object Payload hands to both ends of an operation.
+ * `args` is the only per-operation object Payload hands to both ends of an operation, and the
+ * plugin's `beforeOperation` hook runs last and returns the object it stashed on, so a user hook
+ * replacing `args` with a copy cannot lose the stash.
+ *
+ * An operation which throws never reaches its `afterOperation` hooks and so never restores. A
+ * caller that swallows the error and carries on — a hook catching a failed nested read — resolves
+ * the rest of its ancestors in the failed operation's mode.
  */
 export function setOperationDraft(args: object, context: RequestContext, draft: unknown): void {
   ;(args as Record<symbol, unknown>)[ENCLOSING_DRAFT] = context[DRAFT_KEY]
   context[DRAFT_KEY] = draft === true
 }
 
-/** Restores the draft mode of the operation enclosing the one that just finished. */
+/**
+ * Restores the draft mode of the operation enclosing the one that just finished.
+ *
+ * Only operations which declared a draft mode restore one. An operation whose args carry no
+ * `draft` at all — `count`, `delete`, `restoreVersion` — never overwrote the enclosing mode and
+ * must not clear it on the way out either.
+ */
 export function restoreOperationDraft(args: object, context: RequestContext): void {
-  context[DRAFT_KEY] = (args as Record<symbol, unknown>)[ENCLOSING_DRAFT]
+  if (ENCLOSING_DRAFT in args) {
+    context[DRAFT_KEY] = (args as Record<symbol, unknown>)[ENCLOSING_DRAFT]
+  }
 }
 
 /** Whether the current operation resolves documents to their latest version. */

@@ -148,7 +148,8 @@ export const createPageCollectionConfig = ({
         ...(incomingCollectionConfig.hooks?.afterChange || []),
       ],
       afterOperation: [
-        // Runs first so a user hook reading a page collection sees the enclosing draft mode
+        // Runs before the user's hooks so a nested read one of them makes is a sibling of the
+        // finished operation rather than a child of it
         restoreOperationDraftAfterOperation,
         ...(incomingCollectionConfig.hooks?.afterOperation || []),
         // Runs last so that a user hook cannot reintroduce the auto-selected fields into the response

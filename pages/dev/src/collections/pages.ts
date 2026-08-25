@@ -1,6 +1,7 @@
 import { alternatePathsField, PageCollectionConfig } from '@jhb.software/payload-pages-plugin'
 import { captureAfterChangeDoc } from '../test/afterChangeCapture'
 import { countCollectionAfterRead, countFieldAfterRead } from '../test/hookExecutionCounter'
+import { countPagesDuringRead } from '../test/nestedCount'
 import {
   recordPathChangesAfterChange,
   recordPathChangesAfterDelete,
@@ -18,6 +19,7 @@ export const Pages: PageCollectionConfig = {
     afterChange: [captureAfterChangeDoc, recordPathChangesAfterChange],
     afterDelete: [recordPathChangesAfterDelete],
     afterRead: [countCollectionAfterRead],
+    beforeRead: [countPagesDuringRead],
   },
   page: {
     parent: {

@@ -5,6 +5,7 @@ import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 import { instrumentDbOps, type DbOpsInstrumentation } from './src/test/dbOps'
 import { deleteAllCollections, deleteCollection } from './src/test/deleteCollections'
+import { COUNT_PAGES_DURING_READ_HEADER } from './src/test/nestedCount'
 import {
   clearPathChangeRecords,
   recordedPathChangeErrors,
@@ -173,6 +174,25 @@ describe('draft resolution of ancestors on a shared request', () => {
         path: null,
       }),
     ])
+  })
+
+  test('resolves the draft ancestors of a read whose hook counts a page collection with the same request', async () => {
+    const { child } = await seedRenamedParent()
+    const req = await createLocalReq({}, payload)
+    req.headers = new Headers({ [COUNT_PAGES_DURING_READ_HEADER]: 'true' })
+
+    // the `beforeRead` hook counts `pages` with this request — an operation which carries no
+    // draft mode of its own and must not impose one on the read it runs inside
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: child.id,
+      depth: 0,
+      draft: true,
+      locale: 'de',
+      req,
+    })
+
+    expect(doc.path).toBe('/de/parent-draft/child')
   })
 })
 
