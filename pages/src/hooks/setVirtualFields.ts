@@ -80,6 +80,8 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
       // The draft mode of the operation this read belongs to, taken here — where it is still
       // the value `selectDependentFieldsBeforeOperation` wrote for it — and handed to the
       // ancestor walk, which must not re-read it from the request once the walk is under way.
+      // The context is the only channel because `beforeRead` receives no `draft`
+      // (https://github.com/payloadcms/payload/issues/16180).
       draft: context.draft === true,
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
@@ -103,6 +105,9 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
  * `beforeRead` hooks during create/update operations (only `afterRead` hooks fire).
  * Therefore this `afterChange` hook is the only way to compute virtual fields on `doc`
  * and `previousDoc` after a document is created or updated.
+ *
+ * The draft mode of the operation comes off `req.context` because `afterChange` receives no
+ * `draft` either (https://github.com/payloadcms/payload/issues/16180).
  */
 export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   collection,

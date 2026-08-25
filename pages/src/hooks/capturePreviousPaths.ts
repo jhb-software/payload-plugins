@@ -38,6 +38,9 @@ export function pathCaptures(context: Record<string, unknown>): Record<string, P
  * `pathChanges` skips them in `afterChange` judging the resulting `doc` — the two sources
  * agree because Payload materializes `_status: 'draft'` on a draft save that omits it.
  *
+ * The draft intent comes off `req.context` because `beforeChange` receives no `draft` either
+ * (https://github.com/payloadcms/payload/issues/16180).
+ *
  * With a localized `_status` the value is an object, and any published locale disqualifies the
  * write. That is a conservative proxy, not an exact answer: a draft save in `de` on a document
  * whose `en` is published also touches only a version row, yet counts as a full write here. The

@@ -23,7 +23,9 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   operation,
 }) => {
   // Store the draft arg on the context so `setVirtualFields` can hand it to the ancestor walk.
-  // `beforeRead` receives no `draft`, so the context is the only channel from here.
+  // `beforeRead` receives no `draft`, so the context is the only channel from here
+  // (see https://github.com/payloadcms/payload/issues/16180).
+  // TODO: once that issue ships, read `draft` from the hook args instead of the context.
   if ('draft' in args) {
     context.draft = args.draft
   }
