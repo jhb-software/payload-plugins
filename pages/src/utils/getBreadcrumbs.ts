@@ -17,6 +17,7 @@ import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 export async function getBreadcrumbs({
   apiURL,
   data,
+  draft,
   locale,
   localePrefixes,
   locales,
@@ -30,6 +31,13 @@ export async function getBreadcrumbs({
    */
   apiURL?: string
   data: Record<string, any>
+  /**
+   * Whether the ancestors are resolved to their latest version. Belongs to the operation the
+   * breadcrumbs are computed for, so it travels with the call instead of being read off the
+   * request. Ignored when `req` is undefined: the client path reads the parent's already
+   * computed breadcrumbs through the REST API.
+   */
+  draft: boolean
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   /** Each locale's path prefix. Without it every locale is prefixed with `/<locale>`. */
@@ -81,6 +89,7 @@ export async function getBreadcrumbs({
       id: parentRef.id,
       collection: parentRef.collection,
       docId: data.id,
+      draft,
       locale,
       req,
     })

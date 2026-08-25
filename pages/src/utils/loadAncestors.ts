@@ -67,6 +67,7 @@ export async function loadAncestorChain({
   id,
   collection,
   docId,
+  draft,
   locale,
   req,
 }: {
@@ -74,6 +75,12 @@ export async function loadAncestorChain({
   collection: CollectionSlug
   /** Id of the document the chain is built for, used for error messages. */
   docId: unknown
+  /**
+   * Whether to resolve each ancestor to its latest version. Passed in by the caller rather
+   * than read from the request: the draft mode belongs to the operation the walk runs for,
+   * and a request outlives — and can carry several of — those operations.
+   */
+  draft: boolean
   /** Id of the first ancestor. */
   id: DefaultDocumentIDType
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -95,7 +102,13 @@ export async function loadAncestorChain({
     }
     visited.push(key)
 
-    const row = await loadAncestor({ id: next.id, collection: next.collection, locale, req })
+    const row = await loadAncestor({
+      id: next.id,
+      collection: next.collection,
+      draft,
+      locale,
+      req,
+    })
 
     if (!row) {
       // This can be the case, when the parent document got deleted.
@@ -130,18 +143,22 @@ export async function loadAncestorChain({
 function loadAncestor({
   id,
   collection,
+  draft,
   locale,
   req,
 }: {
   collection: CollectionSlug
+  draft: boolean
   id: DefaultDocumentIDType
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   req: PayloadRequest
 }): Promise<AncestorRow | null> {
-  // The cache key does not include the draft status because the cache is request-scoped
-  // and context.draft is constant within a single request.
-  const cacheKey = `${collection}:${id}:${locale ?? ''}`
+  // The draft mode is part of both keys: one request can read the same ancestor published and
+  // as a draft (a preview page rendering a published navigation next to a draft document), and
+  // the two resolve to different rows.
+  const draftKey = draft ? 'draft' : 'published'
+  const cacheKey = `${collection}:${id}:${locale ?? ''}:${draftKey}`
   const cache = (req.context[CACHE_KEY] ??= new Map()) as Map<string, Promise<AncestorRow | null>>
 
   const cached = cache.get(cacheKey)
@@ -150,7 +167,7 @@ function loadAncestor({
   }
 
   const batches = (req.context[BATCH_KEY] ??= new Map()) as Map<string, Batch>
-  const batchKey = `${collection}:${locale ?? ''}`
+  const batchKey = `${collection}:${locale ?? ''}:${draftKey}`
 
   let batch = batches.get(batchKey)
   if (!batch) {
@@ -168,7 +185,7 @@ function loadAncestor({
     // awaiting walks resume on, so every walk has queued its id for this level before it runs.
     queueMicrotask(() => {
       batches.delete(batchKey)
-      void fetchAncestors({ collection, ids: created.ids, locale, req }).then(
+      void fetchAncestors({ collection, draft, ids: created.ids, locale, req }).then(
         created.resolve,
         created.reject,
       )
@@ -192,11 +209,13 @@ function loadAncestor({
 /** Reads the given ancestors of one collection in a single query (two when resolving drafts). */
 async function fetchAncestors({
   collection,
+  draft,
   ids,
   locale,
   req,
 }: {
   collection: CollectionSlug
+  draft: boolean
   ids: DefaultDocumentIDType[]
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
@@ -228,7 +247,7 @@ async function fetchAncestors({
   // Note: the top-level `parent` in the where/select below is Payload's versions-table field
   // referencing the versioned document — unrelated to the plugin's parent field, which lives
   // inside `version` under its configurable name.
-  if (req.context.draft === true && hasDraftsEnabled(collectionConfig)) {
+  if (draft && hasDraftsEnabled(collectionConfig)) {
     const { docs } = await payload.db.findVersions({
       collection,
       limit: 0,

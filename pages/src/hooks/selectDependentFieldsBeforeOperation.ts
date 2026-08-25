@@ -5,6 +5,7 @@ import { getSelectMode } from 'payload/shared'
 import { recordAutoSelectedFields } from '../utils/autoSelectedFields.js'
 import { hasVirtualFieldSelected, virtualFieldNames } from '../utils/hasVirtualFieldSelected.js'
 import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
+import { markVirtualFieldsWanted } from '../utils/virtualFieldsWanted.js'
 import { dependentFields } from './setVirtualFields.js'
 
 /**
@@ -21,8 +22,8 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
   context,
   operation,
 }) => {
-  // Store the draft arg on the context so downstream hooks (e.g. getBreadcrumbs → findByIDCached)
-  // can pass it when fetching parent documents.
+  // Store the draft arg on the context so `setVirtualFields` can hand it to the ancestor walk.
+  // `beforeRead` receives no `draft`, so the context is the only channel from here.
   if ('draft' in args) {
     context.draft = args.draft
   }
@@ -93,14 +94,14 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
     if (hasVirtualFieldsSelected) {
       // Indicate that the virtual fields should be generated in the setVirtualFields hook.
       // Deliberately not set for a mutation which selected no virtual field: the afterChange
-      // hook computes them without consulting the flag, while a nested read sharing this
+      // hook computes them without consulting the mark, while a nested read sharing this
       // request context must not start computing virtual fields nobody asked for.
-      context.generateVirtualFields = true
+      markVirtualFieldsWanted(context, args.collection.config.slug)
     }
   } else if (isReadOperation && !args.select) {
     // Indicate that the virtual fields should be generated in the setVirtualFields hook
     // if no select is provided
-    context.generateVirtualFields = true
+    markVirtualFieldsWanted(context, args.collection.config.slug)
   }
 
   return args

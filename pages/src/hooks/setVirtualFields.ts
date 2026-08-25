@@ -11,6 +11,7 @@ import { parentRefKey, tryResolveParentRef } from '../utils/parentRef.js'
 import { resolveLocaleRouting } from '../utils/resolveLocaleRouting.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
+import { virtualFieldsWanted } from '../utils/virtualFieldsWanted.js'
 
 /**
  * Returns the fields that the setVirtualFields hook depends on to correctly generate the virtual fields.
@@ -35,8 +36,9 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   doc,
   req,
 }) => {
-  // If the selectDependentFieldsBeforeOperation hook detected that no virtual fields are selected, return early.
-  if (context.generateVirtualFields !== true) {
+  // If the selectDependentFieldsBeforeOperation hook detected that no virtual fields are
+  // selected for this collection, return early.
+  if (!virtualFieldsWanted(context, collection.slug)) {
     return doc
   }
 
@@ -75,6 +77,10 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   try {
     return await setPageDocumentVirtualFields({
       doc,
+      // The draft mode of the operation this read belongs to, taken here — where it is still
+      // the value `selectDependentFieldsBeforeOperation` wrote for it — and handed to the
+      // ancestor walk, which must not re-read it from the request once the walk is under way.
+      draft: context.draft === true,
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
       pageConfigAttributes: pageConfig.page,
@@ -133,6 +139,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     try {
       docWithVirtualFields = await setPageDocumentVirtualFields({
         doc,
+        draft: req.context.draft === true,
         locale,
         locales,
         pageConfigAttributes: pageConfig.page,
@@ -195,6 +202,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     } else if (previousDoc.slug) {
       const result = await setPageDocumentVirtualFields({
         doc: previousDoc,
+        draft: req.context.draft === true,
         locale,
         locales,
         pageConfigAttributes: pageConfig.page,
