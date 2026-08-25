@@ -11,19 +11,29 @@ import type { RequestContext } from 'payload'
  * TODO: once that issue ships, drop this module and read `select` and `draft` off the hook args.
  */
 
-const DRAFT_KEY = 'draft'
-const WANTED_KEY = 'generateVirtualFields'
+const DRAFT_KEY = 'pagesPluginOperationDraft'
+const WANTED_KEY = 'pagesPluginVirtualFieldsWanted'
+
+/** Symbol under which an operation stashes the draft mode of the operation enclosing it. */
+const ENCLOSING_DRAFT = Symbol('pagesPluginEnclosingOperationDraft')
 
 /**
- * Records the draft mode of the operation that is about to run.
+ * Records the draft mode of the operation that is about to run, stashing the enclosing
+ * operation's mode on the operation `args` so {@link restoreOperationDraft} can put it back.
  *
- * Only correct for operations that do not overlap: an operation nested inside another one — a
- * hook calling the local API on the same request — overwrites the outer operation's mode for
- * the hooks that still have to run. Reading the mode as early as possible narrows that window
- * but cannot close it.
+ * Nested operations make this necessary: a `localeRouting` resolver or a user hook reading a page
+ * collection with the same request runs a whole operation of its own — with its own draft mode —
+ * between the outer operation's `beforeOperation` and the hooks that still have to consume it.
+ * `args` is the only per-operation object Payload hands to both ends of an operation.
  */
-export function setOperationDraft(context: RequestContext, draft: unknown): void {
+export function setOperationDraft(args: object, context: RequestContext, draft: unknown): void {
+  ;(args as Record<symbol, unknown>)[ENCLOSING_DRAFT] = context[DRAFT_KEY]
   context[DRAFT_KEY] = draft === true
+}
+
+/** Restores the draft mode of the operation enclosing the one that just finished. */
+export function restoreOperationDraft(args: object, context: RequestContext): void {
+  context[DRAFT_KEY] = (args as Record<symbol, unknown>)[ENCLOSING_DRAFT]
 }
 
 /** Whether the current operation resolves documents to their latest version. */

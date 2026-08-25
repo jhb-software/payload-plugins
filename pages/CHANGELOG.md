@@ -4,6 +4,8 @@
 
 - fix: ancestors now resolve in the draft mode of the read they belong to — a request that reads both draft and published documents (a preview page rendering a published navigation) no longer builds one's breadcrumbs from the other's ancestors
 - fix: a read that selects no virtual field no longer generates them — and no longer pays for an ancestor walk per document — because an earlier read of another collection on the same request did
+- fix: `pathChanges` reports the live paths a write or delete moved, instead of paths built from an ancestor's unpublished draft slug when the write is sent with `draft: true` or the request read a draft earlier
+- fix: a `localeRouting` resolver or user hook that reads a page collection with the request it was given no longer imposes its own draft mode on the write it runs inside
 
 ## 0.9.0-beta.3
 

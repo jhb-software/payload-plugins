@@ -24,7 +24,7 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
 }) => {
   // Carry the draft arg to the hooks that need it but do not receive it (see operationContext).
   if ('draft' in args) {
-    setOperationDraft(context, args.draft)
+    setOperationDraft(args, context, args.draft)
   }
 
   // Workaround for a bug in Payload 3.67.0 (see https://github.com/payloadcms/payload/issues/14847)

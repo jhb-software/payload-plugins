@@ -76,9 +76,8 @@ export async function loadAncestorChain({
   /** Id of the document the chain is built for, used for error messages. */
   docId: unknown
   /**
-   * Whether to resolve each ancestor to its latest version. Passed in by the caller rather
-   * than read from the request: the draft mode belongs to the operation the walk runs for,
-   * and a request outlives — and can carry several of — those operations.
+   * Whether to resolve each ancestor to its latest version. Passed in by the caller rather than
+   * read from the request, which the walk must not consult once it is under way.
    */
   draft: boolean
   /** Id of the first ancestor. */

@@ -5,6 +5,11 @@ import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 import { instrumentDbOps, type DbOpsInstrumentation } from './src/test/dbOps'
 import { deleteAllCollections, deleteCollection } from './src/test/deleteCollections'
+import {
+  clearPathChangeRecords,
+  recordedPathChangeErrors,
+  recordedPathChanges,
+} from './src/test/pathChangesCapture'
 
 /**
  * These tests pin the behaviour of reads that share a single `PayloadRequest`.
@@ -15,11 +20,12 @@ import { deleteAllCollections, deleteCollection } from './src/test/deleteCollect
  * must never decide the outcome of the next one — neither the ancestors a draft read resolves
  * nor the work a selective read performs.
  *
- * Not covered, and not coverable: reads that overlap rather than follow one another. Payload
- * hands concurrent and nested operations the same `req.context` and gives `beforeRead` no
- * `draft` of its own (https://github.com/payloadcms/payload/issues/16180), so one overwrites
- * the other's draft mode before its ancestor walk starts. Nothing the plugin can store on the
- * context distinguishes them. Sequential reads — the ordinary case — are covered below.
+ * Not covered, and not coverable: two reads of one collection running concurrently in different
+ * draft modes. Payload hands them the same `req.context` and gives `beforeRead` no `draft` of
+ * its own (https://github.com/payloadcms/payload/issues/16180), so one overwrites the other's
+ * draft mode before its ancestor walk starts, and nothing storable on the context distinguishes
+ * them. Reads that follow one another, and operations nested inside one another, are covered
+ * here and in `dev_multi_tenant/localeRouting.test.ts`.
  */
 
 type DefaultIDType = Config['db']['defaultIDType']
@@ -137,6 +143,36 @@ describe('draft resolution of ancestors on a shared request', () => {
 
     expect(publishedDoc.path).toBe('/de/parent/child')
     expect(draftDoc.path).toBe('/de/parent-draft/child')
+  })
+
+  test('reports the published path of a document deleted on a request that earlier read a draft', async () => {
+    const { child } = await seedRenamedParent()
+    const req = await createLocalReq({}, payload)
+
+    // a preview of the draft subtree, rendered before the document is removed
+    await payload.findByID({
+      collection: 'pages',
+      id: child.id,
+      depth: 0,
+      draft: true,
+      locale: 'de',
+      req,
+    })
+
+    clearPathChangeRecords()
+    await payload.delete({ collection: 'pages', id: child.id, req })
+
+    // the URL that has to be purged is the live one, not the one the preview showed
+    expect(recordedPathChangeErrors()).toEqual([])
+    expect(recordedPathChanges()).toEqual([
+      expect.objectContaining({
+        collection: 'pages',
+        id: child.id,
+        locale: 'de',
+        previousPath: '/de/parent/child',
+        path: null,
+      }),
+    ])
   })
 })
 

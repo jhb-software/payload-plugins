@@ -77,8 +77,6 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   try {
     return await setPageDocumentVirtualFields({
       doc,
-      // Read here, where it is still the value written for this operation, and handed down:
-      // the ancestor walk must not re-read it once the walk is under way.
       draft: operationDraft(context),
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
@@ -115,6 +113,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
 
   const pageConfig = asPageCollectionConfigOrThrow(collection)
   const parentField = pageConfig.page.parent.name
+  const draft = operationDraft(req.context)
   const routing = await resolveLocaleRouting({
     payload: req.payload,
     pluginConfig: pagesPluginConfigOf(collection),
@@ -138,7 +137,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     try {
       docWithVirtualFields = await setPageDocumentVirtualFields({
         doc,
-        draft: operationDraft(req.context),
+        draft,
         locale,
         locales,
         pageConfigAttributes: pageConfig.page,
@@ -201,7 +200,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     } else if (previousDoc.slug) {
       const result = await setPageDocumentVirtualFields({
         doc: previousDoc,
-        draft: operationDraft(req.context),
+        draft,
         locale,
         locales,
         pageConfigAttributes: pageConfig.page,

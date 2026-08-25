@@ -35,11 +35,7 @@ type GetBreadcrumbsArgs = {
     }
   | {
       apiURL?: never
-      /**
-       * Whether the ancestors resolve to their latest version. Belongs to the operation the
-       * breadcrumbs are computed for, so it travels with the call instead of being read off
-       * the request, which outlives that operation.
-       */
+      /** Whether the ancestors resolve to their latest version. See `operationContext`. */
       draft: boolean
       req: PayloadRequest
     }
