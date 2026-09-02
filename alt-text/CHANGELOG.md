@@ -2,9 +2,19 @@
 
 ## Unreleased
 
+- fix: a provider's error response is no longer repeated into the admin panel — OpenAI quotes the rejected API key back in a 401. The message names the provider and status; the body goes to the server log.
+- **BREAKING**: `openAIResolver` calls the API over `fetch`, and the `openai` SDK is no longer a dependency — it was installed by every project, whichever resolver it used. `timeoutMs` now defaults to `30000`, replacing the SDK's 10-minute deadline.
+- feat: a provider call answered with `429` or `5xx` is retried twice before the generation gives up, so a bulk run no longer abandons an image on the first rate limit. Custom resolvers opt in by throwing the exported `VisionProviderError`.
 - feat: add `healthCheck.baseFilter`, a `({ collection, req }) => Where` narrowing what the health report counts — in a multi-tenant CMS, to the tenant the request is for. Resolved per collection, so collections without the constraining field can return `{}`. The scan's cache key is derived from the resolved filters, so one scope's counts are never served to another.
 - **BREAKING**: `healthCheck` no longer accepts a function. Move the access check to `healthCheck: { access: ({ req }) => ... }`; the function form now throws at config load. `healthCheck: true` / `false` are unchanged.
+- feat: add `anthropicResolver`, a resolver for Claude's vision models (default `claude-opus-5`). It downloads the image and sends the bytes: Claude's own fetcher requires a publicly reachable file — never true in local development, not true for private buckets — and a base64 image block needs the `media_type` that a URL cannot carry. A refusal and a truncated answer are reported as such instead of surfacing as a JSON parse error. All requested locales are generated in a single request. An optional `effort` caps how long Claude thinks; leave it unset for models that reject the field, such as `claude-haiku-4-5`.
 - fix: log endpoint, resolver, and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
+- feat: add `createVisionResolver`, a factory that owns the prompt, the per-locale response schema, the optional image download and the strict reading of the response, so a resolver for another LLM provider is only its provider call. Every bundled resolver is built on it.
+- feat: add an `instructions` option to every bundled resolver, receiving the default instructions so a house style rule can be appended without restating them
+- feat: add a `timeoutMs` option to `openAIResolver`. Omitted by default, leaving the OpenAI client's own deadline and retries in charge.
+- fix: `openAIResolver` rejects a blank alt text and a response missing one of the requested locales instead of writing it to the document, and reports a missing API key before spending a request. It now asks for a locale-keyed response for a single locale too, so generated wording may differ slightly from previous versions.
+- fix: a provider that ran out of tokens mid-JSON is reported as such instead of `Unexpected end of JSON input`, and a single-locale generation no longer gets half the token budget of a multi-locale one
+- fix: `mistralResolver` falls back to the collection's `imageThumbnailMimeType` when the thumbnail host serves no `content-type` or a generic `application/octet-stream`, instead of rejecting the image as unreadable. With nothing declared either, the error names what was served and points at that option.
 
 ## 0.10.0
 
