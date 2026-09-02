@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- fix: log traversal and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
+- **BREAKING**: `translateOperation`'s `data` argument and the `translatedData` it resolves with are typed `Record<string, unknown>` instead of `Record<string, any>`. Callers passing a value declared as an `interface` must widen it (e.g. `as Record<string, unknown>`) or declare it as a `type` alias.
 - feat: add `mistralResolver`, a translation resolver for Mistral's chat models (default `mistral-medium-latest`), taking the same `chunkLength` and `instructions` options as the OpenAI resolver
 - feat: export `createOpenAICompatibleResolver`, which builds a resolver for any provider serving OpenAI's `/v1/chat/completions` endpoint with JSON mode. `openAIResolver` and `mistralResolver` are thin wrappers around it.
 - change: resolver error messages and log entries name the provider they came from, so a `baseUrl` pointing elsewhere no longer reports failures as OpenAI's. The log key `openAIresponse` is now `response`.

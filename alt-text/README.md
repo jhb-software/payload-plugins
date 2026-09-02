@@ -267,6 +267,8 @@ openAIResolver({
 | `model`              | `string`   | No       | Model to use (default: `gpt-4.1-nano`)                                                                                                                                                      |
 | `baseUrl`            | `string`   | No       | Base URL for an OpenAI-compatible provider (e.g. Nebius, Azure)                                                                                                                             |
 | `supportedMimeTypes` | `string[]` | No       | Image formats the provider accepts (default: `['image/jpeg', 'image/png', 'image/gif', 'image/webp']`, per OpenAI's vision docs). Override it when using a `baseUrl` whose provider differs |
+| `timeoutMs`          | `number`   | No       | Ceiling on a generate request. Omitted by default, leaving the OpenAI client's own 10-minute deadline and its automatic retries in charge                                                   |
+| `instructions`       | `function` | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions)                                                                                                    |
 
 #### Mistral Resolver
 
@@ -290,11 +292,75 @@ Because there is no image conversion step, `supportedMimeTypes` is limited to
 what the Mistral API accepts directly: JPEG, PNG, GIF and WebP. Documents in
 other formats — SVG or AVIF, for instance — keep their generate button disabled.
 
+| Option         | Type       | Required | Description                                                                              |
+| -------------- | ---------- | -------- | ---------------------------------------------------------------------------------------- |
+| `apiKey`       | `string`   | Yes      | API key for authentication                                                               |
+| `model`        | `string`   | No       | Model to use (default: `mistral-medium-latest`)                                          |
+| `baseUrl`      | `string`   | No       | Base URL of the Mistral API (default: `https://api.mistral.ai/v1`)                       |
+| `timeoutMs`    | `number`   | No       | Abort after this many milliseconds, image download included (default: `30000`)           |
+| `instructions` | `function` | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions) |
+
+### Customizing the instructions
+
+Every bundled resolver accepts an `instructions` function that receives the
+instructions the resolver would send on its own, so a house style rule can be
+appended without restating the rules the plugin depends on:
+
+```ts
+openAIResolver({
+  apiKey: process.env.OPENAI_API_KEY!,
+  instructions: ({ defaultInstructions }) =>
+    `${defaultInstructions}\n\nName the product line when its packaging is legible. Never guess at a person's role.`,
+})
+```
+
+It is called once per generation and receives `{ defaultInstructions, locales, filename }`.
+Returning something entirely different is allowed — the image and the required
+response shape travel separately from the instructions, so a replacement cannot
+break the resolver's contract with its provider.
+
 ## Custom Resolver
 
-You can create your own resolver by implementing the `AltTextResolver` interface.
+For another LLM provider, `createVisionResolver` is usually the shortest path: it
+owns the prompt, the per-locale response schema, the optional image download and
+the strict reading of the response, leaving only the provider call to `generate`.
+All bundled resolvers are built on it.
 
-Alongside `imageThumbnailUrl`, the resolver receives `imageThumbnailMimeType` — the format served at that URL, when the collection declares one via [`imageThumbnailMimeType`](#transcoding-thumbnails). Resolvers that hand the URL to the provider can ignore it. Resolvers that inline the bytes need it, because an explicit media type cannot be sniffed from a URL: Anthropic image blocks require `media_type` and Gemini's `inline_data` requires `mime_type`. It is `undefined` when nothing was declared.
+```ts
+import { createVisionResolver } from '@jhb.software/payload-alt-text-plugin'
+
+export const myResolver = ({ apiKey }: { apiKey: string }) =>
+  createVisionResolver({
+    apiKey,
+    // `image` is only present when `inlineImage` is set; otherwise pass
+    // `imageThumbnailUrl` to the provider and let it fetch the file.
+    generate: async ({ image, instructions, maxTokens, responseSchema, signal }) => {
+      if (!image) {
+        throw new Error('The image was not downloaded')
+      }
+
+      const response = await fetch('https://api.example.com/v1/vision', {
+        body: JSON.stringify({ instructions, image: image.dataUri, schema: responseSchema }),
+        headers: { Authorization: `Bearer ${apiKey}` },
+        method: 'POST',
+        signal,
+      })
+
+      // Return the parsed JSON object; throwing fails the generation and the
+      // message is shown in the admin panel.
+      return await response.json()
+    },
+    inlineImage: true,
+    key: 'my-provider',
+    label: 'My Provider',
+    supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+  })
+```
+
+For a provider that does not fit that shape at all, implement the
+`AltTextResolver` interface directly.
+
+Alongside `imageThumbnailUrl`, the resolver receives `imageThumbnailMimeType` — the format served at that URL, when the collection declares one via [`imageThumbnailMimeType`](#transcoding-thumbnails). Resolvers that hand the URL to the provider can ignore it. Resolvers that inline the bytes need it, because an explicit media type cannot be sniffed from a URL: Anthropic image blocks require `media_type` and Gemini's `inline_data` requires `mime_type`. It is `undefined` when nothing was declared. Resolvers built on `createVisionResolver` get this for free: `image.mediaType` is the type the host actually served, with the declaration standing in when the host sent none or a generic `application/octet-stream`.
 
 ```ts
 import type { AltTextResolver } from '@jhb.software/payload-alt-text-plugin'

@@ -18,10 +18,18 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
     }
 
     if (!config.localization || config.localization.locales.length < 2) {
-      console.warn(
-        'Translator plugin requires localization to be enabled and at least two locales.',
-      )
-      return config
+      // Deferred to `onInit`: no Payload instance — and therefore no logger — exists while the
+      // config is still being built.
+      return {
+        ...config,
+        onInit: async (payload) => {
+          payload.logger.warn(
+            'Translator plugin requires localization to be enabled and at least two locales.',
+          )
+
+          await config.onInit?.(payload)
+        },
+      }
     }
 
     const updatedConfig: Config = {

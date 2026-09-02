@@ -178,9 +178,9 @@ export const traverseFields = ({
             blockConfig = payloadConfig.blocks?.find((b) => b.slug === item.blockType)
 
             if (!blockConfig) {
-              console.warn(
+              req?.payload.logger.warn(
+                { field },
                 `Block config for block ${item.blockType} not found in payload config.`,
-                field,
               )
               return
             }
@@ -188,9 +188,9 @@ export const traverseFields = ({
             blockConfig = field.blocks.find((b) => b.slug === item.blockType)
 
             if (!blockConfig) {
-              console.warn(
+              req?.payload.logger.warn(
+                { field },
                 `Block config for block ${item.blockType} not found in field config.`,
-                field,
               )
               return
             }
@@ -334,6 +334,7 @@ export const traverseFields = ({
           traverseRichText({
             emptyOnly,
             payloadConfig,
+            req,
             root,
             translatedData,
             valuesToTranslate,

@@ -171,7 +171,7 @@ export const generateAltTextEndpoint =
       if (error instanceof APIError) {
         return Response.json({ error: error.message }, { status: error.status })
       }
-      console.error('Error generating alt text:', error)
+      req.payload.logger.error({ err: error }, 'Error generating alt text')
       return Response.json(
         {
           error: `Error generating alt text: ${error instanceof Error ? error.message : 'Unknown error'}`,

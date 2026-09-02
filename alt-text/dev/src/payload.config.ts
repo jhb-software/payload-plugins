@@ -33,6 +33,14 @@ async function signThumbnailUrl(url: string): Promise<string> {
   return await Promise.resolve(`${url}?expires=${expires}`)
 }
 
+/**
+ * A house style rule appended to the instructions every bundled resolver sends
+ * on its own. Deliberately observable in the output: an alt text generated with
+ * it names a dominant colour, one generated without it usually does not.
+ */
+const houseStyleInstructions = ({ defaultInstructions }: { defaultInstructions: string }) =>
+  `${defaultInstructions}\n\nAlways name the dominant colour of the main subject.`
+
 export default buildConfig({
   admin: {
     autoLogin: {
@@ -106,13 +114,20 @@ export default buildConfig({
       // image bytes as a data URI instead of handing the provider a URL — the
       // case `imageThumbnailMimeType` below exists for, since a media type
       // cannot be sniffed from a URL.
+      //
+      // Both resolvers take the same `instructions` extension point, so the
+      // house style rule below applies either way. Generate an alt text for the
+      // seeded sample image and the result names a colour — proof the appended
+      // rule reached the provider on top of the default instructions.
       resolver: process.env.MISTRAL_API_KEY
         ? mistralResolver({
             apiKey: process.env.MISTRAL_API_KEY,
+            instructions: houseStyleInstructions,
             model: 'mistral-medium-latest',
           })
         : openAIResolver({
             apiKey: process.env.OPENAI_API_KEY!,
+            instructions: houseStyleInstructions,
             model: 'gpt-4.1-mini',
             // Pointing `baseUrl` at another OpenAI-compatible provider? Declare
             // the formats that provider accepts instead of inheriting OpenAI's

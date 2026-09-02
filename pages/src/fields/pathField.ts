@@ -34,6 +34,6 @@ export function pathField({ admin }: { admin?: TextField['admin'] } = {}): Field
     },
     localized: true,
     // Validate by default to allow the document to be updated, without having to set the path field:
-    validate: (_: any): true => true,
+    validate: (): true => true,
   }
 }
