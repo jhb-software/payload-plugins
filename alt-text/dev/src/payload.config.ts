@@ -35,6 +35,23 @@ async function signThumbnailUrl(url: string): Promise<string> {
 }
 
 /**
+ * Whether the configured resolver downloads the thumbnail itself and sends the
+ * bytes. Decides which thumbnail URL is usable below.
+ */
+const resolverInlinesImageBytes = Boolean(
+  process.env.ANTHROPIC_API_KEY || process.env.MISTRAL_API_KEY,
+)
+
+/**
+ * A publicly hosted stand-in for the dev app's own thumbnails, sized down via
+ * Pexels' query parameters: the full-resolution file is 8 MB, above the raw-byte
+ * guard the Anthropic resolver derives from Claude's base64-measured 10 MB
+ * ceiling.
+ */
+const publicSampleImageUrl =
+  'https://images.pexels.com/photos/16981245/pexels-photo-16981245.jpeg?auto=compress&cs=tinysrgb&w=1200'
+
+/**
  * A house style rule appended to the instructions every bundled resolver sends
  * on its own. Deliberately observable in the output: an alt text generated with
  * it names a dominant colour, one generated without it usually does not.
@@ -186,6 +203,19 @@ export default buildConfig({
         // origin url for the collection that does not sit behind it.
         if (collection === 'media-with-folders') {
           return doc.url as string
+        }
+
+        // The CDN route below runs on this machine, so only a resolver that
+        // downloads the bytes itself can read it. `openAIResolver` hands the URL
+        // to OpenAI and lets OpenAI fetch it, which no localhost URL survives:
+        // their fetcher answers `Error while downloading file. Upstream status
+        // code: 407`. Point that resolver at a publicly hosted image instead.
+        //
+        // The generated alt text then describes that image rather than the
+        // uploaded file — which is the contract on display: a resolver sees what
+        // this function returns, not what was uploaded.
+        if (!resolverInlinesImageBytes) {
+          return publicSampleImageUrl
         }
 
         return await signThumbnailUrl(`${serverURL}/api/image-cdn/${collection}/${doc.id}`)
