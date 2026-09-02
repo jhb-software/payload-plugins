@@ -96,7 +96,8 @@ export function parentField(
             ],
           },
         })
-        const fetchedParentValue = (response.docs.at(0) as any)?.[parentField] ?? null
+        const fetchedParentValue =
+          (response.docs.at(0) as Record<string, unknown> | undefined)?.[parentField] ?? null
 
         if (fetchedParentValue) {
           return fetchedParentValue

@@ -83,12 +83,20 @@ export const payloadAltTextPlugin =
 
     const access = incomingPluginConfig.access ?? (({ req }) => !!req.user)
 
-    // A function form of `healthCheck` doubles as the health report's access
-    // gate; otherwise it falls back to the shared `access`.
-    const healthCheckAccess =
-      typeof incomingPluginConfig.healthCheck === 'function'
-        ? incomingPluginConfig.healthCheck
-        : access
+    // The former function form was the health report's access gate. Accepting it
+    // silently would widen that gate to the plugin's `access`, so it fails at boot.
+    if (typeof incomingPluginConfig.healthCheck === 'function') {
+      throw new Error(
+        'The alt-text plugin no longer accepts a function for `healthCheck`. ' +
+          'Move the access check to `healthCheck: { access: ({ req }) => ... }`.',
+      )
+    }
+
+    const healthCheckConfig =
+      typeof incomingPluginConfig.healthCheck === 'object' ? incomingPluginConfig.healthCheck : {}
+
+    // The health report's own gate, falling back to the shared `access`.
+    const healthCheckAccess = healthCheckConfig.access ?? access
 
     const pluginConfig: AltTextPluginConfig = {
       access,
@@ -98,6 +106,7 @@ export const payloadAltTextPlugin =
       getImageThumbnail: incomingPluginConfig.getImageThumbnail,
       healthCheck: enableHealthCheck,
       healthCheckAccess,
+      healthCheckBaseFilter: healthCheckConfig.baseFilter,
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
@@ -117,6 +126,10 @@ export const payloadAltTextPlugin =
       normalizedCollections.map((entry) => [entry.slug, entry]),
     )
 
+    // Collected while collections are mapped and flushed in `onInit`: no Payload instance —
+    // and therefore no logger — exists while the config is still being built.
+    const configWarnings: string[] = []
+
     // Ensure collections array exists
     config.collections = config.collections || []
 
@@ -126,7 +139,7 @@ export const payloadAltTextPlugin =
 
       if (altTextCollectionConfig) {
         if (!collectionConfig.upload) {
-          console.warn(
+          configWarnings.push(
             `AI Alt Text Plugin: Collection "${collectionConfig.slug}" is not an upload collection. Skipping field injection.`,
           )
           return collectionConfig
@@ -244,6 +257,13 @@ export const payloadAltTextPlugin =
       i18n: {
         ...config.i18n,
         translations: deepMergeSimple(translations, incomingConfig.i18n?.translations ?? {}),
+      },
+      onInit: async (payload) => {
+        for (const warning of configWarnings) {
+          payload.logger.warn(warning)
+        }
+
+        await config.onInit?.(payload)
       },
     }
   }

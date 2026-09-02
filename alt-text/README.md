@@ -6,11 +6,12 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 
 - Generate alt text for images using AI in the Payload Admin UI
 - Supports any AI provider using a resolver pattern (e.g., OpenAI, Anthropic, etc.)
-- Comes with ready-to-use OpenAI and Mistral resolvers out of the box
+- Comes with ready-to-use OpenAI, Anthropic and Mistral resolvers out of the box
 - Automatic keyword extraction for improved admin search
 - Bulk generation for processing multiple images at once
 - Full localization support
 - Dashboard health widget with cached coverage insights across all configured upload collections
+- Multi-tenant aware: the health report can be scoped to the tenant the request is for
 
 When the plugin is enabled for an upload collection, it will:
 
@@ -77,19 +78,19 @@ This is also the recommended escape hatch if you hit Payload's Postgres SQL-buil
 
 ### Plugin Options
 
-| Option                       | Type                                       | Required | Description                                                                                                                                                                                                                                                                                                               |
-| ---------------------------- | ------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `collections`                | `(CollectionSlug \| CollectionObj)[]`      | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))                                                                                                                                                                                                                     |
-| `resolver`                   | `AltTextResolver`                          | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                                                                                                                                                                                                                         |
-| `getImageThumbnail`          | `Function`                                 | Yes      | Function to get the thumbnail URL from an image document                                                                                                                                                                                                                                                                  |
-| `enabled`                    | `boolean`                                  | No       | Whether to enable the plugin                                                                                                                                                                                                                                                                                              |
-| `access`                     | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's REST endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                                                                                                                                                                    |
-| `locale`                     | `string`                                   | No       | Locale for alt text generation (required when localization is disabled)                                                                                                                                                                                                                                                   |
-| `maxBulkGenerateConcurrency` | `number`                                   | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                                                                                                                                                                                                                         |
-| `maxBulkGenerateIds`         | `number`                                   | No       | Maximum number of image IDs accepted per bulk generate request; larger requests are rejected with `400`. Duplicate IDs are collapsed before the limit is applied (default: 100)                                                                                                                                           |
-| `fieldsOverride`             | `Function`                                 | No       | Override the default fields inserted by the plugin                                                                                                                                                                                                                                                                        |
-| `healthCheck`                | `boolean \| Function`                      | No       | Alt text health tracking (REST endpoint, cache revalidation hooks, dashboard widget). `false` disables it; `true` enables it gated by `access`; a `({ req }) => boolean` function enables it and gates both the endpoint and the widget — use it to restrict the collection-wide report, e.g. to admins (default: `true`) |
-| `imageThumbnailMimeType`     | `string`                                   | No       | The MIME type `getImageThumbnail` delivers. Set it when your thumbnail URL transcodes the image, so the stored format no longer decides whether generation is possible (see [Transcoding thumbnails](#transcoding-thumbnails))                                                                                            |
+| Option                       | Type                                       | Required | Description                                                                                                                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collections`                | `(CollectionSlug \| CollectionObj)[]`      | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))                                                                                                                                                                                                 |
+| `resolver`                   | `AltTextResolver`                          | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                                                                                                                                                                                                     |
+| `getImageThumbnail`          | `Function`                                 | Yes      | Function to get the thumbnail URL from an image document                                                                                                                                                                                                                                              |
+| `enabled`                    | `boolean`                                  | No       | Whether to enable the plugin                                                                                                                                                                                                                                                                          |
+| `access`                     | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's REST endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                                                                                                                                                |
+| `locale`                     | `string`                                   | No       | Locale for alt text generation (required when localization is disabled)                                                                                                                                                                                                                               |
+| `maxBulkGenerateConcurrency` | `number`                                   | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                                                                                                                                                                                                     |
+| `maxBulkGenerateIds`         | `number`                                   | No       | Maximum number of image IDs accepted per bulk generate request; larger requests are rejected with `400`. Duplicate IDs are collapsed before the limit is applied (default: 100)                                                                                                                       |
+| `fieldsOverride`             | `Function`                                 | No       | Override the default fields inserted by the plugin                                                                                                                                                                                                                                                    |
+| `healthCheck`                | `boolean \| AltTextHealthCheckConfig`      | No       | Alt text health tracking (REST endpoint, cache revalidation hooks, dashboard widget). `false` disables it; `true` enables it for every document, gated by `access`; an object enables it and configures its `access` gate and `baseFilter` (see [Health report](#dashboard-widget)) (default: `true`) |
+| `imageThumbnailMimeType`     | `string`                                   | No       | The MIME type `getImageThumbnail` delivers. Set it when your thumbnail URL transcodes the image, so the stored format no longer decides whether generation is possible (see [Transcoding thumbnails](#transcoding-thumbnails))                                                                        |
 
 `getImageThumbnail` receives the document and `{ collection, req }`, so a single function can build different URLs per collection:
 
@@ -205,6 +206,32 @@ buildConfig({
 
 Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 
+#### Gating and scoping the report
+
+`healthCheck` also takes an object. The main use of `baseFilter` is multi-tenancy: scope the report to the tenant selected in the admin panel, whose id [@payloadcms/plugin-multi-tenant](https://payloadcms.com/docs/plugins/multi-tenant) keeps in the `payload-tenant` cookie.
+
+```ts
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+
+healthCheck: {
+  // Restrict the collection-wide report more strictly than the per-document
+  // generate endpoints. Gates the REST endpoint and hides the widget.
+  access: ({ req }) => req.user?.role === 'admin',
+  // Narrow what the report counts, e.g. to the tenant selected in the admin panel.
+  baseFilter: ({ collection, req }) => {
+    const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+    return tenant ? { tenant: { equals: tenant } } : {}
+  },
+}
+```
+
+`baseFilter` returns a `Where` that is ANDed onto the scan's MIME type filter. It is resolved once per configured collection, so a collection that does not carry the constraining field — a media library shared across tenants, say — can return `{}` and be scanned whole. Returning `{}` for every collection is the default behaviour.
+
+The scan is cached across requests, and its cache key is derived from the resolved filters: a narrowed scan always gets its own cache entry, so one tenant's counts can never be served to another. Cache invalidation stays per collection, so a write in one tenant refreshes the report for all of them.
+
+This scopes what the report counts, not who may see it — use `access` for that. Independently of both, the report always omits the collections the requesting user cannot read.
+
 #### Skipping cache revalidation for individual writes
 
 The plugin invalidates the cached health scan via `afterChange` and `afterDelete` hooks. For writes that don't need to invalidate the cache — typically seed data created from `payload.onInit`, batch imports, or migrations — pass `context: { disableRevalidate: true }` to skip the revalidation:
@@ -238,8 +265,10 @@ openAIResolver({
 | -------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apiKey`             | `string`   | Yes      | API key for authentication                                                                                                                                                                  |
 | `model`              | `string`   | No       | Model to use (default: `gpt-4.1-nano`)                                                                                                                                                      |
-| `baseUrl`            | `string`   | No       | Base URL for an OpenAI-compatible provider (e.g. Nebius, Azure)                                                                                                                             |
+| `baseUrl`            | `string`   | No       | Base URL for an OpenAI-compatible provider, version segment included (default: `https://api.openai.com/v1`; e.g. Nebius, Azure)                                                             |
 | `supportedMimeTypes` | `string[]` | No       | Image formats the provider accepts (default: `['image/jpeg', 'image/png', 'image/gif', 'image/webp']`, per OpenAI's vision docs). Override it when using a `baseUrl` whose provider differs |
+| `timeoutMs`          | `number`   | No       | Abort after this many milliseconds, retries included (default: `30000`)                                                                                                                     |
+| `instructions`       | `function` | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions)                                                                                                    |
 
 #### Mistral Resolver
 
@@ -263,11 +292,128 @@ Because there is no image conversion step, `supportedMimeTypes` is limited to
 what the Mistral API accepts directly: JPEG, PNG, GIF and WebP. Documents in
 other formats — SVG or AVIF, for instance — keep their generate button disabled.
 
+| Option         | Type       | Required | Description                                                                              |
+| -------------- | ---------- | -------- | ---------------------------------------------------------------------------------------- |
+| `apiKey`       | `string`   | Yes      | API key for authentication                                                               |
+| `model`        | `string`   | No       | Model to use (default: `mistral-medium-latest`)                                          |
+| `baseUrl`      | `string`   | No       | Base URL of the Mistral API (default: `https://api.mistral.ai/v1`)                       |
+| `timeoutMs`    | `number`   | No       | Abort after this many milliseconds, image download included (default: `30000`)           |
+| `instructions` | `function` | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions) |
+
+#### Anthropic Resolver
+
+```ts
+import { anthropicResolver } from '@jhb.software/payload-alt-text-plugin'
+
+anthropicResolver({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  model: 'claude-opus-5', // default; `claude-sonnet-5` is cheaper for a large library
+  effort: 'low', // optional; describing an image needs little thinking
+})
+```
+
+Like the Mistral resolver, this one downloads the image and sends the bytes.
+Claude can fetch an image URL itself, but that requires the file to be reachable
+from the public internet, which is never the case in local development and not
+the case for private buckets. Sending the bytes also supplies the `media_type`
+that a base64 image block requires and a URL cannot carry.
+
+`supportedMimeTypes` is limited to what the Messages API accepts: JPEG, PNG, GIF
+and WebP. Documents in other formats keep their generate button disabled.
+
+| Option         | Type                                              | Required | Description                                                                                                                                                                                                                  |
+| -------------- | ------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`       | `string`                                          | Yes      | API key for authentication                                                                                                                                                                                                   |
+| `model`        | `string`                                          | No       | Model to use (default: `claude-opus-5`). `claude-sonnet-5` is cheaper; `claude-haiku-4-5` works too, but only without `effort`                                                                                               |
+| `effort`       | `'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | No       | How long Claude thinks before answering. `low` is plenty for describing an image and keeps the spend down. Omitted, the field is not sent and Claude uses its default (`high`), so models without effort support stay usable |
+| `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                                                                                                                         |
+| `timeoutMs`    | `number`                                          | No       | Abort after this many milliseconds, image download included (default: `30000`)                                                                                                                                               |
+| `instructions` | `function`                                        | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions)                                                                                                                                     |
+
+### Customizing the instructions
+
+Every bundled resolver accepts an `instructions` function that receives the
+instructions the resolver would send on its own, so a house style rule can be
+appended without restating the rules the plugin depends on:
+
+```ts
+openAIResolver({
+  apiKey: process.env.OPENAI_API_KEY!,
+  instructions: ({ defaultInstructions }) =>
+    `${defaultInstructions}\n\nName the product line when its packaging is legible. Never guess at a person's role.`,
+})
+```
+
+It is called once per generation and receives `{ defaultInstructions, locales, filename }`.
+Returning something entirely different is allowed — the image and the required
+response shape travel separately from the instructions, so a replacement cannot
+break the resolver's contract with its provider.
+
 ## Custom Resolver
 
-You can create your own resolver by implementing the `AltTextResolver` interface.
+For another LLM provider, `createVisionResolver` is usually the shortest path: it
+owns the prompt, the per-locale response schema, the optional image download and
+the strict reading of the response, leaving only the provider call to `generate`.
+Every bundled resolver is built on it.
 
-Alongside `imageThumbnailUrl`, the resolver receives `imageThumbnailMimeType` — the format served at that URL, when the collection declares one via [`imageThumbnailMimeType`](#transcoding-thumbnails). Resolvers that hand the URL to the provider can ignore it. Resolvers that inline the bytes need it, because an explicit media type cannot be sniffed from a URL: Anthropic image blocks require `media_type` and Gemini's `inline_data` requires `mime_type`. It is `undefined` when nothing was declared.
+```ts
+import { createVisionResolver, VisionProviderError } from '@jhb.software/payload-alt-text-plugin'
+
+export const myResolver = ({ apiKey }: { apiKey: string }) =>
+  createVisionResolver({
+    apiKey,
+    // `image` is only present when `inlineImage` is set; otherwise pass
+    // `imageThumbnailUrl` to the provider and let it fetch the file.
+    generate: async ({ image, instructions, maxTokens, responseSchema, signal }) => {
+      if (!image) {
+        throw new Error('The image was not downloaded')
+      }
+
+      const response = await fetch('https://api.example.com/v1/vision', {
+        body: JSON.stringify({ instructions, image: image.dataUri, schema: responseSchema }),
+        headers: { Authorization: `Bearer ${apiKey}` },
+        method: 'POST',
+        signal,
+      })
+
+      // A rate limit or an outage is worth another attempt: throwing
+      // `VisionProviderError` lets the factory retry it. Any other error fails
+      // the generation immediately, with its message shown in the admin panel.
+      if (!response.ok) {
+        throw new VisionProviderError({
+          body: await response.text(),
+          label: 'My Provider',
+          status: response.status,
+        })
+      }
+
+      // Return the parsed JSON object.
+      return await response.json()
+    },
+    inlineImage: true,
+    key: 'my-provider',
+    label: 'My Provider',
+    supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+  })
+```
+
+A provider call that fails with `VisionProviderError` is retried twice, with a
+short backoff, when the status is a rate limit (`429`) or a server-side failure
+(`5xx`) — a bulk generation trips those routinely, and giving up on the first one
+leaves documents without an alt text. Any other status fails immediately: a `4xx`
+would fail identically on every attempt. The resolver's `timeoutMs` covers the
+attempts together.
+
+Pass the provider's response as `body` and it is written to the server log, never
+to the error the admin panel shows — that message reaches everyone allowed to
+generate an alt text, and a provider's error text is not written with them in
+mind: OpenAI quotes the rejected API key back in a 401. The panel gets the
+provider name and the status.
+
+For a provider that does not fit that shape at all, implement the
+`AltTextResolver` interface directly.
+
+Alongside `imageThumbnailUrl`, the resolver receives `imageThumbnailMimeType` — the format served at that URL, when the collection declares one via [`imageThumbnailMimeType`](#transcoding-thumbnails). Resolvers that hand the URL to the provider can ignore it. Resolvers that inline the bytes need it, because an explicit media type cannot be sniffed from a URL: Anthropic image blocks require `media_type` and Gemini's `inline_data` requires `mime_type`. It is `undefined` when nothing was declared. Resolvers built on `createVisionResolver` get this for free: `image.mediaType` is the type the host actually served, with the declaration standing in when the host sent none or a generic `application/octet-stream`.
 
 ```ts
 import type { AltTextResolver } from '@jhb.software/payload-alt-text-plugin'
@@ -314,7 +460,7 @@ That default fits a setup where every Payload user is trusted staff. Generating 
 access: ({ req }) => req.user?.role === 'editor'
 ```
 
-Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections the requesting user can read (and can be gated separately via the `healthCheck` function).
+Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections the requesting user can read (and can be gated separately via `healthCheck.access`).
 
 ### `POST /api/alt-text/generate`
 

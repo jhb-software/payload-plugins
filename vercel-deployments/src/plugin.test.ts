@@ -1,3 +1,5 @@
+import type { Config, Endpoint } from 'payload'
+
 import { describe, expect, it } from 'vitest'
 
 import type { VercelDeploymentsPluginConfig } from './types.js'
@@ -5,9 +7,9 @@ import type { VercelDeploymentsPluginConfig } from './types.js'
 import { vercelDeploymentsPlugin } from './plugin.js'
 
 const basePluginConfig: VercelDeploymentsPluginConfig = {
+  deploymentTarget: { projectId: 'test-project' },
   vercel: {
     apiToken: 'test-token',
-    projectId: 'test-project',
     teamId: 'test-team',
   },
 }
@@ -15,7 +17,7 @@ const basePluginConfig: VercelDeploymentsPluginConfig = {
 const basePayloadConfig = {
   admin: {},
   collections: [],
-} as any
+} as unknown as Config
 
 describe('vercelDeploymentsPlugin', () => {
   it('returns config unchanged when plugin is disabled', () => {
@@ -53,10 +55,10 @@ describe('vercelDeploymentsPlugin', () => {
 
     const endpoints = result.endpoints!
     const getEndpoint = endpoints.find(
-      (e: any) => e.path === '/vercel-deployments' && e.method === 'get',
+      (e: Endpoint) => e.path === '/vercel-deployments' && e.method === 'get',
     )
     const postEndpoint = endpoints.find(
-      (e: any) => e.path === '/vercel-deployments' && e.method === 'post',
+      (e: Endpoint) => e.path === '/vercel-deployments' && e.method === 'post',
     )
 
     expect(getEndpoint).toBeDefined()
@@ -75,8 +77,16 @@ describe('vercelDeploymentsPlugin', () => {
     const result = plugin(basePayloadConfig)
 
     expect(result.i18n?.translations).toBeDefined()
-    expect((result.i18n?.translations as any)?.en?.['vercel-dashboard']).toBeDefined()
-    expect((result.i18n?.translations as any)?.de?.['vercel-dashboard']).toBeDefined()
+    expect(
+      (result.i18n?.translations as Record<string, Record<string, unknown>>)?.en?.[
+        'vercel-dashboard'
+      ],
+    ).toBeDefined()
+    expect(
+      (result.i18n?.translations as Record<string, Record<string, unknown>>)?.de?.[
+        'vercel-dashboard'
+      ],
+    ).toBeDefined()
   })
 
   it('preserves existing widgets', () => {
@@ -94,7 +104,11 @@ describe('vercelDeploymentsPlugin', () => {
   })
 
   it('preserves existing endpoints', () => {
-    const existingEndpoint = { handler: () => {}, method: 'get', path: '/existing' }
+    const existingEndpoint: Endpoint = {
+      handler: () => new Response(null),
+      method: 'get',
+      path: '/existing',
+    }
     const configWithEndpoints = {
       ...basePayloadConfig,
       endpoints: [existingEndpoint],

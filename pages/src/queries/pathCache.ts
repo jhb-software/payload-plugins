@@ -4,6 +4,7 @@ import type { Locale } from '../types/Locale.js'
 import type { LocaleRouting } from '../types/PagesPluginConfig.js'
 
 import { localeRoutingCacheToken } from '../utils/localePrefix.js'
+import { stableStringify } from '../utils/stableStringify.js'
 
 /** Prefix of all KV keys written by the path cache. */
 export const PATH_CACHE_KEY_PREFIX = 'payload-pages:path:v1'
@@ -33,7 +34,9 @@ export function buildPathCacheKey({
   // The `baseFilter` (e.g. tenant scoping) and the caller's `where` scope the lookup, so they
   // must scope the cache entry as well. A hash keeps the key short; a hash collision cannot
   // yield a wrong result because every cached id is re-fetched with the actual filters applied.
-  const scopeHash = baseFilter || where ? fnv1aHash(JSON.stringify({ baseFilter, where })) : '-'
+  // Serialized with sorted keys so two filters that constrain the same thing share a slot
+  // rather than each building their own from the order their keys happened to be written in.
+  const scopeHash = baseFilter || where ? fnv1aHash(stableStringify({ baseFilter, where })) : '-'
 
   // Draft and published lookups can resolve the same path to different documents, so they
   // must never share a cache slot.

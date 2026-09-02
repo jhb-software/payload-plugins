@@ -1,4 +1,8 @@
+import type { TranslateResolver } from '@jhb.software/payload-content-translator-plugin'
+
 import {
+  anthropicResolver,
+  mistralResolver,
   openAIResolver,
   payloadContentTranslatorPlugin,
 } from '@jhb.software/payload-content-translator-plugin'
@@ -28,6 +32,53 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // otherwise turn into "Nordlicht" and "Erste Schritte" in German. Put them into
 // a page title or body and translate to see them survive.
 const protectedTermsInstruction = `Never translate the following product names, keep them exactly as written in English: "Northern Light", "First Steps".`
+
+// Set TRANSLATOR_RESOLVER to `anthropic`, `mistral` or `ai-sdk` to translate
+// through one of those resolvers instead of the built-in OpenAI one. All of
+// them expose the same `instructions` extension point, so the protected terms
+// above apply whichever one runs. Built lazily so only the selected resolver is
+// constructed.
+const translatorResolvers: Record<string, () => TranslateResolver> = {
+  'ai-sdk': () =>
+    aiSdkResolver({
+      model: openai('gpt-4o-mini'),
+      instructions: ({ defaultInstructions }) =>
+        `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+    }),
+  anthropic: () =>
+    anthropicResolver({
+      apiKey: process.env.ANTHROPIC_API_KEY || '',
+      // `claude-sonnet-5` is the cheaper choice for a large content base.
+      // `claude-haiku-4-5` works as well, but rejects `effort`, so drop that
+      // line when switching to it.
+      model: 'claude-opus-5',
+      // Small on purpose: with chunkLength 5 the seeded pages arrive in several
+      // requests, so the chunking is visible in the logs, and maxTokens follows
+      // chunkLength rather than being set apart from it. Raise `effort` to see a
+      // translation take more care.
+      chunkLength: 5,
+      effort: 'low',
+      instructions: ({ defaultInstructions }) =>
+        `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+    }),
+  mistral: () =>
+    mistralResolver({
+      apiKey: process.env.MISTRAL_API_KEY || '',
+      model: 'mistral-medium-latest',
+      instructions: ({ defaultInstructions }) =>
+        `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+    }),
+  openai: () =>
+    openAIResolver({
+      apiKey: process.env.OPENAI_API_KEY || '',
+      model: 'gpt-4o-mini',
+      instructions: ({ defaultInstructions }) =>
+        `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+    }),
+}
+
+const buildTranslatorResolver =
+  translatorResolvers[process.env.TRANSLATOR_RESOLVER ?? ''] ?? translatorResolvers.openai
 
 export default buildConfig({
   admin: {
@@ -129,23 +180,7 @@ export default buildConfig({
       collections: ['pages', 'docs', 'posts', 'authors'],
       globals: [],
       // resolver: mockResolver(), // custom resolver for testing
-      // Set TRANSLATOR_RESOLVER=ai-sdk to translate through the custom AI SDK
-      // resolver instead of the built-in one. Both expose the same
-      // `instructions` extension point, so the protected terms below apply
-      // either way.
-      resolver:
-        process.env.TRANSLATOR_RESOLVER === 'ai-sdk'
-          ? aiSdkResolver({
-              model: openai('gpt-4o-mini'),
-              instructions: ({ defaultInstructions }) =>
-                `${defaultInstructions}\n\n${protectedTermsInstruction}`,
-            })
-          : openAIResolver({
-              apiKey: process.env.OPENAI_API_KEY || '',
-              model: 'gpt-4o-mini',
-              instructions: ({ defaultInstructions }) =>
-                `${defaultInstructions}\n\n${protectedTermsInstruction}`,
-            }),
+      resolver: buildTranslatorResolver(),
     }),
   ],
 })

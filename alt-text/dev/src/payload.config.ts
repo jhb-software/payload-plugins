@@ -1,18 +1,23 @@
 import {
+  anthropicResolver,
   mistralResolver,
   openAIResolver,
   payloadAltTextPlugin,
   validateAltText,
 } from '@jhb.software/payload-alt-text-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
 import path from 'path'
+import type { Where } from 'payload'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Media } from './collections/Media'
 import { Images } from './collections/Images'
 import { MediaWithFolders } from './collections/MediaWithFolders'
+import { Tenants } from './collections/Tenants'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -28,6 +33,31 @@ async function signThumbnailUrl(url: string): Promise<string> {
   const expires = Date.now() + 60_000
   return await Promise.resolve(`${url}?expires=${expires}`)
 }
+
+/**
+ * Whether the configured resolver downloads the thumbnail itself and sends the
+ * bytes. Decides which thumbnail URL is usable below.
+ */
+const resolverInlinesImageBytes = Boolean(
+  process.env.ANTHROPIC_API_KEY || process.env.MISTRAL_API_KEY,
+)
+
+/**
+ * A publicly hosted stand-in for the dev app's own thumbnails, sized down via
+ * Pexels' query parameters: the full-resolution file is 8 MB, above the raw-byte
+ * guard the Anthropic resolver derives from Claude's base64-measured 10 MB
+ * ceiling.
+ */
+const publicSampleImageUrl =
+  'https://images.pexels.com/photos/16981245/pexels-photo-16981245.jpeg?auto=compress&cs=tinysrgb&w=1200'
+
+/**
+ * A house style rule appended to the instructions every bundled resolver sends
+ * on its own. Deliberately observable in the output: an alt text generated with
+ * it names a dominant colour, one generated without it usually does not.
+ */
+const houseStyleInstructions = ({ defaultInstructions }: { defaultInstructions: string }) =>
+  `${defaultInstructions}\n\nAlways name the dominant colour of the main subject.`
 
 export default buildConfig({
   admin: {
@@ -61,6 +91,7 @@ export default buildConfig({
     Media,
     Images,
     MediaWithFolders,
+    Tenants,
   ],
   db: mongooseAdapter({
     url: process.env.MONGODB_URL!,
@@ -70,6 +101,10 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   plugins: [
+    multiTenantPlugin({
+      collections: { images: {}, media: {} },
+      userHasAccessToAllTenants: () => true,
+    }),
     payloadAltTextPlugin({
       collections: [
         // `media` accepts both images and videos — restrict alt text tracking to images only.
@@ -93,31 +128,66 @@ export default buildConfig({
           },
         },
       ],
-      // Set MISTRAL_API_KEY to exercise the Mistral resolver, which sends the
-      // image bytes as a data URI instead of handing the provider a URL — the
-      // case `imageThumbnailMimeType` below exists for, since a media type
-      // cannot be sniffed from a URL.
-      resolver: process.env.MISTRAL_API_KEY
-        ? mistralResolver({
-            apiKey: process.env.MISTRAL_API_KEY,
-            model: 'mistral-medium-latest',
+      // Set ANTHROPIC_API_KEY or MISTRAL_API_KEY to exercise the resolvers that
+      // send the image bytes instead of handing the provider a URL — the case
+      // `imageThumbnailMimeType` below exists for, since a media type cannot be
+      // sniffed from a URL.
+      //
+      // Every resolver takes the same `instructions` extension point, so the
+      // house style rule below applies whichever one runs. Generate an alt text
+      // for the seeded sample image and the result names a colour — proof the
+      // appended rule reached the provider on top of the default instructions.
+      resolver: process.env.ANTHROPIC_API_KEY
+        ? anthropicResolver({
+            apiKey: process.env.ANTHROPIC_API_KEY,
+            instructions: houseStyleInstructions,
+            // `claude-sonnet-5` is the cheaper choice for a large library.
+            // `claude-haiku-4-5` works as well, but rejects `effort`, so drop
+            // the line below when switching to it.
+            model: 'claude-opus-5',
+            effort: 'low',
           })
-        : openAIResolver({
-            apiKey: process.env.OPENAI_API_KEY!,
-            model: 'gpt-4.1-mini',
-            // Pointing `baseUrl` at another OpenAI-compatible provider? Declare
-            // the formats that provider accepts instead of inheriting OpenAI's
-            // list:
-            // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-          }),
+        : process.env.MISTRAL_API_KEY
+          ? mistralResolver({
+              apiKey: process.env.MISTRAL_API_KEY,
+              instructions: houseStyleInstructions,
+              model: 'mistral-medium-latest',
+            })
+          : openAIResolver({
+              apiKey: process.env.OPENAI_API_KEY!,
+              instructions: houseStyleInstructions,
+              model: 'gpt-4.1-mini',
+              // Pointing `baseUrl` at another OpenAI-compatible provider? Declare
+              // the formats that provider accepts instead of inheriting OpenAI's
+              // list:
+              // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+            }),
       // Cap how many images a single bulk-generate request may process.
       // Selecting more than this in the list view returns a 400 instead of
       // fanning out into an unbounded number of paid resolver calls.
       maxBulkGenerateIds: 25,
-      // The function form gates the collection-wide health report (endpoint and
-      // widget) more strictly than the per-document generate endpoints, which
-      // allow any authenticated user: here only the designated admin sees it.
-      healthCheck: ({ req }) => req.user?.email === 'dev@payloadcms.com',
+      healthCheck: {
+        // Gates the collection-wide health report (endpoint and widget) more
+        // strictly than the per-document generate endpoints, which allow any
+        // authenticated user: here only the designated admin sees it.
+        access: ({ req }) => req.user?.email === 'dev@payloadcms.com',
+        // Counts only the images of the tenant selected in the admin panel.
+        // Switch tenants in the selector and the widget's numbers follow.
+        baseFilter: ({ collection, req }): Where => {
+          // `media-with-folders` is shared across tenants, so it carries no
+          // `tenant` field — scoping it would be an error. This is why the
+          // filter is resolved per collection.
+          if (collection === 'media-with-folders') {
+            return {}
+          }
+
+          const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+          // No tenant selected: report every document, matching what the tenant
+          // selector shows.
+          return tenant ? { tenant: { equals: tenant } } : {}
+        },
+      },
       // `media` and `images` are the website's images: they are served through
       // an image CDN that always emits WebP, whatever was uploaded. Declaring
       // that delivered format takes the stored mime type out of the decision
@@ -133,6 +203,19 @@ export default buildConfig({
         // origin url for the collection that does not sit behind it.
         if (collection === 'media-with-folders') {
           return doc.url as string
+        }
+
+        // The CDN route below runs on this machine, so only a resolver that
+        // downloads the bytes itself can read it. `openAIResolver` hands the URL
+        // to OpenAI and lets OpenAI fetch it, which no localhost URL survives:
+        // their fetcher answers `Error while downloading file. Upstream status
+        // code: 407`. Point that resolver at a publicly hosted image instead.
+        //
+        // The generated alt text then describes that image rather than the
+        // uploaded file — which is the contract on display: a resolver sees what
+        // this function returns, not what was uploaded.
+        if (!resolverInlinesImageBytes) {
+          return publicSampleImageUrl
         }
 
         return await signThumbnailUrl(`${serverURL}/api/image-cdn/${collection}/${doc.id}`)
@@ -173,6 +256,38 @@ export default buildConfig({
         },
         filePath: path.resolve(dirname, '../seed/sample-image.png'),
       })
+    }
+
+    // Two tenants with deliberately different alt text coverage, so the health
+    // widget's numbers visibly change when the tenant selector is switched:
+    // Acme has one complete image, Globex has two images with none.
+    const existingTenants = await payload.find({ collection: 'tenants', limit: 1 })
+
+    if (existingTenants.docs.length === 0) {
+      const seedImage = path.resolve(dirname, '../seed/sample-image.png')
+
+      const acme = await payload.create({
+        collection: 'tenants',
+        data: { name: 'Acme' },
+      })
+      const globex = await payload.create({
+        collection: 'tenants',
+        data: { name: 'Globex' },
+      })
+
+      const images: { alt: string; tenant: string }[] = [
+        { alt: 'An Acme product photo', tenant: acme.id as string },
+        { alt: '', tenant: globex.id as string },
+        { alt: '', tenant: globex.id as string },
+      ]
+
+      for (const { alt, tenant } of images) {
+        await payload.create({
+          collection: 'images',
+          data: { alt, tenant },
+          filePath: seedImage,
+        })
+      }
     }
   },
 })

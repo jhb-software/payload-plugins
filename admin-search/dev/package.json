@@ -21,6 +21,7 @@
     "@jhb.software/payload-admin-search": "workspace:*",
     "@payloadcms/db-mongodb": "^3.88.0",
     "@payloadcms/next": "^3.88.0",
+    "@payloadcms/plugin-multi-tenant": "^3.88.0",
     "@payloadcms/plugin-search": "^3.88.0",
     "@payloadcms/richtext-lexical": "^3.88.0",
     "@payloadcms/translations": "^3.88.0",

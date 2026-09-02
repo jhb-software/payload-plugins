@@ -71,6 +71,7 @@ export function buildEndpointRequest(
     json: async () => body,
     payload: {
       config: { custom: { altTextPluginConfig: pluginConfig } },
+      logger: { error: () => {}, info: () => {}, warn: () => {} },
       findByID: async (args: LocalApiCall) => {
         findByIDCalls.push(args)
         return { id: args.id, filename: 'photo.png', mimeType: 'image/png', ...options.doc }

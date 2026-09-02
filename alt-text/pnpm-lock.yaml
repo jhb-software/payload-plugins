@@ -31,9 +31,6 @@ importers:
       next:
         specifier: 16.3.3
         version: 16.3.3(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4)
-      openai:
-        specifier: ^7.7.0
-        version: 7.7.0(undici@7.29.0)(ws@8.21.3)(zod@4.4.3)
       p-map:
         specifier: ^7.0.6
         version: 7.0.6
@@ -98,6 +95,9 @@ importers:
       '@payloadcms/next':
         specifier: ^3.88.0
         version: 3.88.0(@types/react@19.2.18)(graphql@16.12.0)(monaco-editor@0.55.1)(next@16.3.3(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      '@payloadcms/plugin-multi-tenant':
+        specifier: ^3.88.0
+        version: 3.88.0(@payloadcms/ui@3.88.0(@types/react@19.2.18)(monaco-editor@0.55.1)(next@16.3.3(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))
       '@payloadcms/translations':
         specifier: ^3.88.0
         version: 3.88.0
@@ -1014,6 +1014,12 @@ packages:
     peerDependencies:
       graphql: ^16.8.1
       next: 16.3.3
+      payload: 3.88.0
+
+  '@payloadcms/plugin-multi-tenant@3.88.0':
+    resolution: {integrity: sha512-dykHQ3bqXYUzm1RM/1DAjgiL3DdJctTi0GKYlwvMnYVoQtsc78zOajFOQDkp9yXG3yMqvoQc48r9yxRStUe6wA==}
+    peerDependencies:
+      '@payloadcms/ui': 3.88.0
       payload: 3.88.0
 
   '@payloadcms/translations@3.88.0':
@@ -2964,31 +2970,6 @@ packages:
     resolution: {integrity: sha512-1FlR+gjXK7X+AsAHso35MnyN5KqGwJRi/31ft6x0M194ht7S+rWAvd7PHss9xSKMzE0asv1pyIHaJYq+BbacAQ==}
     engines: {node: '>=12'}
 
-  openai@7.7.0:
-    resolution: {integrity: sha512-GmfZh/nAyI1Ya//I80YrTzY7h+0E7NPd3YQD64X5tcJMrupws0dYmN2L1D5KhU88j6u/oLErIu+oNTRqm+O2Mg==}
-    engines: {node: '>=22.0.0'}
-    hasBin: true
-    peerDependencies:
-      '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
-      '@smithy/hash-node': '>=4.3.0 <5'
-      '@smithy/signature-v4': '>=5.4.0 <6'
-      undici: '>=5 <9'
-      ws: ^8.18.0
-      zod: ^3.25 || ^4.0
-    peerDependenciesMeta:
-      '@aws-sdk/credential-provider-node':
-        optional: true
-      '@smithy/hash-node':
-        optional: true
-      '@smithy/signature-v4':
-        optional: true
-      undici:
-        optional: true
-      ws:
-        optional: true
-      zod:
-        optional: true
-
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -4754,6 +4735,11 @@ snapshots:
       - react-dom
       - supports-color
       - typescript
+
+  '@payloadcms/plugin-multi-tenant@3.88.0(@payloadcms/ui@3.88.0(@types/react@19.2.18)(monaco-editor@0.55.1)(next@16.3.3(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))':
+    dependencies:
+      '@payloadcms/ui': 3.88.0(@types/react@19.2.18)(monaco-editor@0.55.1)(next@16.3.3(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      payload: 3.88.0(graphql@16.12.0)(typescript@6.0.3)
 
   '@payloadcms/translations@3.88.0':
     dependencies:
@@ -6930,12 +6916,6 @@ snapshots:
   onetime@6.0.0:
     dependencies:
       mimic-fn: 4.0.0
-
-  openai@7.7.0(undici@7.29.0)(ws@8.21.3)(zod@4.4.3):
-    optionalDependencies:
-      undici: 7.29.0
-      ws: 8.21.3
-      zod: 4.4.3
 
   optionator@0.9.4:
     dependencies:

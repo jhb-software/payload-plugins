@@ -31,7 +31,6 @@
     "prepublishOnly": "pnpm clean && pnpm build"
   },
   "dependencies": {
-    "openai": "^7.7.0",
     "p-map": "^7.0.6",
     "zod": "^4.4.3"
   },

@@ -95,7 +95,7 @@ export async function computeDocPaths({
     where: { id: { equals: id } },
   })
 
-  const row = docs[0] as Record<string, any> | undefined
+  const row = docs[0] as Record<string, unknown> | undefined
   if (!row) {
     return null
   }
@@ -115,6 +115,10 @@ export async function computeDocPaths({
   try {
     const withVirtualFields = await setPageDocumentVirtualFields({
       doc: row,
+      // The row is read from the main table, which holds the published state of the document —
+      // so the ancestors its path is built from are the published ones too, whatever draft mode
+      // the surrounding operation runs in.
+      draft: false,
       locale: locales ? 'all' : undefined,
       locales,
       pageConfigAttributes: pageAttributes,
@@ -136,7 +140,7 @@ export async function computeDocPaths({
 
 /** The root page's paths: the locale prefix per locale carrying the root slug, or `/`. */
 function rootPagePaths(
-  row: Record<string, any>,
+  row: Record<string, unknown>,
   locales: string[] | undefined,
   routing: LocaleRouting | undefined,
 ): Record<string, string> {
@@ -146,7 +150,10 @@ function rootPagePaths(
 
   const paths: Record<string, string> = {}
   for (const locale of locales) {
-    const slug = typeof row.slug === 'object' && row.slug !== null ? row.slug[locale] : row.slug
+    const slug =
+      row.slug && typeof row.slug === 'object'
+        ? (row.slug as Record<string, unknown>)[locale]
+        : row.slug
     if (slug === ROOT_PAGE_SLUG) {
       paths[locale] = rootPathForLocale(locale, routing)
     }

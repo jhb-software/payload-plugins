@@ -17,6 +17,7 @@ import {
 } from '../hooks/capturePreviousPaths.js'
 import { preventCircularParentReference } from '../hooks/preventCircularParentReference.js'
 import { preventParentDeletion, preventParentTrashing } from '../hooks/preventParentDeletion.js'
+import { restoreOperationDraftAfterOperation } from '../hooks/restoreOperationDraftAfterOperation.js'
 import { selectDependentFieldsBeforeOperation } from '../hooks/selectDependentFieldsBeforeOperation.js'
 import {
   setVirtualFieldsAfterChange,
@@ -146,9 +147,12 @@ export const createPageCollectionConfig = ({
         setVirtualFieldsAfterChange,
         ...(incomingCollectionConfig.hooks?.afterChange || []),
       ],
-      // Runs last so that a user hook cannot reintroduce the auto-selected fields into the response
       afterOperation: [
+        // Runs before the user's hooks so a nested read one of them makes is a sibling of the
+        // finished operation rather than a child of it
+        restoreOperationDraftAfterOperation,
         ...(incomingCollectionConfig.hooks?.afterOperation || []),
+        // Runs last so that a user hook cannot reintroduce the auto-selected fields into the response
         stripAutoSelectedFieldsAfterOperation,
       ],
       beforeChange: [

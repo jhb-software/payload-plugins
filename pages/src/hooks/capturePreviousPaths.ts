@@ -5,6 +5,7 @@ import type { DescendantPaths } from '../utils/loadDescendants.js'
 
 import { computeDocPaths, noDocPaths } from '../utils/computeDocPaths.js'
 import { assembleDescendantPaths, loadDescendants } from '../utils/loadDescendants.js'
+import { operationDraft } from '../utils/operationContext.js'
 import { pagesPluginConfigOf } from '../utils/pageCollectionConfigHelpers.js'
 import { SKIP_PARENT_GUARD_CONTEXT_KEY } from './preventParentDeletion.js'
 
@@ -45,7 +46,7 @@ export function pathCaptures(context: Record<string, unknown>): Record<string, P
  * that can move a live path.
  */
 export function isVersionOnlyWrite(context: Record<string, unknown>, status: unknown): boolean {
-  return context.draft === true && !publishesAnyLocale(status)
+  return operationDraft(context) && !publishesAnyLocale(status)
 }
 
 function publishesAnyLocale(status: unknown): boolean {
