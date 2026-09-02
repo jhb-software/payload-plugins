@@ -51,32 +51,27 @@ async function getSignature(
   apiRoute: string,
   collectionSlug: string,
 ): Promise<string> {
-  try {
-    const response = await fetch(
-      `${serverURL}${apiRoute}${serverHandlerPath}?collectionSlug=${collectionSlug}`,
-      {
-        body: JSON.stringify({
-          paramsToSign,
-        }),
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
+  const response = await fetch(
+    `${serverURL}${apiRoute}${serverHandlerPath}?collectionSlug=${collectionSlug}`,
+    {
+      body: JSON.stringify({
+        paramsToSign,
+      }),
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    )
+      method: 'POST',
+    },
+  )
 
-    const data = await response.json()
+  const data = await response.json()
 
-    if (!data.signature) {
-      throw new Error('No signature found')
-    }
-
-    return data.signature
-  } catch (error) {
-    console.error('Error getting signature', error)
-    throw error
+  if (!data.signature) {
+    throw new Error('No signature found')
   }
+
+  return data.signature
 }
 
 function buildFormData({

@@ -30,7 +30,7 @@ export const SlugField = async ({
   )?.slug
 
   if (!redirectsCollectionSlug) {
-    console.warn(
+    payload.logger.warn(
       '[Pages Plugin] No redirects collection found. Falling back to "redirects" collection.',
     )
   }

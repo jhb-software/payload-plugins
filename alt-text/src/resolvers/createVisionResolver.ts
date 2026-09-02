@@ -71,10 +71,11 @@ export type VisionResolverConfig = {
    */
   apiKey: string
   /**
-   * Sends one request to the provider and returns its parsed JSON response.
-   * Throwing fails the generation, so provider errors need no special handling.
+   * Sends one request to the provider and resolves with its parsed JSON
+   * response. Rejecting fails the generation, so provider errors need no
+   * special handling beyond throwing a readable message.
    */
-  generate: (args: VisionGenerateArgs) => unknown
+  generate: (args: VisionGenerateArgs) => Promise<unknown>
   /**
    * Download the thumbnail and hand `generate` the bytes rather than the URL.
    *
@@ -187,10 +188,28 @@ async function fetchImage({
   const mediaType =
     served && served !== 'application/octet-stream' ? served : declaredMediaType?.toLowerCase()
 
-  if (!mediaType || (supportedMimeTypes && !supportedMimeTypes.includes(mediaType))) {
+  if (!mediaType) {
     return {
-      error: `The image at ${url} was served as "${mediaType ?? 'an unknown type'}", which ${label} cannot read.${supportedMimeTypes ? ` Supported types: ${supportedMimeTypes.join(', ')}.` : ''}`,
+      error: `The image at ${url} was served as ${served ? `"${served}"` : 'no content type at all'}, which does not name an image format. Declare imageThumbnailMimeType for the collection so ${label} knows what it is reading.`,
     }
+  }
+
+  if (supportedMimeTypes && !supportedMimeTypes.includes(mediaType)) {
+    return {
+      error: `The image at ${url} was served as "${mediaType}", which ${label} cannot read. Supported types: ${supportedMimeTypes.join(', ')}.`,
+    }
+  }
+
+  const tooLarge = (byteLength: number) =>
+    `The image at ${url} is ${Math.round(byteLength / 1024 / 1024)} MB, above ${label}'s ${Math.round(maxImageBytes / 1024 / 1024)} MB limit. Point getImageThumbnail at a smaller image size.`
+
+  // Measuring by reading is work the header already answers, and the file is on
+  // its way to being rejected: `getImageThumbnail` may point at the original
+  // upload, which can be far above the provider's limit.
+  const declaredLength = Number(response.headers.get('content-length'))
+
+  if (Number.isInteger(declaredLength) && declaredLength > maxImageBytes) {
+    return { error: tooLarge(declaredLength) }
   }
 
   const bytes = Buffer.from(await response.arrayBuffer())
@@ -200,9 +219,7 @@ async function fetchImage({
   }
 
   if (bytes.byteLength > maxImageBytes) {
-    return {
-      error: `The image at ${url} is ${Math.round(bytes.byteLength / 1024 / 1024)} MB, above ${label}'s ${Math.round(maxImageBytes / 1024 / 1024)} MB limit. Point getImageThumbnail at a smaller image size.`,
-    }
+    return { error: tooLarge(bytes.byteLength) }
   }
 
   const base64 = bytes.toString('base64')
@@ -333,9 +350,9 @@ export const createVisionResolver = ({
       return { results, success: true }
     } catch (error) {
       req.payload.logger.error({
-        key,
-        message: 'An error occurred when trying to generate the alt text',
-        originalErr: error instanceof Error ? error.message : String(error),
+        err: error,
+        msg: 'Error generating alt text',
+        resolver: key,
       })
 
       return { error: error instanceof Error ? error.message : 'Unknown error', success: false }

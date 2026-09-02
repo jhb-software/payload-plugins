@@ -126,6 +126,10 @@ export const payloadAltTextPlugin =
       normalizedCollections.map((entry) => [entry.slug, entry]),
     )
 
+    // Collected while collections are mapped and flushed in `onInit`: no Payload instance —
+    // and therefore no logger — exists while the config is still being built.
+    const configWarnings: string[] = []
+
     // Ensure collections array exists
     config.collections = config.collections || []
 
@@ -135,7 +139,7 @@ export const payloadAltTextPlugin =
 
       if (altTextCollectionConfig) {
         if (!collectionConfig.upload) {
-          console.warn(
+          configWarnings.push(
             `AI Alt Text Plugin: Collection "${collectionConfig.slug}" is not an upload collection. Skipping field injection.`,
           )
           return collectionConfig
@@ -253,6 +257,13 @@ export const payloadAltTextPlugin =
       i18n: {
         ...config.i18n,
         translations: deepMergeSimple(translations, incomingConfig.i18n?.translations ?? {}),
+      },
+      onInit: async (payload) => {
+        for (const warning of configWarnings) {
+          payload.logger.warn(warning)
+        }
+
+        await config.onInit?.(payload)
       },
     }
   }

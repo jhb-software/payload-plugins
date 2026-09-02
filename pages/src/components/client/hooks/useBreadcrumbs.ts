@@ -31,10 +31,10 @@ export const useBreadcrumbs = () => {
       }
       return a.every((breadcrumb, i) => {
         // Sort keys to ensure consistent order when comparing
-        const sortObject = (obj: any) => {
+        const sortObject = (obj: Record<string, unknown>) => {
           return Object.keys(obj)
             .sort()
-            .reduce((result: any, key) => {
+            .reduce<Record<string, unknown>>((result, key) => {
               result[key] = obj[key]
               return result
             }, {})
