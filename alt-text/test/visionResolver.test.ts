@@ -384,3 +384,135 @@ describe('response validation', () => {
     assert.equal(recorded.length, 0)
   })
 })
+
+describe('transient provider failures', () => {
+  /** Answers with each queued status in turn, then repeats the last one. */
+  function stubStatuses(statuses: number[], completion: unknown): { calls: number } {
+    const counter = { calls: 0 }
+
+    globalThis.fetch = (async () => {
+      const status = statuses[Math.min(counter.calls, statuses.length - 1)]!
+      counter.calls += 1
+
+      return new Response(
+        JSON.stringify(
+          status < 400
+            ? { choices: [{ message: { content: JSON.stringify(completion) } }] }
+            : { error: 'upstream' },
+        ),
+        { headers: { 'content-type': 'application/json' }, status },
+      )
+    }) as unknown as typeof fetch
+
+    return counter
+  }
+
+  test('retries a rate-limited request rather than leaving the image without an alt text', async () => {
+    // A bulk generation trips rate limits routinely. Giving up on the first 429
+    // silently leaves those documents with no alt text, and the editor has no
+    // signal beyond a failed row.
+    const counter = stubStatuses([429, 200], enResult)
+
+    const result = await openAIResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, true, result.success ? '' : (result.error ?? ''))
+    assert.equal(counter.calls, 2)
+  })
+
+  test('gives up on a rejected request instead of paying for the same error repeatedly', async () => {
+    // A 400 is the request itself being wrong: retrying bills the same failure
+    // three times and delays the message the editor needs to see.
+    const counter = stubStatuses([400], enResult)
+
+    const result = await openAIResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, false)
+    assert.match(result.success ? '' : (result.error ?? ''), /400/)
+    assert.equal(counter.calls, 1)
+  })
+
+  test('stops retrying once the provider keeps failing', async () => {
+    const counter = stubStatuses([503], enResult)
+
+    const result = await openAIResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, false)
+    // The first attempt plus two retries — not an unbounded loop against a
+    // provider that is down.
+    assert.equal(counter.calls, 3)
+  })
+})
+
+describe('provider response disclosure', () => {
+  /** Rejects with a body shaped like the ones providers actually send back. */
+  function stubRejection(status: number, body: unknown) {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify(body), {
+        headers: { 'content-type': 'application/json' },
+        status,
+      })) as unknown as typeof fetch
+  }
+
+  /** The 401 body OpenAI returns, which quotes the key it rejected. */
+  const rejectedKeyBody = {
+    error: {
+      code: 'invalid_api_key',
+      message:
+        'Incorrect API key provided: sk-proj-abcdef123456. You can find your API key at https://platform.openai.com/account/api-keys.',
+      type: 'invalid_request_error',
+    },
+  }
+
+  test('keeps the provider response out of the message shown in the admin panel', async () => {
+    // The message reaches every user allowed to generate an alt text, and the
+    // body is text the provider chose: a rejected key, an organization id, an
+    // internal endpoint. Only the status is safe to repeat back.
+    stubRejection(401, rejectedKeyBody)
+
+    const result = await openAIResolver({ apiKey: 'sk-proj-abcdef123456' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, false)
+    const message = result.success ? '' : (result.error ?? '')
+
+    assert.match(message, /OpenAI responded with status 401/)
+    assert.doesNotMatch(message, /sk-proj/)
+    assert.doesNotMatch(message, /Incorrect API key/)
+    assert.doesNotMatch(message, /platform\.openai\.com/)
+  })
+
+  test('logs the provider response, so a misconfiguration stays diagnosable', async () => {
+    // Withholding the body from the editor must not withhold it from the person
+    // debugging the configuration.
+    stubRejection(401, rejectedKeyBody)
+
+    const logged: Record<string, unknown>[] = []
+    const loggingReq = {
+      payload: { logger: { error: (entry: Record<string, unknown>) => logged.push(entry) } },
+    } as unknown as PayloadRequest
+
+    await openAIResolver({ apiKey: 'sk-proj-abcdef123456' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req: loggingReq,
+    })
+
+    assert.equal(logged.length, 1)
+    assert.match(String(logged[0]!.providerResponse), /Incorrect API key/)
+  })
+})

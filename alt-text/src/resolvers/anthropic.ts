@@ -1,7 +1,7 @@
 import type { VisionInstructions } from './createVisionResolver.js'
 import type { AltTextResolver } from './types.js'
 
-import { createVisionResolver } from './createVisionResolver.js'
+import { createVisionResolver, VisionProviderError } from './createVisionResolver.js'
 
 export type AnthropicResolverConfig = {
   /** Anthropic API key for authentication */
@@ -158,12 +158,10 @@ export const anthropicResolver = ({
       })
 
       if (!response.ok) {
-        // Bounded: the body is provider text rendered in the admin panel.
+        // Bounded: unbounded provider text would land in the log as-is.
         const body = (await response.text().catch(() => '')).slice(0, 500)
 
-        throw new Error(
-          `Anthropic responded with status ${response.status}${body ? `: ${body}` : ''}`,
-        )
+        throw new VisionProviderError({ body, label: 'Anthropic', status: response.status })
       }
 
       const message = (await response.json()) as AnthropicMessage
