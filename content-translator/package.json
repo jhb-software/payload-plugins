@@ -83,6 +83,16 @@
         "types": "./dist/resolvers/openAI.d.ts",
         "default": "./dist/resolvers/openAI.js"
       },
+      "./resolvers/mistral": {
+        "import": "./dist/resolvers/mistral.js",
+        "types": "./dist/resolvers/mistral.d.ts",
+        "default": "./dist/resolvers/mistral.js"
+      },
+      "./resolvers/openAICompatible": {
+        "import": "./dist/resolvers/openAICompatible.js",
+        "types": "./dist/resolvers/openAICompatible.d.ts",
+        "default": "./dist/resolvers/openAICompatible.js"
+      },
       "./client": {
         "import": "./dist/exports/client.js",
         "types": "./dist/exports/client.d.ts",
@@ -110,6 +120,16 @@
       "import": "./src/resolvers/openAI.ts",
       "types": "./src/resolvers/openAI.ts",
       "default": "./src/resolvers/openAI.ts"
+    },
+    "./resolvers/mistral": {
+      "import": "./src/resolvers/mistral.ts",
+      "types": "./src/resolvers/mistral.ts",
+      "default": "./src/resolvers/mistral.ts"
+    },
+    "./resolvers/openAICompatible": {
+      "import": "./src/resolvers/openAICompatible.ts",
+      "types": "./src/resolvers/openAICompatible.ts",
+      "default": "./src/resolvers/openAICompatible.ts"
     },
     "./client": {
       "import": "./src/exports/client.ts",

@@ -1,4 +1,5 @@
 import {
+  mistralResolver,
   openAIResolver,
   payloadContentTranslatorPlugin,
 } from '@jhb.software/payload-content-translator-plugin'
@@ -129,10 +130,10 @@ export default buildConfig({
       collections: ['pages', 'docs', 'posts', 'authors'],
       globals: [],
       // resolver: mockResolver(), // custom resolver for testing
-      // Set TRANSLATOR_RESOLVER=ai-sdk to translate through the custom AI SDK
-      // resolver instead of the built-in one. Both expose the same
-      // `instructions` extension point, so the protected terms below apply
-      // either way.
+      // Set TRANSLATOR_RESOLVER to `mistral` or `ai-sdk` to translate through
+      // the Mistral resolver or the custom AI SDK resolver instead of the
+      // built-in OpenAI one. All three expose the same `instructions` extension
+      // point, so the protected terms below apply whichever one runs.
       resolver:
         process.env.TRANSLATOR_RESOLVER === 'ai-sdk'
           ? aiSdkResolver({
@@ -140,12 +141,19 @@ export default buildConfig({
               instructions: ({ defaultInstructions }) =>
                 `${defaultInstructions}\n\n${protectedTermsInstruction}`,
             })
-          : openAIResolver({
-              apiKey: process.env.OPENAI_API_KEY || '',
-              model: 'gpt-4o-mini',
-              instructions: ({ defaultInstructions }) =>
-                `${defaultInstructions}\n\n${protectedTermsInstruction}`,
-            }),
+          : process.env.TRANSLATOR_RESOLVER === 'mistral'
+            ? mistralResolver({
+                apiKey: process.env.MISTRAL_API_KEY || '',
+                model: 'mistral-medium-latest',
+                instructions: ({ defaultInstructions }) =>
+                  `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+              })
+            : openAIResolver({
+                apiKey: process.env.OPENAI_API_KEY || '',
+                model: 'gpt-4o-mini',
+                instructions: ({ defaultInstructions }) =>
+                  `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+              }),
     }),
   ],
 })
