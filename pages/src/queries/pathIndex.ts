@@ -182,10 +182,12 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
     })
 
     const entries: PagePathEntry[] = []
-    for (const doc of docs as Record<string, any>[]) {
+    for (const doc of docs as Record<string, unknown>[]) {
       // key the per-document paths by locale; `''` stands for an unlocalized install
       const paths: Record<string, unknown> =
-        locale === 'all' ? (doc.path ?? {}) : { [locale ?? '']: doc.path }
+        locale === 'all'
+          ? ((doc.path as Record<string, unknown> | undefined) ?? {})
+          : { [locale ?? '']: doc.path }
 
       for (const [pathLocale, path] of Object.entries(paths)) {
         if (typeof path !== 'string' || !path) {
@@ -197,12 +199,12 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
           continue
         }
         entries.push({
-          id: doc.id,
+          id: doc.id as DefaultDocumentIDType,
           collection: collection.slug,
           ...(pathLocale === '' ? {} : { locale: pathLocale }),
           path,
           title: pickLocalizedValue(doc[labelField], pathLocale) ?? null,
-          updatedAt: doc.updatedAt,
+          updatedAt: doc.updatedAt as string,
         })
       }
     }

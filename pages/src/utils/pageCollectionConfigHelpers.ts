@@ -23,7 +23,6 @@ export const isPageCollectionConfig = (
   config: ClientCollectionConfig | CollectionConfig,
 ): config is PageCollectionConfig => {
   if (!config) {
-    console.error('config is not defined')
     return false
   }
 

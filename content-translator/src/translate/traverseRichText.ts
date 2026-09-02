@@ -1,4 +1,4 @@
-import type { FlattenedBlock, SanitizedConfig } from 'payload'
+import type { FlattenedBlock, PayloadRequest, SanitizedConfig } from 'payload'
 
 import type { ValueToTranslate } from './types.js'
 
@@ -19,7 +19,7 @@ const markerRegex = /⟦(\d+)⟧/g
 // Translate a maximal run of consecutive text-node siblings. A single node is
 // sent as plain text (no markers). Two or more nodes are joined into one
 // marker-delimited value and split back apart once translated.
-const pushTextRun = (run: Record<string, any>[], valuesToTranslate: ValueToTranslate[]) => {
+const pushTextRun = (run: Record<string, unknown>[], valuesToTranslate: ValueToTranslate[]) => {
   if (run.length === 1) {
     const node = run[0]
 
@@ -39,11 +39,16 @@ const pushTextRun = (run: Record<string, any>[], valuesToTranslate: ValueToTrans
 
   let combined = ''
   run.forEach((node, index) => {
-    combined += buildMarker(index) + node.text
+    combined += buildMarker(index) + String(node.text)
   })
 
   valuesToTranslate.push({
-    onTranslate: (translated: string) => {
+    onTranslate: (translated) => {
+      if (typeof translated !== 'string') {
+        // Without a string there are no markers to split on - keep the originals.
+        return
+      }
+
       const matches: { end: number; index: number; start: number }[] = []
       let match: null | RegExpExecArray
       markerRegex.lastIndex = 0
@@ -87,6 +92,7 @@ const pushTextRun = (run: Record<string, any>[], valuesToTranslate: ValueToTrans
 export const traverseRichText = ({
   emptyOnly,
   payloadConfig,
+  req,
   root,
   siblingData,
   translatedData,
@@ -94,6 +100,7 @@ export const traverseRichText = ({
 }: {
   emptyOnly: boolean
   payloadConfig: SanitizedConfig
+  req?: PayloadRequest
   root: Record<string, unknown>
   siblingData?: Record<string, unknown>
   translatedData: Record<string, unknown>
@@ -113,7 +120,7 @@ export const traverseRichText = ({
       const blockData = siblingData.fields as Record<string, unknown>
       const blockName = siblingData.fields.blockType
 
-      const blockConfig = findBlockConfigBySlug(blockName, payloadConfig)
+      const blockConfig = findBlockConfigBySlug(blockName, payloadConfig, req)
 
       if (blockConfig) {
         // Traverse the fields of the block
@@ -123,6 +130,7 @@ export const traverseRichText = ({
           fields: blockConfig.fields,
           localizedParent: false,
           payloadConfig,
+          req,
           siblingDataFrom: blockData,
           siblingDataTranslated: blockData,
           translatedData,
@@ -130,7 +138,10 @@ export const traverseRichText = ({
         })
       }
     } else {
-      console.warn('Could not find fields and blockType in block', siblingData)
+      req?.payload.logger.warn(
+        { block: siblingData },
+        'Could not find fields and blockType in block',
+      )
     }
 
     return
@@ -140,7 +151,7 @@ export const traverseRichText = ({
     return
   }
 
-  const children = siblingData.children as Record<string, any>[]
+  const children = siblingData.children as Record<string, unknown>[]
   let i = 0
 
   while (i < children.length) {
@@ -149,7 +160,7 @@ export const traverseRichText = ({
     if (child && typeof child.text === 'string') {
       // Gather a maximal run of consecutive text nodes and translate them
       // together so a sentence split across formatting spans stays aligned.
-      const run: Record<string, any>[] = []
+      const run: Record<string, unknown>[] = []
 
       while (i < children.length && children[i] && typeof children[i].text === 'string') {
         run.push(children[i])
@@ -161,6 +172,7 @@ export const traverseRichText = ({
       traverseRichText({
         emptyOnly,
         payloadConfig,
+        req,
         root,
         siblingData: child,
         translatedData,
@@ -175,6 +187,7 @@ export const traverseRichText = ({
 const findBlockConfigBySlug = (
   slug: string,
   payloadConfig: SanitizedConfig,
+  req?: PayloadRequest,
 ): FlattenedBlock | undefined => {
   const payloadBlockConfig = payloadConfig.blocks?.find((block) => block.slug === slug)
   if (payloadBlockConfig) {
@@ -182,7 +195,7 @@ const findBlockConfigBySlug = (
   }
 
   // If not found anywhere, warn and return undefined
-  console.warn(
+  req?.payload.logger.warn(
     `Could not find block config for lexical block with slug ${slug} in the Payload config blocks array. The content translator plugin only supports blocks defined in the Payload config blocks array.`,
   )
 

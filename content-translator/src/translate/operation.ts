@@ -84,7 +84,9 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     localeFrom: args.localeFrom,
     localeTo: args.locale,
     req,
-    texts: valuesToTranslate.map((each) => each.value),
+    // The traversal only collects string field values (`hasMany` arrays are pushed element by
+    // element), so the collected values match the resolver's `texts: string[]` contract.
+    texts: valuesToTranslate.map((each) => each.value as string),
   })
 
   let result: TranslateResult

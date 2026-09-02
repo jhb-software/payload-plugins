@@ -350,9 +350,9 @@ export const createVisionResolver = ({
       return { results, success: true }
     } catch (error) {
       req.payload.logger.error({
-        key,
-        message: 'An error occurred when trying to generate the alt text',
-        originalErr: error instanceof Error ? error.message : String(error),
+        err: error,
+        msg: 'Error generating alt text',
+        resolver: key,
       })
 
       return { error: error instanceof Error ? error.message : 'Unknown error', success: false }

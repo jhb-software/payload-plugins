@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: log the static handler's 404 diagnostics and `generateURL`'s missing-`mimeType` warning through the Payload logger instead of `console`, so they respect the project's log level and formatting
+
 ## 0.4.0
 
 - fix: declare `@payloadcms/plugin-cloud-storage` as a peer dependency instead of a direct dependency, so it resolves to the same version as the host project's Payload suite and no longer pulls in a second copy of `@payloadcms/ui` (which broke the Payload admin with React context errors). **Breaking:** consuming projects must now install `@payloadcms/plugin-cloud-storage` alongside `payload`.

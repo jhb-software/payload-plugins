@@ -24,7 +24,7 @@ export function setRootPageDocumentVirtualFields({
   routing,
 }: {
   breadcrumbLabelField: string
-  doc: Record<string, any>
+  doc: Record<string, unknown>
   locale: Locale | undefined
   locales: Locale[] | undefined
   routing: LocaleRouting | undefined
@@ -50,7 +50,7 @@ export function setRootPageDocumentVirtualFields({
           acc[locale] = [
             {
               slug: ROOT_PAGE_SLUG,
-              label: doc[breadcrumbLabelField][locale],
+              label: (doc[breadcrumbLabelField] as Record<string, string>)[locale],
               path: paths[locale],
             },
           ]
@@ -63,7 +63,7 @@ export function setRootPageDocumentVirtualFields({
         ...doc,
         breadcrumbs,
         meta: {
-          ...doc.meta,
+          ...(doc.meta as Record<string, unknown> | undefined),
           alternatePaths,
         },
         path: paths,
@@ -74,12 +74,12 @@ export function setRootPageDocumentVirtualFields({
         breadcrumbs: [
           {
             slug: ROOT_PAGE_SLUG,
-            label: doc[breadcrumbLabelField],
+            label: doc[breadcrumbLabelField] as string,
             path: rootPathForLocale(locale, routing),
           },
         ],
         meta: {
-          ...doc.meta,
+          ...(doc.meta as Record<string, unknown> | undefined),
           alternatePaths,
         },
         path: paths[locale],

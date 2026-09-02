@@ -4,6 +4,7 @@
 
 - feat: add `healthCheck.baseFilter`, a `({ collection, req }) => Where` narrowing what the health report counts — in a multi-tenant CMS, to the tenant the request is for. Resolved per collection, so collections without the constraining field can return `{}`. The scan's cache key is derived from the resolved filters, so one scope's counts are never served to another.
 - **BREAKING**: `healthCheck` no longer accepts a function. Move the access check to `healthCheck: { access: ({ req }) => ... }`; the function form now throws at config load. `healthCheck: true` / `false` are unchanged.
+- fix: log endpoint, resolver, and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
 - feat: add `createVisionResolver`, a factory that owns the prompt, the per-locale response schema, the optional image download and the strict reading of the response, so a resolver for another LLM provider is only its provider call. Both bundled resolvers are built on it.
 - feat: add an `instructions` option to `openAIResolver` and `mistralResolver`, receiving the default instructions so a house style rule can be appended without restating them
 - feat: add a `timeoutMs` option to `openAIResolver`. Omitted by default, leaving the OpenAI client's own deadline and retries in charge.
