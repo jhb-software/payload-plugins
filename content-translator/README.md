@@ -2,13 +2,13 @@
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
 
-A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
+A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides ready-to-use integrations with OpenAI and Mistral.
 
 ## Features
 
 - translate content in the Payload Admin UI between locales
 - supports any translation service using a resolver pattern (e.g. OpenAI, DeepL, etc.)
-- comes with a ready-to-use OpenAI resolver out of the box
+- comes with ready-to-use OpenAI and Mistral resolvers out of the box
 - seamless integration with Payload's localization system
 - review and edit translations before saving or publishing
 
@@ -136,7 +136,7 @@ and [its wiring](https://github.com/jhb-software/payload-plugins/blob/main/conte
 
 This plugin is designed to work seamlessly with various translation services by accepting a customizable translation resolver as a configuration option.
 
-An OpenAI resolver is provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
+OpenAI and Mistral resolvers are provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
 
 #### OpenAI Resolver
 
@@ -148,6 +148,27 @@ openAIResolver({
   model: 'gpt-4o-mini', // or 'gpt-4', 'gpt-3.5-turbo', etc.
 })
 ```
+
+`baseUrl` (default `https://api.openai.com`) points the resolver at any other
+provider serving OpenAI's `/v1/chat/completions` endpoint.
+
+#### Mistral Resolver
+
+```ts
+import { mistralResolver } from '@jhb.software/payload-content-translator-plugin'
+
+mistralResolver({
+  apiKey: process.env.MISTRAL_API_KEY,
+  model: 'mistral-medium-latest', // default; any Mistral chat model works
+})
+```
+
+The `-latest` aliases move as Mistral ships new revisions — pin a dated model id
+if you need the behaviour and pricing to stay put.
+
+Mistral serves OpenAI's chat completions shape, so this is the OpenAI resolver
+with Mistral's base URL and model default — it exists so a Mistral setup does not
+have to know that. It takes the same `chunkLength` and `instructions` options.
 
 ##### Customizing the instructions
 
@@ -175,7 +196,7 @@ openAIResolver({
 })
 ```
 
-The function is called once per translation, not once per chunk, and is available on any resolver built with [`createPromptResolver`](#custom-resolvers).
+The function is called once per translation, not once per chunk, and is available on every bundled resolver and on any resolver built with [`createPromptResolver`](#custom-resolvers).
 
 When replacing the default instructions instead of extending them, keep their rules on segment markers and on translating each value independently — see [Custom Resolvers](#custom-resolvers). The resolver's response format instructions are appended either way, so a replacement cannot break the provider contract.
 

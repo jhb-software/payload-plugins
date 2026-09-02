@@ -3,11 +3,11 @@ import type { TranslateResolver } from './types.js'
 
 import { createOpenAICompatibleResolver } from './openAICompatible.js'
 
-export type OpenAIResolverConfig = {
+export type MistralResolverConfig = {
   apiKey: string
   /**
-   * Origin of an OpenAI-compatible API, without the `/v1/chat/completions` path.
-   * @default 'https://api.openai.com'
+   * Origin of the Mistral API, without the `/v1/chat/completions` path.
+   * @default 'https://api.mistral.ai'
    */
   baseUrl?: string
   /**
@@ -23,26 +23,43 @@ export type OpenAIResolverConfig = {
    */
   instructions?: TranslateInstructions
   /**
-   * @default "gpt-4o-mini"
+   * @default "mistral-medium-latest"
    */
   model?: string
 }
 
-export const openAIResolver = ({
+/**
+ * Creates a Mistral-based translation resolver.
+ *
+ * Mistral serves OpenAI's chat completions shape, so this is `openAIResolver`
+ * with Mistral's base URL and model default — it exists so a Mistral setup does
+ * not have to know that.
+ *
+ * @example
+ * ```typescript
+ * import { mistralResolver } from '@jhb.software/payload-content-translator-plugin'
+ *
+ * mistralResolver({
+ *   apiKey: process.env.MISTRAL_API_KEY!,
+ *   model: 'mistral-medium-latest', // optional, this is the default
+ * })
+ * ```
+ */
+export const mistralResolver = ({
   apiKey,
   baseUrl,
   chunkLength = 100,
   instructions,
-  model = 'gpt-4o-mini',
-}: OpenAIResolverConfig): TranslateResolver =>
+  model = 'mistral-medium-latest',
+}: MistralResolverConfig): TranslateResolver =>
   createOpenAICompatibleResolver({
     apiKey,
     // Falsy rather than nullish: a config written as `process.env.X || ''`
     // has always fallen back to the default host, and still must.
-    baseUrl: baseUrl || 'https://api.openai.com',
+    baseUrl: baseUrl || 'https://api.mistral.ai',
     chunkLength,
     instructions,
-    key: 'openai',
-    label: 'OpenAI',
+    key: 'mistral',
+    label: 'Mistral',
     model,
   })

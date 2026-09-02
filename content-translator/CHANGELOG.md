@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- feat: add `mistralResolver`, a translation resolver for Mistral's chat models (default `mistral-medium-latest`), taking the same `chunkLength` and `instructions` options as the OpenAI resolver
+- feat: export `createOpenAICompatibleResolver`, which builds a resolver for any provider serving OpenAI's `/v1/chat/completions` endpoint with JSON mode. `openAIResolver` and `mistralResolver` are thin wrappers around it.
+- change: resolver error messages and log entries name the provider they came from, so a `baseUrl` pointing elsewhere no longer reports failures as OpenAI's. The log key `openAIresponse` is now `response`.
+
 ## 0.5.0
 
 - feat: export `createPromptResolver`, which builds a resolver for any LLM provider from a single `generate` function
