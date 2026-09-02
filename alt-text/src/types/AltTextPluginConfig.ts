@@ -1,4 +1,4 @@
-import type { CollectionSlug, Field, PayloadRequest } from 'payload'
+import type { CollectionSlug, Field, PayloadRequest, Where } from 'payload'
 
 import type { AltTextResolver } from '../resolvers/types.js'
 import type {
@@ -25,6 +25,48 @@ export type GetImageThumbnail = (
   doc: Record<string, unknown>,
   args: { collection: CollectionSlug; req: PayloadRequest },
 ) => Promise<string> | string
+
+/**
+ * Narrows the health scan of one collection to a subset of its documents — in a
+ * multi-tenant CMS, to the tenant the request is for. The returned constraint is
+ * ANDed onto the scan's MIME type filter.
+ *
+ * Called once per configured collection, so collections that do not carry the
+ * constraining field (a media library shared across tenants, say) can return `{}`
+ * instead of being queried for a field they do not have.
+ *
+ * Return `{}` to scan the collection whole.
+ *
+ * @param args.collection The slug of the collection being scanned.
+ * @param args.req The request the scan runs for.
+ */
+export type AltTextHealthBaseFilter = (args: {
+  collection: CollectionSlug
+  req: PayloadRequest
+}) => Promise<Where> | Where
+
+/** Configuration of the alt text health feature. */
+export type AltTextHealthCheckConfig = {
+  /**
+   * Access control for the health report — both the REST endpoint and the dashboard
+   * widget, which hides itself when this denies.
+   *
+   * Use it to restrict the collection-wide report more strictly than the
+   * per-document generate endpoints (e.g. to admins).
+   *
+   * @default the plugin's `access`
+   */
+  access?: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+
+  /**
+   * Narrows what the report counts. See {@link AltTextHealthBaseFilter}.
+   *
+   * This is not access control: it scopes the aggregate, it does not decide who
+   * may see it. Use `access` for that, and note the report is always filtered to
+   * the collections the requesting user can read.
+   */
+  baseFilter?: AltTextHealthBaseFilter
+}
 
 /** Configuration options for the alt text plugin. */
 export type IncomingAltTextPluginConfig = {
@@ -74,17 +116,12 @@ export type IncomingAltTextPluginConfig = {
    * Controls the alt text health feature (REST endpoint, cache revalidation hooks, and dashboard widget).
    *
    * - `false` disables the entire feature.
-   * - `true` enables it, gated by `access`.
-   * - A function enables it and gates both the endpoint and the dashboard widget
-   *   with that access check — use this to restrict the collection-wide report
-   *   more strictly than the per-document generate endpoints (e.g. to admins).
-   *
-   * Regardless of the gate, the report is always filtered to the collections the
-   * requesting user can read.
+   * - `true` enables it, gated by `access` and covering every document.
+   * - An object enables it and configures it. See {@link AltTextHealthCheckConfig}.
    *
    * @default true
    */
-  healthCheck?: ((args: { req: PayloadRequest }) => boolean | Promise<boolean>) | boolean
+  healthCheck?: AltTextHealthCheckConfig | boolean
 
   /**
    * The MIME type `getImageThumbnail` delivers, for every configured collection.
@@ -154,6 +191,9 @@ export type AltTextPluginConfig = {
 
   /** Access control for the health endpoint. Defaults to `access`. */
   healthCheckAccess: (args: { req: PayloadRequest }) => boolean | Promise<boolean>
+
+  /** Narrows what the health report counts. See {@link AltTextHealthBaseFilter}. */
+  healthCheckBaseFilter?: AltTextHealthBaseFilter
 
   /** The locale to generate alt texts in when localization is disabled. */
   locale?: string

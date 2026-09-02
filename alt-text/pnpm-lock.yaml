@@ -98,6 +98,9 @@ importers:
       '@payloadcms/next':
         specifier: ^3.88.0
         version: 3.88.0(@types/react@19.2.18)(graphql@16.12.0)(monaco-editor@0.55.1)(next@16.3.0(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      '@payloadcms/plugin-multi-tenant':
+        specifier: ^3.88.0
+        version: 3.88.0(@payloadcms/ui@3.88.0(@types/react@19.2.18)(monaco-editor@0.55.1)(next@16.3.0(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))
       '@payloadcms/translations':
         specifier: ^3.88.0
         version: 3.88.0
@@ -1014,6 +1017,12 @@ packages:
     peerDependencies:
       graphql: ^16.8.1
       next: 16.3.0
+      payload: 3.88.0
+
+  '@payloadcms/plugin-multi-tenant@3.88.0':
+    resolution: {integrity: sha512-dykHQ3bqXYUzm1RM/1DAjgiL3DdJctTi0GKYlwvMnYVoQtsc78zOajFOQDkp9yXG3yMqvoQc48r9yxRStUe6wA==}
+    peerDependencies:
+      '@payloadcms/ui': 3.88.0
       payload: 3.88.0
 
   '@payloadcms/translations@3.88.0':
@@ -2057,6 +2066,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -4746,6 +4756,11 @@ snapshots:
       - react-dom
       - supports-color
       - typescript
+
+  '@payloadcms/plugin-multi-tenant@3.88.0(@payloadcms/ui@3.88.0(@types/react@19.2.18)(monaco-editor@0.55.1)(next@16.3.0(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))':
+    dependencies:
+      '@payloadcms/ui': 3.88.0(@types/react@19.2.18)(monaco-editor@0.55.1)(next@16.3.0(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.88.0(graphql@16.12.0)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      payload: 3.88.0(graphql@16.12.0)(typescript@6.0.3)
 
   '@payloadcms/translations@3.88.0':
     dependencies:

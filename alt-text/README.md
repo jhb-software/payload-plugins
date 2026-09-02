@@ -11,6 +11,7 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 - Bulk generation for processing multiple images at once
 - Full localization support
 - Dashboard health widget with cached coverage insights across all configured upload collections
+- Multi-tenant aware: the health report can be scoped to the tenant the request is for
 
 When the plugin is enabled for an upload collection, it will:
 
@@ -77,19 +78,19 @@ This is also the recommended escape hatch if you hit Payload's Postgres SQL-buil
 
 ### Plugin Options
 
-| Option                       | Type                                       | Required | Description                                                                                                                                                                                                                                                                                                               |
-| ---------------------------- | ------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `collections`                | `(CollectionSlug \| CollectionObj)[]`      | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))                                                                                                                                                                                                                     |
-| `resolver`                   | `AltTextResolver`                          | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                                                                                                                                                                                                                         |
-| `getImageThumbnail`          | `Function`                                 | Yes      | Function to get the thumbnail URL from an image document                                                                                                                                                                                                                                                                  |
-| `enabled`                    | `boolean`                                  | No       | Whether to enable the plugin                                                                                                                                                                                                                                                                                              |
-| `access`                     | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's REST endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                                                                                                                                                                    |
-| `locale`                     | `string`                                   | No       | Locale for alt text generation (required when localization is disabled)                                                                                                                                                                                                                                                   |
-| `maxBulkGenerateConcurrency` | `number`                                   | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                                                                                                                                                                                                                         |
-| `maxBulkGenerateIds`         | `number`                                   | No       | Maximum number of image IDs accepted per bulk generate request; larger requests are rejected with `400`. Duplicate IDs are collapsed before the limit is applied (default: 100)                                                                                                                                           |
-| `fieldsOverride`             | `Function`                                 | No       | Override the default fields inserted by the plugin                                                                                                                                                                                                                                                                        |
-| `healthCheck`                | `boolean \| Function`                      | No       | Alt text health tracking (REST endpoint, cache revalidation hooks, dashboard widget). `false` disables it; `true` enables it gated by `access`; a `({ req }) => boolean` function enables it and gates both the endpoint and the widget — use it to restrict the collection-wide report, e.g. to admins (default: `true`) |
-| `imageThumbnailMimeType`     | `string`                                   | No       | The MIME type `getImageThumbnail` delivers. Set it when your thumbnail URL transcodes the image, so the stored format no longer decides whether generation is possible (see [Transcoding thumbnails](#transcoding-thumbnails))                                                                                            |
+| Option                       | Type                                       | Required | Description                                                                                                                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collections`                | `(CollectionSlug \| CollectionObj)[]`      | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))                                                                                                                                                                                                 |
+| `resolver`                   | `AltTextResolver`                          | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                                                                                                                                                                                                     |
+| `getImageThumbnail`          | `Function`                                 | Yes      | Function to get the thumbnail URL from an image document                                                                                                                                                                                                                                              |
+| `enabled`                    | `boolean`                                  | No       | Whether to enable the plugin                                                                                                                                                                                                                                                                          |
+| `access`                     | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's REST endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                                                                                                                                                |
+| `locale`                     | `string`                                   | No       | Locale for alt text generation (required when localization is disabled)                                                                                                                                                                                                                               |
+| `maxBulkGenerateConcurrency` | `number`                                   | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                                                                                                                                                                                                     |
+| `maxBulkGenerateIds`         | `number`                                   | No       | Maximum number of image IDs accepted per bulk generate request; larger requests are rejected with `400`. Duplicate IDs are collapsed before the limit is applied (default: 100)                                                                                                                       |
+| `fieldsOverride`             | `Function`                                 | No       | Override the default fields inserted by the plugin                                                                                                                                                                                                                                                    |
+| `healthCheck`                | `boolean \| AltTextHealthCheckConfig`      | No       | Alt text health tracking (REST endpoint, cache revalidation hooks, dashboard widget). `false` disables it; `true` enables it for every document, gated by `access`; an object enables it and configures its `access` gate and `baseFilter` (see [Health report](#dashboard-widget)) (default: `true`) |
+| `imageThumbnailMimeType`     | `string`                                   | No       | The MIME type `getImageThumbnail` delivers. Set it when your thumbnail URL transcodes the image, so the stored format no longer decides whether generation is possible (see [Transcoding thumbnails](#transcoding-thumbnails))                                                                        |
 
 `getImageThumbnail` receives the document and `{ collection, req }`, so a single function can build different URLs per collection:
 
@@ -205,6 +206,32 @@ buildConfig({
 
 Set `healthCheck: false` in the plugin config to disable the REST endpoint, cache revalidation hooks, and dashboard widget. If your project replaces the default dashboard via `admin.components.views.dashboard`, you need to integrate the widget into your custom dashboard yourself.
 
+#### Gating and scoping the report
+
+`healthCheck` also takes an object. The main use of `baseFilter` is multi-tenancy: scope the report to the tenant selected in the admin panel, whose id [@payloadcms/plugin-multi-tenant](https://payloadcms.com/docs/plugins/multi-tenant) keeps in the `payload-tenant` cookie.
+
+```ts
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+
+healthCheck: {
+  // Restrict the collection-wide report more strictly than the per-document
+  // generate endpoints. Gates the REST endpoint and hides the widget.
+  access: ({ req }) => req.user?.role === 'admin',
+  // Narrow what the report counts, e.g. to the tenant selected in the admin panel.
+  baseFilter: ({ collection, req }) => {
+    const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+    return tenant ? { tenant: { equals: tenant } } : {}
+  },
+}
+```
+
+`baseFilter` returns a `Where` that is ANDed onto the scan's MIME type filter. It is resolved once per configured collection, so a collection that does not carry the constraining field — a media library shared across tenants, say — can return `{}` and be scanned whole. Returning `{}` for every collection is the default behaviour.
+
+The scan is cached across requests, and its cache key is derived from the resolved filters: a narrowed scan always gets its own cache entry, so one tenant's counts can never be served to another. Cache invalidation stays per collection, so a write in one tenant refreshes the report for all of them.
+
+This scopes what the report counts, not who may see it — use `access` for that. Independently of both, the report always omits the collections the requesting user cannot read.
+
 #### Skipping cache revalidation for individual writes
 
 The plugin invalidates the cached health scan via `afterChange` and `afterDelete` hooks. For writes that don't need to invalidate the cache — typically seed data created from `payload.onInit`, batch imports, or migrations — pass `context: { disableRevalidate: true }` to skip the revalidation:
@@ -314,7 +341,7 @@ That default fits a setup where every Payload user is trusted staff. Generating 
 access: ({ req }) => req.user?.role === 'editor'
 ```
 
-Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections the requesting user can read (and can be gated separately via the `healthCheck` function).
+Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections the requesting user can read (and can be gated separately via `healthCheck.access`).
 
 ### `POST /api/alt-text/generate`
 

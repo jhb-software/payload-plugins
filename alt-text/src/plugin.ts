@@ -83,12 +83,20 @@ export const payloadAltTextPlugin =
 
     const access = incomingPluginConfig.access ?? (({ req }) => !!req.user)
 
-    // A function form of `healthCheck` doubles as the health report's access
-    // gate; otherwise it falls back to the shared `access`.
-    const healthCheckAccess =
-      typeof incomingPluginConfig.healthCheck === 'function'
-        ? incomingPluginConfig.healthCheck
-        : access
+    // The former function form was the health report's access gate. Accepting it
+    // silently would widen that gate to the plugin's `access`, so it fails at boot.
+    if (typeof incomingPluginConfig.healthCheck === 'function') {
+      throw new Error(
+        'The alt-text plugin no longer accepts a function for `healthCheck`. ' +
+          'Move the access check to `healthCheck: { access: ({ req }) => ... }`.',
+      )
+    }
+
+    const healthCheckConfig =
+      typeof incomingPluginConfig.healthCheck === 'object' ? incomingPluginConfig.healthCheck : {}
+
+    // The health report's own gate, falling back to the shared `access`.
+    const healthCheckAccess = healthCheckConfig.access ?? access
 
     const pluginConfig: AltTextPluginConfig = {
       access,
@@ -98,6 +106,7 @@ export const payloadAltTextPlugin =
       getImageThumbnail: incomingPluginConfig.getImageThumbnail,
       healthCheck: enableHealthCheck,
       healthCheckAccess,
+      healthCheckBaseFilter: healthCheckConfig.baseFilter,
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
