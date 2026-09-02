@@ -112,7 +112,7 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
 
     return Response.json(result)
   } catch (error) {
-    console.error('Error fetching deployment info:', error)
+    req.payload.logger.error({ err: error }, 'Error fetching deployment info')
     return Response.json(
       {
         error: `Error fetching deployment info: ${error instanceof Error ? error.message : 'Unknown error'}`,

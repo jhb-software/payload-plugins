@@ -1,19 +1,26 @@
 import type { GenerateURL } from '@payloadcms/plugin-cloud-storage/types'
 
 import type { CloudinaryStorageOptions } from './types.js'
+import type { PayloadRef } from './utilities/payloadRef.js'
 
 import { generateCloudinaryUrl } from './utilities/generateCloudinaryUrl.js'
 
-export const getGenerateUrl = ({ options }: { options: CloudinaryStorageOptions }): GenerateURL => {
+export const getGenerateUrl = ({
+  options,
+  payloadRef,
+}: {
+  options: CloudinaryStorageOptions
+  payloadRef: PayloadRef
+}): GenerateURL => {
   return ({ data }) => {
     const mimeType = (
       'mimeType' in data && typeof data.mimeType === 'string' ? data.mimeType : undefined
     ) as string | undefined
 
     if (!mimeType) {
-      console.warn(
+      payloadRef.current?.logger.warn(
+        { data },
         'MimeType field is missing in data passed to the generateURL function. This can happen if a find query contains select without mimeType. Falling back to auto/upload.',
-        data,
       )
     }
 

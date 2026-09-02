@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: log endpoint errors through the Payload logger instead of `console`, so they respect the project's log level and formatting
+
 ## 0.3.2
 
 - fix: validate the `id` query parameter on the deployments endpoint and encode it before building the Vercel API request path, so only well-formed deployment ids are accepted

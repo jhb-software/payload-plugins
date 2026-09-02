@@ -1,8 +1,8 @@
 import type { PayloadRequest } from 'payload'
 
 export type ValueToTranslate = {
-  onTranslate: (translatedValue: any) => void
-  value: any
+  onTranslate: (translatedValue: unknown) => void
+  value: unknown
 }
 
 /**
@@ -11,7 +11,7 @@ export type ValueToTranslate = {
  */
 export type AfterTranslateHook = {
   apply: (ctx: {
-    data: Record<string, any>
+    data: Record<string, unknown>
     localeFrom: string
     localeTo: string
     req: PayloadRequest
@@ -20,7 +20,7 @@ export type AfterTranslateHook = {
 
 export type TranslateArgs = {
   collectionSlug?: string
-  data?: Record<string, any>
+  data?: Record<string, unknown>
   /**
    * When `update` is true, persist the translation as a draft version instead
    * of writing to the published document.
@@ -47,7 +47,7 @@ export type TranslateResult =
     }
   | {
       success: true
-      translatedData: Record<string, any>
+      translatedData: Record<string, unknown>
     }
 
 /**

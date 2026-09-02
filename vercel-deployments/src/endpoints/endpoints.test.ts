@@ -1,3 +1,5 @@
+import type { PayloadRequest } from 'payload'
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { VercelDeploymentsPluginConfig } from '../types.js'
@@ -32,7 +34,7 @@ function createMockReq(overrides: {
     },
     url: overrides.url ?? 'http://localhost:3000/api/vercel-deployments',
     user: overrides.user ?? null,
-  } as any
+  } as unknown as PayloadRequest
 }
 
 describe('getDeploymentsEndpoint', () => {

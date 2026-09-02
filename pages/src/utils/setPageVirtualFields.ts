@@ -18,7 +18,7 @@ export async function setPageDocumentVirtualFields({
   req,
   routing,
 }: {
-  doc: Record<string, any>
+  doc: Record<string, unknown>
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
@@ -43,7 +43,9 @@ export async function setPageDocumentVirtualFields({
       (acc, locale) => {
         // If the slug is not set for this locale, exclude the path to not generate a 404 path
         if (
-          (typeof doc.slug === 'object' && doc.slug[locale]) ||
+          (doc.slug &&
+            typeof doc.slug === 'object' &&
+            (doc.slug as Record<string, unknown>)[locale]) ||
           (typeof doc.slug === 'string' && doc.slug)
         ) {
           acc[locale] = breadcrumbs[locale].at(-1)!.path
@@ -60,7 +62,7 @@ export async function setPageDocumentVirtualFields({
         ...doc,
         breadcrumbs,
         meta: {
-          ...doc.meta,
+          ...(doc.meta as Record<string, unknown> | undefined),
           alternatePaths,
         },
         path: paths,
@@ -70,7 +72,7 @@ export async function setPageDocumentVirtualFields({
         ...doc,
         breadcrumbs: breadcrumbs[locale],
         meta: {
-          ...doc.meta,
+          ...(doc.meta as Record<string, unknown> | undefined),
           alternatePaths,
         },
         path: paths[locale],

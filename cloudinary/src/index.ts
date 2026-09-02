@@ -15,6 +15,7 @@ import type {
   CloudinaryClientUploadHandlerExtra,
 } from './client/CloudinaryClientUploadHandler.js'
 import type { CloudinaryStorageOptions } from './types.js'
+import type { PayloadRef } from './utilities/payloadRef.js'
 
 import { getGenerateUrl } from './generateURL.js'
 import { getAdminThumbnailFactory } from './getAdminThumbnail.js'
@@ -41,6 +42,10 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       ...defaultUploadOptions,
       ...incomingOptions,
     }
+
+    // Captured in `onInit` so adapter callbacks without a request (e.g. `generateURL`) can log
+    // through the Payload logger.
+    const payloadRef: PayloadRef = {}
 
     const fields: Field[] = [
       {
@@ -88,7 +93,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       return incomingConfig
     }
 
-    const adapter = cloudinaryStorageAdapter({ ...options })
+    const adapter = cloudinaryStorageAdapter({ ...options }, payloadRef)
 
     // Add adapter to each collection option object
     const collectionsWithAdapter: CloudStoragePluginOptions['collections'] = Object.entries(
@@ -150,6 +155,12 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       return data
     }
 
+    const incomingOnInit = result.onInit
+    result.onInit = async (payload) => {
+      payloadRef.current = payload
+      await incomingOnInit?.(payload)
+    }
+
     result.collections = (result.collections || []).map((collection) => {
       const collOptions = options.collections[collection.slug]
       if (!collOptions) {
@@ -186,14 +197,17 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
     return result
   }
 
-function cloudinaryStorageAdapter(options: CloudinaryStorageOptions): Adapter {
+function cloudinaryStorageAdapter(
+  options: CloudinaryStorageOptions,
+  payloadRef: PayloadRef,
+): Adapter {
   return ({ prefix }): GeneratedAdapter => {
     const folderSrc = options.folder ? options.folder.replace(/^\/|\/$/g, '') + '/' : '' // ensure only trailing slash is present
 
     return {
       name: 'cloudinary',
       clientUploads: options.clientUploads,
-      generateURL: getGenerateUrl({ options }),
+      generateURL: getGenerateUrl({ options, payloadRef }),
       handleDelete: getHandleDelete(),
       handleUpload: getHandleUpload({
         folderSrc,

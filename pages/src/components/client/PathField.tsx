@@ -79,7 +79,7 @@ export const PathField = ({
    */
   async function fetchBreadcrumbs(): Promise<Breadcrumb[]> {
     // Construct the document with all necessary fields
-    const doc: Record<string, any> = {
+    const doc: Record<string, unknown> = {
       slug,
       isRootPage,
     }

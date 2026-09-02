@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: log endpoint, resolver, and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
+
 ## 0.10.0
 
 - feat: add `mistralResolver`, a resolver for Mistral's vision models (default `mistral-medium-latest`). It downloads the image and sends the bytes instead of passing the thumbnail URL to the provider: Mistral's fetcher requires a publicly reachable file — never true in local development, not true for private buckets — and some hosts refuse it with `File could not be fetched from url` (error 3310). All requested locales are generated in a single request.

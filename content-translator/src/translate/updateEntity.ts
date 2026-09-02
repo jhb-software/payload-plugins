@@ -4,7 +4,7 @@ import { APIError } from 'payload'
 
 type Args = {
   collectionSlug?: string
-  data: Record<string, any>
+  data: Record<string, unknown>
   depth?: number
   draft?: boolean
   globalSlug?: string
@@ -43,7 +43,7 @@ export const updateEntity = ({
         data,
         depth,
         draft,
-        locale: locale as any,
+        locale,
         overrideAccess,
         req,
       })
@@ -53,10 +53,10 @@ export const updateEntity = ({
         data,
         depth,
         draft,
-        locale: locale as any,
+        locale,
         overrideAccess,
         req,
       })
 
-  return promise as any
+  return promise as Promise<Record<string, unknown> & TypeWithID>
 }
