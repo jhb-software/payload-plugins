@@ -27,6 +27,7 @@ export default [
   {
     rules: {
       'no-restricted-exports': 'off',
+      complexity: ['error', 40],
       // TODO: Fix any types in codebase and re-enable this rule
       '@typescript-eslint/no-explicit-any': 'off',
       // TODO: Replace console statements with Payload logger (payload.logger) and re-enable this rule
