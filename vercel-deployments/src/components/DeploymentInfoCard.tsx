@@ -208,14 +208,13 @@ export default async function DeploymentInfo({
   }
 
   // No project resolved for this request (e.g. no tenant selected) — there is nothing
-  // to report on. The resolver's message says why; without one a generic hint keeps the
-  // card from looking like a project with nothing to show.
-  const { message, projectId } = resolvedTarget
+  // to report on. A hint keeps the card from looking like a project with nothing to show.
+  const { projectId } = resolvedTarget
 
   if (!projectId) {
     return (
       <p style={{ color: 'var(--theme-elevation-500)', margin: 0 }}>
-        {message ?? t('vercel-dashboard:deploymentInfoNoTarget')}
+        {t('vercel-dashboard:deploymentInfoNoTarget')}
       </p>
     )
   }

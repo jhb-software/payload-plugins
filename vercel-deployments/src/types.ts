@@ -6,14 +6,6 @@ import type { PayloadRequest } from 'payload'
  */
 export type DeploymentTarget = {
   /**
-   * Shown in the widget when `projectId` is `undefined`, explaining why there is nothing
-   * to report — e.g. "No website selected" vs. "This website has not been deployed yet".
-   * Only the resolver knows the reason, so it decides the wording; `req.i18n.language`
-   * is available for localizing it. Defaults to a built-in translated hint.
-   */
-  message?: string
-
-  /**
    * Vercel Project ID to monitor.
    */
   projectId: string | undefined
@@ -46,8 +38,8 @@ export type VercelDeploymentsPluginConfig = {
    *
    * Pass a function to resolve it per request, e.g. from the tenant selected in a
    * multi-tenant admin panel. A `projectId` of `undefined` means the request has no
-   * deployment target: the widget shows `message` (or a built-in hint) instead of the
-   * deployment status, hides its deploy action, and the endpoints answer 400.
+   * deployment target: the widget shows a hint instead of the deployment status, hides
+   * its deploy action, and the endpoints answer 400.
    */
   deploymentTarget: DeploymentTarget | ResolveDeploymentTarget
 

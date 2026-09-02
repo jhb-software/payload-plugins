@@ -28,20 +28,8 @@ const pluginConfig: VercelDeploymentsPluginConfig = {
   vercel: { apiToken: 'token' },
 }
 
-describe('DeploymentInfo without a deployment target', () => {
-  it("shows the resolver's message explaining why there is nothing to report", async () => {
-    const html = renderToStaticMarkup(
-      await DeploymentInfo({
-        i18n,
-        pluginConfig,
-        target: { message: 'No website selected.', projectId: undefined },
-      }),
-    )
-
-    expect(html).toContain('No website selected.')
-  })
-
-  it('falls back to a translated hint when the resolver gives no message', async () => {
+describe('DeploymentInfo', () => {
+  it('shows a translated hint when the request has no deployment target', async () => {
     const html = renderToStaticMarkup(
       await DeploymentInfo({ i18n, pluginConfig, target: { projectId: undefined } }),
     )
