@@ -2,13 +2,13 @@
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
 
-A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides ready-to-use integrations with OpenAI and Mistral.
+A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides ready-to-use integrations with OpenAI, Anthropic and Mistral.
 
 ## Features
 
 - translate content in the Payload Admin UI between locales
 - supports any translation service using a resolver pattern (e.g. OpenAI, DeepL, etc.)
-- comes with ready-to-use OpenAI and Mistral resolvers out of the box
+- comes with ready-to-use OpenAI, Anthropic and Mistral resolvers out of the box
 - seamless integration with Payload's localization system
 - review and edit translations before saving or publishing
 
@@ -136,7 +136,7 @@ and [its wiring](https://github.com/jhb-software/payload-plugins/blob/main/conte
 
 This plugin is designed to work seamlessly with various translation services by accepting a customizable translation resolver as a configuration option.
 
-OpenAI and Mistral resolvers are provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
+OpenAI, Anthropic and Mistral resolvers are provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
 
 #### OpenAI Resolver
 
@@ -169,6 +169,34 @@ if you need the behaviour and pricing to stay put.
 Mistral serves OpenAI's chat completions shape, so this is the OpenAI resolver
 with Mistral's base URL and model default — it exists so a Mistral setup does not
 have to know that. It takes the same `chunkLength` and `instructions` options.
+
+#### Anthropic Resolver
+
+```ts
+import { anthropicResolver } from '@jhb.software/payload-content-translator-plugin'
+
+anthropicResolver({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  model: 'claude-opus-5', // default; `claude-sonnet-5` is cheaper for a large content base
+})
+```
+
+Unlike the OpenAI-compatible resolvers, this one constrains the response with a
+JSON schema requiring exactly one translation per input index, so a merged or
+dropped entry is rejected by the provider rather than reconstructed after the
+fact. That is also why it sends no response format instruction of its own —
+replacing the default instructions entirely stays safe here.
+
+| Option         | Type                                              | Required | Description                                                                                                               |
+| -------------- | ------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`       | `string`                                          | Yes      | API key for authentication                                                                                                |
+| `model`        | `string`                                          | No       | Model to use (default: `claude-opus-5`). Must accept `effort`, which rules out `claude-haiku-4-5`                         |
+| `effort`       | `'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | No       | How long Claude thinks before answering (default: `low` — translating needs little). Lower effort still thinks, just less |
+| `maxTokens`    | `number`                                          | No       | Token budget for one chunk, thinking included (default: `chunkLength * 250`, so the two cannot drift apart)               |
+| `chunkLength`  | `number`                                          | No       | How many texts to include into 1 request (default: `100`)                                                                 |
+| `timeoutMs`    | `number`                                          | No       | Abort a chunk's request after this many milliseconds (default: `120000`)                                                  |
+| `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                      |
+| `instructions` | `function`                                        | No       | Customizes the prompt, see below                                                                                          |
 
 ##### Customizing the instructions
 

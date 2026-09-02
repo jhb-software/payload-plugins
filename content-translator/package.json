@@ -83,6 +83,11 @@
         "types": "./dist/resolvers/openAI.d.ts",
         "default": "./dist/resolvers/openAI.js"
       },
+      "./resolvers/anthropic": {
+        "import": "./dist/resolvers/anthropic.js",
+        "types": "./dist/resolvers/anthropic.d.ts",
+        "default": "./dist/resolvers/anthropic.js"
+      },
       "./resolvers/mistral": {
         "import": "./dist/resolvers/mistral.js",
         "types": "./dist/resolvers/mistral.d.ts",
@@ -120,6 +125,11 @@
       "import": "./src/resolvers/openAI.ts",
       "types": "./src/resolvers/openAI.ts",
       "default": "./src/resolvers/openAI.ts"
+    },
+    "./resolvers/anthropic": {
+      "import": "./src/resolvers/anthropic.ts",
+      "types": "./src/resolvers/anthropic.ts",
+      "default": "./src/resolvers/anthropic.ts"
     },
     "./resolvers/mistral": {
       "import": "./src/resolvers/mistral.ts",
