@@ -13,8 +13,8 @@ import { canViewHealthReport } from '../src/utilities/altTextHealth.ts'
 /**
  * The health report exposes a collection-wide overview, so operators must be
  * able to gate it independently of the per-document generate access. The
- * function form of `healthCheck` guards both the health endpoint and the
- * dashboard widget; the boolean form falls back to the shared `access`.
+ * `healthCheck.access` guards both the health endpoint and the dashboard widget;
+ * without it, both fall back to the shared `access`.
  */
 
 const baseConfig = {
@@ -47,7 +47,7 @@ function healthHandler(incoming: IncomingAltTextPluginConfig) {
 const req = { user: { id: 'user-1' } } as unknown as PayloadRequest
 
 describe('health endpoint access gate', () => {
-  test('is guarded by the healthCheck function, not the generate access', async () => {
+  test('is guarded by healthCheck.access, not the generate access', async () => {
     let generateAccessCalled = false
     let healthAccessCalled = false
 
@@ -57,9 +57,11 @@ describe('health endpoint access gate', () => {
           generateAccessCalled = true
           return true
         },
-        healthCheck: () => {
-          healthAccessCalled = true
-          return false
+        healthCheck: {
+          access: () => {
+            healthAccessCalled = true
+            return false
+          },
         },
       }),
     )
@@ -100,17 +102,17 @@ describe('health widget visibility', () => {
     } as unknown as PayloadRequest
   }
 
-  test('is hidden when the healthCheck function denies the user', async () => {
+  test('is hidden when healthCheck.access denies the user', async () => {
     const visible = await canViewHealthReport(
-      reqWithResolvedConfig(buildPluginConfig({ healthCheck: () => false })),
+      reqWithResolvedConfig(buildPluginConfig({ healthCheck: { access: () => false } })),
     )
 
     assert.equal(visible, false)
   })
 
-  test('is shown when the healthCheck function allows the user', async () => {
+  test('is shown when healthCheck.access allows the user', async () => {
     const visible = await canViewHealthReport(
-      reqWithResolvedConfig(buildPluginConfig({ healthCheck: () => true })),
+      reqWithResolvedConfig(buildPluginConfig({ healthCheck: { access: () => true } })),
     )
 
     assert.equal(visible, true)
@@ -122,5 +124,17 @@ describe('health widget visibility', () => {
     )
 
     assert.equal(visible, false)
+  })
+
+  test('rejects the removed function form of healthCheck at boot', () => {
+    assert.throws(
+      () =>
+        payloadAltTextPlugin(
+          buildPluginConfig({
+            healthCheck: (() => false) as unknown as IncomingAltTextPluginConfig['healthCheck'],
+          }),
+        )(baseConfig),
+      /healthCheck: \{ access:/,
+    )
   })
 })

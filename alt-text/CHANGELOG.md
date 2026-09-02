@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- feat: add `healthCheck.baseFilter`, a `({ collection, req }) => Where` narrowing what the health report counts — in a multi-tenant CMS, to the tenant the request is for. It is resolved per collection, so collections without the constraining field can return `{}`, and the scan's cache key is derived from the resolved filters, so a scoped scan never serves one scope's counts to another.
+- feat!: **BREAKING**: `healthCheck` no longer accepts a function. Move the access check to `healthCheck: { access: ({ req }) => ... }`; the function form now throws at config load. `healthCheck: true` / `false` are unchanged.
+
 ## 0.10.0
 
 - feat: add `mistralResolver`, a resolver for Mistral's vision models (default `mistral-medium-latest`). It downloads the image and sends the bytes instead of passing the thumbnail URL to the provider: Mistral's fetcher requires a publicly reachable file — never true in local development, not true for private buckets — and some hosts refuse it with `File could not be fetched from url` (error 3310). All requested locales are generated in a single request.

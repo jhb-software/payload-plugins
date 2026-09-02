@@ -368,6 +368,8 @@ $RECYCLE.BIN/
 
 # Custom
 /media
+# Dev app upload directory of the `images` collection
+dev/images
 *.db
 *.d.ts
 tsconfig.tsbuildinfo

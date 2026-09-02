@@ -1,4 +1,4 @@
-import type { Payload, PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest, Where } from 'payload'
 
 import { unstable_cache } from 'next/cache.js'
 
@@ -6,10 +6,12 @@ import type {
   AltTextPluginConfig,
   NormalizedAltTextCollectionConfig,
 } from '../types/AltTextPluginConfig.js'
+import type { AltTextHealthCacheFactory } from './altTextHealthCache.js'
 
 import { createCachedAltTextHealthScan } from './altTextHealthCache.js'
 import { localesFromConfig } from './localesFromConfig.js'
 import { buildMimeTypeWhere } from './mimeTypes.js'
+import { stableStringify } from './stableStringify.js'
 import { summarizeCollection } from './summarizeCollection.js'
 
 export const ALT_TEXT_HEALTH_PLUGIN_SLUG = 'alt-text'
@@ -17,7 +19,9 @@ export const ALT_TEXT_HEALTH_CACHE_TTL = 3600
 export const ALT_TEXT_HEALTH_GLOBAL_TAG = 'alt-text-health'
 
 export type AltTextHealthErrorCode =
-  'ALT_TEXT_COLLECTION_READ_FAILED' | 'ALT_TEXT_PLUGIN_CONFIG_MISSING'
+  | 'ALT_TEXT_BASE_FILTER_FAILED'
+  | 'ALT_TEXT_COLLECTION_READ_FAILED'
+  | 'ALT_TEXT_PLUGIN_CONFIG_MISSING'
 
 export type AltTextHealthError = {
   code: AltTextHealthErrorCode
@@ -53,6 +57,8 @@ export type AltTextHealthWidgetData = {
 }
 
 type AltTextHealthComputationArgs = {
+  /** The resolved base filter per collection slug, if one is configured. */
+  baseFilters: Record<string, undefined | Where>
   collections: NormalizedAltTextCollectionConfig[]
   isLocalized: boolean
   localeCodes: string[]
@@ -84,16 +90,24 @@ const createCollectionReadError = (collection: string, message: string) => ({
 
 const PAGE_SIZE = 500
 
+const isEmptyWhere = (where: undefined | Where): boolean =>
+  !where || Object.keys(where).length === 0
+
 async function fetchAllDocs(
   payload: Payload,
   collection: string,
   isLocalized: boolean,
   mimeTypes: readonly string[],
+  baseFilter: undefined | Where,
 ): Promise<{ alt: unknown; id: number | string }[]> {
-  const where = buildMimeTypeWhere(mimeTypes)
-  if (!where) {
+  const mimeTypeWhere = buildMimeTypeWhere(mimeTypes)
+  if (!mimeTypeWhere) {
     return []
   }
+
+  // The scan runs with `overrideAccess: true`, so a narrowing constraint has to be
+  // part of the query itself — this is what keeps the aggregate within one tenant.
+  const where = isEmptyWhere(baseFilter) ? mimeTypeWhere : { and: [mimeTypeWhere, baseFilter!] }
 
   const docs: { alt: unknown; id: number | string }[] = []
   let page = 1
@@ -129,6 +143,7 @@ async function fetchAllDocs(
 }
 
 async function computeAltTextHealthScan({
+  baseFilters,
   collections,
   isLocalized,
   localeCodes,
@@ -137,7 +152,7 @@ async function computeAltTextHealthScan({
   const collectionSummaries = await Promise.all(
     collections.map(async ({ slug, mimeTypes }): Promise<AltTextHealthScanCollection> => {
       try {
-        const docs = await fetchAllDocs(payload, slug, isLocalized, mimeTypes)
+        const docs = await fetchAllDocs(payload, slug, isLocalized, mimeTypes, baseFilters[slug])
 
         return summarizeCollection({
           collection: slug,
@@ -186,7 +201,55 @@ async function computeAltTextHealthScan({
 export const getAltTextHealthCollectionTag = (collectionSlug: string): string =>
   `${ALT_TEXT_HEALTH_GLOBAL_TAG}:${collectionSlug}`
 
-async function getAltTextHealthScan(req: PayloadRequest): Promise<AltTextHealthScan> {
+/**
+ * Resolves the configured base filter for every scanned collection.
+ *
+ * A throwing filter (a tenant cookie pointing at a deleted tenant, say) must not
+ * take the dashboard down, and must never fall back to an unfiltered scan — so it
+ * ends the scan with an error the widget and the endpoint report. The error carries
+ * the slug in its message rather than in `collection`, so it survives the read-access
+ * filter that drops errors for collections the caller cannot read.
+ */
+async function resolveBaseFilters(
+  req: PayloadRequest,
+  collections: NormalizedAltTextCollectionConfig[],
+  baseFilter: AltTextPluginConfig['healthCheckBaseFilter'],
+): Promise<{ baseFilters: Record<string, undefined | Where> } | { error: AltTextHealthError }> {
+  const baseFilters: Record<string, undefined | Where> = {}
+
+  if (!baseFilter) {
+    return { baseFilters }
+  }
+
+  for (const { slug } of collections) {
+    try {
+      baseFilters[slug] = await baseFilter({ collection: slug, req })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+
+      req.payload.logger.error({
+        collection: slug,
+        err: error,
+        msg: 'Alt text health check failed while resolving the base filter.',
+        plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
+      })
+
+      return {
+        error: {
+          code: 'ALT_TEXT_BASE_FILTER_FAILED',
+          message: `Failed to resolve the alt text health base filter for the "${slug}" collection: ${message}`,
+        },
+      }
+    }
+  }
+
+  return { baseFilters }
+}
+
+export async function getAltTextHealthScan(
+  req: PayloadRequest,
+  cacheFactory: AltTextHealthCacheFactory<AltTextHealthScan> = unstable_cache,
+): Promise<AltTextHealthScan> {
   const { payload } = req
   const pluginConfig = payload.config.custom?.altTextPluginConfig as AltTextPluginConfig | undefined
   const localeCodes =
@@ -206,6 +269,14 @@ async function getAltTextHealthScan(req: PayloadRequest): Promise<AltTextHealthS
 
   const collections = pluginConfig.collections
 
+  const resolved = await resolveBaseFilters(req, collections, pluginConfig.healthCheckBaseFilter)
+
+  if ('error' in resolved) {
+    return createUnknownScan({ error: resolved.error, isLocalized, localeCodes })
+  }
+
+  const { baseFilters } = resolved
+
   const cacheKeyParts = [
     ALT_TEXT_HEALTH_GLOBAL_TAG,
     [...collections]
@@ -213,6 +284,11 @@ async function getAltTextHealthScan(req: PayloadRequest): Promise<AltTextHealthS
       .sort()
       .join(','),
     localeCodes.join(','),
+    // The scan is shared across requests, so a scoped scan needs a scoped cache
+    // entry. Deriving the key from the resolved filters — rather than taking one
+    // from the caller — makes it impossible to narrow the scan without also
+    // narrowing its cache, which would serve one tenant's counts to another.
+    `filter:${stableStringify(baseFilters)}`,
   ]
 
   const tags = [
@@ -221,10 +297,11 @@ async function getAltTextHealthScan(req: PayloadRequest): Promise<AltTextHealthS
   ]
 
   const getCachedHealthScan = createCachedAltTextHealthScan({
-    cacheFactory: unstable_cache,
+    cacheFactory,
     cacheKeyParts,
     compute: async () =>
       computeAltTextHealthScan({
+        baseFilters,
         collections,
         isLocalized,
         localeCodes,

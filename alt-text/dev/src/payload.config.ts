@@ -5,14 +5,18 @@ import {
   validateAltText,
 } from '@jhb.software/payload-alt-text-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
 import path from 'path'
+import type { Where } from 'payload'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Media } from './collections/Media'
 import { Images } from './collections/Images'
 import { MediaWithFolders } from './collections/MediaWithFolders'
+import { Tenants } from './collections/Tenants'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -61,6 +65,7 @@ export default buildConfig({
     Media,
     Images,
     MediaWithFolders,
+    Tenants,
   ],
   db: mongooseAdapter({
     url: process.env.MONGODB_URL!,
@@ -70,6 +75,10 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   plugins: [
+    multiTenantPlugin({
+      collections: { images: {}, media: {} },
+      userHasAccessToAllTenants: () => true,
+    }),
     payloadAltTextPlugin({
       collections: [
         // `media` accepts both images and videos — restrict alt text tracking to images only.
@@ -114,10 +123,28 @@ export default buildConfig({
       // Selecting more than this in the list view returns a 400 instead of
       // fanning out into an unbounded number of paid resolver calls.
       maxBulkGenerateIds: 25,
-      // The function form gates the collection-wide health report (endpoint and
-      // widget) more strictly than the per-document generate endpoints, which
-      // allow any authenticated user: here only the designated admin sees it.
-      healthCheck: ({ req }) => req.user?.email === 'dev@payloadcms.com',
+      healthCheck: {
+        // Gates the collection-wide health report (endpoint and widget) more
+        // strictly than the per-document generate endpoints, which allow any
+        // authenticated user: here only the designated admin sees it.
+        access: ({ req }) => req.user?.email === 'dev@payloadcms.com',
+        // Counts only the images of the tenant selected in the admin panel.
+        // Switch tenants in the selector and the widget's numbers follow.
+        baseFilter: ({ collection, req }): Where => {
+          // `media-with-folders` is shared across tenants, so it carries no
+          // `tenant` field — scoping it would be an error. This is why the
+          // filter is resolved per collection.
+          if (collection === 'media-with-folders') {
+            return {}
+          }
+
+          const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+          // No tenant selected: report every document, matching what the tenant
+          // selector shows.
+          return tenant ? { tenant: { equals: tenant } } : {}
+        },
+      },
       // `media` and `images` are the website's images: they are served through
       // an image CDN that always emits WebP, whatever was uploaded. Declaring
       // that delivered format takes the stored mime type out of the decision
@@ -173,6 +200,38 @@ export default buildConfig({
         },
         filePath: path.resolve(dirname, '../seed/sample-image.png'),
       })
+    }
+
+    // Two tenants with deliberately different alt text coverage, so the health
+    // widget's numbers visibly change when the tenant selector is switched:
+    // Acme has one complete image, Globex has two images with none.
+    const existingTenants = await payload.find({ collection: 'tenants', limit: 1 })
+
+    if (existingTenants.docs.length === 0) {
+      const seedImage = path.resolve(dirname, '../seed/sample-image.png')
+
+      const acme = await payload.create({
+        collection: 'tenants',
+        data: { name: 'Acme' },
+      })
+      const globex = await payload.create({
+        collection: 'tenants',
+        data: { name: 'Globex' },
+      })
+
+      const images: { alt: string; tenant: string }[] = [
+        { alt: 'An Acme product photo', tenant: acme.id as string },
+        { alt: '', tenant: globex.id as string },
+        { alt: '', tenant: globex.id as string },
+      ]
+
+      for (const { alt, tenant } of images) {
+        await payload.create({
+          collection: 'images',
+          data: { alt, tenant },
+          filePath: seedImage,
+        })
+      }
     }
   },
 })
