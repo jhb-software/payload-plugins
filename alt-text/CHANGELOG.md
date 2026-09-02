@@ -4,16 +4,6 @@
 
 - feat: add `healthCheck.baseFilter`, a `({ collection, req }) => Where` narrowing what the health report counts — in a multi-tenant CMS, to the tenant the request is for. Resolved per collection, so collections without the constraining field can return `{}`. The scan's cache key is derived from the resolved filters, so one scope's counts are never served to another.
 - **BREAKING**: `healthCheck` no longer accepts a function. Move the access check to `healthCheck: { access: ({ req }) => ... }`; the function form now throws at config load. `healthCheck: true` / `false` are unchanged.
-- feat: add `anthropicResolver`, a resolver for Claude's vision models (default `claude-opus-5`). It downloads the image and sends the bytes: Claude's own fetcher requires a publicly reachable file — never true in local development, not true for private buckets — and a base64 image block needs the `media_type` that a URL cannot carry. A refusal and a truncated answer are reported as such instead of surfacing as a JSON parse error. All requested locales are generated in a single request. An optional `effort` caps how long Claude thinks; leave it unset for models that reject the field, such as `claude-haiku-4-5`.
-- feat: add `createVisionResolver`, a factory that owns the prompt, the per-locale response schema, the optional image download and the strict reading of the response, so a resolver for another LLM provider is only its provider call. Every bundled resolver is built on it.
-- feat: add an `instructions` option to every bundled resolver, receiving the default instructions so a house style rule can be appended without restating the rules the plugin depends on
-- feat: add a `timeoutMs` option to `openAIResolver`, putting a ceiling on a generate request. Omitted by default, so the OpenAI client's own deadline and retries stay in charge.
-- fix: `openAIResolver` now rejects a blank alt text and a response missing one of the requested locales instead of writing it to the document, and reports a missing API key before spending a request
-- fix: a provider that stops mid-JSON because its token budget ran out is now reported as such, instead of surfacing in the admin panel as `Unexpected end of JSON input`
-- fix: generating for a single locale no longer receives half the token budget of a multi-locale generation
-- fix: `mistralResolver` falls back to the collection's `imageThumbnailMimeType` when the thumbnail host serves no `content-type` or a generic `application/octet-stream`, instead of rejecting the image as unreadable
-- change: `openAIResolver` asks for a locale-keyed response (`{ "en": { … } }`) for single-locale generations too, where it previously asked for a flat object with the locale named in the prompt. Generated wording may differ slightly from previous versions.
-- change: resolver errors are logged through `req.payload.logger` rather than `console.error`
 
 ## 0.10.0
 
