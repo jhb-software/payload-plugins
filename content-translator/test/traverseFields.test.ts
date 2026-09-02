@@ -612,3 +612,35 @@ describe('traverseFields - prototype pollution', () => {
     })
   }
 })
+
+describe('traverseFields - named tab without source data', () => {
+  test('translates the tabs that follow a named tab the source document has no data for', () => {
+    const fields: Field[] = [
+      {
+        type: 'tabs',
+        tabs: [
+          { name: 'seo', fields: [{ name: 'description', type: 'text', localized: true }] },
+          { name: 'content', fields: [{ name: 'heading', type: 'text', localized: true }] },
+        ],
+      },
+    ]
+
+    const translated = runTraverse(fields, { content: { heading: 'Hello' } }, false)
+
+    assert.deepEqual(translated, { content: { heading: 'TRANSLATED:Hello' } })
+  })
+
+  test('translates the fields that follow a tabs field with an empty named tab', () => {
+    const fields: Field[] = [
+      {
+        type: 'tabs',
+        tabs: [{ name: 'seo', fields: [{ name: 'description', type: 'text', localized: true }] }],
+      },
+      { name: 'title', type: 'text', localized: true },
+    ]
+
+    const translated = runTraverse(fields, { title: 'Hello' }, false)
+
+    assert.deepEqual(translated, { title: 'TRANSLATED:Hello' })
+  })
+})

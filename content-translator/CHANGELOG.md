@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: a named tab without source data no longer stops translation of the fields after it
+
 ## 0.5.0
 
 - feat: export `createPromptResolver`, which builds a resolver for any LLM provider from a single `generate` function
