@@ -4,7 +4,7 @@ import type {
   CollectionOptions,
   GeneratedAdapter,
 } from '@payloadcms/plugin-cloud-storage/types'
-import type { CollectionBeforeChangeHook, Config, Field, Plugin } from 'payload'
+import type { CollectionBeforeChangeHook, Config, Field, Payload, Plugin } from 'payload'
 
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import { initClientUploads } from '@payloadcms/plugin-cloud-storage/utilities'
@@ -15,7 +15,6 @@ import type {
   CloudinaryClientUploadHandlerExtra,
 } from './client/CloudinaryClientUploadHandler.js'
 import type { CloudinaryStorageOptions } from './types.js'
-import type { PayloadRef } from './utilities/payloadRef.js'
 
 import { getGenerateUrl } from './generateURL.js'
 import { getAdminThumbnailFactory } from './getAdminThumbnail.js'
@@ -44,8 +43,9 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
     }
 
     // Captured in `onInit` so adapter callbacks without a request (e.g. `generateURL`) can log
-    // through the Payload logger.
-    const payloadRef: PayloadRef = {}
+    // through the Payload logger. Read lazily: no logger exists while the config is built.
+    let logger: Payload['logger'] | undefined
+    const getLogger = () => logger
 
     const fields: Field[] = [
       {
@@ -93,7 +93,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       return incomingConfig
     }
 
-    const adapter = cloudinaryStorageAdapter({ ...options }, payloadRef)
+    const adapter = cloudinaryStorageAdapter({ ...options }, getLogger)
 
     // Add adapter to each collection option object
     const collectionsWithAdapter: CloudStoragePluginOptions['collections'] = Object.entries(
@@ -157,7 +157,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
 
     const incomingOnInit = result.onInit
     result.onInit = async (payload) => {
-      payloadRef.current = payload
+      logger = payload.logger
       await incomingOnInit?.(payload)
     }
 
@@ -199,7 +199,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
 
 function cloudinaryStorageAdapter(
   options: CloudinaryStorageOptions,
-  payloadRef: PayloadRef,
+  getLogger: () => Payload['logger'] | undefined,
 ): Adapter {
   return ({ prefix }): GeneratedAdapter => {
     const folderSrc = options.folder ? options.folder.replace(/^\/|\/$/g, '') + '/' : '' // ensure only trailing slash is present
@@ -207,7 +207,7 @@ function cloudinaryStorageAdapter(
     return {
       name: 'cloudinary',
       clientUploads: options.clientUploads,
-      generateURL: getGenerateUrl({ options, payloadRef }),
+      generateURL: getGenerateUrl({ getLogger, options }),
       handleDelete: getHandleDelete(),
       handleUpload: getHandleUpload({
         folderSrc,
