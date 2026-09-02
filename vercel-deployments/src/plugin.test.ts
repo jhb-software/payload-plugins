@@ -7,9 +7,9 @@ import type { VercelDeploymentsPluginConfig } from './types.js'
 import { vercelDeploymentsPlugin } from './plugin.js'
 
 const basePluginConfig: VercelDeploymentsPluginConfig = {
+  deploymentTarget: { projectId: 'test-project' },
   vercel: {
     apiToken: 'test-token',
-    projectId: 'test-project',
     teamId: 'test-team',
   },
 }

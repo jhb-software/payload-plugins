@@ -13,22 +13,7 @@ import { resolveParentRef } from './parentRef.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
-/** Returns the breadcrumbs to the given document. */
-export async function getBreadcrumbs({
-  apiURL,
-  data,
-  locale,
-  localePrefixes,
-  locales,
-  pageConfig,
-  req,
-}: {
-  /**
-   * Base URL of the Payload REST API (e.g. `${serverURL}${routes.api}`).
-   * Required when `req` is undefined (i.e. when called from a client component)
-   * so the plugin respects a user-customized `routes.api`.
-   */
-  apiURL?: string
+type GetBreadcrumbsArgs = {
   data: Record<string, unknown>
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
@@ -37,8 +22,36 @@ export async function getBreadcrumbs({
   locales: Locale[] | undefined
   /** Page config of the collection `data` belongs to. Every ancestor resolves its own. */
   pageConfig: PageCollectionConfigAttributes
-  req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
-}): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
+} & (
+  | {
+      /**
+       * Base URL of the Payload REST API (e.g. `${serverURL}${routes.api}`), used by the client
+       * path, which reads the parent's already computed breadcrumbs instead of resolving
+       * ancestors itself.
+       */
+      apiURL: string
+      draft?: never
+      req?: undefined
+    }
+  | {
+      apiURL?: never
+      /** Whether the ancestors resolve to their latest version. See `operationContext`. */
+      draft: boolean
+      req: PayloadRequest
+    }
+)
+
+/** Returns the breadcrumbs to the given document. */
+export async function getBreadcrumbs({
+  apiURL,
+  data,
+  draft,
+  locale,
+  localePrefixes,
+  locales,
+  pageConfig,
+  req,
+}: GetBreadcrumbsArgs): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
   const breadcrumbLabelField = pageConfig.breadcrumbs.labelField
   const parentField = pageConfig.parent.name
   const getCurrentDocBreadcrumb = (locale: Locale | undefined, parentBreadcrumbs: Breadcrumb[]) =>
@@ -81,6 +94,7 @@ export async function getBreadcrumbs({
       id: parentRef.id,
       collection: parentRef.collection,
       docId: data.id,
+      draft,
       locale,
       req,
     })

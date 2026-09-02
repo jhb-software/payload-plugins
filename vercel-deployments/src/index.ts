@@ -1,2 +1,6 @@
 export { vercelDeploymentsPlugin } from './plugin.js'
-export type { VercelDeploymentsPluginConfig } from './types.js'
+export type {
+  DeploymentTarget,
+  ResolveDeploymentTarget,
+  VercelDeploymentsPluginConfig,
+} from './types.js'

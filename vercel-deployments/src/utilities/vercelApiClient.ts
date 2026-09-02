@@ -105,14 +105,20 @@ export class VercelApiClient {
   /**
    * Get a specific deployment by ID
    */
-  async getDeployment(params: { idOrUrl: string; teamId?: string }): Promise<VercelDeployment> {
+  async getDeployment(params: {
+    idOrUrl: string
+    teamId?: string
+  }): Promise<{ projectId: string } & VercelDeployment> {
     const searchParams: Record<string, string> = {}
 
     if (params.teamId) {
       searchParams.teamId = params.teamId
     }
 
-    return this.request<VercelDeployment>(
+    // `projectId` is a required property of this endpoint's response schema (unlike the
+    // list endpoint's entries), which is what lets a caller check the deployment against
+    // the project it is allowed to see.
+    return this.request<{ projectId: string } & VercelDeployment>(
       `/v13/deployments/${encodeURIComponent(params.idOrUrl)}`,
       { searchParams },
     )

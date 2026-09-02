@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **BREAKING**: `vercel.projectId` and `widget.websiteUrl` moved into a single `deploymentTarget` option, which also accepts a function resolving them per request (e.g. from the selected tenant). Replace them with `deploymentTarget: { projectId, websiteUrl }`.
+- feat: when no project resolves, the widget hides the deploy button and shows a translated hint instead of deployments, and the endpoints answer `400`
 - fix: log endpoint errors through the Payload logger instead of `console`, so they respect the project's log level and formatting
 
 ## 0.3.2

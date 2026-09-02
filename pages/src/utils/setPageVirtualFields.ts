@@ -12,6 +12,7 @@ import { localePrefixMap } from './localePrefix.js'
 /** Sets the virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
 export async function setPageDocumentVirtualFields({
   doc,
+  draft,
   locale,
   locales,
   pageConfigAttributes,
@@ -19,11 +20,13 @@ export async function setPageDocumentVirtualFields({
   routing,
 }: {
   doc: Record<string, unknown>
+  /** Whether the ancestors the paths are built from resolve to their latest version. */
+  draft: boolean
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
   pageConfigAttributes: PageCollectionConfigAttributes
-  req: PayloadRequest | undefined
+  req: PayloadRequest
   routing: LocaleRouting | undefined
 }) {
   const localePrefixes = localePrefixMap(locales, routing)
@@ -31,6 +34,7 @@ export async function setPageDocumentVirtualFields({
   if (locales && locale) {
     const breadcrumbs = (await getBreadcrumbs({
       data: doc,
+      draft,
       localePrefixes,
       locales,
       pageConfig: pageConfigAttributes,
@@ -81,6 +85,7 @@ export async function setPageDocumentVirtualFields({
   } else {
     const breadcrumbs = (await getBreadcrumbs({
       data: doc,
+      draft,
       locale: undefined,
       localePrefixes,
       locales,
