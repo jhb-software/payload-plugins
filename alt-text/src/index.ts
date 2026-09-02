@@ -1,7 +1,16 @@
 export { payloadAltTextPlugin } from './plugin.js'
+export { createVisionResolver } from './resolvers/createVisionResolver.js'
+export type {
+  VisionGenerateArgs,
+  VisionImage,
+  VisionInstructions,
+  VisionInstructionsArgs,
+  VisionResolverConfig,
+} from './resolvers/createVisionResolver.js'
 export { mistralResolver } from './resolvers/mistral.js'
 export type { MistralResolverConfig } from './resolvers/mistral.js'
 export { openAIResolver } from './resolvers/openAI.js'
+export type { OpenAIResolverConfig } from './resolvers/openAI.js'
 export * from './resolvers/types.js'
 export type {
   AltTextCollectionConfig,
