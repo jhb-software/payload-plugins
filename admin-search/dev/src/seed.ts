@@ -1,4 +1,4 @@
-import type { CollectionSlug, Payload } from 'payload'
+import type { CollectionSlug, DefaultDocumentIDType, Payload } from 'payload'
 
 import { devUser } from './helpers/credentials'
 
@@ -33,6 +33,29 @@ export const seed = async (payload: Payload) => {
       collection: 'users',
       data: devUser,
     })
+  }
+
+  // Two tenants, so the admin panel shows the tenant selector and the search plugin's
+  // baseFilter has something to scope by.
+  const tenantIds: DefaultDocumentIDType[] = []
+
+  for (const name of ['Acme', 'Globex']) {
+    const { docs: existing } = await payload.find({
+      collection: 'tenants' as CollectionSlug,
+      depth: 0,
+      where: { name: { equals: name } },
+    })
+
+    tenantIds.push(
+      existing.length
+        ? existing[0].id
+        : (
+            await payload.create({
+              collection: 'tenants' as CollectionSlug,
+              data: { name },
+            })
+          ).id,
+    )
   }
 
   const authors: AuthorSeedData[] = [
@@ -113,7 +136,8 @@ export const seed = async (payload: Payload) => {
     },
   ]
 
-  for (const pageData of pages) {
+  // Alternating tenants, so the same query returns different documents per tenant.
+  for (const [index, pageData] of pages.entries()) {
     const { totalDocs: existingPage } = await payload.count({
       collection: 'pages' as CollectionSlug,
       where: { slug: { equals: pageData.slug } },
@@ -122,7 +146,7 @@ export const seed = async (payload: Payload) => {
     if (!existingPage) {
       await payload.create({
         collection: 'pages' as CollectionSlug,
-        data: pageData,
+        data: { ...pageData, tenant: tenantIds[index % tenantIds.length] as string },
       })
     }
   }
@@ -205,7 +229,7 @@ export const seed = async (payload: Payload) => {
     },
   ]
 
-  for (const postData of posts) {
+  for (const [index, postData] of posts.entries()) {
     const { totalDocs: existingPost } = await payload.count({
       collection: 'posts' as CollectionSlug,
       where: { slug: { equals: postData.slug } },
@@ -214,7 +238,7 @@ export const seed = async (payload: Payload) => {
     if (!existingPost) {
       await payload.create({
         collection: 'posts' as CollectionSlug,
-        data: postData,
+        data: { ...postData, tenant: tenantIds[index % tenantIds.length] as string },
       })
     }
   }
