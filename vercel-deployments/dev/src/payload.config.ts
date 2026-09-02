@@ -18,14 +18,14 @@ const dirname = path.dirname(filename)
 
 /**
  * Resolves the Vercel project of the tenant selected in the admin panel. Switch tenants
- * in the selector and the dashboard widget reports that tenant's deployments; the deploy
- * button disappears for a tenant without a project.
+ * in the selector and the dashboard widget reports that tenant's deployments. Without a
+ * project the widget shows the returned message instead and hides the deploy button.
  */
 const selectedTenantTarget: ResolveDeploymentTarget = async ({ req }) => {
   const id = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
   if (!id) {
-    return { projectId: undefined }
+    return { message: 'Select a tenant to see its deployments.', projectId: undefined }
   }
 
   const tenant = await req.payload.findByID({
@@ -40,6 +40,7 @@ const selectedTenantTarget: ResolveDeploymentTarget = async ({ req }) => {
   })
 
   return {
+    message: 'This tenant has not been deployed yet.',
     projectId: tenant?.vercelProjectId ?? undefined,
     websiteUrl: tenant?.websiteUrl ?? undefined,
   }
@@ -105,8 +106,8 @@ export default buildConfig({
         },
       })
 
-      // A tenant without a Vercel project: the widget shows no deployments and hides
-      // the deploy button.
+      // A tenant without a Vercel project: the widget shows the resolver's message
+      // instead of deployments and hides the deploy button.
       await payload.create({
         collection: 'tenants',
         data: { name: 'Not deployed yet' },

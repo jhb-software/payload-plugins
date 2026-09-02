@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- **BREAKING**: the Vercel project and website URL moved into a single `deploymentTarget` option, which also accepts a function resolving them per request — so a multi-tenant admin panel reports and deploys the project of the selected tenant. Replace `vercel.projectId` and `widget.websiteUrl` with `deploymentTarget: { projectId, websiteUrl }`. Resolving to no project hides the deploy button and answers the endpoints with `400`.
+- **BREAKING**: `vercel.projectId` and `widget.websiteUrl` moved into a single `deploymentTarget` option, which also accepts a function resolving them per request (e.g. from the selected tenant). Replace them with `deploymentTarget: { projectId, websiteUrl }`.
+- feat: when no project resolves, the widget hides the deploy button and shows the resolver's `message` (or a built-in hint) instead of deployments, and the endpoints answer `400`
 
 ## 0.3.2
 

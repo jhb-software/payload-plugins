@@ -59,6 +59,7 @@ export default buildConfig({
 | `deploymentTarget`            | `DeploymentTarget \| ResolveDeploymentTarget` | Yes      | The Vercel project to report on and deploy to, and the website it is served from. Pass a function to resolve it per request — see [Multi-tenant support](#multi-tenant-support) |
 | `deploymentTarget.projectId`  | `string \| undefined`                         | Yes      | Vercel Project ID to monitor. `undefined` means this request has no deployment target                                                                                           |
 | `deploymentTarget.websiteUrl` | `string`                                      | No       | URL of the frontend website, shown as a link in the widget                                                                                                                      |
+| `deploymentTarget.message`    | `string`                                      | No       | Shown in the widget when `projectId` is `undefined`, explaining why there is nothing to report. Defaults to a built-in translated hint                                          |
 | `vercel.apiToken`             | `string`                                      | Yes      | Vercel API Bearer Token                                                                                                                                                         |
 | `vercel.teamId`               | `string`                                      | No       | Vercel Team ID (required for team projects)                                                                                                                                     |
 | `widget.minWidth`             | `WidgetWidth`                                 | No       | Minimum widget width (default: 'medium')                                                                                                                                        |
@@ -79,7 +80,7 @@ const selectedTenantTarget: ResolveDeploymentTarget = async ({ req }) => {
   const id = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
   if (!id) {
-    return { projectId: undefined }
+    return { message: 'No tenant selected.', projectId: undefined }
   }
 
   const tenant = await req.payload.findByID({
@@ -94,6 +95,7 @@ const selectedTenantTarget: ResolveDeploymentTarget = async ({ req }) => {
   })
 
   return {
+    message: 'This tenant has not been deployed yet.',
     projectId: tenant?.vercelProjectId ?? undefined,
     websiteUrl: tenant?.websiteUrl ?? undefined,
   }
@@ -105,7 +107,7 @@ vercelDeploymentsPlugin({
 })
 ```
 
-Returning a `projectId` of `undefined` means the request has no deployment target: the widget renders without deployment rows and hides the deploy button, and both API endpoints answer `400`. A tenant that has not been deployed yet therefore needs no special casing. If the resolver throws, the widget shows the error instead of failing to render.
+Returning a `projectId` of `undefined` means the request has no deployment target: the widget shows the `message` instead of deployment rows and hides the deploy button, and both API endpoints answer `400`. Only the resolver knows _why_ there is no project — no tenant selected vs. a tenant not deployed yet — so it decides the wording; `req.i18n.language` is available to localize it. Without a `message` the widget shows a built-in translated hint. If the resolver throws, the widget shows the error instead of failing to render.
 
 ### WidgetWidth Values
 

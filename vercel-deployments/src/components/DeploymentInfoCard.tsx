@@ -208,11 +208,16 @@ export default async function DeploymentInfo({
   }
 
   // No project resolved for this request (e.g. no tenant selected) — there is nothing
-  // to report on, and the card renders without deployment rows.
-  const { projectId } = resolvedTarget
+  // to report on. The resolver's message says why; without one a generic hint keeps the
+  // card from looking like a project with nothing to show.
+  const { message, projectId } = resolvedTarget
 
   if (!projectId) {
-    return null
+    return (
+      <p style={{ color: 'var(--theme-elevation-500)', margin: 0 }}>
+        {message ?? t('vercel-dashboard:deploymentInfoNoTarget')}
+      </p>
+    )
   }
 
   try {

@@ -10,6 +10,7 @@ export const de: GenericTranslationsObject = {
     deploymentInfoError: 'Fehler beim Laden der Veröffentlichungen',
     deploymentInfoInspectDeployment: 'Details anzeigen',
     deploymentInfoLatestDeployment: 'Neueste Veröffentlichung',
+    deploymentInfoNoTarget: 'Kein Vercel-Projekt ausgewählt.',
     deploymentInfoTitle: 'Veröffentlichungen',
     deploymentInfoTriggerRedeploy: 'Neue Veröffentlichung',
     deploymentInfoWebsite: 'Website',
