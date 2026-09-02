@@ -18,9 +18,20 @@ export const buildSearchURL = ({
 }): string => (baseFilter.status === 'unavailable' ? '' : `${apiRoute}/search`)
 
 /**
+ * A constraint no document can satisfy: every document has an id. Used when the scope a
+ * configured filter would have applied is unknown, so that the query itself is scoped out
+ * rather than relying on the request never being sent.
+ */
+const MATCHES_NOTHING: Where = { id: { exists: false } }
+
+/**
  * Builds the query the search modal sends to the search collection. The base filter and the
  * typed query are combined with `and`, so results always stay inside the filter's scope —
  * including when nothing has been typed yet.
+ *
+ * A filter that could not be evaluated yields a query that matches nothing. `buildSearchURL`
+ * already stops the request from going out at all; this is the second of the two, so that a
+ * query which does reach the API still cannot answer with documents outside the scope.
  */
 export const buildSearchQuery = ({
   baseFilter,
@@ -29,7 +40,7 @@ export const buildSearchQuery = ({
   baseFilter: BaseFilterState
   query?: string
 }): { depth: number; limit: number; sort: string; where?: Where } => {
-  const filter = baseFilter.status === 'resolved' ? baseFilter.filter : undefined
+  const filter = baseFilter.status === 'resolved' ? baseFilter.filter : MATCHES_NOTHING
 
   const constraints: Where[] = [
     ...(query ? [{ title: { like: query } }] : []),

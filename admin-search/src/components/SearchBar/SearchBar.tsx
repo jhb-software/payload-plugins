@@ -2,7 +2,7 @@
 import type React from 'react'
 
 import { Button, Pill, SearchIcon, useHotkey, useTranslation } from '@payloadcms/ui'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 
 import type {
   PluginAdminSearchTranslationKeys,
@@ -16,7 +16,11 @@ import './SearchBar.css'
 
 const baseClass = 'admin-search-plugin-bar'
 
-export function SearchBar({ baseFilter }: { baseFilter: BaseFilterState }): React.ReactElement {
+export function SearchBar({
+  baseFilterPromise,
+}: {
+  baseFilterPromise: Promise<BaseFilterState>
+}): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [shortcut, setShortcut] = useState('')
   const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()
@@ -54,7 +58,14 @@ export function SearchBar({ baseFilter }: { baseFilter: BaseFilterState }): Reac
         </div>
       </Button>
       {isModalOpen && (
-        <SearchModal baseFilter={baseFilter} handleClose={() => setIsModalOpen(false)} />
+        // The modal is the first thing that needs the filter, so the wait for it — if any
+        // is left by the time the modal opens — happens here rather than in the header.
+        <Suspense fallback={null}>
+          <SearchModal
+            baseFilterPromise={baseFilterPromise}
+            handleClose={() => setIsModalOpen(false)}
+          />
+        </Suspense>
       )}
     </>
   )

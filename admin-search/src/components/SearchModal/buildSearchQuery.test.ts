@@ -37,6 +37,20 @@ describe('buildSearchQuery', () => {
       and: [{ title: { like: 'pricing' } }],
     })
   })
+
+  it('matches no document when the base filter could not be evaluated, so the query is scoped out even if it is sent', () => {
+    // Every document has an id, so this constraint is unsatisfiable — the intended scope is
+    // unknown, and answering with the whole collection would leak what the filter was for.
+    expect(
+      buildSearchQuery({ baseFilter: { status: 'unavailable' }, query: 'pricing' }).where,
+    ).toEqual({ and: [{ title: { like: 'pricing' } }, { id: { exists: false } }] })
+  })
+
+  it('matches no document when the base filter could not be evaluated and nothing was typed', () => {
+    expect(buildSearchQuery({ baseFilter: { status: 'unavailable' } }).where).toEqual({
+      and: [{ id: { exists: false } }],
+    })
+  })
 })
 
 describe('buildSearchURL', () => {

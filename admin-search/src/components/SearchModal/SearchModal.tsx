@@ -3,7 +3,7 @@
 import { Banner, SearchIcon, useConfig, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { formatAdminURL } from 'payload/shared'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { use, useCallback, useEffect, useRef, useState } from 'react'
 
 import type {
   PluginAdminSearchTranslationKeys,
@@ -18,11 +18,15 @@ import './SearchModal.css'
 import { useSearch } from './useSearch.js'
 
 interface SearchModalProps {
-  baseFilter: BaseFilterState
+  baseFilterPromise: Promise<BaseFilterState>
   handleClose: () => void
 }
 
-export const SearchModal: React.FC<SearchModalProps> = ({ baseFilter, handleClose }) => {
+export const SearchModal: React.FC<SearchModalProps> = ({ baseFilterPromise, handleClose }) => {
+  // Resolved on the server while the admin page rendered, so by the time the modal opens this
+  // has almost always settled — the wait happens here rather than blocking the header.
+  const baseFilter = use(baseFilterPromise)
+
   const { displayedQuery, isError, isLoading, query, results, resultsLimit, setQuery } = useSearch({
     baseFilter,
   })

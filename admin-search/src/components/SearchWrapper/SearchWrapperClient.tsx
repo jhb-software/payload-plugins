@@ -7,16 +7,17 @@ import { SearchBar } from '../SearchBar/SearchBar.js'
 import { SearchButton } from '../SearchButton/SearchButton.js'
 
 export interface SearchWrapperClientProps {
-  baseFilter: BaseFilterState
+  /** Resolved on the server; awaited in the modal, which is the first thing that needs it. */
+  baseFilterPromise: Promise<BaseFilterState>
   style?: 'bar' | 'button'
 }
 
 export function SearchWrapperClient({
-  baseFilter,
+  baseFilterPromise,
   style = 'button',
 }: SearchWrapperClientProps): React.ReactElement {
   if (style === 'bar') {
-    return <SearchBar baseFilter={baseFilter} />
+    return <SearchBar baseFilterPromise={baseFilterPromise} />
   }
-  return <SearchButton baseFilter={baseFilter} />
+  return <SearchButton baseFilterPromise={baseFilterPromise} />
 }

@@ -17,20 +17,26 @@ export type SearchWrapperProps = {
 } & Partial<ServerProps>
 
 /**
- * Resolves the configured `baseFilter` on the server and hands the resulting constraint to
- * the search UI, so results stay inside the scope of the current request.
+ * Starts resolving the configured `baseFilter` for this request and hands the pending result
+ * to the search UI, so results stay inside the scope of the current request.
+ *
+ * Deliberately not `async`: this component is rendered from the admin template's actions on
+ * every page, with no Suspense boundary around it, so awaiting a filter that reads the
+ * database would put that read on the critical path of every admin page render. The search
+ * button needs no filter to render — only a search does — so the promise travels to the
+ * client and is awaited inside the modal instead.
  */
-export async function SearchWrapper({
+export function SearchWrapper({
   payload,
   req,
   style = 'button',
-}: SearchWrapperProps): Promise<React.ReactElement> {
+}: SearchWrapperProps): React.ReactElement {
   // Without `payload` the plugin cannot read its own options back off the config, so whether
   // a filter is configured at all is unknowable. Treating that as `unavailable` would break
   // the search for everyone who never configured one, so leave it unscoped instead.
-  const baseFilter: BaseFilterState = payload
-    ? await resolveBaseFilter({ payload, req })
-    : { status: 'resolved' }
+  const baseFilterPromise: Promise<BaseFilterState> = payload
+    ? resolveBaseFilter({ payload, req })
+    : Promise.resolve({ status: 'resolved' })
 
-  return <SearchWrapperClient baseFilter={baseFilter} style={style} />
+  return <SearchWrapperClient baseFilterPromise={baseFilterPromise} style={style} />
 }
