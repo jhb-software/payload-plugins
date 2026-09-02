@@ -11,6 +11,7 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 - Bulk generation for processing multiple images at once
 - Full localization support
 - Dashboard health widget with cached coverage insights across all configured upload collections
+- Multi-tenant aware: the health report can be scoped to the tenant the request is for
 
 When the plugin is enabled for an upload collection, it will:
 
@@ -207,9 +208,11 @@ Set `healthCheck: false` in the plugin config to disable the REST endpoint, cach
 
 #### Gating and scoping the report
 
-`healthCheck` also takes an object:
+`healthCheck` also takes an object. The main use of `baseFilter` is multi-tenancy: scope the report to the tenant selected in the admin panel, whose id [@payloadcms/plugin-multi-tenant](https://payloadcms.com/docs/plugins/multi-tenant) keeps in the `payload-tenant` cookie.
 
 ```ts
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+
 healthCheck: {
   // Restrict the collection-wide report more strictly than the per-document
   // generate endpoints. Gates the REST endpoint and hides the widget.
