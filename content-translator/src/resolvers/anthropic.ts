@@ -16,17 +16,13 @@ export type AnthropicResolverConfig = {
    */
   chunkLength?: number
   /**
-   * How hard the model works on the answer.
-   *
    * Caps how long Claude thinks before answering. Lower effort still thinks on
    * a difficult passage, just less than a higher setting would.
    *
-   * Translating is not a reasoning-heavy task, so the default keeps the spend
-   * down. Raise it for content whose translation needs more care.
-   *
-   * Not every model accepts it — `claude-haiku-4-5` does not.
-   *
-   * @default 'low'
+   * Translating is not a reasoning-heavy task, so `'low'` keeps the spend down
+   * on the models that accept it. Omitted, the field is not sent and Claude
+   * uses its default (`'high'`) — which also keeps models without effort
+   * support, such as `claude-haiku-4-5`, usable.
    */
   effort?: 'high' | 'low' | 'max' | 'medium' | 'xhigh'
   /**
@@ -50,9 +46,8 @@ export type AnthropicResolverConfig = {
   /**
    * The Claude model to use.
    *
-   * Must accept `output_config.effort` — `claude-sonnet-5` is the cheaper
-   * choice for a large content base, while `claude-haiku-4-5` rejects `effort`
-   * and is not usable here.
+   * `claude-sonnet-5` is the cheaper choice for a large content base;
+   * `claude-haiku-4-5` works too, but only without `effort`.
    *
    * @default 'claude-opus-5'
    */
@@ -106,7 +101,7 @@ export const anthropicResolver = ({
   apiKey,
   baseUrl = 'https://api.anthropic.com',
   chunkLength = 100,
-  effort = 'low',
+  effort,
   instructions,
   maxTokens = chunkLength * 250,
   model = 'claude-opus-5',
@@ -125,7 +120,11 @@ export const anthropicResolver = ({
           max_tokens: maxTokens,
           messages: [{ content: input, role: 'user' }],
           model,
-          output_config: { effort, format: { type: 'json_schema', schema: schemaForChunk(texts) } },
+          // `effort` is only sent when configured: some models reject the field.
+          output_config: {
+            ...(effort ? { effort } : {}),
+            format: { type: 'json_schema', schema: schemaForChunk(texts) },
+          },
           // The instructions are an operator instruction, not a turn in the
           // conversation, so they travel as the top-level system prompt.
           system: resolvedInstructions,

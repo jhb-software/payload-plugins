@@ -130,9 +130,9 @@ describe('anthropicResolver', () => {
   })
 
   test('sends the fields the Messages API requires', async () => {
-    // max_tokens is required on POST /v1/messages, and model and effort decide
-    // what the request costs. Dropping any of them 400s or silently re-prices
-    // every request while a suite that only inspects the prompt stays green.
+    // max_tokens is required on POST /v1/messages, and the model decides what
+    // the request costs. Dropping either 400s or silently re-prices every
+    // request while a suite that only inspects the prompt stays green.
     const recorded = stubFetch(textMessage({ 0: 'eins' }))
 
     await translate(anthropicResolver({ apiKey: 'test' }), ['one'])
@@ -140,6 +140,24 @@ describe('anthropicResolver', () => {
     assert.equal(recorded[0]!.body.model, 'claude-opus-5')
     assert.equal(typeof recorded[0]!.body.max_tokens, 'number')
     assert.ok(recorded[0]!.body.max_tokens > 0)
+  })
+
+  test('omits effort unless configured, so a model that rejects it stays usable', async () => {
+    // `claude-haiku-4-5` translates fine but 400s on `output_config.effort`.
+    // The API treats an omitted effort as `high`, so the field is only worth
+    // sending when the project asked for a specific level.
+    const recorded = stubFetch(textMessage({ 0: 'eins' }))
+
+    await translate(anthropicResolver({ apiKey: 'test', model: 'claude-haiku-4-5' }), ['one'])
+
+    assert.equal('effort' in recorded[0]!.body.output_config, false)
+  })
+
+  test('sends the configured effort level', async () => {
+    const recorded = stubFetch(textMessage({ 0: 'eins' }))
+
+    await translate(anthropicResolver({ apiKey: 'test', effort: 'low' }), ['one'])
+
     assert.equal(recorded[0]!.body.output_config.effort, 'low')
   })
 

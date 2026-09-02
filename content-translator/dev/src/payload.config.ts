@@ -140,8 +140,8 @@ export default buildConfig({
           ? anthropicResolver({
               apiKey: process.env.ANTHROPIC_API_KEY || '',
               // `claude-sonnet-5` is the cheaper choice for a large content
-              // base. `claude-haiku-4-5` rejects `effort`, so it is not usable
-              // with this resolver.
+              // base. `claude-haiku-4-5` works as well, but rejects `effort`,
+              // so drop that line when switching to it.
               model: 'claude-opus-5',
               // Small on purpose: with chunkLength 5 the seeded pages arrive in
               // several requests, so the chunking is visible in the logs, and

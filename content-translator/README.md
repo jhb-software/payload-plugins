@@ -178,6 +178,7 @@ import { anthropicResolver } from '@jhb.software/payload-content-translator-plug
 anthropicResolver({
   apiKey: process.env.ANTHROPIC_API_KEY,
   model: 'claude-opus-5', // default; `claude-sonnet-5` is cheaper for a large content base
+  effort: 'low', // optional; translating needs little thinking
 })
 ```
 
@@ -187,16 +188,16 @@ dropped entry is rejected by the provider rather than reconstructed after the
 fact. That is also why it sends no response format instruction of its own —
 replacing the default instructions entirely stays safe here.
 
-| Option         | Type                                              | Required | Description                                                                                                               |
-| -------------- | ------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `apiKey`       | `string`                                          | Yes      | API key for authentication                                                                                                |
-| `model`        | `string`                                          | No       | Model to use (default: `claude-opus-5`). Must accept `effort`, which rules out `claude-haiku-4-5`                         |
-| `effort`       | `'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | No       | How long Claude thinks before answering (default: `low` — translating needs little). Lower effort still thinks, just less |
-| `maxTokens`    | `number`                                          | No       | Token budget for one chunk, thinking included (default: `chunkLength * 250`, so the two cannot drift apart)               |
-| `chunkLength`  | `number`                                          | No       | How many texts to include into 1 request (default: `100`)                                                                 |
-| `timeoutMs`    | `number`                                          | No       | Abort a chunk's request after this many milliseconds (default: `120000`)                                                  |
-| `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                      |
-| `instructions` | `function`                                        | No       | Customizes the prompt, see below                                                                                          |
+| Option         | Type                                              | Required | Description                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`       | `string`                                          | Yes      | API key for authentication                                                                                                                                                                                           |
+| `model`        | `string`                                          | No       | Model to use (default: `claude-opus-5`). `claude-sonnet-5` is cheaper; `claude-haiku-4-5` works too, but only without `effort`                                                                                       |
+| `effort`       | `'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | No       | How long Claude thinks before answering. `low` is plenty for translating and keeps the spend down. Omitted, the field is not sent and Claude uses its default (`high`), so models without effort support stay usable |
+| `maxTokens`    | `number`                                          | No       | Token budget for one chunk, thinking included (default: `chunkLength * 250`, so the two cannot drift apart)                                                                                                          |
+| `chunkLength`  | `number`                                          | No       | How many texts to include into 1 request (default: `100`)                                                                                                                                                            |
+| `timeoutMs`    | `number`                                          | No       | Abort a chunk's request after this many milliseconds (default: `120000`)                                                                                                                                             |
+| `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                                                                                                                 |
+| `instructions` | `function`                                        | No       | Customizes the prompt, see below                                                                                                                                                                                     |
 
 ##### Customizing the instructions
 
