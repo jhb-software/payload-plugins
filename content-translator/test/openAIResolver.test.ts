@@ -17,6 +17,18 @@ const stubFetch = (content: unknown, ok = true) => {
   globalThis.fetch = async () => new Response(body, { status: ok ? 200 : 500 })
 }
 
+/** Records the request URL, so the host the resolver targets is under test. */
+const stubFetchCapturingUrls = (urls: string[]) => {
+  globalThis.fetch = async (url) => {
+    urls.push(String(url))
+
+    return new Response(
+      JSON.stringify({ choices: [{ message: { content: JSON.stringify({ translations: {} }) } }] }),
+      { status: 200 },
+    )
+  }
+}
+
 type Message = { content: string; role: string }
 
 /** Captures the messages sent to the API and answers with a valid translation. */
@@ -96,6 +108,35 @@ describe('openAIResolver - index-keyed reconstruction', () => {
     const result = await resolve(['one', 'two'])
 
     assert.deepEqual(result.success && result.translatedTexts, ['eins', 'two'])
+  })
+})
+
+describe('openAIResolver - base URL', () => {
+  const translate = (baseUrl?: string) => {
+    const urls: string[] = []
+    stubFetchCapturingUrls(urls)
+
+    return openAIResolver({ apiKey: 'test', baseUrl })
+      .resolve({ localeFrom: 'en', localeTo: 'de', req, texts: ['one'] })
+      .then(() => urls)
+  }
+
+  test('targets the OpenAI host when no base URL is configured', async () => {
+    assert.deepEqual(await translate(), ['https://api.openai.com/v1/chat/completions'])
+  })
+
+  test('targets a configured OpenAI-compatible host', async () => {
+    assert.deepEqual(await translate('https://api.example.test'), [
+      'https://api.example.test/v1/chat/completions',
+    ])
+  })
+
+  test('falls back to the OpenAI host for an empty base URL', async () => {
+    // A config written as `baseUrl: process.env.OPENAI_BASE_URL || ''` is
+    // ordinary, and has always resolved to the OpenAI host. Treating '' as a
+    // configured value yields a relative URL that fetch rejects, and the
+    // failure reaches the editor only as a generic translation error.
+    assert.deepEqual(await translate(''), ['https://api.openai.com/v1/chat/completions'])
   })
 })
 

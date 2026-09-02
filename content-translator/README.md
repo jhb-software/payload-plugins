@@ -2,13 +2,13 @@
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
 
-A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
+A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides ready-to-use integrations with OpenAI and Mistral.
 
 ## Features
 
 - translate content in the Payload Admin UI between locales
 - supports any translation service using a resolver pattern (e.g. OpenAI, DeepL, etc.)
-- comes with a ready-to-use OpenAI resolver out of the box
+- comes with ready-to-use OpenAI and Mistral resolvers out of the box
 - seamless integration with Payload's localization system
 - review and edit translations before saving or publishing
 
@@ -136,7 +136,7 @@ and [its wiring](https://github.com/jhb-software/payload-plugins/blob/main/conte
 
 This plugin is designed to work seamlessly with various translation services by accepting a customizable translation resolver as a configuration option.
 
-An OpenAI resolver is provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
+OpenAI and Mistral resolvers are provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
 
 #### OpenAI Resolver
 
@@ -149,7 +149,30 @@ openAIResolver({
 })
 ```
 
-##### Customizing the instructions
+`baseUrl` (default `https://api.openai.com`) points the resolver at any other
+provider serving OpenAI's `/v1/chat/completions` endpoint.
+
+#### Mistral Resolver
+
+```ts
+import { mistralResolver } from '@jhb.software/payload-content-translator-plugin'
+
+mistralResolver({
+  apiKey: process.env.MISTRAL_API_KEY,
+  model: 'mistral-medium-latest', // default; any Mistral chat model works
+})
+```
+
+The `-latest` aliases move as Mistral ships new revisions — pin a dated model id
+if you need the behaviour and pricing to stay put.
+
+Mistral serves OpenAI's chat completions shape, so this is the OpenAI resolver
+with Mistral's base URL and model default — it exists so a Mistral setup does not
+have to know that. It takes the same `chunkLength` and `instructions` options.
+
+#### Customizing the instructions
+
+Applies to every bundled resolver; the examples below use `openAIResolver`.
 
 The texts are sent as the user message and the instructions as the system prompt, so customizing the instructions can never alter or drop the content to translate.
 
@@ -204,6 +227,8 @@ export const myResolver = ({ instructions }: { instructions?: TranslateInstructi
 | `instructions`              | `TranslateInstructions`           | Pass through your own `instructions` option so users can customize the instructions as described above                                       |
 | `chunkLength`               | `number`                          | How many texts to include into 1 request (default `100`)                                                                                     |
 | `responseFormatInstruction` | `string`                          | How the provider should format the response. Appended after any customization. Omit it when the provider guarantees the shape.               |
+
+For a provider that already serves OpenAI's `/v1/chat/completions` endpoint with JSON mode, `createOpenAICompatibleResolver({ apiKey, baseUrl, key, label, model })` needs no `generate` at all.
 
 [`aiSdkResolver.ts`](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/resolvers/aiSdkResolver.ts) is a ready-made example built on the [Vercel AI SDK](https://ai-sdk.dev), usable with any provider it supports. Copy it into your project (it needs `ai`, `zod` and a provider package such as `@ai-sdk/openai`) and configure it from your Payload config — the file itself does not need to be edited.
 
