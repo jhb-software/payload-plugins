@@ -105,6 +105,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
       filename,
       imageThumbnailUrl,
       locale,
+      req,
     }: AltTextResolverArgs): Promise<AltTextResolverResponse> => {
       try {
         const modelResponseSchema = z.object({
@@ -162,7 +163,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           success: true,
         }
       } catch (error) {
-        console.error('Error generating alt text:', error)
+        req.payload.logger.error({ err: error }, 'Error generating alt text')
         return {
           error: error instanceof Error ? error.message : 'Unknown error',
           success: false,
@@ -173,6 +174,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
       filename,
       imageThumbnailUrl,
       locales,
+      req,
     }: AltTextBulkResolverArgs): Promise<AltTextBulkResolverResponse> => {
       try {
         const modelResponseSchema = z.object(
@@ -239,7 +241,7 @@ export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver =>
           success: true,
         }
       } catch (error) {
-        console.error('Error generating bulk alt text:', error)
+        req.payload.logger.error({ err: error }, 'Error generating bulk alt text')
         return {
           error: error instanceof Error ? error.message : 'Unknown error',
           success: false,

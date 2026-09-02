@@ -1,3 +1,5 @@
+import type { PayloadRequest } from 'payload'
+
 import { z } from 'zod'
 
 import type {
@@ -169,6 +171,7 @@ async function generate({
   imageThumbnailUrl,
   locales,
   model,
+  req,
   timeoutMs,
 }: {
   apiKey: string
@@ -177,6 +180,7 @@ async function generate({
   imageThumbnailUrl: string
   locales: string[]
   model: string
+  req: PayloadRequest
   timeoutMs: number
 }): Promise<
   { error: string; success: false } | { results: Record<string, AltTextResult>; success: true }
@@ -254,7 +258,7 @@ async function generate({
 
     return { results, success: true }
   } catch (error) {
-    console.error('Error generating alt text:', error)
+    req.payload.logger.error({ err: error }, 'Error generating alt text')
 
     return { error: error instanceof Error ? error.message : 'Unknown error', success: false }
   }
@@ -287,6 +291,7 @@ export const mistralResolver = (config: MistralResolverConfig): AltTextResolver 
       filename,
       imageThumbnailUrl,
       locale,
+      req,
     }: AltTextResolverArgs): Promise<AltTextResolverResponse> => {
       const result = await generate({
         apiKey,
@@ -295,6 +300,7 @@ export const mistralResolver = (config: MistralResolverConfig): AltTextResolver 
         imageThumbnailUrl,
         locales: [locale],
         model,
+        req,
         timeoutMs,
       })
 
@@ -308,6 +314,7 @@ export const mistralResolver = (config: MistralResolverConfig): AltTextResolver 
       filename,
       imageThumbnailUrl,
       locales,
+      req,
     }: AltTextBulkResolverArgs): Promise<AltTextBulkResolverResponse> => {
       const result = await generate({
         apiKey,
@@ -316,6 +323,7 @@ export const mistralResolver = (config: MistralResolverConfig): AltTextResolver 
         imageThumbnailUrl,
         locales,
         model,
+        req,
         timeoutMs,
       })
 

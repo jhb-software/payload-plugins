@@ -1,4 +1,4 @@
-import type { Field, TextField } from 'payload'
+import type { Field, PayloadRequest, TextField } from 'payload'
 
 import type { SlugFieldProps } from '../components/client/SlugFieldClient.js'
 import type { Locale } from '../types/Locale.js'
@@ -68,7 +68,12 @@ export function internalSlugField({
     unique,
     validate: (
       value: null | string | undefined,
-      options: { data: any; id?: number | string; req?: any; siblingData: any },
+      options: {
+        data: Record<string, unknown>
+        id?: number | string
+        req?: PayloadRequest
+        siblingData: Record<string, unknown>
+      },
     ): string | true => {
       if (pageSlug && options.data.isRootPage) {
         return value === ROOT_PAGE_SLUG
@@ -88,8 +93,13 @@ export function internalSlugField({
         // the document's depth, so re-parenting can never make a stored slug ambiguous.
         const localization = options.req?.payload?.config?.localization
         if (localization && localization.localeCodes.includes(value)) {
+          // The plugin registers its own i18n namespace, which is not part of Payload's
+          // generated translation-key union, so `t` is narrowed to a plain key lookup here.
+          const t = options.req?.t as
+            ((key: string, vars?: Record<string, unknown>) => string) | undefined
+
           return (
-            options.req?.t?.('@jhb.software/payload-pages-plugin:slugCannotBeALocaleCode', {
+            t?.('@jhb.software/payload-pages-plugin:slugCannotBeALocaleCode', {
               slug: value,
             }) ??
             `The slug "${value}" is reserved: it is a locale code, which paths use as the locale prefix.`

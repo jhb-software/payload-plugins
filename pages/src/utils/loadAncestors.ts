@@ -239,7 +239,7 @@ async function fetchAncestors({
     [parentFieldName]: true,
   }
 
-  const documents = new Map<string, Record<string, any>>()
+  const documents = new Map<string, Record<string, unknown>>()
 
   // A draft read resolves every ancestor to its latest version, the same way
   // `findByID({ draft: true })` resolves a single document.
@@ -259,11 +259,14 @@ async function fetchAncestors({
     })
 
     for (const versionDoc of docs) {
-      const id = extractID((versionDoc as Record<string, any>).parent)
+      const id = extractID((versionDoc as Record<string, unknown>).parent)
       if (id === null || documents.has(String(id))) {
         continue
       }
-      documents.set(String(id), { ...(versionDoc as Record<string, any>).version, id })
+      documents.set(String(id), {
+        ...((versionDoc as Record<string, unknown>).version as Record<string, unknown>),
+        id,
+      })
     }
   }
 

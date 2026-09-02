@@ -64,7 +64,10 @@ export const getStaticHandler = (): StaticHandler => {
       }
 
       if (!publicId || !secureUrl) {
-        console.log('No publicId or secureUrl found, returning 404')
+        req.payload.logger.warn(
+          { collection, filename },
+          'No publicId or secureUrl found, returning 404',
+        )
         return new Response(null, { status: 404, statusText: 'Not Found' })
       }
 
@@ -105,7 +108,10 @@ export const getStaticHandler = (): StaticHandler => {
         const cloudinaryError =
           'message' in err.error ? err.error.message : JSON.stringify(err.error)
 
-        console.log('Error fetching file from cloudinary, 404, message:', cloudinaryError)
+        req.payload.logger.warn(
+          { cloudinaryError },
+          'Error fetching file from cloudinary, returning 404',
+        )
         return new Response(null, { status: 404, statusText: 'Not Found' })
       }
 
