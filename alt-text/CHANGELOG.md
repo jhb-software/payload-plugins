@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: a provider's error response is no longer repeated into the admin panel — OpenAI quotes the rejected API key back in a 401. The message names the provider and status; the body goes to the server log.
 - **BREAKING**: `openAIResolver` calls the API over `fetch`, and the `openai` SDK is no longer a dependency — it was installed by every project, whichever resolver it used. `timeoutMs` now defaults to `30000`, replacing the SDK's 10-minute deadline.
 - feat: a provider call answered with `429` or `5xx` is retried twice before the generation gives up, so a bulk run no longer abandons an image on the first rate limit. Custom resolvers opt in by throwing the exported `VisionProviderError`.
 - feat: add `healthCheck.baseFilter`, a `({ collection, req }) => Where` narrowing what the health report counts — in a multi-tenant CMS, to the tenant the request is for. Resolved per collection, so collections without the constraining field can return `{}`. The scan's cache key is derived from the resolved filters, so one scope's counts are never served to another.

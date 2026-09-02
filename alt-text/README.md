@@ -380,7 +380,11 @@ export const myResolver = ({ apiKey }: { apiKey: string }) =>
       // `VisionProviderError` lets the factory retry it. Any other error fails
       // the generation immediately, with its message shown in the admin panel.
       if (!response.ok) {
-        throw new VisionProviderError({ label: 'My Provider', status: response.status })
+        throw new VisionProviderError({
+          body: await response.text(),
+          label: 'My Provider',
+          status: response.status,
+        })
       }
 
       // Return the parsed JSON object.
@@ -399,6 +403,12 @@ short backoff, when the status is a rate limit (`429`) or a server-side failure
 leaves documents without an alt text. Any other status fails immediately: a `4xx`
 would fail identically on every attempt. The resolver's `timeoutMs` covers the
 attempts together.
+
+Pass the provider's response as `body` and it is written to the server log, never
+to the error the admin panel shows — that message reaches everyone allowed to
+generate an alt text, and a provider's error text is not written with them in
+mind: OpenAI quotes the rejected API key back in a 401. The panel gets the
+provider name and the status.
 
 For a provider that does not fit that shape at all, implement the
 `AltTextResolver` interface directly.

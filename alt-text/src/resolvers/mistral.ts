@@ -111,7 +111,8 @@ export const mistralResolver = ({
       })
 
       if (!response.ok) {
-        const body = await response.text().catch(() => '')
+        // Bounded: unbounded provider text would land in the log as-is.
+        const body = (await response.text().catch(() => '')).slice(0, 500)
 
         throw new VisionProviderError({ body, label: 'Mistral', status: response.status })
       }

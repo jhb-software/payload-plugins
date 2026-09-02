@@ -158,7 +158,7 @@ export const anthropicResolver = ({
       })
 
       if (!response.ok) {
-        // Bounded: the body is provider text rendered in the admin panel.
+        // Bounded: unbounded provider text would land in the log as-is.
         const body = (await response.text().catch(() => '')).slice(0, 500)
 
         throw new VisionProviderError({ body, label: 'Anthropic', status: response.status })

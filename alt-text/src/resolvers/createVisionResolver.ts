@@ -68,13 +68,23 @@ export type VisionGenerateArgs = {
  *
  * Carries the status so the factory can tell a rate limit or an outage — worth
  * another attempt — from a malformed request, which would fail identically every
- * time. The message is what an editor sees, so it stays readable.
+ * time.
+ *
+ * The response body is kept off `message` deliberately. That message is shown in
+ * the admin panel to anyone allowed to generate an alt text, while the body is
+ * text the provider chose: OpenAI echoes a masked form of the rejected API key
+ * into a 401, and providers routinely name organization ids, project ids and
+ * internal endpoints. It goes to the server log, where the person debugging the
+ * configuration is, and not to an editor's screen.
  */
 export class VisionProviderError extends Error {
+  /** The provider's response body, for the log only — never for `message`. */
+  readonly body?: string
   readonly status: number
 
   constructor({ body, label, status }: { body?: string; label: string; status: number }) {
-    super(`${label} responded with status ${status}${body ? `: ${body}` : ''}`)
+    super(`${label} responded with status ${status}`)
+    this.body = body
     this.name = 'VisionProviderError'
     this.status = status
   }
@@ -414,6 +424,9 @@ export const createVisionResolver = ({
       req.payload.logger.error({
         err: error,
         msg: 'Error generating alt text',
+        // Logged separately: it is deliberately absent from the error message
+        // the admin panel shows, and is what a misconfiguration is diagnosed from.
+        providerResponse: error instanceof VisionProviderError ? error.body : undefined,
         resolver: key,
       })
 

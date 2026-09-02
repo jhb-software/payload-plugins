@@ -454,3 +454,65 @@ describe('transient provider failures', () => {
     assert.equal(counter.calls, 3)
   })
 })
+
+describe('provider response disclosure', () => {
+  /** Rejects with a body shaped like the ones providers actually send back. */
+  function stubRejection(status: number, body: unknown) {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify(body), {
+        headers: { 'content-type': 'application/json' },
+        status,
+      })) as unknown as typeof fetch
+  }
+
+  /** The 401 body OpenAI returns, which quotes the key it rejected. */
+  const rejectedKeyBody = {
+    error: {
+      code: 'invalid_api_key',
+      message:
+        'Incorrect API key provided: sk-proj-abcdef123456. You can find your API key at https://platform.openai.com/account/api-keys.',
+      type: 'invalid_request_error',
+    },
+  }
+
+  test('keeps the provider response out of the message shown in the admin panel', async () => {
+    // The message reaches every user allowed to generate an alt text, and the
+    // body is text the provider chose: a rejected key, an organization id, an
+    // internal endpoint. Only the status is safe to repeat back.
+    stubRejection(401, rejectedKeyBody)
+
+    const result = await openAIResolver({ apiKey: 'sk-proj-abcdef123456' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, false)
+    const message = result.success ? '' : (result.error ?? '')
+
+    assert.match(message, /OpenAI responded with status 401/)
+    assert.doesNotMatch(message, /sk-proj/)
+    assert.doesNotMatch(message, /Incorrect API key/)
+    assert.doesNotMatch(message, /platform\.openai\.com/)
+  })
+
+  test('logs the provider response, so a misconfiguration stays diagnosable', async () => {
+    // Withholding the body from the editor must not withhold it from the person
+    // debugging the configuration.
+    stubRejection(401, rejectedKeyBody)
+
+    const logged: Record<string, unknown>[] = []
+    const loggingReq = {
+      payload: { logger: { error: (entry: Record<string, unknown>) => logged.push(entry) } },
+    } as unknown as PayloadRequest
+
+    await openAIResolver({ apiKey: 'sk-proj-abcdef123456' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req: loggingReq,
+    })
+
+    assert.equal(logged.length, 1)
+    assert.match(String(logged[0]!.providerResponse), /Incorrect API key/)
+  })
+})
