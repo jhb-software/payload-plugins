@@ -1,6 +1,7 @@
 import type { TranslateResolver } from '@jhb.software/payload-content-translator-plugin'
 
 import {
+  anthropicResolver,
   mistralResolver,
   openAIResolver,
   payloadContentTranslatorPlugin,
@@ -32,15 +33,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // a page title or body and translate to see them survive.
 const protectedTermsInstruction = `Never translate the following product names, keep them exactly as written in English: "Northern Light", "First Steps".`
 
-// Set TRANSLATOR_RESOLVER to `mistral` or `ai-sdk` to translate through the
-// Mistral resolver or the custom AI SDK resolver instead of the built-in OpenAI
-// one. All three expose the same `instructions` extension point, so the
-// protected terms above apply whichever one runs. Built lazily so only the
-// selected resolver is constructed.
+// Set TRANSLATOR_RESOLVER to `anthropic`, `mistral` or `ai-sdk` to translate
+// through one of those resolvers instead of the built-in OpenAI one. All of
+// them expose the same `instructions` extension point, so the protected terms
+// above apply whichever one runs. Built lazily so only the selected resolver is
+// constructed.
 const translatorResolvers: Record<string, () => TranslateResolver> = {
   'ai-sdk': () =>
     aiSdkResolver({
       model: openai('gpt-4o-mini'),
+      instructions: ({ defaultInstructions }) =>
+        `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+    }),
+  anthropic: () =>
+    anthropicResolver({
+      apiKey: process.env.ANTHROPIC_API_KEY || '',
+      // `claude-sonnet-5` is the cheaper choice for a large content base.
+      // `claude-haiku-4-5` works as well, but rejects `effort`, so drop that
+      // line when switching to it.
+      model: 'claude-opus-5',
+      // Small on purpose: with chunkLength 5 the seeded pages arrive in several
+      // requests, so the chunking is visible in the logs, and maxTokens follows
+      // chunkLength rather than being set apart from it. Raise `effort` to see a
+      // translation take more care.
+      chunkLength: 5,
+      effort: 'low',
       instructions: ({ defaultInstructions }) =>
         `${defaultInstructions}\n\n${protectedTermsInstruction}`,
     }),

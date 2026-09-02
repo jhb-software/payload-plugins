@@ -1,4 +1,6 @@
 export { payloadContentTranslatorPlugin } from './plugin.js'
+export { anthropicResolver } from './resolvers/anthropic.js'
+export type { AnthropicResolverConfig } from './resolvers/anthropic.js'
 export { createPromptResolver } from './resolvers/createPromptResolver.js'
 export type {
   GeneratedTranslations,
