@@ -360,7 +360,7 @@ export const myResolver = ({ apiKey }: { apiKey: string }) =>
 For a provider that does not fit that shape at all, implement the
 `AltTextResolver` interface directly.
 
-Alongside `imageThumbnailUrl`, the resolver receives `imageThumbnailMimeType` — the format served at that URL, when the collection declares one via [`imageThumbnailMimeType`](#transcoding-thumbnails). Resolvers that hand the URL to the provider can ignore it. Resolvers that inline the bytes need it, because an explicit media type cannot be sniffed from a URL: Anthropic image blocks require `media_type` and Gemini's `inline_data` requires `mime_type`. It is `undefined` when nothing was declared.
+Alongside `imageThumbnailUrl`, the resolver receives `imageThumbnailMimeType` — the format served at that URL, when the collection declares one via [`imageThumbnailMimeType`](#transcoding-thumbnails). Resolvers that hand the URL to the provider can ignore it. Resolvers that inline the bytes need it, because an explicit media type cannot be sniffed from a URL: Anthropic image blocks require `media_type` and Gemini's `inline_data` requires `mime_type`. It is `undefined` when nothing was declared. Resolvers built on `createVisionResolver` get this for free: `image.mediaType` is the type the host actually served, with the declaration standing in when the host sent none or a generic `application/octet-stream`.
 
 ```ts
 import type { AltTextResolver } from '@jhb.software/payload-alt-text-plugin'

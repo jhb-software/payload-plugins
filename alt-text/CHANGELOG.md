@@ -10,6 +10,7 @@
 - fix: `openAIResolver` now rejects a blank alt text and a response missing one of the requested locales instead of writing it to the document, and reports a missing API key before spending a request
 - fix: a provider that stops mid-JSON because its token budget ran out is now reported as such, instead of surfacing in the admin panel as `Unexpected end of JSON input`
 - fix: generating for a single locale no longer receives half the token budget of a multi-locale generation
+- fix: `mistralResolver` falls back to the collection's `imageThumbnailMimeType` when the thumbnail host serves no `content-type` or a generic `application/octet-stream`, instead of rejecting the image as unreadable
 - change: `openAIResolver` asks for a locale-keyed response (`{ "en": { … } }`) for single-locale generations too, where it previously asked for a flat object with the locale named in the prompt. Generated wording may differ slightly from previous versions.
 - change: resolver errors are logged through `req.payload.logger` rather than `console.error`
 

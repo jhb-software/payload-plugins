@@ -42,11 +42,11 @@ type Recorded = { body: Record<string, unknown>; url: string }
  */
 function stubMistral(
   completion: unknown,
-  image: { bytes?: Buffer; status?: number } = {},
+  image: { bytes?: Buffer; contentType?: null | string; status?: number } = {},
   finishReason?: string,
 ): Recorded[] {
   const recorded: Recorded[] = []
-  const { bytes = PIXEL, status: imageStatus = 200 } = image
+  const { bytes = PIXEL, contentType = 'image/jpeg', status: imageStatus = 200 } = image
   let call = 0
 
   globalThis.fetch = (async (url: string, init?: { body?: string }) => {
@@ -56,7 +56,7 @@ function stubMistral(
       return {
         arrayBuffer: async () =>
           bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
-        headers: { get: (name: string) => (name === 'content-type' ? 'image/jpeg' : null) },
+        headers: { get: (name: string) => (name === 'content-type' ? contentType : null) },
         ok: imageStatus === 200,
         status: imageStatus,
       }
@@ -264,6 +264,41 @@ describe('response validation', () => {
     assert.equal(result.success, false)
     assert.match(result.success ? '' : (result.error ?? ''), /limit/)
     assert.equal(recorded.length, 0)
+  })
+
+  test('falls back to the declared thumbnail format when the host serves no content type', async () => {
+    // `imageThumbnailMimeType` exists for exactly this: a provider that inlines
+    // the bytes needs a media type, and a private bucket or a signed URL may
+    // serve the file without naming one.
+    const recorded = stubMistral(enResult, { contentType: null })
+
+    const result = await mistralResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailMimeType: 'image/webp',
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, true, result.success ? '' : (result.error ?? ''))
+    const content = (recorded[0]!.body.messages as { content: { image_url?: string }[] }[])[1]!
+      .content
+    assert.match(content[0]!.image_url ?? '', /^data:image\/webp;base64,/)
+  })
+
+  test('falls back to the declared thumbnail format when the host serves a generic binary type', async () => {
+    const recorded = stubMistral(enResult, { contentType: 'application/octet-stream' })
+
+    const result = await mistralResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailMimeType: 'image/png',
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, true, result.success ? '' : (result.error ?? ''))
+    const content = (recorded[0]!.body.messages as { content: { image_url?: string }[] }[])[1]!
+      .content
+    assert.match(content[0]!.image_url ?? '', /^data:image\/png;base64,/)
   })
 
   test('reports a missing API key instead of calling the provider', async () => {

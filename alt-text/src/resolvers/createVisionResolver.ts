@@ -40,7 +40,8 @@ export type VisionGenerateArgs = {
   /**
    * The format the collection declares `getImageThumbnail` delivers, or
    * undefined when nothing was declared. Resolvers that inline the bytes should
-   * prefer `image.mediaType`, which is what the URL actually served.
+   * use `image.mediaType`, which is what the URL actually served, with this
+   * declaration already standing in when the host named no usable type.
    */
   imageThumbnailMimeType?: string
   /** URL of the image thumbnail, for providers that fetch it themselves */
@@ -148,15 +149,20 @@ const buildDefaultInstructions = ({ locales }: { locales: string[] }): string =>
  *
  * The document's mime type is checked by the endpoint before the resolver runs,
  * but `getImageThumbnail` may point at a derivative in a different format, so
- * what was actually served is what counts.
+ * what was actually served is what counts. Only when the host names no usable
+ * type at all — no header, or a generic `application/octet-stream` as private
+ * buckets and signed URLs often send — does the collection's declared
+ * `imageThumbnailMimeType` stand in for it.
  */
 async function fetchImage({
+  declaredMediaType,
   label,
   maxImageBytes,
   signal,
   supportedMimeTypes,
   url,
 }: {
+  declaredMediaType?: string
   label: string
   maxImageBytes: number
   signal?: AbortSignal
@@ -177,7 +183,9 @@ async function fetchImage({
     return { error: `Could not download the image from ${url}: status ${response.status}` }
   }
 
-  const mediaType = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase()
+  const served = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase()
+  const mediaType =
+    served && served !== 'application/octet-stream' ? served : declaredMediaType?.toLowerCase()
 
   if (!mediaType || (supportedMimeTypes && !supportedMimeTypes.includes(mediaType))) {
     return {
@@ -282,6 +290,7 @@ export const createVisionResolver = ({
 
     if (inlineImage) {
       const downloaded = await fetchImage({
+        declaredMediaType: imageThumbnailMimeType,
         label,
         maxImageBytes,
         signal,
