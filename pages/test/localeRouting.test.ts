@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
+import type { Where } from 'payload'
+
 import type { LocaleRouting } from '../src/types/PagesPluginConfig.js'
 
 import { buildPathCacheKey } from '../src/queries/pathCache.js'
@@ -246,5 +248,27 @@ describe('buildPathCacheKey', () => {
 
   test('stays on the v1 prefix so existing entries remain sweepable by clearPathCache', () => {
     expect(key(undefined).startsWith('payload-pages:path:v1:')).toBe(true)
+  })
+
+  const scopedKey = (baseFilter: Where) =>
+    buildPathCacheKey({
+      baseFilter,
+      draft: false,
+      locale: 'de',
+      path: '/kontakt',
+      routing: undefined,
+      where: undefined,
+    })
+
+  test('gives two filters that constrain the same thing the same cache slot, whatever order their keys were written in', () => {
+    expect(scopedKey({ status: { equals: 'live' }, tenant: { equals: 'acme' } })).toBe(
+      scopedKey({ tenant: { equals: 'acme' }, status: { equals: 'live' } }),
+    )
+  })
+
+  test('still separates filters that constrain different things', () => {
+    expect(scopedKey({ tenant: { equals: 'acme' } })).not.toBe(
+      scopedKey({ tenant: { equals: 'globex' } }),
+    )
   })
 })

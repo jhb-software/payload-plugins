@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: derive the path cache's scope segment from a key-order-independent serialization of `baseFilter` and `where`, so two filters that constrain the same thing share a cache slot instead of each building their own
+
 ## 0.9.0-beta.3
 
 - **BREAKING**: locale codes are rejected as slugs on localized installs — a page slugged e.g. `en` fails validation on its next save and must be renamed
