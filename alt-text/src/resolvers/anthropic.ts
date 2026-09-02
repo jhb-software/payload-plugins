@@ -15,13 +15,10 @@ export type AnthropicResolverConfig = {
    * Caps how long Claude thinks before answering. Lower effort still thinks on a
    * difficult image, just less than a higher setting would.
    *
-   * Describing an image is not a reasoning-heavy task, so the default keeps the
-   * spend down. Raise it if alt texts come back too shallow for your images.
-   *
-   * Not every model accepts it — the models on Claude's effort-supported list
-   * do, and `claude-haiku-4-5` does not.
-   *
-   * @default 'low'
+   * Describing an image is not a reasoning-heavy task, so `'low'` keeps the
+   * spend down on the models that accept it. Omitted, the field is not sent and
+   * Claude uses its default (`'high'`) — which also keeps models without effort
+   * support, such as `claude-haiku-4-5`, usable.
    */
   effort?: 'high' | 'low' | 'max' | 'medium' | 'xhigh'
   /**
@@ -34,10 +31,9 @@ export type AnthropicResolverConfig = {
   /**
    * The Claude model to use for alt text generation.
    *
-   * Must accept `output_config.effort` as well as read images —
-   * `claude-sonnet-5` is the cheaper choice for a large media library.
-   * `claude-haiku-4-5` reads images but rejects `effort`, so it is not usable
-   * here.
+   * Must be able to read images. `claude-sonnet-5` is the cheaper choice for a
+   * large media library; `claude-haiku-4-5` works too, but only without
+   * `effort`.
    *
    * @default 'claude-opus-5'
    */
@@ -105,7 +101,7 @@ type AnthropicMessage = {
 export const anthropicResolver = ({
   apiKey,
   baseUrl = 'https://api.anthropic.com',
-  effort = 'low',
+  effort,
   instructions,
   model = 'claude-opus-5',
   timeoutMs = 30_000,
@@ -142,9 +138,10 @@ export const anthropicResolver = ({
           ],
           model,
           // `format` constrains the response to the schema the plugin needs;
-          // `effort` caps how long Claude thinks before producing it.
+          // `effort` caps how long Claude thinks before producing it. Only sent
+          // when configured: some models reject the field outright.
           output_config: {
-            effort,
+            ...(effort ? { effort } : {}),
             format: { type: 'json_schema', schema: responseSchema },
           },
           // The instructions are an operator instruction, not a turn in the

@@ -308,6 +308,7 @@ import { anthropicResolver } from '@jhb.software/payload-alt-text-plugin'
 anthropicResolver({
   apiKey: process.env.ANTHROPIC_API_KEY,
   model: 'claude-opus-5', // default; `claude-sonnet-5` is cheaper for a large library
+  effort: 'low', // optional; describing an image needs little thinking
 })
 ```
 
@@ -320,14 +321,14 @@ that a base64 image block requires and a URL cannot carry.
 `supportedMimeTypes` is limited to what the Messages API accepts: JPEG, PNG, GIF
 and WebP. Documents in other formats keep their generate button disabled.
 
-| Option         | Type                                              | Required | Description                                                                                                                       |
-| -------------- | ------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `apiKey`       | `string`                                          | Yes      | API key for authentication                                                                                                        |
-| `model`        | `string`                                          | No       | Model to use (default: `claude-opus-5`). Must accept `effort`, which rules out `claude-haiku-4-5`                                 |
-| `effort`       | `'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | No       | How long Claude thinks before answering (default: `low` — describing an image needs little). Lower effort still thinks, just less |
-| `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                              |
-| `timeoutMs`    | `number`                                          | No       | Abort after this many milliseconds, image download included (default: `30000`)                                                    |
-| `instructions` | `function`                                        | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions)                                          |
+| Option         | Type                                              | Required | Description                                                                                                                                                                                                                  |
+| -------------- | ------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`       | `string`                                          | Yes      | API key for authentication                                                                                                                                                                                                   |
+| `model`        | `string`                                          | No       | Model to use (default: `claude-opus-5`). `claude-sonnet-5` is cheaper; `claude-haiku-4-5` works too, but only without `effort`                                                                                               |
+| `effort`       | `'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | No       | How long Claude thinks before answering. `low` is plenty for describing an image and keeps the spend down. Omitted, the field is not sent and Claude uses its default (`high`), so models without effort support stay usable |
+| `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                                                                                                                         |
+| `timeoutMs`    | `number`                                          | No       | Abort after this many milliseconds, image download included (default: `30000`)                                                                                                                                               |
+| `instructions` | `function`                                        | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions)                                                                                                                                     |
 
 ### Customizing the instructions
 

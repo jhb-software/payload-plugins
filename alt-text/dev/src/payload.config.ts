@@ -125,9 +125,10 @@ export default buildConfig({
             apiKey: process.env.ANTHROPIC_API_KEY,
             instructions: houseStyleInstructions,
             // `claude-sonnet-5` is the cheaper choice for a large library.
-            // `claude-haiku-4-5` reads images but rejects `effort`, so it is
-            // not usable with this resolver.
+            // `claude-haiku-4-5` works as well, but rejects `effort`, so drop
+            // the line below when switching to it.
             model: 'claude-opus-5',
+            effort: 'low',
           })
         : process.env.MISTRAL_API_KEY
           ? mistralResolver({

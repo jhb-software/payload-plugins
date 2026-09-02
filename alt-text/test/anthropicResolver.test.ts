@@ -191,6 +191,33 @@ describe('anthropic resolver', () => {
     assert.equal(recorded[0]!.headers['anthropic-version'], '2023-06-01')
   })
 
+  test('omits effort unless configured, so a model that rejects it stays usable', async () => {
+    // `claude-haiku-4-5` reads images but 400s on `output_config.effort`. The
+    // API treats an omitted effort as `high`, so the field is only worth sending
+    // when the project asked for a specific level.
+    const recorded = stubFetch({ message: textMessage(enResult) })
+
+    await anthropicResolver({ apiKey: 'key', model: 'claude-haiku-4-5' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal('effort' in (recorded[0]!.body.output_config as object), false)
+  })
+
+  test('sends the configured effort level', async () => {
+    const recorded = stubFetch({ message: textMessage(enResult) })
+
+    await anthropicResolver({ apiKey: 'key', effort: 'low' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal((recorded[0]!.body.output_config as { effort?: string }).effort, 'low')
+  })
+
   test('asks for every locale in a single request', async () => {
     const recorded = stubFetch({
       message: textMessage({
