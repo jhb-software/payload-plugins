@@ -1,4 +1,6 @@
 export { payloadAltTextPlugin } from './plugin.js'
+export { anthropicResolver } from './resolvers/anthropic.js'
+export type { AnthropicResolverConfig } from './resolvers/anthropic.js'
 export { createVisionResolver } from './resolvers/createVisionResolver.js'
 export type {
   VisionGenerateArgs,
