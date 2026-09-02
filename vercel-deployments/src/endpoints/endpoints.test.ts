@@ -127,11 +127,16 @@ describe('getDeploymentsEndpoint', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('looks up a single deployment by id without resolving a target', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ id: 'dpl_1', status: 'READY' }))
-    const deploymentTarget = vi.fn(() => ({ projectId: 'prj_acme' }))
+  it('reports the status of a deployment belonging to the project resolved for the request', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ id: 'dpl_1', projectId: 'prj_acme', status: 'READY' }),
+    )
     const req = createMockReq({
-      pluginConfig: { deploymentTarget, vercel: { apiToken: 'test-token' } },
+      headers: new Headers({ 'x-tenant': 'acme' }),
+      pluginConfig: {
+        deploymentTarget: ({ req }) => ({ projectId: `prj_${req.headers.get('x-tenant')}` }),
+        vercel: { apiToken: 'test-token' },
+      },
       url: 'http://localhost:3000/api/vercel-deployments?id=dpl_1',
       user: { id: 'user-1' },
     })
@@ -139,7 +144,45 @@ describe('getDeploymentsEndpoint', () => {
     const response = await getDeploymentsEndpoint(req)
 
     expect(response.status).toBe(200)
-    expect(deploymentTarget).not.toHaveBeenCalled()
+    expect(await response.json()).toEqual({ id: 'dpl_1', status: 'READY' })
+  })
+
+  it('does not report a deployment of another project, so a deployment id from one tenant discloses nothing to another', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ id: 'dpl_1', projectId: 'prj_globex', status: 'BUILDING' }),
+    )
+    const req = createMockReq({
+      headers: new Headers({ 'x-tenant': 'acme' }),
+      pluginConfig: {
+        deploymentTarget: ({ req }) => ({ projectId: `prj_${req.headers.get('x-tenant')}` }),
+        vercel: { apiToken: 'test-token' },
+      },
+      url: 'http://localhost:3000/api/vercel-deployments?id=dpl_1',
+      user: { id: 'user-1' },
+    })
+
+    const response = await getDeploymentsEndpoint(req)
+
+    expect(response.status).toBe(404)
+    expect(await response.text()).not.toContain('BUILDING')
+  })
+
+  it('does not report a deployment when the request resolves to no project at all', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ id: 'dpl_1', projectId: 'prj_acme', status: 'READY' }),
+    )
+    const req = createMockReq({
+      pluginConfig: {
+        deploymentTarget: () => ({ projectId: undefined }),
+        vercel: { apiToken: 'test-token' },
+      },
+      url: 'http://localhost:3000/api/vercel-deployments?id=dpl_1',
+      user: { id: 'user-1' },
+    })
+
+    const response = await getDeploymentsEndpoint(req)
+
+    expect(response.status).toBe(404)
   })
 
   it('answers 500 instead of throwing when the target resolver fails', async () => {

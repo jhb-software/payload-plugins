@@ -19,11 +19,50 @@ import { GlobeIcon } from './icons/globe.js'
 import { SpinnerIcon } from './icons/spinner.js'
 import { TriggerFrontendDeploymentButton } from './TriggerDeploymentButton.js'
 
+/** A deployment target the card can render from. `error` carries a resolver failure. */
+export type ResolvedWidgetTarget = { error?: string } & DeploymentTarget
+
 /**
- * The deployment target of the current request, as a promise so the card can render
- * before it resolves. `error` carries a resolver failure to the card.
+ * The deployment target of the current request. A statically configured target is already
+ * known and renders in the same pass; only a per-request resolver arrives as a promise, so
+ * that the card can render before it settles.
  */
-export type WidgetTarget = Promise<{ error?: string } & DeploymentTarget>
+export type WidgetTarget = Promise<ResolvedWidgetTarget> | ResolvedWidgetTarget
+
+/**
+ * Renders a part of the card that depends on the target. A target that is already known
+ * renders immediately — no Suspense boundary, so a static configuration shows the website
+ * link and the deploy button in the card's first paint rather than a tick later.
+ */
+function TargetSlot({
+  children,
+  fallback,
+  target,
+}: {
+  children: (target: ResolvedWidgetTarget) => React.ReactNode
+  fallback: React.ReactNode
+  target: WidgetTarget
+}): React.ReactNode {
+  if (!(target instanceof Promise)) {
+    return children(target)
+  }
+
+  return (
+    <Suspense fallback={fallback}>
+      <AwaitedTargetSlot target={target}>{children}</AwaitedTargetSlot>
+    </Suspense>
+  )
+}
+
+async function AwaitedTargetSlot({
+  children,
+  target,
+}: {
+  children: (target: ResolvedWidgetTarget) => React.ReactNode
+  target: Promise<ResolvedWidgetTarget>
+}): Promise<React.ReactNode> {
+  return children(await target)
+}
 
 export function DeploymentInfoCard({
   i18n,
@@ -42,17 +81,17 @@ export function DeploymentInfoCard({
     <DeploymentStatusPoller>
       <Card
         actions={
-          <Suspense fallback={null}>
-            <DeployAction target={target} />
-          </Suspense>
+          <TargetSlot fallback={null} target={target}>
+            {({ projectId }) => (projectId ? <TriggerFrontendDeploymentButton /> : null)}
+          </TargetSlot>
         }
         icon={<CloudIcon />}
         title={t('vercel-dashboard:deploymentInfoTitle')}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <Suspense fallback={null}>
-            <WebsiteLink i18n={i18n} target={target} />
-          </Suspense>
+          <TargetSlot fallback={null} target={target}>
+            {({ websiteUrl }) => <WebsiteLink i18n={i18n} websiteUrl={websiteUrl} />}
+          </TargetSlot>
 
           <Suspense
             fallback={
@@ -98,17 +137,9 @@ function DeploymentInfoError({ error, i18n }: { error: string; i18n: I18nClient 
   )
 }
 
-/** The deploy button, once a project is known to exist for this request. */
-async function DeployAction({ target }: { target: WidgetTarget }) {
-  const { projectId } = await target
-
-  return projectId ? <TriggerFrontendDeploymentButton /> : null
-}
-
 /** Link to the website of the resolved target, if one is configured. */
-async function WebsiteLink({ i18n, target }: { i18n: I18nClient; target: WidgetTarget }) {
+function WebsiteLink({ i18n, websiteUrl }: { i18n: I18nClient; websiteUrl?: string }) {
   const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
-  const { websiteUrl } = await target
 
   if (!websiteUrl) {
     return null
