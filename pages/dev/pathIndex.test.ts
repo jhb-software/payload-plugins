@@ -401,6 +401,43 @@ describe('pathChanges', () => {
     ])
   })
 
+  test('publishing through the draft flag reports paths built from the published slug of the parent', async () => {
+    const root = await createPage({ title: 'Root', slug: '', isRootPage: true })
+    const parent = await createPage({ title: 'Parent', slug: 'parent', parent: root.id })
+    const child = await createPage({ title: 'Child', slug: 'child', parent: parent.id })
+
+    // rename the parent in a draft: every live URL below it stays under /de/parent
+    await payload.update({
+      collection: 'pages',
+      id: parent.id,
+      locale: 'de',
+      draft: true,
+      data: { slug: 'parent-draft', _status: 'draft' },
+    })
+
+    clearPathChangeRecords()
+    // rename and publish the child in one write, sent with `draft: true` — `_status: 'published'`
+    // publishes regardless of the flag, so this moves a live URL
+    await payload.update({
+      collection: 'pages',
+      id: child.id,
+      locale: 'de',
+      draft: true,
+      data: { slug: 'child-renamed', _status: 'published' },
+    })
+
+    expect(recordedPathChangeErrors()).toEqual([])
+    expect(recordedPathChanges()).toEqual([
+      expect.objectContaining({
+        collection: 'pages',
+        id: child.id,
+        locale: 'de',
+        previousPath: '/de/parent/child',
+        path: '/de/parent/child-renamed',
+      }),
+    ])
+  })
+
   test('a draft save of a published page returns an empty array and issues no capture read', async () => {
     const page = await createPage({ title: 'Draft Save', slug: 'draft-save' })
 

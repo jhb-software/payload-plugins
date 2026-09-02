@@ -13,23 +13,8 @@ import { resolveParentRef } from './parentRef.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
-/** Returns the breadcrumbs to the given document. */
-export async function getBreadcrumbs({
-  apiURL,
-  data,
-  locale,
-  localePrefixes,
-  locales,
-  pageConfig,
-  req,
-}: {
-  /**
-   * Base URL of the Payload REST API (e.g. `${serverURL}${routes.api}`).
-   * Required when `req` is undefined (i.e. when called from a client component)
-   * so the plugin respects a user-customized `routes.api`.
-   */
-  apiURL?: string
-  data: Record<string, any>
+type GetBreadcrumbsArgs = {
+  data: Record<string, unknown>
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   /** Each locale's path prefix. Without it every locale is prefixed with `/<locale>`. */
@@ -37,8 +22,36 @@ export async function getBreadcrumbs({
   locales: Locale[] | undefined
   /** Page config of the collection `data` belongs to. Every ancestor resolves its own. */
   pageConfig: PageCollectionConfigAttributes
-  req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
-}): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
+} & (
+  | {
+      /**
+       * Base URL of the Payload REST API (e.g. `${serverURL}${routes.api}`), used by the client
+       * path, which reads the parent's already computed breadcrumbs instead of resolving
+       * ancestors itself.
+       */
+      apiURL: string
+      draft?: never
+      req?: undefined
+    }
+  | {
+      apiURL?: never
+      /** Whether the ancestors resolve to their latest version. See `operationContext`. */
+      draft: boolean
+      req: PayloadRequest
+    }
+)
+
+/** Returns the breadcrumbs to the given document. */
+export async function getBreadcrumbs({
+  apiURL,
+  data,
+  draft,
+  locale,
+  localePrefixes,
+  locales,
+  pageConfig,
+  req,
+}: GetBreadcrumbsArgs): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
   const breadcrumbLabelField = pageConfig.breadcrumbs.labelField
   const parentField = pageConfig.parent.name
   const getCurrentDocBreadcrumb = (locale: Locale | undefined, parentBreadcrumbs: Breadcrumb[]) =>
@@ -71,7 +84,7 @@ export async function getBreadcrumbs({
   const parentRef = resolveParentRef(data[parentField], pageConfig)
 
   if (!parentRef) {
-    throw new Error('Parent ID not found for document with id ' + data.id)
+    throw new Error(`Parent ID not found for document with id ${String(data.id)}`)
   }
 
   let parentBreadcrumbsFor: (locale: Locale | undefined) => Breadcrumb[]
@@ -81,6 +94,7 @@ export async function getBreadcrumbs({
       id: parentRef.id,
       collection: parentRef.collection,
       docId: data.id,
+      draft,
       locale,
       req,
     })
@@ -107,11 +121,7 @@ export async function getBreadcrumbs({
     if (!parent) {
       // This can be the case, when the parent document got deleted.
       throw new Error(
-        'Parent document with id ' +
-          parentRef.id +
-          ' of document with id ' +
-          data.id +
-          ' not found.',
+        `Parent document with id ${String(parentRef.id)} of document with id ${String(data.id)} not found.`,
       )
     }
 
@@ -174,7 +184,7 @@ function ancestorsToBreadcrumbs(
 
 /** Converts a localized or unlocalized document to a breadcrumb item. */
 function docToBreadcrumb(
-  doc: Record<string, any>,
+  doc: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined,
   breadcrumbLabelField?: string,
@@ -182,23 +192,41 @@ function docToBreadcrumb(
   return {
     slug: doc.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(doc.slug, locale)!,
     label: breadcrumbLabelField
-      ? pickFieldValue(doc[breadcrumbLabelField], locale)
-      : typeof doc.breadcrumbs === 'object' && locale
-        ? doc.breadcrumbs?.[locale]?.at(-1)?.label
-        : doc.breadcrumbs?.at(-1)?.label,
+      ? pickFieldValue(doc[breadcrumbLabelField], locale)!
+      : lastBreadcrumbLabel(doc.breadcrumbs, locale)!,
     path: pickFieldValue(doc.path, locale)!,
   }
 }
 
 /** Picks the value of a localized or unlocalized field. */
-function pickFieldValue(field: any, locale: Locale | undefined): string | undefined {
+function pickFieldValue(field: unknown, locale: Locale | undefined): string | undefined {
   if (typeof field === 'string') {
     return field
   }
 
-  if (typeof field === 'object' && locale) {
-    return field[locale]
+  if (field && typeof field === 'object' && locale) {
+    const localized = (field as Record<string, unknown>)[locale]
+    return typeof localized === 'string' ? localized : undefined
   }
 
   return undefined
+}
+
+/** The label of the deepest entry of a localized or unlocalized `breadcrumbs` field. */
+function lastBreadcrumbLabel(
+  breadcrumbs: unknown,
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  locale: 'all' | Locale | undefined,
+): string | undefined {
+  const entries =
+    breadcrumbs && typeof breadcrumbs === 'object' && locale
+      ? (breadcrumbs as Record<string, unknown>)[locale]
+      : breadcrumbs
+
+  if (!Array.isArray(entries)) {
+    return undefined
+  }
+
+  const label = (entries.at(-1) as Record<string, unknown> | undefined)?.label
+  return typeof label === 'string' ? label : undefined
 }

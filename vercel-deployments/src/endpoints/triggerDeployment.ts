@@ -65,7 +65,7 @@ export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequ
 
     return Response.json({ id: deployment.id })
   } catch (error) {
-    console.error('Error triggering deployment:', error)
+    req.payload.logger.error({ err: error }, 'Error triggering deployment')
     return Response.json(
       {
         error: `Error triggering deployment: ${error instanceof Error ? error.message : 'Unknown error'}`,

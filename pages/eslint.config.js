@@ -27,8 +27,6 @@ export default [
   {
     rules: {
       'no-restricted-exports': 'off',
-      '@typescript-eslint/no-explicit-any': 'off', // TODO: remove this rule and fix all occurrences of any
-      'no-console': 'off', // TODO: remove this rule and use the Payload logger instead
     },
   },
   {

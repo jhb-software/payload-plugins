@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- fix: log traversal and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
+- **BREAKING**: `translateOperation`'s `data` argument and the `translatedData` it resolves with are typed `Record<string, unknown>` instead of `Record<string, any>`. Callers passing a value declared as an `interface` must widen it (e.g. `as Record<string, unknown>`) or declare it as a `type` alias.
 - feat: add `anthropicResolver`, a translation resolver for Claude (default `claude-opus-5`). It constrains the response with a JSON schema requiring exactly one translation per input index, so a merged or dropped entry is rejected by the provider rather than reconstructed after the fact, and a refusal or a truncated answer is reported as such instead of surfacing as a JSON parse error. An optional `effort` caps how long Claude thinks; leave it unset for models that reject the field, such as `claude-haiku-4-5`.
 - feat: add `mistralResolver`, a translation resolver for Mistral's chat models (default `mistral-medium-latest`), taking the same `chunkLength` and `instructions` options as the OpenAI resolver
 - feat: export `createOpenAICompatibleResolver`, which builds a resolver for any provider serving OpenAI's `/v1/chat/completions` endpoint with JSON mode. `openAIResolver` and `mistralResolver` are thin wrappers around it.

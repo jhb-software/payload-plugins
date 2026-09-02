@@ -94,7 +94,7 @@ export const bulkGenerateAltTextsEndpoint =
               req,
             })
             updatedDocs++
-            console.log(
+            req.payload.logger.info(
               `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
             )
           } catch (error) {
@@ -105,7 +105,7 @@ export const bulkGenerateAltTextsEndpoint =
             if (error instanceof Forbidden) {
               throw error
             }
-            console.error(`Error generating alt text for ${id}:`, error)
+            req.payload.logger.error({ err: error }, `Error generating alt text for ${id}`)
             erroredDocs.push(id)
           }
         },
@@ -113,7 +113,7 @@ export const bulkGenerateAltTextsEndpoint =
       )
 
       if (erroredDocs.length > 0) {
-        console.error(`Failed for: ${erroredDocs.join(', ')}`)
+        req.payload.logger.error(`Failed for: ${erroredDocs.join(', ')}`)
       }
 
       return Response.json({
@@ -130,7 +130,7 @@ export const bulkGenerateAltTextsEndpoint =
       if (error instanceof APIError) {
         return Response.json({ error: error.message }, { status: error.status })
       }
-      console.error('Error in bulk generation:', error)
+      req.payload.logger.error({ err: error }, 'Error in bulk generation')
       return Response.json(
         {
           error: `Error generating alt text: ${error instanceof Error ? error.message : 'Unknown error'}`,

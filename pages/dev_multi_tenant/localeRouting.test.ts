@@ -307,6 +307,49 @@ describe('locale routing', () => {
     )
   })
 
+  // The resolver's first evaluation on a request can happen inside a write's `afterChange`, and a
+  // resolver which reads a page collection runs a nested operation there. That operation must not
+  // decide the draft mode of the write it is nested in.
+  test('resolves the draft ancestors of a draft save whose routing resolver reads a page collection', async () => {
+    const parent = await createPage({
+      de: { slug: 'eltern', title: 'Eltern' },
+      en: { slug: 'parent', title: 'Parent' },
+      tenant: unprefixedTenant,
+    })
+    const child = await createPage({
+      de: { slug: 'kind', title: 'Kind' },
+      en: { slug: 'child', title: 'Child' },
+      parent,
+      tenant: unprefixedTenant,
+    })
+
+    // rename the parent in a draft: the child's draft path moves, its live path does not
+    await payload.update({
+      collection: 'pages',
+      id: parent,
+      locale: 'de',
+      draft: true,
+      data: { slug: 'eltern-entwurf', _status: 'draft' },
+    })
+
+    const req = await createLocalReq({}, payload)
+    req.headers = new Headers({
+      cookie: `payload-tenant=${unprefixedTenant}`,
+      [RESOLVER_READS_PAGES_HEADER]: 'true',
+    })
+
+    const saved = await payload.update({
+      collection: 'pages',
+      id: child,
+      locale: 'de',
+      draft: true,
+      data: { title: 'Kind bearbeitet', _status: 'draft' },
+      req,
+    })
+
+    expect(saved.path).toBe('/eltern-entwurf/kind')
+  })
+
   test('throws when resolving a path without a req while a routing function is configured', async () => {
     await expect(findPageByPath({ path: '/kontakt', payload })).rejects.toThrow(/localeRouting/)
   })
