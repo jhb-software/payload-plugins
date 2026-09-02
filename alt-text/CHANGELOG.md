@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **BREAKING**: `openAIResolver` calls the API over `fetch`, and the `openai` SDK is no longer a dependency — it was installed by every project, whichever resolver it used. `timeoutMs` now defaults to `30000`, replacing the SDK's 10-minute deadline.
+- feat: a provider call answered with `429` or `5xx` is retried twice before the generation gives up, so a bulk run no longer abandons an image on the first rate limit. Custom resolvers opt in by throwing the exported `VisionProviderError`.
 - feat: add `healthCheck.baseFilter`, a `({ collection, req }) => Where` narrowing what the health report counts — in a multi-tenant CMS, to the tenant the request is for. Resolved per collection, so collections without the constraining field can return `{}`. The scan's cache key is derived from the resolved filters, so one scope's counts are never served to another.
 - **BREAKING**: `healthCheck` no longer accepts a function. Move the access check to `healthCheck: { access: ({ req }) => ... }`; the function form now throws at config load. `healthCheck: true` / `false` are unchanged.
 - feat: add `anthropicResolver`, a resolver for Claude's vision models (default `claude-opus-5`). It downloads the image and sends the bytes: Claude's own fetcher requires a publicly reachable file — never true in local development, not true for private buckets — and a base64 image block needs the `media_type` that a URL cannot carry. A refusal and a truncated answer are reported as such instead of surfacing as a JSON parse error. All requested locales are generated in a single request. An optional `effort` caps how long Claude thinks; leave it unset for models that reject the field, such as `claude-haiku-4-5`.

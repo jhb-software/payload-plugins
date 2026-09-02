@@ -265,9 +265,9 @@ openAIResolver({
 | -------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apiKey`             | `string`   | Yes      | API key for authentication                                                                                                                                                                  |
 | `model`              | `string`   | No       | Model to use (default: `gpt-4.1-nano`)                                                                                                                                                      |
-| `baseUrl`            | `string`   | No       | Base URL for an OpenAI-compatible provider (e.g. Nebius, Azure)                                                                                                                             |
+| `baseUrl`            | `string`   | No       | Base URL for an OpenAI-compatible provider, version segment included (default: `https://api.openai.com/v1`; e.g. Nebius, Azure)                                                             |
 | `supportedMimeTypes` | `string[]` | No       | Image formats the provider accepts (default: `['image/jpeg', 'image/png', 'image/gif', 'image/webp']`, per OpenAI's vision docs). Override it when using a `baseUrl` whose provider differs |
-| `timeoutMs`          | `number`   | No       | Ceiling on a generate request. Omitted by default, leaving the OpenAI client's own 10-minute deadline and its automatic retries in charge                                                   |
+| `timeoutMs`          | `number`   | No       | Abort after this many milliseconds, retries included (default: `30000`)                                                                                                                     |
 | `instructions`       | `function` | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions)                                                                                                    |
 
 #### Mistral Resolver
@@ -357,7 +357,7 @@ the strict reading of the response, leaving only the provider call to `generate`
 Every bundled resolver is built on it.
 
 ```ts
-import { createVisionResolver } from '@jhb.software/payload-alt-text-plugin'
+import { createVisionResolver, VisionProviderError } from '@jhb.software/payload-alt-text-plugin'
 
 export const myResolver = ({ apiKey }: { apiKey: string }) =>
   createVisionResolver({
@@ -376,8 +376,14 @@ export const myResolver = ({ apiKey }: { apiKey: string }) =>
         signal,
       })
 
-      // Return the parsed JSON object; throwing fails the generation and the
-      // message is shown in the admin panel.
+      // A rate limit or an outage is worth another attempt: throwing
+      // `VisionProviderError` lets the factory retry it. Any other error fails
+      // the generation immediately, with its message shown in the admin panel.
+      if (!response.ok) {
+        throw new VisionProviderError({ label: 'My Provider', status: response.status })
+      }
+
+      // Return the parsed JSON object.
       return await response.json()
     },
     inlineImage: true,
@@ -386,6 +392,13 @@ export const myResolver = ({ apiKey }: { apiKey: string }) =>
     supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
   })
 ```
+
+A provider call that fails with `VisionProviderError` is retried twice, with a
+short backoff, when the status is a rate limit (`429`) or a server-side failure
+(`5xx`) — a bulk generation trips those routinely, and giving up on the first one
+leaves documents without an alt text. Any other status fails immediately: a `4xx`
+would fail identically on every attempt. The resolver's `timeoutMs` covers the
+attempts together.
 
 For a provider that does not fit that shape at all, implement the
 `AltTextResolver` interface directly.

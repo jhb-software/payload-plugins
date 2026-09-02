@@ -1,7 +1,7 @@
 import type { VisionInstructions } from './createVisionResolver.js'
 import type { AltTextResolver } from './types.js'
 
-import { createVisionResolver } from './createVisionResolver.js'
+import { createVisionResolver, VisionProviderError } from './createVisionResolver.js'
 
 export type MistralResolverConfig = {
   /** Mistral API key for authentication */
@@ -113,9 +113,7 @@ export const mistralResolver = ({
       if (!response.ok) {
         const body = await response.text().catch(() => '')
 
-        throw new Error(
-          `Mistral responded with status ${response.status}${body ? `: ${body}` : ''}`,
-        )
+        throw new VisionProviderError({ body, label: 'Mistral', status: response.status })
       }
 
       const completion = (await response.json()) as {

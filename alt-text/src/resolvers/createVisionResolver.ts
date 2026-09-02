@@ -63,6 +63,34 @@ export type VisionGenerateArgs = {
   signal?: AbortSignal
 }
 
+/**
+ * A non-ok HTTP response from a provider.
+ *
+ * Carries the status so the factory can tell a rate limit or an outage — worth
+ * another attempt — from a malformed request, which would fail identically every
+ * time. The message is what an editor sees, so it stays readable.
+ */
+export class VisionProviderError extends Error {
+  readonly status: number
+
+  constructor({ body, label, status }: { body?: string; label: string; status: number }) {
+    super(`${label} responded with status ${status}${body ? `: ${body}` : ''}`)
+    this.name = 'VisionProviderError'
+    this.status = status
+  }
+
+  /** Rate limits and server-side failures are transient; a 4xx is not. */
+  get isTransient(): boolean {
+    return this.status === 429 || this.status >= 500
+  }
+}
+
+/** Attempts after the first, for a provider error that may pass on a retry. */
+const MAX_RETRIES = 2
+
+/** Backs off between attempts, bounded by the resolver's own deadline. */
+const retryDelayMs = (attempt: number) => 250 * 2 ** (attempt - 1)
+
 export type VisionResolverConfig = {
   /**
    * Checked before any work happens, so a plugin wired as
@@ -228,6 +256,37 @@ async function fetchImage({
 }
 
 /**
+ * Runs the provider call, retrying a transient failure.
+ *
+ * Every bundled resolver reaches its provider over `fetch`, which retries
+ * nothing by itself. Without this, a bulk generation that trips a rate limit
+ * gives up on the first 429 and leaves those images without an alt text. The
+ * resolver's `timeoutMs` covers the attempts together, so a deadline still
+ * bounds the whole call.
+ */
+async function generateWithRetry({
+  args,
+  generate,
+}: {
+  args: VisionGenerateArgs
+  generate: (args: VisionGenerateArgs) => Promise<unknown>
+}): Promise<unknown> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await generate(args)
+    } catch (error) {
+      const isRetryable = error instanceof VisionProviderError && error.isTransient
+
+      if (!isRetryable || attempt >= MAX_RETRIES || args.signal?.aborted) {
+        throw error
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs(attempt + 1)))
+    }
+  }
+}
+
+/**
  * Reads the model's response.
  *
  * Deliberately strict about a blank `altText`: the field is required on the
@@ -325,17 +384,20 @@ export const createVisionResolver = ({
     try {
       const defaultInstructions = buildDefaultInstructions({ locales })
 
-      const content = await generate({
-        filename,
-        image,
-        imageThumbnailMimeType,
-        imageThumbnailUrl,
-        instructions: await instructions({ defaultInstructions, filename, locales }),
-        locales,
-        maxTokens: maxTokensPerLocale * locales.length,
-        req,
-        responseSchema: z.toJSONSchema(schemaForLocales(locales), { target: 'draft-7' }),
-        signal,
+      const content = await generateWithRetry({
+        args: {
+          filename,
+          image,
+          imageThumbnailMimeType,
+          imageThumbnailUrl,
+          instructions: await instructions({ defaultInstructions, filename, locales }),
+          locales,
+          maxTokens: maxTokensPerLocale * locales.length,
+          req,
+          responseSchema: z.toJSONSchema(schemaForLocales(locales), { target: 'draft-7' }),
+          signal,
+        },
+        generate,
       })
 
       const results = parseResults(content, locales)

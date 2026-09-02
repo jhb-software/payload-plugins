@@ -1,19 +1,15 @@
-import type { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
-
-import OpenAI from 'openai'
-
 import type { VisionInstructions } from './createVisionResolver.js'
 import type { AltTextResolver } from './types.js'
 
-import { createVisionResolver } from './createVisionResolver.js'
+import { createVisionResolver, VisionProviderError } from './createVisionResolver.js'
 
 export type OpenAIResolverConfig = {
   /** OpenAI API key for authentication */
   apiKey: string
   /**
-   * Base URL for the OpenAI-compatible API.
+   * Base URL for the OpenAI-compatible API, including the version segment.
    * Use this to point at alternative providers (e.g. Azure, Nebius, local inference).
-   * @default undefined — the OpenAI SDK defaults to 'https://api.openai.com/v1'
+   * @default 'https://api.openai.com/v1'
    */
   baseUrl?: string
   /**
@@ -39,12 +35,9 @@ export type OpenAIResolverConfig = {
    */
   supportedMimeTypes?: string[]
   /**
-   * Abort after this many milliseconds, covering the completion call and any
-   * retry the SDK makes within it.
-   *
-   * Omitted by default, leaving the OpenAI client's own deadline (10 minutes)
-   * and its automatic retries in charge. Set it to put a shorter ceiling on a
-   * generate request.
+   * Abort after this many milliseconds, covering the completion call and the
+   * retries the factory makes within it.
+   * @default 30000
    */
   timeoutMs?: number
 }
@@ -80,19 +73,13 @@ const OPENAI_SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'im
  */
 export const openAIResolver = ({
   apiKey,
-  baseUrl,
+  baseUrl = 'https://api.openai.com/v1',
   instructions,
   model = 'gpt-4.1-nano',
   supportedMimeTypes = OPENAI_SUPPORTED_MIME_TYPES,
-  timeoutMs,
-}: OpenAIResolverConfig): AltTextResolver => {
-  // Build the client lazily (once, on first use): the `resolver` argument is
-  // evaluated even when the plugin is disabled, so eager construction would
-  // throw on a keyless `enabled: !!process.env.OPENAI_API_KEY` setup.
-  let openai: OpenAI | undefined
-  const getClient = (): OpenAI => (openai ??= new OpenAI({ apiKey, baseURL: baseUrl }))
-
-  return createVisionResolver({
+  timeoutMs = 30_000,
+}: OpenAIResolverConfig): AltTextResolver =>
+  createVisionResolver({
     apiKey,
     generate: async ({
       filename,
@@ -102,17 +89,15 @@ export const openAIResolver = ({
       responseSchema,
       signal,
     }) => {
-      const response = await getClient().chat.completions.create(
-        {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        body: JSON.stringify({
           max_completion_tokens: maxTokens,
           messages: [
             { content: resolvedInstructions, role: 'system' },
             {
               content: [
                 { type: 'image_url', image_url: { url: imageThumbnailUrl } },
-                ...(filename
-                  ? [{ type: 'text', text: filename } as ChatCompletionContentPartText]
-                  : []),
+                ...(filename ? [{ type: 'text', text: filename }] : []),
               ],
               role: 'user',
             },
@@ -122,11 +107,23 @@ export const openAIResolver = ({
             type: 'json_schema',
             json_schema: { name: 'data', schema: responseSchema, strict: true },
           },
-        },
-        { signal },
-      )
+        }),
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        method: 'POST',
+        signal,
+      })
 
-      const choice = response.choices[0]
+      if (!response.ok) {
+        // Bounded: the body is provider text rendered in the admin panel.
+        const body = (await response.text().catch(() => '')).slice(0, 500)
+
+        throw new VisionProviderError({ body, label: 'OpenAI', status: response.status })
+      }
+
+      const completion = (await response.json()) as {
+        choices?: { finish_reason?: string; message?: { content?: unknown } }[]
+      }
+      const choice = completion.choices?.[0]
 
       // A budget exhausted mid-JSON otherwise reaches JSON.parse and reads as
       // "Unexpected end of JSON input" in the admin panel, which tells an editor
@@ -155,4 +152,3 @@ export const openAIResolver = ({
     supportedMimeTypes,
     timeoutMs,
   })
-}
