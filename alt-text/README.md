@@ -6,7 +6,7 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 
 - Generate alt text for images using AI in the Payload Admin UI
 - Supports any AI provider using a resolver pattern (e.g., OpenAI, Anthropic, etc.)
-- Comes with ready-to-use OpenAI and Mistral resolvers out of the box
+- Comes with ready-to-use OpenAI, Anthropic and Mistral resolvers out of the box
 - Automatic keyword extraction for improved admin search
 - Bulk generation for processing multiple images at once
 - Full localization support
@@ -273,6 +273,35 @@ other formats — SVG or AVIF, for instance — keep their generate button disab
 | `timeoutMs`    | `number`   | No       | Abort after this many milliseconds, image download included (default: `30000`)           |
 | `instructions` | `function` | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions) |
 
+#### Anthropic Resolver
+
+```ts
+import { anthropicResolver } from '@jhb.software/payload-alt-text-plugin'
+
+anthropicResolver({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  model: 'claude-opus-5', // default; `claude-sonnet-5` is cheaper for a large library
+})
+```
+
+Like the Mistral resolver, this one downloads the image and sends the bytes.
+Claude can fetch an image URL itself, but that requires the file to be reachable
+from the public internet, which is never the case in local development and not
+the case for private buckets. Sending the bytes also supplies the `media_type`
+that a base64 image block requires and a URL cannot carry.
+
+`supportedMimeTypes` is limited to what the Messages API accepts: JPEG, PNG, GIF
+and WebP. Documents in other formats keep their generate button disabled.
+
+| Option         | Type                                              | Required | Description                                                                                                                       |
+| -------------- | ------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`       | `string`                                          | Yes      | API key for authentication                                                                                                        |
+| `model`        | `string`                                          | No       | Model to use (default: `claude-opus-5`). Must accept `effort`, which rules out `claude-haiku-4-5`                                 |
+| `effort`       | `'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | No       | How long Claude thinks before answering (default: `low` — describing an image needs little). Lower effort still thinks, just less |
+| `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                              |
+| `timeoutMs`    | `number`                                          | No       | Abort after this many milliseconds, image download included (default: `30000`)                                                    |
+| `instructions` | `function`                                        | No       | Customizes the prompt, see [Customizing the instructions](#customizing-the-instructions)                                          |
+
 ### Customizing the instructions
 
 Every bundled resolver accepts an `instructions` function that receives the
@@ -297,7 +326,7 @@ break the resolver's contract with its provider.
 For another LLM provider, `createVisionResolver` is usually the shortest path: it
 owns the prompt, the per-locale response schema, the optional image download and
 the strict reading of the response, leaving only the provider call to `generate`.
-All bundled resolvers are built on it.
+Every bundled resolver is built on it.
 
 ```ts
 import { createVisionResolver } from '@jhb.software/payload-alt-text-plugin'

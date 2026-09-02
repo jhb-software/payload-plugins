@@ -1,4 +1,5 @@
 import {
+  anthropicResolver,
   mistralResolver,
   openAIResolver,
   payloadAltTextPlugin,
@@ -101,30 +102,39 @@ export default buildConfig({
           },
         },
       ],
-      // Set MISTRAL_API_KEY to exercise the Mistral resolver, which sends the
-      // image bytes as a data URI instead of handing the provider a URL — the
-      // case `imageThumbnailMimeType` below exists for, since a media type
-      // cannot be sniffed from a URL.
+      // Set ANTHROPIC_API_KEY or MISTRAL_API_KEY to exercise the resolvers that
+      // send the image bytes instead of handing the provider a URL — the case
+      // `imageThumbnailMimeType` below exists for, since a media type cannot be
+      // sniffed from a URL.
       //
-      // Both resolvers take the same `instructions` extension point, so the
-      // house style rule below applies either way. Generate an alt text for the
-      // seeded sample image and the result names a colour — proof the appended
-      // rule reached the provider on top of the default instructions.
-      resolver: process.env.MISTRAL_API_KEY
-        ? mistralResolver({
-            apiKey: process.env.MISTRAL_API_KEY,
+      // Every resolver takes the same `instructions` extension point, so the
+      // house style rule below applies whichever one runs. Generate an alt text
+      // for the seeded sample image and the result names a colour — proof the
+      // appended rule reached the provider on top of the default instructions.
+      resolver: process.env.ANTHROPIC_API_KEY
+        ? anthropicResolver({
+            apiKey: process.env.ANTHROPIC_API_KEY,
             instructions: houseStyleInstructions,
-            model: 'mistral-medium-latest',
+            // `claude-sonnet-5` is the cheaper choice for a large library.
+            // `claude-haiku-4-5` reads images but rejects `effort`, so it is
+            // not usable with this resolver.
+            model: 'claude-opus-5',
           })
-        : openAIResolver({
-            apiKey: process.env.OPENAI_API_KEY!,
-            instructions: houseStyleInstructions,
-            model: 'gpt-4.1-mini',
-            // Pointing `baseUrl` at another OpenAI-compatible provider? Declare
-            // the formats that provider accepts instead of inheriting OpenAI's
-            // list:
-            // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-          }),
+        : process.env.MISTRAL_API_KEY
+          ? mistralResolver({
+              apiKey: process.env.MISTRAL_API_KEY,
+              instructions: houseStyleInstructions,
+              model: 'mistral-medium-latest',
+            })
+          : openAIResolver({
+              apiKey: process.env.OPENAI_API_KEY!,
+              instructions: houseStyleInstructions,
+              model: 'gpt-4.1-mini',
+              // Pointing `baseUrl` at another OpenAI-compatible provider? Declare
+              // the formats that provider accepts instead of inheriting OpenAI's
+              // list:
+              // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+            }),
       // Cap how many images a single bulk-generate request may process.
       // Selecting more than this in the list view returns a 400 instead of
       // fanning out into an unbounded number of paid resolver calls.
