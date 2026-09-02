@@ -99,7 +99,7 @@ const schemaForChunk = (texts: string[]) => {
  */
 export const anthropicResolver = ({
   apiKey,
-  baseUrl = 'https://api.anthropic.com',
+  baseUrl,
   chunkLength = 100,
   effort,
   instructions,
@@ -115,7 +115,9 @@ export const anthropicResolver = ({
       req,
       texts,
     }): Promise<GeneratedTranslations> => {
-      const response = await fetch(`${baseUrl}/v1/messages`, {
+      // Falsy rather than nullish, so a `process.env.X || ''` config reaches
+      // the default host instead of a relative URL.
+      const response = await fetch(`${baseUrl || 'https://api.anthropic.com'}/v1/messages`, {
         body: JSON.stringify({
           max_tokens: maxTokens,
           messages: [{ content: input, role: 'user' }],

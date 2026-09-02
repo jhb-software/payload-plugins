@@ -45,7 +45,26 @@ const recordingReq = () => {
 /** Discards what it records; the tests that assert on the reason build their own. */
 const silentReq = recordingReq().req
 
-type Recorded = { body: Record<string, any>; headers: Record<string, string>; url: string }
+type RecordedBody = {
+  max_tokens: number
+  messages: { content: string; role: string }[]
+  model: string
+  output_config: {
+    effort?: string
+    format: {
+      schema: {
+        additionalProperties: boolean
+        properties: Record<string, { type: string }>
+        required: string[]
+        type: string
+      }
+      type: string
+    }
+  }
+  system: string
+}
+
+type Recorded = { body: RecordedBody; headers: Record<string, string>; url: string }
 
 const stubFetch = (message: unknown, status = 200): Recorded[] => {
   const recorded: Recorded[] = []
@@ -106,6 +125,18 @@ describe('anthropicResolver', () => {
     assert.deepEqual(JSON.parse(recorded[0]!.body.messages[0].content), { 0: 'one' })
     assert.equal(recorded[0]!.headers['x-api-key'], 'test')
     assert.equal(recorded[0]!.headers['anthropic-version'], '2023-06-01')
+  })
+
+  test('falls back to the Anthropic host for an empty base URL', async () => {
+    // A config written as `baseUrl: process.env.ANTHROPIC_BASE_URL || ''` is
+    // ordinary. Treating '' as a configured value yields a relative URL that
+    // fetch rejects, and the failure reaches the editor only as a generic
+    // translation error.
+    const recorded = stubFetch(textMessage({ 0: 'eins' }))
+
+    await translate(anthropicResolver({ apiKey: 'test', baseUrl: '' }), ['one'])
+
+    assert.equal(recorded[0]!.url, 'https://api.anthropic.com/v1/messages')
   })
 
   test('requires one translation per input index through the response schema', async () => {
@@ -172,15 +203,15 @@ describe('anthropicResolver', () => {
     await translate(anthropicResolver({ apiKey: 'test', chunkLength: 200 }), ['one'])
 
     assert.ok(
-      (large[0]!.body.max_tokens as number) > (small[0]!.body.max_tokens as number),
+      large[0]!.body.max_tokens > small[0]!.body.max_tokens,
       'a larger chunkLength must raise the default budget',
     )
   })
 
   test('sends each chunk its own request and concatenates the results in order', async () => {
-    const recorded: Record<string, any>[] = []
+    const recorded: RecordedBody[] = []
     globalThis.fetch = async (_url, init) => {
-      const body = JSON.parse(String(init?.body))
+      const body = JSON.parse(String(init?.body)) as RecordedBody
       recorded.push(body)
       const index = recorded.length - 1
 
