@@ -54,8 +54,8 @@ export const mistralResolver = ({
 }: MistralResolverConfig): TranslateResolver =>
   createOpenAICompatibleResolver({
     apiKey,
-    // Falsy rather than nullish: a config written as `process.env.X || ''`
-    // has always fallen back to the default host, and still must.
+    // Falsy rather than nullish, so a `process.env.X || ''` config reaches the
+    // default host instead of a relative URL.
     baseUrl: baseUrl || 'https://api.mistral.ai',
     chunkLength,
     instructions,

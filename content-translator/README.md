@@ -199,7 +199,9 @@ replacing the default instructions entirely stays safe here.
 | `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                                                                                                                 |
 | `instructions` | `function`                                        | No       | Customizes the prompt, see below                                                                                                                                                                                     |
 
-##### Customizing the instructions
+#### Customizing the instructions
+
+Applies to every bundled resolver; the examples below use `openAIResolver`.
 
 The texts are sent as the user message and the instructions as the system prompt, so customizing the instructions can never alter or drop the content to translate.
 
@@ -225,7 +227,7 @@ openAIResolver({
 })
 ```
 
-The function is called once per translation, not once per chunk, and is available on every bundled resolver and on any resolver built with [`createPromptResolver`](#custom-resolvers).
+The function is called once per translation, not once per chunk, and is available on any resolver built with [`createPromptResolver`](#custom-resolvers).
 
 When replacing the default instructions instead of extending them, keep their rules on segment markers and on translating each value independently — see [Custom Resolvers](#custom-resolvers). The resolver's response format instructions are appended either way, so a replacement cannot break the provider contract.
 
@@ -254,6 +256,8 @@ export const myResolver = ({ instructions }: { instructions?: TranslateInstructi
 | `instructions`              | `TranslateInstructions`           | Pass through your own `instructions` option so users can customize the instructions as described above                                       |
 | `chunkLength`               | `number`                          | How many texts to include into 1 request (default `100`)                                                                                     |
 | `responseFormatInstruction` | `string`                          | How the provider should format the response. Appended after any customization. Omit it when the provider guarantees the shape.               |
+
+For a provider that already serves OpenAI's `/v1/chat/completions` endpoint with JSON mode, `createOpenAICompatibleResolver({ apiKey, baseUrl, key, label, model })` needs no `generate` at all.
 
 [`aiSdkResolver.ts`](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/resolvers/aiSdkResolver.ts) is a ready-made example built on the [Vercel AI SDK](https://ai-sdk.dev), usable with any provider it supports. Copy it into your project (it needs `ai`, `zod` and a provider package such as `@ai-sdk/openai`) and configure it from your Payload config — the file itself does not need to be edited.
 
