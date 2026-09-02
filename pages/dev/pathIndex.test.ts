@@ -401,7 +401,7 @@ describe('pathChanges', () => {
     ])
   })
 
-  test('publishing through the draft flag reports paths built from the parent`s published slug', async () => {
+  test('publishing through the draft flag reports paths built from the published slug of the parent', async () => {
     const root = await createPage({ title: 'Root', slug: '', isRootPage: true })
     const parent = await createPage({ title: 'Parent', slug: 'parent', parent: root.id })
     const child = await createPage({ title: 'Child', slug: 'child', parent: parent.id })

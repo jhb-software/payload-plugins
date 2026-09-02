@@ -22,11 +22,12 @@ import {
  * nor the work a selective read performs.
  *
  * Not covered, and not coverable: two reads of one collection running concurrently in different
- * draft modes. Payload hands them the same `req.context` and gives `beforeRead` no `draft` of
- * its own (https://github.com/payloadcms/payload/issues/16180), so one overwrites the other's
- * draft mode before its ancestor walk starts, and nothing storable on the context distinguishes
- * them. Reads that follow one another, and operations nested inside one another, are covered
- * here and in `dev_multi_tenant/localeRouting.test.ts`.
+ * draft modes, including a user `beforeRead` hook on a multi-document `find` that runs a nested
+ * read with a draft mode of its own. Payload hands them the same `req.context` and gives
+ * `beforeRead` no `draft` of its own (https://github.com/payloadcms/payload/issues/16180), so one
+ * overwrites the other's draft mode before its ancestor walk starts, and nothing storable on the
+ * context distinguishes them. Reads that follow one another, and operations nested inside one
+ * another, are covered here and in `dev_multi_tenant/localeRouting.test.ts`.
  */
 
 type DefaultIDType = Config['db']['defaultIDType']

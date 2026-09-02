@@ -8,7 +8,14 @@ import type { RequestContext } from 'payload'
  * `beforeOperation` and carried on `req.context`. That context belongs to the request, which
  * outlives the operation that wrote it — hence the scoping below.
  *
- * TODO: once that issue ships, drop this module and read `select` and `draft` off the hook args.
+ * This module becomes redundant if Payload ever passes `select` and `draft` to those hooks; read
+ * them off the hook args then and drop it.
+ *
+ * Not covered: a user `beforeRead` hook that runs a nested read with a draft mode of its own. A
+ * multi-document `find` runs `beforeRead` for all its documents concurrently, so the nested read
+ * of one document overwrites the mode before a sibling's `setVirtualFieldsBeforeRead` reads it.
+ * Same for two reads of one collection running concurrently in different draft modes. Nothing
+ * storable on the context distinguishes them.
  */
 
 const DRAFT_KEY = 'pagesPluginOperationDraft'
