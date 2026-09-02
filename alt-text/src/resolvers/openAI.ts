@@ -1,18 +1,11 @@
-import type { AutoParseableResponseFormat } from 'openai/lib/parser.mjs'
 import type { ChatCompletionContentPartText } from 'openai/resources/chat/completions.mjs'
-import type { ResponseFormatJSONSchema } from 'openai/resources/shared.mjs'
 
 import OpenAI from 'openai'
-import { makeParseableResponseFormat } from 'openai/lib/parser.mjs'
-import { z } from 'zod'
 
-import type {
-  AltTextBulkResolverArgs,
-  AltTextBulkResolverResponse,
-  AltTextResolver,
-  AltTextResolverArgs,
-  AltTextResolverResponse,
-} from './types.js'
+import type { VisionInstructions } from './createVisionResolver.js'
+import type { AltTextResolver } from './types.js'
+
+import { createVisionResolver } from './createVisionResolver.js'
 
 export type OpenAIResolverConfig = {
   /** OpenAI API key for authentication */
@@ -23,6 +16,13 @@ export type OpenAIResolverConfig = {
    * @default undefined — the OpenAI SDK defaults to 'https://api.openai.com/v1'
    */
   baseUrl?: string
+  /**
+   * Builds the instructions from the default ones, e.g. to append a house style
+   * rule. Sent as the system message, separately from the image.
+   *
+   * @default ({ defaultInstructions }) => defaultInstructions
+   */
+  instructions?: VisionInstructions
   /**
    * The OpenAI LLM model to use for alt text generation.
    * @default 'gpt-4.1-nano'
@@ -38,39 +38,27 @@ export type OpenAIResolverConfig = {
    * @default ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
    */
   supportedMimeTypes?: string[]
+  /**
+   * Abort after this many milliseconds, covering the completion call and any
+   * retry the SDK makes within it.
+   *
+   * Omitted by default, leaving the OpenAI client's own deadline (10 minutes)
+   * and its automatic retries in charge. Set it to put a shorter ceiling on a
+   * generate request.
+   */
+  timeoutMs?: number
 }
 
 /** @see https://platform.openai.com/docs/guides/images-vision */
 const OPENAI_SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
 /**
- * Creates a chat completion `JSONSchema` response format object from
- * the given Zod schema.
- *
- * This is a temporary drop in replacement for the zodResponseFormat from openai/helpers/zod.ts
- * because of issue https://github.com/openai/openai-node/issues/1576
- */
-function zodResponseFormat<ZodInput extends z.ZodType>(
-  zodObject: ZodInput,
-  name: string,
-  props?: Omit<ResponseFormatJSONSchema.JSONSchema, 'name' | 'schema' | 'strict'>,
-): AutoParseableResponseFormat<z.infer<ZodInput>> {
-  return makeParseableResponseFormat(
-    {
-      type: 'json_schema',
-      json_schema: {
-        ...props,
-        name,
-        schema: z.toJSONSchema(zodObject, { target: 'draft-7' }),
-        strict: true,
-      },
-    },
-    (content) => zodObject.parse(JSON.parse(content)),
-  )
-}
-
-/**
  * Creates an OpenAI-based resolver for alt text generation.
+ *
+ * The thumbnail URL is handed to OpenAI, which fetches it itself — so the URL
+ * has to be reachable from the public internet. Behind a private bucket or in
+ * local development, reach for a resolver that inlines the bytes instead
+ * (`mistralResolver`, `anthropicResolver`).
  *
  * @example
  * ```typescript
@@ -90,162 +78,81 @@ function zodResponseFormat<ZodInput extends z.ZodType>(
  * })
  * ```
  */
-export const openAIResolver = (config: OpenAIResolverConfig): AltTextResolver => {
-  const { apiKey, baseUrl, model = 'gpt-4.1-nano' } = config
-
+export const openAIResolver = ({
+  apiKey,
+  baseUrl,
+  instructions,
+  model = 'gpt-4.1-nano',
+  supportedMimeTypes = OPENAI_SUPPORTED_MIME_TYPES,
+  timeoutMs,
+}: OpenAIResolverConfig): AltTextResolver => {
   // Build the client lazily (once, on first use): the `resolver` argument is
   // evaluated even when the plugin is disabled, so eager construction would
   // throw on a keyless `enabled: !!process.env.OPENAI_API_KEY` setup.
   let openai: OpenAI | undefined
   const getClient = (): OpenAI => (openai ??= new OpenAI({ apiKey, baseURL: baseUrl }))
 
-  return {
-    key: 'openai',
-    resolve: async ({
+  return createVisionResolver({
+    apiKey,
+    generate: async ({
       filename,
       imageThumbnailUrl,
-      locale,
-    }: AltTextResolverArgs): Promise<AltTextResolverResponse> => {
-      try {
-        const modelResponseSchema = z.object({
-          altText: z.string().describe('A concise, descriptive alt text for the image'),
-          keywords: z.array(z.string()).describe('Keywords that describe the content of the image'),
-        })
-
-        const response = await getClient().chat.completions.parse({
-          max_completion_tokens: 150,
+      instructions: resolvedInstructions,
+      maxTokens,
+      responseSchema,
+      signal,
+    }) => {
+      const response = await getClient().chat.completions.create(
+        {
+          max_completion_tokens: maxTokens,
           messages: [
-            {
-              content: `
-            You are an expert at analyzing images and creating descriptive image alt text.
-
-            Please analyze the given image and provide the following:
-            - A concise, descriptive alt text (1-2 sentences) as "altText". Focus on the subject, action, and setting. Avoid phrases like 'Image of', 'A picture of', or 'Photo showing'. Be specific and include relevant details like location or context if visible. Make no assumptions.
-            - A list of keywords that describe the content (e.g., ["Camel", "Palm trees", "Desert"]) as "keywords"
-
-            If a context is provided, use it to enhance the alt text.
-
-            Format your response as a JSON object. You must respond in the ${locale} language.
-          `,
-              role: 'system',
-            },
+            { content: resolvedInstructions, role: 'system' },
             {
               content: [
-                {
-                  type: 'image_url',
-                  image_url: { url: imageThumbnailUrl },
-                },
+                { type: 'image_url', image_url: { url: imageThumbnailUrl } },
                 ...(filename
-                  ? [
-                      {
-                        type: 'text',
-                        text: filename,
-                      } satisfies ChatCompletionContentPartText,
-                    ]
+                  ? [{ type: 'text', text: filename } as ChatCompletionContentPartText]
                   : []),
               ],
               role: 'user',
             },
           ],
           model,
-          response_format: zodResponseFormat(modelResponseSchema, 'data'),
-        })
+          response_format: {
+            type: 'json_schema',
+            json_schema: { name: 'data', schema: responseSchema, strict: true },
+          },
+        },
+        { signal },
+      )
 
-        const result = response.choices[0]?.message?.parsed
+      const choice = response.choices[0]
 
-        if (!result) {
-          return { error: 'No result from OpenAI', success: false }
-        }
-
-        return {
-          result,
-          success: true,
-        }
-      } catch (error) {
-        console.error('Error generating alt text:', error)
-        return {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          success: false,
-        }
-      }
-    },
-    resolveBulk: async ({
-      filename,
-      imageThumbnailUrl,
-      locales,
-    }: AltTextBulkResolverArgs): Promise<AltTextBulkResolverResponse> => {
-      try {
-        const modelResponseSchema = z.object(
-          Object.fromEntries(
-            locales.map((locale) => [
-              locale,
-              z.object({
-                altText: z.string().describe('A concise, descriptive alt text for the image'),
-                keywords: z
-                  .array(z.string())
-                  .describe('Keywords that describe the content of the image'),
-              }),
-            ]),
-          ),
+      // A budget exhausted mid-JSON otherwise reaches JSON.parse and reads as
+      // "Unexpected end of JSON input" in the admin panel, which tells an editor
+      // nothing about what to change.
+      if (choice?.finish_reason === 'length') {
+        throw new Error(
+          `OpenAI ran out of tokens before finishing the alt text (max_completion_tokens: ${maxTokens})`,
         )
+      }
 
-        const response = await getClient().chat.completions.parse({
-          max_completion_tokens: 300,
-          messages: [
-            {
-              content: `
-      You are an expert at analyzing images and creating descriptive image alt text.
+      const content = choice?.message?.content
 
-      Please analyze the given image and provide the following in ${locales.join(', ')}:
-      - A concise, localized descriptive alt text (1-2 sentences) as "altText". Focus on the subject, action, and setting. Avoid phrases like 'Image of', 'A picture of', or 'Photo showing'. Be specific and include relevant details like location or context if visible. Make no assumptions.
-      - A localized list of keywords that describe the content (e.g., ["Camel", "Palm trees", "Desert"]) as "keywords"
+      if (typeof content !== 'string') {
+        throw new Error('No result from OpenAI')
+      }
 
-      If a context is provided, use it to enhance the alt text.
-
-      Format your response as a JSON object with ${locales.join(', ')} keys, each containing "altText" and "keywords".
-    `,
-              role: 'system',
-            },
-            {
-              content: [
-                {
-                  type: 'image_url',
-                  image_url: { url: imageThumbnailUrl },
-                },
-                ...(filename
-                  ? [
-                      {
-                        type: 'text',
-                        text: filename,
-                      } satisfies ChatCompletionContentPartText,
-                    ]
-                  : []),
-              ],
-              role: 'user',
-            },
-          ],
-          model,
-          response_format: zodResponseFormat(modelResponseSchema, 'data'),
-        })
-
-        const result = response.choices[0]?.message?.parsed
-
-        if (!result) {
-          return { error: 'No result from OpenAI', success: false }
-        }
-
-        return {
-          results: result,
-          success: true,
-        }
-      } catch (error) {
-        console.error('Error generating bulk alt text:', error)
-        return {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          success: false,
-        }
+      try {
+        return JSON.parse(content)
+      } catch {
+        throw new Error('OpenAI returned a response that was not valid JSON')
       }
     },
-    supportedMimeTypes: config.supportedMimeTypes ?? OPENAI_SUPPORTED_MIME_TYPES,
-  }
+    instructions,
+    key: 'openai',
+    label: 'OpenAI',
+    supportedMimeTypes,
+    timeoutMs,
+  })
 }

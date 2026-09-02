@@ -4,6 +4,14 @@
 
 - feat: add `healthCheck.baseFilter`, a `({ collection, req }) => Where` narrowing what the health report counts — in a multi-tenant CMS, to the tenant the request is for. Resolved per collection, so collections without the constraining field can return `{}`. The scan's cache key is derived from the resolved filters, so one scope's counts are never served to another.
 - **BREAKING**: `healthCheck` no longer accepts a function. Move the access check to `healthCheck: { access: ({ req }) => ... }`; the function form now throws at config load. `healthCheck: true` / `false` are unchanged.
+- feat: add `createVisionResolver`, a factory that owns the prompt, the per-locale response schema, the optional image download and the strict reading of the response, so a resolver for another LLM provider is only its provider call. Both bundled resolvers are built on it.
+- feat: add an `instructions` option to `openAIResolver` and `mistralResolver`, receiving the default instructions so a house style rule can be appended without restating the rules the plugin depends on
+- feat: add a `timeoutMs` option to `openAIResolver`, putting a ceiling on a generate request. Omitted by default, so the OpenAI client's own deadline and retries stay in charge.
+- fix: `openAIResolver` now rejects a blank alt text and a response missing one of the requested locales instead of writing it to the document, and reports a missing API key before spending a request
+- fix: a provider that stops mid-JSON because its token budget ran out is now reported as such, instead of surfacing in the admin panel as `Unexpected end of JSON input`
+- fix: generating for a single locale no longer receives half the token budget of a multi-locale generation
+- change: `openAIResolver` asks for a locale-keyed response (`{ "en": { … } }`) for single-locale generations too, where it previously asked for a flat object with the locale named in the prompt. Generated wording may differ slightly from previous versions.
+- change: resolver errors are logged through `req.payload.logger` rather than `console.error`
 
 ## 0.10.0
 
