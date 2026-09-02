@@ -1,3 +1,5 @@
+import type { TranslateResolver } from '@jhb.software/payload-content-translator-plugin'
+
 import {
   mistralResolver,
   openAIResolver,
@@ -29,6 +31,37 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // otherwise turn into "Nordlicht" and "Erste Schritte" in German. Put them into
 // a page title or body and translate to see them survive.
 const protectedTermsInstruction = `Never translate the following product names, keep them exactly as written in English: "Northern Light", "First Steps".`
+
+// Set TRANSLATOR_RESOLVER to `mistral` or `ai-sdk` to translate through the
+// Mistral resolver or the custom AI SDK resolver instead of the built-in OpenAI
+// one. All three expose the same `instructions` extension point, so the
+// protected terms above apply whichever one runs. Built lazily so only the
+// selected resolver is constructed.
+const translatorResolvers: Record<string, () => TranslateResolver> = {
+  'ai-sdk': () =>
+    aiSdkResolver({
+      model: openai('gpt-4o-mini'),
+      instructions: ({ defaultInstructions }) =>
+        `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+    }),
+  mistral: () =>
+    mistralResolver({
+      apiKey: process.env.MISTRAL_API_KEY || '',
+      model: 'mistral-medium-latest',
+      instructions: ({ defaultInstructions }) =>
+        `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+    }),
+  openai: () =>
+    openAIResolver({
+      apiKey: process.env.OPENAI_API_KEY || '',
+      model: 'gpt-4o-mini',
+      instructions: ({ defaultInstructions }) =>
+        `${defaultInstructions}\n\n${protectedTermsInstruction}`,
+    }),
+}
+
+const buildTranslatorResolver =
+  translatorResolvers[process.env.TRANSLATOR_RESOLVER ?? ''] ?? translatorResolvers.openai
 
 export default buildConfig({
   admin: {
@@ -130,30 +163,7 @@ export default buildConfig({
       collections: ['pages', 'docs', 'posts', 'authors'],
       globals: [],
       // resolver: mockResolver(), // custom resolver for testing
-      // Set TRANSLATOR_RESOLVER to `mistral` or `ai-sdk` to translate through
-      // the Mistral resolver or the custom AI SDK resolver instead of the
-      // built-in OpenAI one. All three expose the same `instructions` extension
-      // point, so the protected terms below apply whichever one runs.
-      resolver:
-        process.env.TRANSLATOR_RESOLVER === 'ai-sdk'
-          ? aiSdkResolver({
-              model: openai('gpt-4o-mini'),
-              instructions: ({ defaultInstructions }) =>
-                `${defaultInstructions}\n\n${protectedTermsInstruction}`,
-            })
-          : process.env.TRANSLATOR_RESOLVER === 'mistral'
-            ? mistralResolver({
-                apiKey: process.env.MISTRAL_API_KEY || '',
-                model: 'mistral-medium-latest',
-                instructions: ({ defaultInstructions }) =>
-                  `${defaultInstructions}\n\n${protectedTermsInstruction}`,
-              })
-            : openAIResolver({
-                apiKey: process.env.OPENAI_API_KEY || '',
-                model: 'gpt-4o-mini',
-                instructions: ({ defaultInstructions }) =>
-                  `${defaultInstructions}\n\n${protectedTermsInstruction}`,
-              }),
+      resolver: buildTranslatorResolver(),
     }),
   ],
 })
