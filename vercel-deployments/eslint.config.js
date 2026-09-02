@@ -28,7 +28,6 @@ export default [
     rules: {
       'no-restricted-exports': 'off',
       complexity: ['error', 40],
-      'no-console': 'off', // TODO: remove this rule and use the Payload logger instead
     },
   },
   {
@@ -42,6 +41,15 @@ export default [
   },
   {
     ignores: defaultESLintIgnores,
+  },
+  {
+    // Browser-side components have no access to the Payload logger (`payload.logger` is
+    // server-only). `console.error`/`console.warn` are the diagnostics channel there, and each
+    // call site pairs the log with a user-facing toast.
+    files: ['src/components/**/*.tsx'],
+    rules: {
+      'no-console': ['warn', { allow: ['error', 'warn'] }],
+    },
   },
   {
     languageOptions: {

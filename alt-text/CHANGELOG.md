@@ -4,6 +4,7 @@
 
 - feat: add `healthCheck.baseFilter`, a `({ collection, req }) => Where` narrowing what the health report counts — in a multi-tenant CMS, to the tenant the request is for. Resolved per collection, so collections without the constraining field can return `{}`. The scan's cache key is derived from the resolved filters, so one scope's counts are never served to another.
 - **BREAKING**: `healthCheck` no longer accepts a function. Move the access check to `healthCheck: { access: ({ req }) => ... }`; the function form now throws at config load. `healthCheck: true` / `false` are unchanged.
+- fix: log endpoint, resolver, and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
 
 ## 0.10.0
 

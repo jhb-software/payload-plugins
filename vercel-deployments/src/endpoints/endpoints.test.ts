@@ -1,3 +1,4 @@
+import type { PayloadRequest } from 'payload'
 import type { MockInstance } from 'vitest'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -33,10 +34,11 @@ function createMockReq(overrides: {
               : (overrides.pluginConfig ?? mockPluginConfig),
         },
       },
+      logger: { error: () => {}, info: () => {}, warn: () => {} },
     },
     url: overrides.url ?? 'http://localhost:3000/api/vercel-deployments',
     user: overrides.user ?? null,
-  } as any
+  } as unknown as PayloadRequest
 }
 
 afterEach(() => {

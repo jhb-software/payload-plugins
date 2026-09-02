@@ -28,10 +28,15 @@ export default [
     rules: {
       'no-restricted-exports': 'off',
       complexity: ['error', 40],
-      // TODO: Fix any types in codebase and re-enable this rule
-      '@typescript-eslint/no-explicit-any': 'off',
-      // TODO: Replace console statements with Payload logger (payload.logger) and re-enable this rule
-      'no-console': 'off',
+    },
+  },
+  {
+    // Browser-side components have no access to the Payload logger (`payload.logger` is
+    // server-only). `console.error`/`console.warn` are the diagnostics channel there, and each
+    // call site pairs the log with a user-facing toast.
+    files: ['src/client/**/*.ts', 'src/client/**/*.tsx'],
+    rules: {
+      'no-console': ['warn', { allow: ['error', 'warn'] }],
     },
   },
   {

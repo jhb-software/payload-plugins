@@ -46,7 +46,7 @@ export function breadcrumbsField({ admin }: { admin?: ArrayField['admin'] } = {}
             admin: {
               width: '33%',
             },
-            validate: (_: any): true => true,
+            validate: (): true => true,
           },
           {
             name: 'path',
@@ -57,7 +57,7 @@ export function breadcrumbsField({ admin }: { admin?: ArrayField['admin'] } = {}
             admin: {
               width: '33%',
             },
-            validate: (_: any): true => true,
+            validate: (): true => true,
           },
           {
             name: 'label',
@@ -68,7 +68,7 @@ export function breadcrumbsField({ admin }: { admin?: ArrayField['admin'] } = {}
             admin: {
               width: '33%',
             },
-            validate: (_: any): true => true,
+            validate: (): true => true,
           },
         ],
       },
@@ -78,6 +78,6 @@ export function breadcrumbsField({ admin }: { admin?: ArrayField['admin'] } = {}
         // The breadcrumbs are generated in the getVirtualFields collection hook
       ],
     },
-    validate: (_: any): true => true,
+    validate: (): true => true,
   }
 }

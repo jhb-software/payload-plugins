@@ -1,3 +1,5 @@
+import type { SelectType } from 'payload'
+
 import { getSelectMode } from 'payload/shared'
 
 /** The virtual fields the plugin generates. */
@@ -8,7 +10,7 @@ export const virtualFieldNames = ['path', 'breadcrumbs', 'meta']
  * @param select The select object
  * @returns true if at least one virtual field is selected, false otherwise
  */
-export function hasVirtualFieldSelected(select: Record<string, any> | undefined): boolean {
+export function hasVirtualFieldSelected(select: SelectType | undefined): boolean {
   if (!select) {
     return false
   }

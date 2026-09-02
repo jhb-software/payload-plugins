@@ -159,12 +159,16 @@ const findBlockConfig = (
   field: FieldOfType<'blocks'>,
   blockType: string,
   payloadConfig: SanitizedConfig,
+  req?: PayloadRequest,
 ): { fields: Field[] } | undefined => {
   if (field.blockReferences) {
     const blockConfig = payloadConfig.blocks?.find((b) => b.slug === blockType)
 
     if (!blockConfig) {
-      console.warn(`Block config for block ${blockType} not found in payload config.`, field)
+      req?.payload.logger.warn(
+        { field },
+        `Block config for block ${blockType} not found in payload config.`,
+      )
     }
 
     return blockConfig
@@ -173,7 +177,10 @@ const findBlockConfig = (
   const blockConfig = field.blocks.find((b) => b.slug === blockType)
 
   if (!blockConfig) {
-    console.warn(`Block config for block ${blockType} not found in field config.`, field)
+    req?.payload.logger.warn(
+      { field },
+      `Block config for block ${blockType} not found in field config.`,
+    )
   }
 
   return blockConfig
@@ -207,7 +214,7 @@ const traverseBlocksField: FieldHandler<'blocks'> = (field, ctx) => {
   }
 
   blocksDataTranslated.forEach((item, index) => {
-    const blockConfig = findBlockConfig(field, item.blockType, payloadConfig)
+    const blockConfig = findBlockConfig(field, item.blockType, payloadConfig, ctx.req)
 
     if (!blockConfig) {
       return
@@ -289,6 +296,7 @@ const traverseRichTextField: FieldHandler<'richText'> = (field, ctx) => {
     traverseRichText({
       emptyOnly,
       payloadConfig,
+      req: ctx.req,
       root,
       translatedData: ctx.translatedData,
       valuesToTranslate: ctx.valuesToTranslate,

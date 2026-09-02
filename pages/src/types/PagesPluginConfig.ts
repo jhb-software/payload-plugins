@@ -103,5 +103,5 @@ export type PagesPluginConfig = {
    * This is useful for multi-tenant setups where you want to restrict the redirects plugin to
    * account for redirects in the same tenant while validating redirects on create/update.
    */
-  redirectValidationFilter?: (args: { doc: any; req: PayloadRequest }) => Where
+  redirectValidationFilter?: (args: { doc?: Record<string, unknown>; req: PayloadRequest }) => Where
 }

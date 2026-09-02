@@ -28,7 +28,6 @@ export default [
     rules: {
       'no-restricted-exports': 'off',
       complexity: ['error', 40],
-      'no-console': 'off', // TODO: remove this rule and use the Payload logger instead
     },
   },
   {

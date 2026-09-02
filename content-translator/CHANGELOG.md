@@ -3,6 +3,8 @@
 ## Unreleased
 
 - fix: a named tab without source data no longer stops translation of the fields after it
+- fix: log traversal and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
+- **BREAKING**: `translateOperation`'s `data` argument and the `translatedData` it resolves with are typed `Record<string, unknown>` instead of `Record<string, any>`. Callers passing a value declared as an `interface` must widen it (e.g. `as Record<string, unknown>`) or declare it as a `type` alias.
 
 ## 0.5.0
 

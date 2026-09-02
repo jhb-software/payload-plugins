@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- fix: log the missing-redirects-collection warning through the Payload logger instead of `console`, so it respects the project's log level and formatting
+- **BREAKING**: `redirectValidationFilter` receives `doc?: Record<string, unknown>` instead of `doc: any`. The document is optional because Payload omits it on partial local-API updates; filters reading a field must narrow it (e.g. `doc?.tenant as string`).
 - fix: derive the path cache's scope segment from a key-order-independent serialization of `baseFilter` and `where`, so two filters that constrain the same thing share a cache slot instead of each building their own
 - fix: ancestors resolve in the draft mode of the read they belong to, so a request mixing draft and published reads no longer builds one's breadcrumbs from the other's ancestors
 - fix: a read that selects no virtual field no longer walks ancestors because an earlier read of another collection on the same request did
