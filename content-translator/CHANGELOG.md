@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: a named tab without source data no longer stops translation of the fields after it
 - fix: log traversal and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
 - **BREAKING**: `translateOperation`'s `data` argument and the `translatedData` it resolves with are typed `Record<string, unknown>` instead of `Record<string, any>`. Callers passing a value declared as an `interface` must widen it (e.g. `as Record<string, unknown>`) or declare it as a `type` alias.
 - feat: add `anthropicResolver`, a translation resolver for Claude (default `claude-opus-5`). A JSON schema requiring one translation per input index lets the provider reject a merged or dropped entry outright. Leave the optional `effort` unset for models that reject the field, such as `claude-haiku-4-5`.

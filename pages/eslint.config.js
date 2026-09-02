@@ -27,6 +27,7 @@ export default [
   {
     rules: {
       'no-restricted-exports': 'off',
+      complexity: ['error', 40],
     },
   },
   {

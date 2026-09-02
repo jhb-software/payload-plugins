@@ -7,6 +7,11 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...eslintPluginAstro.configs.recommended,
   {
+    rules: {
+      complexity: ['error', 40],
+    },
+  },
+  {
     ignores: ['dist/', 'node_modules/', 'dev/'],
   },
 )
