@@ -118,6 +118,30 @@ describe('mistral resolver', () => {
     assert.deepEqual(Object.keys(result.success ? result.results : {}), ['de', 'en', 'fr'])
   })
 
+  test('rejects a response that is missing one of the requested locales', async () => {
+    stubFetch({ completion: { de: threeLocales.de, en: threeLocales.en } })
+
+    const result = await mistralResolver({ apiKey: 'key' }).resolveBulk({
+      imageThumbnailUrl: IMAGE_URL,
+      locales: ['de', 'en', 'fr'],
+      req,
+    })
+
+    assert.equal(result.success, false)
+  })
+
+  test('rejects a blank alt text rather than writing it to the document', async () => {
+    stubFetch({ completion: { en: { altText: '   ', keywords: ['camel'] } } })
+
+    const result = await mistralResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, false)
+  })
+
   test('reports the format when the thumbnail is served as something Mistral cannot read', async () => {
     // An upload collection may hold SVG or AVIF, and `getImageThumbnail` falls
     // back to the original when no derivative exists. Naming the format beats a
@@ -133,5 +157,22 @@ describe('mistral resolver', () => {
     assert.equal(result.success, false)
     assert.match(result.success ? '' : (result.error ?? ''), /svg/)
     assert.equal(recorded.length, 0, 'the provider must not be called for an unreadable format')
+  })
+
+  test('reports a missing API key instead of throwing when the resolver is built', async () => {
+    // The README wires `enabled: !!process.env.MISTRAL_API_KEY` alongside
+    // `resolver: mistralResolver({ apiKey: process.env.MISTRAL_API_KEY! })`.
+    // The resolver argument is evaluated even when the plugin is disabled, so
+    // constructing it without a key must not break the Payload config.
+    const recorded = stubFetch({ completion: {} })
+
+    const result = await mistralResolver({ apiKey: '' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, false)
+    assert.equal(recorded.length, 0)
   })
 })
