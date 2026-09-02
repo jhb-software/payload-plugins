@@ -115,6 +115,10 @@ export async function computeDocPaths({
   try {
     const withVirtualFields = await setPageDocumentVirtualFields({
       doc: row,
+      // The row is read from the main table, which holds the published state of the document —
+      // so the ancestors its path is built from are the published ones too, whatever draft mode
+      // the surrounding operation runs in.
+      draft: false,
       locale: locales ? 'all' : undefined,
       locales,
       pageConfigAttributes: pageAttributes,
