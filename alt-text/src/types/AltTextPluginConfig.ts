@@ -35,7 +35,7 @@ export type GetImageThumbnail = (
  * constraining field (a media library shared across tenants, say) can return `{}`
  * instead of being queried for a field they do not have.
  *
- * Return `{}` or `undefined` to scan the collection whole.
+ * Return `{}` to scan the collection whole.
  *
  * @param args.collection The slug of the collection being scanned.
  * @param args.req The request the scan runs for.
@@ -43,7 +43,7 @@ export type GetImageThumbnail = (
 export type AltTextHealthBaseFilter = (args: {
   collection: CollectionSlug
   req: PayloadRequest
-}) => Promise<undefined | Where> | undefined | Where
+}) => Promise<Where> | Where
 
 /** Configuration of the alt text health feature. */
 export type AltTextHealthCheckConfig = {
