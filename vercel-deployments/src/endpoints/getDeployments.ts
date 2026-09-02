@@ -2,6 +2,7 @@ import type { PayloadHandler, PayloadRequest } from 'payload'
 
 import type { VercelDeploymentsPluginConfig } from '../types.js'
 
+import { resolveTarget } from '../utilities/resolveTarget.js'
 import { VercelApiClient } from '../utilities/vercelApiClient.js'
 
 export type DeploymentsInfo = {
@@ -60,12 +61,26 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
   try {
     const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
 
-    // Single deployment lookup
+    // Single deployment lookup — the path the poller hits every 5s while a build runs.
+    //
+    // A deployment id addresses any deployment in the Vercel team, so it has to be checked
+    // against the project this request is scoped to; otherwise one tenant's admin could read
+    // the status of another tenant's deployment by guessing an id. The target is resolved
+    // alongside the Vercel call rather than before it, so the check costs no extra latency.
     if (id) {
-      const deployment = await vercelClient.getDeployment({
-        idOrUrl: id,
-        teamId: pluginConfig.vercel.teamId,
-      })
+      const [deployment, { projectId }] = await Promise.all([
+        vercelClient.getDeployment({
+          idOrUrl: id,
+          teamId: pluginConfig.vercel.teamId,
+        }),
+        resolveTarget({ pluginConfig, req }),
+      ])
+
+      // Answered as "not found" rather than "forbidden": whether a deployment id exists in
+      // another project is itself something this request has no business learning.
+      if (!projectId || deployment.projectId !== projectId) {
+        return Response.json({ error: 'Deployment not found' }, { status: 404 })
+      }
 
       return Response.json({
         id: deployment.id,
@@ -73,10 +88,19 @@ export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest
       })
     }
 
+    const { projectId } = await resolveTarget({ pluginConfig, req })
+
+    if (!projectId) {
+      return Response.json(
+        { error: 'No Vercel project configured for this request' },
+        { status: 400 },
+      )
+    }
+
     // List latest production deployments
     const deploymentsResponse = await vercelClient.getDeployments({
       limit: 10,
-      projectId: pluginConfig.vercel.projectId,
+      projectId,
       target: 'production',
       teamId: pluginConfig.vercel.teamId,
     })
