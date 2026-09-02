@@ -36,27 +36,53 @@ const enResult = { en: { altText: 'A camel in front of palm trees.', keywords: [
 
 type Recorded = { body: Record<string, unknown>; url: string }
 
+/** How often the stubbed thumbnail response had its body read, reset per stub. */
+const imageDownload = { bodyReads: 0 }
+
 /**
  * Serves the image download first and the completion second (Mistral inlines
  * the bytes), recording what was sent to the provider.
  */
 function stubMistral(
   completion: unknown,
-  image: { bytes?: Buffer; contentType?: null | string; status?: number } = {},
+  image: {
+    bytes?: Buffer
+    contentLength?: null | string
+    contentType?: null | string
+    status?: number
+  } = {},
   finishReason?: string,
 ): Recorded[] {
   const recorded: Recorded[] = []
-  const { bytes = PIXEL, contentType = 'image/jpeg', status: imageStatus = 200 } = image
+  const {
+    bytes = PIXEL,
+    // A host that names no length is the general case, so the byte-count guard
+    // stays under test unless a test opts into the header.
+    contentLength = null,
+    contentType = 'image/jpeg',
+    status: imageStatus = 200,
+  } = image
   let call = 0
+
+  imageDownload.bodyReads = 0
 
   globalThis.fetch = (async (url: string, init?: { body?: string }) => {
     call += 1
 
     if (call === 1) {
       return {
-        arrayBuffer: async () =>
-          bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
-        headers: { get: (name: string) => (name === 'content-type' ? contentType : null) },
+        arrayBuffer: async () => {
+          imageDownload.bodyReads += 1
+          return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+        },
+        headers: {
+          get: (name: string) =>
+            name === 'content-type'
+              ? contentType
+              : name === 'content-length'
+                ? contentLength
+                : null,
+        },
         ok: imageStatus === 200,
         status: imageStatus,
       }
@@ -264,6 +290,44 @@ describe('response validation', () => {
     assert.equal(result.success, false)
     assert.match(result.success ? '' : (result.error ?? ''), /limit/)
     assert.equal(recorded.length, 0)
+  })
+
+  test('rejects a thumbnail the host declares as oversized without reading its body', async () => {
+    // getImageThumbnail may point at the original upload, which can be far
+    // above the provider's limit. Reading a rejected file into memory to
+    // measure it is work the content-length header already answers.
+    const recorded = stubMistral(enResult, {
+      contentLength: String(21 * 1024 * 1024),
+      bytes: PIXEL,
+    })
+
+    const result = await mistralResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, false)
+    assert.match(result.success ? '' : (result.error ?? ''), /limit/)
+    assert.equal(imageDownload.bodyReads, 0, 'the body must not be read once the size is known')
+    assert.equal(recorded.length, 0)
+  })
+
+  test('names the type the host served when it does not identify an image format', async () => {
+    // "an unknown type" describes the wrong situation: the host did name a
+    // type, it just named a useless one, and `imageThumbnailMimeType` is the
+    // option that fixes it.
+    stubMistral(enResult, { contentType: 'application/octet-stream' })
+
+    const result = await mistralResolver({ apiKey: 'key' }).resolve({
+      imageThumbnailUrl: IMAGE_URL,
+      locale: 'en',
+      req,
+    })
+
+    assert.equal(result.success, false)
+    assert.match(result.success ? '' : (result.error ?? ''), /application\/octet-stream/)
+    assert.match(result.success ? '' : (result.error ?? ''), /imageThumbnailMimeType/)
   })
 
   test('falls back to the declared thumbnail format when the host serves no content type', async () => {
