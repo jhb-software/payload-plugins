@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-admin-search",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A global search plugin for the Payload CMS admin panel.",
   "keywords": [
     "payload",
