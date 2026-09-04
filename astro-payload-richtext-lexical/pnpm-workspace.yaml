@@ -10,5 +10,5 @@ allowBuilds:
 overrides:
   dompurify: '^3.4.13'
   prettier: '3.9.6'
-  next: '16.3.3'
+  next: '16.3.4'
   esbuild: '^0.28.1'

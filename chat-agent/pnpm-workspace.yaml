@@ -10,7 +10,7 @@ overrides:
   dompurify: '^3.4.13'
   prettier: '3.9.6'
   '@eslint/plugin-kit': '^0.3.4'
-  next: '16.3.3'
+  next: '16.3.4'
   '@typescript-eslint/utils': '^8.59.3'
   '@typescript-eslint/eslint-plugin': '^8.59.3'
   '@typescript-eslint/parser': '^8.59.3'
