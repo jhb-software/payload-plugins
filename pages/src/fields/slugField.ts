@@ -3,7 +3,7 @@ import type { Field, PayloadRequest, TextField } from 'payload'
 import type { SlugFieldProps } from '../components/client/SlugFieldClient.js'
 import type { Locale } from '../types/Locale.js'
 
-import { beforeDuplicateSlug } from '../hooks/beforeDuplicate.js'
+import { beforeDuplicateSlug, rootPageSlugBeforeValidate } from '../hooks/beforeDuplicate.js'
 import { formatSlug } from '../hooks/validateSlug.js'
 import { mergeFieldAdmin } from '../utils/fieldOverrides.js'
 import { ROOT_PAGE_SLUG } from '../utils/setRootPageVirtualFields.js'
@@ -60,6 +60,7 @@ export function internalSlugField({
       typeof staticValue === 'string' ? staticValue : locale && staticValue?.[locale],
     hooks: {
       beforeDuplicate: [beforeDuplicateSlug],
+      ...(pageSlug ? { beforeValidate: [rootPageSlugBeforeValidate] } : {}),
     },
     index: true,
     label: translatedLabel('slug'),

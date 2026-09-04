@@ -14,7 +14,7 @@ import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
  * a document published in `en` only resolves its English path.
  */
 
-type Collection = PageCollectionConfig | SanitizedCollectionConfig
+export type Collection = PageCollectionConfig | SanitizedCollectionConfig
 
 /**
  * The conditions a Local API query needs so it only returns live documents.
@@ -83,6 +83,31 @@ export function isLiveRow(
   }
 
   return row._status === 'published'
+}
+
+/**
+ * Whether a document's own `_status` lets it keep its path in the given locale.
+ *
+ * Looser than {@link isLiveRow} for a plain `_status`: an unpublished document keeps its paths,
+ * so reading a draft-only document without `draft: true` still yields a `path`, as it always has.
+ * A localized `_status` (`localizeStatus`) is judged per locale instead: a locale keeps its path
+ * only when its own `_status.<locale>` is `'published'`. A flattened string status (write
+ * response) speaks for the written locale, which is the only one the callers ask about then.
+ */
+export function isPublishedInLocale(
+  row: Record<string, unknown>,
+  collection: Collection,
+  locale: Locale,
+): boolean {
+  if (!hasLocalizeStatusEnabled(collection) || !row._status) {
+    return true
+  }
+
+  if (typeof row._status === 'string') {
+    return row._status === 'published'
+  }
+
+  return (row._status as Record<string, unknown>)[locale] === 'published'
 }
 
 /**

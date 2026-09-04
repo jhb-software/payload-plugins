@@ -1,5 +1,7 @@
 import type { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payload'
 
+import { hasDraftsEnabled } from 'payload/shared'
+
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
@@ -22,6 +24,7 @@ export function dependentFields(collectionConfig: PageCollectionConfig): string[
     'slug',
     collectionConfig.page.parent.name,
     collectionConfig.page.breadcrumbs.labelField,
+    ...(hasDraftsEnabled(collectionConfig) ? ['_status'] : []),
   ]
 }
 
@@ -44,7 +47,6 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
 
   const pageConfig = asPageCollectionConfigOrThrow(collection)
 
-  const locale = localeFromRequest(req)
   const locales = localesFromRequest(req)
   const routing = await resolveLocaleRouting({
     payload: req.payload,
@@ -56,15 +58,19 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
     // Root pages don't need async lookups, so no try-catch needed
     return setRootPageDocumentVirtualFields({
       breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+      collection,
       doc,
+      draft: operationDraft(context),
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
       locales,
       routing,
     })
   }
 
-  // When the slug is not (yet) set, it is not possible to generate the virtual fields
-  if ((locale && locale !== 'all' && !doc.slug?.[locale]) || !doc.slug) {
+  // Without a slug in any locale there is nothing to build a path from. A slug missing in the
+  // requested locale alone is no reason to stop: the locales which do have one get their paths,
+  // and Payload's locale fallback fills the requested locale like any other localized field.
+  if (!doc.slug) {
     return doc
   }
 
@@ -76,6 +82,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
 
   try {
     return await setPageDocumentVirtualFields({
+      collection,
       doc,
       draft: operationDraft(context),
       locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
@@ -125,7 +132,9 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   if (doc.isRootPage) {
     docWithVirtualFields = setRootPageDocumentVirtualFields({
       breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+      collection,
       doc,
+      draft,
       locale,
       locales,
       routing,
@@ -136,6 +145,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   } else {
     try {
       docWithVirtualFields = await setPageDocumentVirtualFields({
+        collection,
         doc,
         draft,
         locale,
@@ -170,8 +180,13 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
         ? docParentRef === previousParentRef
         : parentRefKey(docParentRef) === parentRefKey(previousParentRef)
 
+    // `_status` counts as well: an unpublish removes the written locale's path from `doc`, while
+    // `previousDoc` still has it for hooks revalidating the URL which just stopped resolving.
     const dependentFieldsUnchanged =
-      parentUnchanged && doc.slug === previousDoc.slug && doc.isRootPage === previousDoc.isRootPage
+      parentUnchanged &&
+      doc.slug === previousDoc.slug &&
+      doc.isRootPage === previousDoc.isRootPage &&
+      doc._status === previousDoc._status
 
     if (dependentFieldsUnchanged) {
       const meta = docWithVirtualFields.meta as { alternatePaths?: unknown } | undefined
@@ -191,7 +206,9 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     } else if (previousDoc.isRootPage) {
       const result = setRootPageDocumentVirtualFields({
         breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+        collection,
         doc: previousDoc,
+        draft,
         locale,
         locales,
         routing,
@@ -199,6 +216,7 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
       Object.assign(previousDoc, result)
     } else if (previousDoc.slug) {
       const result = await setPageDocumentVirtualFields({
+        collection,
         doc: previousDoc,
         draft,
         locale,
