@@ -9,6 +9,11 @@
 - fix: a read that selects no virtual field no longer walks ancestors because an earlier read of another collection on the same request did
 - fix: `pathChanges` reports live paths instead of paths built from an ancestor's unpublished draft slug when a write is sent with `draft: true` or the request read a draft earlier
 - fix: a `localeRouting` resolver or user hook reading a page collection with the given request no longer imposes its draft mode on the enclosing write
+- **BREAKING**: with `localizeStatus`, published reads and write responses no longer expose draft-only locales in `path`, `breadcrumbs` or `alternatePaths`; a document published in no locale has no path at all on a published read, unlike an unpublished document with a plain `_status`, which keeps its paths as before. Publish the locale or read with `draft: true` to get its path
+- **BREAKING**: a page read in a locale it has no slug in still gets `path`, `breadcrumbs` and `alternatePaths` for the locales it does have, instead of none at all; the requested locale then follows Payload's locale fallback like any other localized field, so `path` may hold another locale's URL where it was `undefined` before. Pass `fallbackLocale: 'none'` to keep it absent, or read `alternatePaths` for the live URL of a locale
+- fix: `listPagePaths` narrowed to one locale no longer lists a page under that locale with another locale's path filled in by Payload's locale fallback
+- fix: a root page saves in a locale it has never been written in without the caller supplying the slug; the admin hides that field for root pages, so its first save in a new locale failed validation
+- fix: create and update responses of a localized page list only the written locale in `alternatePaths` instead of paths built from that locale's slug; root pages keep every locale unless `_status` is localized
 
 ## 0.9.0-beta.3
 

@@ -53,6 +53,58 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
   describe('The root page document', () => {
     beforeEach(async () => await deleteCollection('pages'))
 
+    test('saves a root page in a locale it has never been written in without a slug', async () => {
+      const rootPage = await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Root Page DE',
+          slug: '',
+          content: 'Root Page DE',
+          isRootPage: true,
+          ...virtualFields,
+        },
+      })
+
+      // The admin hides the slug of a root page, so a locale's first save carries none.
+      const saved = await payload.update({
+        collection: 'pages',
+        id: rootPage.id,
+        locale: 'en',
+        data: { title: 'Root Page EN', content: 'Root Page EN' },
+      })
+
+      expect(saved.slug).toBe('')
+      expect(saved.path).toBe('/en')
+    })
+
+    test('lists every locale in the alternate paths of a write response', async () => {
+      const rootPage = await payload.create({
+        collection: 'pages',
+        locale: 'de',
+        data: {
+          title: 'Root Page DE',
+          slug: '',
+          content: 'Root Page DE',
+          isRootPage: true,
+          ...virtualFields,
+        },
+      })
+
+      const saved = await payload.update({
+        collection: 'pages',
+        id: rootPage.id,
+        locale: 'en',
+        data: { title: 'Root Page EN', content: 'Root Page EN' },
+      })
+
+      // A root page is the site root of every locale regardless of which locale was written.
+      expect(removeIdsFromArray(saved.meta.alternatePaths)).toStrictEqual([
+        { hreflang: 'de', path: '/de' },
+        { hreflang: 'en', path: '/en' },
+      ])
+    })
+
     test('has the correct virtual fields when only one locale is present', async () => {
       const locale = 'de'
       const rootPageData = {
@@ -397,6 +449,20 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
     })
 
     describe('AlternatePaths', () => {
+      test('lists only the written locale in the alternate paths of a page write response', async () => {
+        const saved = await payload.update({
+          collection: 'pages',
+          id: nestedPageId!,
+          locale: 'en',
+          data: { content: 'Nested page edit' },
+        })
+
+        // The response carries only the English slug, so no other locale's path can be built from it.
+        expect(removeIdsFromArray(saved.meta.alternatePaths)).toStrictEqual([
+          { hreflang: 'en', path: `/en/${rootPageDataEn.slug}/${nestedPageDataEn.slug}` },
+        ])
+      })
+
       test('All locales requested.', async () => {
         const nestedPage = await payload.findByID({
           collection: 'pages',
@@ -514,24 +580,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
               path: `/de/${rootPageDataDe.slug}/${nestedPageDataDe.slug}`,
             },
           ],
-          // TODO: After revising the implementation, change this to be undefined
-          // Note: When the doc is not defined in en, the plugin should not return breadcrumbs for en!
-          en: [
-            {
-              // @ts-expect-error - Payload does not type find operations with locale='all' correctly yet.
-              id: nestedPage.breadcrumbs.en[0]?.id,
-              label: undefined,
-              path: '/en',
-              slug: undefined,
-            },
-            {
-              // @ts-expect-error - Payload does not type find operations with locale='all' correctly yet.
-              id: nestedPage.breadcrumbs.en[1]?.id,
-              label: undefined,
-              path: '/en',
-              slug: undefined,
-            },
-          ],
+          // The document has no slug in `en`, so it has neither a path nor breadcrumbs there.
         })
       })
 

@@ -157,6 +157,7 @@ export interface Page {
   breadcrumbs: Breadcrumbs;
   title: string;
   content: string;
+  relatedPage?: (number | null) | Page;
   meta: {
     alternatePaths: {
       hreflang: string;
@@ -451,6 +452,7 @@ export interface PagesSelect<T extends boolean = true> {
   breadcrumbs?: T | BreadcrumbsSelect<T>;
   title?: T;
   content?: T;
+  relatedPage?: T;
   meta?:
     | T
     | {

@@ -286,6 +286,10 @@ The plugin does not add a field of its own for this — the value lives in the S
 
 With Payload's [`localizeStatus`](https://payloadcms.com/docs/versions/drafts) (`versions.drafts.localizeStatus`, currently behind `experimental.localizeStatus`) each locale publishes on its own. The plugin follows: `findPageByPath`, `listPagePaths` and `pathChanges` resolve, enumerate and report each locale independently, so a page published in `en` only while `de` is still a draft yields exactly one live path.
 
+Reads follow the same rule: a published read lists only the live locales in `path`, `breadcrumbs` and `alternatePaths`, while a draft read keeps every locale for the preview. A single-locale read of a locale the page has no path in behaves like any other localized field: Payload's locale fallback fills in the fallback locale's path, and `fallbackLocale: 'none'` (or `localization.fallback: false`) leaves it absent. Payload never falls back when the default locale itself is requested, so a frontend must handle a missing `path` either way. To find the live URL of a specific locale, read `alternatePaths` — its entry for that locale is the exact path, or missing when the page is not live there.
+
+Create and update responses are the exception: a write carries only the written locale's slug, so its response lists that locale alone in `alternatePaths` (root pages list every locale unless `_status` is localized). Read the document back for the full set.
+
 #### Known limitation: routing is per request, not per document
 
 The routing is a function of the request, never of the document. In the admin, a user who sees documents of several tenants at once — a super-admin without a tenant cookie, or a list view spanning tenants — sees every `path` computed under the _request's_ routing, and `listPagePaths` indexes one tenant per call.

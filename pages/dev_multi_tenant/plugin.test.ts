@@ -210,6 +210,7 @@ describe('Multi-tenant baseFilter functionality', () => {
           slug: 'services',
           content: 'Services page',
           tenant: tenant1Id,
+          _status: 'published',
           ...virtualFields,
         },
       })
@@ -222,6 +223,7 @@ describe('Multi-tenant baseFilter functionality', () => {
           content: 'Consulting services',
           parent: rootPageT1.id,
           tenant: tenant1Id,
+          _status: 'published',
           ...virtualFields,
         },
       })
@@ -234,6 +236,7 @@ describe('Multi-tenant baseFilter functionality', () => {
           slug: 'services',
           content: 'Services page T2',
           tenant: tenant2Id,
+          _status: 'published',
           ...virtualFields,
         },
       })
@@ -246,6 +249,7 @@ describe('Multi-tenant baseFilter functionality', () => {
           content: 'Development services',
           parent: rootPageT2.id,
           tenant: tenant2Id,
+          _status: 'published',
           ...virtualFields,
         },
       })
@@ -580,6 +584,7 @@ describe('Multi-tenant baseFilter functionality', () => {
           slug: 'narrow-select-root',
           content: 'Root content',
           tenant: tenant1Id,
+          _status: 'published',
           ...virtualFields,
         },
       })
@@ -593,6 +598,7 @@ describe('Multi-tenant baseFilter functionality', () => {
           content: 'Child content',
           parent: rootPage.id,
           tenant: tenant1Id,
+          _status: 'published',
           ...virtualFields,
         },
       })

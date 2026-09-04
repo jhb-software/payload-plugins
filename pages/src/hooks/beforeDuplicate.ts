@@ -20,3 +20,16 @@ export const beforeDuplicateTitle: FieldHook = ({ value }) => {
 export const beforeDuplicateIsRootPage: FieldHook = ({ value }) => {
   return typeof value === 'boolean' && value === true ? false : value
 }
+
+/**
+ * Supplies the constant root page slug before validation.
+ *
+ * The admin hides the slug of a root page and nothing writes it, so a locale's first save — and
+ * any API write which omits the slug — reaches the required-field validation without a value in
+ * that locale. Payload's locale fallback does not help either: the fallback value is the empty
+ * string, which it treats as absent.
+ */
+export const rootPageSlugBeforeValidate: FieldHook = ({ data, originalDoc, value }) => {
+  const isRootPage = data?.isRootPage ?? originalDoc?.isRootPage
+  return isRootPage === true ? ROOT_PAGE_SLUG : value
+}
