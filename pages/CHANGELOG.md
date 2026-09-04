@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0-beta.4
 
 - fix: log the missing-redirects-collection warning through the Payload logger instead of `console`, so it respects the project's log level and formatting
 - **BREAKING**: `redirectValidationFilter` receives `doc?: Record<string, unknown>` instead of `doc: any`. The document is optional because Payload omits it on partial local-API updates; filters reading a field must narrow it (e.g. `doc?.tenant as string`).
