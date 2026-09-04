@@ -26,7 +26,7 @@
     "@payloadcms/db-sqlite": "^3.88.0",
     "@payloadcms/next": "^3.88.0",
     "@payloadcms/ui": "^3.88.0",
-    "next": "16.3.3",
+    "next": "16.3.4",
     "payload": "^3.88.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -37,7 +37,7 @@
     "dotenv": "^17.4.2",
     "typescript": "6.0.3",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "engines": {
     "node": ">=22.12.0"
