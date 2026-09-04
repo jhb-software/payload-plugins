@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - fix: a named tab without source data no longer stops translation of the fields after it
 - fix: log traversal and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting

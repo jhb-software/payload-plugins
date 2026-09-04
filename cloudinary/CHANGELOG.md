@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1
 
 - fix: log the static handler's 404 diagnostics and `generateURL`'s missing-`mimeType` warning through the Payload logger instead of `console`, so they respect the project's log level and formatting
 

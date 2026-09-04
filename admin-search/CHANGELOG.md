@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - feat: add a `baseFilter` option restricting search results to a constraint resolved against the current request, e.g. the tenant selected in a multi-tenant admin panel. A filter that cannot be evaluated is logged and the search returns no results, rather than widening to the documents the filter was meant to hide
 - fix: the result list shown before anything is typed now honours the same five-result limit as a typed search, instead of listing ten

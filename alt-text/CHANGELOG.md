@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.0
 
 - fix: a provider's error response is no longer repeated into the admin panel — OpenAI quotes the rejected API key back in a 401. The message names the provider and status; the body goes to the server log.
 - **BREAKING**: `openAIResolver` calls the API over `fetch`, and the `openai` SDK is no longer a dependency — it was installed by every project, whichever resolver it used. `timeoutMs` now defaults to `30000`, replacing the SDK's 10-minute deadline.
