@@ -85,8 +85,9 @@ type AnthropicMessage = {
  * itself, but that path is not dependable for a CMS: it requires the file to be
  * reachable from the public internet — never true in local development, and not
  * true for private buckets. Sending the bytes removes that whole class of
- * failure for the price of one extra download, and supplies the `media_type`
- * that a base64 image block requires and a URL cannot carry.
+ * failure for the price of one extra download. The `media_type` a base64 image
+ * block carries comes from the download, which reads it off what the thumbnail
+ * URL actually served.
  *
  * @example
  * ```typescript
