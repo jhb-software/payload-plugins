@@ -83,11 +83,10 @@ type AnthropicMessage = {
  *
  * The image is downloaded and sent as bytes. Claude can fetch an image URL
  * itself, but that path is not dependable for a CMS: it requires the file to be
- * reachable from the public internet — never true in local development, and not
- * true for private buckets. Sending the bytes removes that whole class of
- * failure for the price of one extra download. The `media_type` a base64 image
- * block carries comes from the download, which reads it off what the thumbnail
- * URL actually served.
+ * reachable from the public internet, which a `localhost` URL or a private
+ * bucket is not. Sending the bytes removes that whole class of failure for the
+ * price of one extra download. The `media_type` a base64 image block carries
+ * comes from the download, which reads it off what the thumbnail URL served.
  *
  * @example
  * ```typescript

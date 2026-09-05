@@ -118,7 +118,7 @@ export type VisionResolverConfig = {
    * Download the thumbnail and hand `generate` the bytes rather than the URL.
    *
    * Needed by every provider whose own fetcher requires a publicly reachable
-   * file — never true in local development, not true for private buckets.
+   * file, which a `localhost` URL or a private bucket is not.
    */
   inlineImage?: boolean
   /**

@@ -250,14 +250,11 @@ This plugin is designed to work seamlessly with various AI providers by acceptin
 
 Three resolvers ship with the plugin — [OpenAI](#openai-resolver),
 [Mistral](#mistral-resolver) and [Anthropic](#anthropic-resolver) — and any other
-AI provider can be used by writing a resolver and specifying it in the plugin
-configuration.
+provider can be used by writing your own.
 
-They differ in how the image reaches the provider. The OpenAI resolver hands over
-the thumbnail URL and lets OpenAI fetch it, which requires that URL to be
-reachable from the public internet. The Mistral and Anthropic resolvers download
-the image and send the bytes instead, which costs one extra download and works
-regardless of who can reach the URL.
+They differ in how the image reaches the provider: the OpenAI resolver passes the
+thumbnail URL, the Mistral and Anthropic resolvers download the image and send
+the bytes.
 
 #### OpenAI Resolver
 
@@ -270,11 +267,10 @@ openAIResolver({
 })
 ```
 
-The thumbnail URL is handed to OpenAI, which fetches it itself, so the URL has to
-be reachable from the public internet — never the case in local development, and
-not the case for a private bucket. Behind either, reach for a resolver that
-inlines the bytes: [`mistralResolver`](#mistral-resolver) or
-[`anthropicResolver`](#anthropic-resolver).
+OpenAI fetches the thumbnail URL itself, so it must be reachable from the public
+internet — a `localhost` URL or a private bucket is not. Behind either, use
+[`mistralResolver`](#mistral-resolver) or [`anthropicResolver`](#anthropic-resolver),
+which send the bytes.
 
 | Option               | Type       | Required | Description                                                                                                                                                                                 |
 | -------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -296,9 +292,8 @@ mistralResolver({
 })
 ```
 
-This resolver downloads the image and sends the bytes rather than handing Mistral
-the thumbnail URL. Beyond the reachability requirement every provider-side
-fetcher has, some hosts refuse Mistral's fetcher outright, which surfaces as
+This resolver sends the image bytes rather than the thumbnail URL. Some hosts
+also refuse Mistral's own fetcher outright, which surfaces as
 `File could not be fetched from url` (error 3310).
 
 Because there is no image conversion step, `supportedMimeTypes` is limited to
@@ -325,11 +320,9 @@ anthropicResolver({
 })
 ```
 
-Like the Mistral resolver, this one downloads the image and sends the bytes.
-Claude can fetch an image URL itself, but only when the file is reachable from
-the public internet. The base64 image block carries a `media_type` alongside the
-bytes; the download fills it in from what the thumbnail URL actually served,
-falling back to the collection's `imageThumbnailMimeType`.
+Like the Mistral resolver, this one sends the image bytes rather than the URL.
+The base64 block's `media_type` comes from what the thumbnail URL served, falling
+back to the collection's `imageThumbnailMimeType`.
 
 `supportedMimeTypes` is limited to what the Messages API accepts: JPEG, PNG, GIF
 and WebP. Documents in other formats keep their generate button disabled.
