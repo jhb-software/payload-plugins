@@ -1,6 +1,6 @@
 # Image Alt Text Generation Plugin for Payload CMS
 
-A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text generation for images. I automatically adds an alt text field with a button to generate the alt text to specified upload collections, and includes a bulk generation feature in the list view for processing multiple images at once.
+A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text generation for images. It automatically adds an alt text field with a button to generate the alt text to specified upload collections, and includes a bulk generation feature in the list view for processing multiple images at once.
 
 ## Features
 
@@ -8,7 +8,7 @@ A [Payload CMS](https://payloadcms.com/) plugin that adds AI-powered alt text ge
 - Supports any AI provider using a resolver pattern (e.g., OpenAI, Anthropic, etc.)
 - Comes with ready-to-use OpenAI, Anthropic and Mistral resolvers out of the box
 - Automatic keyword extraction for improved admin search
-- Bulk generation for processing multiple images at once
+- Bulk generation from the collection list view
 - Full localization support
 - Dashboard health widget with cached coverage insights across all configured upload collections
 - Multi-tenant aware: the health report can be scoped to the tenant the request is for
@@ -22,7 +22,6 @@ When the plugin is enabled for an upload collection, it will:
    - This field will be automatically filled when generating the alt text
    - It will be used for improving the search of images in the admin panel
 3. Add a bulk generate button to the collection list view
-   - This button will allow you to generate alt text for multiple images at once
 4. Register an `Alt text health` dashboard widget
    - Results are cached and revalidated when documents in the configured upload collections change
 
@@ -83,7 +82,7 @@ This is also the recommended escape hatch if you hit Payload's Postgres SQL-buil
 | `collections`                | `(CollectionSlug \| CollectionObj)[]`      | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))                                                                                                                                                                                                 |
 | `resolver`                   | `AltTextResolver`                          | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                                                                                                                                                                                                     |
 | `getImageThumbnail`          | `Function`                                 | Yes      | Function to get the thumbnail URL from an image document                                                                                                                                                                                                                                              |
-| `enabled`                    | `boolean`                                  | No       | Whether to enable the plugin                                                                                                                                                                                                                                                                          |
+| `enabled`                    | `boolean`                                  | No       | Disables the plugin entirely when `false` (default: `true`)                                                                                                                                                                                                                                           |
 | `access`                     | `({ req }) => boolean \| Promise<boolean>` | No       | Access control for the plugin's REST endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                                                                                                                                                |
 | `locale`                     | `string`                                   | No       | Locale for alt text generation (required when localization is disabled)                                                                                                                                                                                                                               |
 | `maxBulkGenerateConcurrency` | `number`                                   | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                                                                                                                                                                                                     |
@@ -107,7 +106,7 @@ getImageThumbnail: async (doc, { req }) => await presignThumbnailUrl(String(doc.
 
 ### Per-collection options
 
-Each entry in `collections` may be either a bare collection slug (shorthand, defaults to `['image/*']` for `mimeTypes`) or an object with the following fields:
+Each entry in `collections` may be either a bare collection slug or an object with the following fields:
 
 | Option                   | Type                      | Required | Description                                                                                                                                                                                       |
 | ------------------------ | ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -119,7 +118,7 @@ Each entry in `collections` may be either a bare collection slug (shorthand, def
 ```ts
 payloadAltTextPlugin({
   collections: [
-    'images', // shorthand — defaults to mimeTypes: ['image/*']
+    'images', // shorthand
     { slug: 'media', mimeTypes: ['image/*', 'application/pdf'] },
   ],
   // ...
@@ -142,7 +141,7 @@ payloadAltTextPlugin({
 })
 ```
 
-With the declaration in place, the source format no longer gates generation — the admin button stays enabled and the endpoints stop rejecting on `mimeType`. Which source formats get alt text at all is still governed by each collection's `mimeTypes`. The declaration is validated against the resolver's `supportedMimeTypes` once at config load, so transcoding into a format your resolver cannot handle fails at boot instead of once per image.
+Which source formats get alt text at all is still governed by each collection's `mimeTypes`. The declaration is validated against the resolver's `supportedMimeTypes` once at config load, so transcoding into a format your resolver cannot handle fails at boot instead of once per image.
 
 Only declare a format your transformation **always** produces. A `f_auto`-style transformation negotiates the format from the fetching client's `Accept` header and may serve the source format back, so leave it unset there and let the conservative source check apply. If you want AVIF sources to work, transcode explicitly.
 
@@ -226,7 +225,7 @@ healthCheck: {
 }
 ```
 
-`baseFilter` returns a `Where` that is ANDed onto the scan's MIME type filter. It is resolved once per configured collection, so a collection that does not carry the constraining field — a media library shared across tenants, say — can return `{}` and be scanned whole. Returning `{}` for every collection is the default behaviour.
+`baseFilter` returns a `Where` that is ANDed onto the scan's MIME type filter. It is resolved once per configured collection, so a collection that does not carry the constraining field — a media library shared across tenants, say — can return `{}` and be scanned whole. Omitting `baseFilter` entirely does the same for every collection.
 
 The scan is cached across requests, and its cache key is derived from the resolved filters: a narrowed scan always gets its own cache entry, so one tenant's counts can never be served to another. Cache invalidation stays per collection, so a write in one tenant refreshes the report for all of them.
 
@@ -245,8 +244,6 @@ await payload.create({
 ```
 
 ### Resolvers
-
-This plugin is designed to work seamlessly with various AI providers by accepting a customizable resolver as a configuration option.
 
 Three resolvers ship with the plugin — [OpenAI](#openai-resolver),
 [Mistral](#mistral-resolver) and [Anthropic](#anthropic-resolver) — and any other
@@ -314,9 +311,6 @@ anthropicResolver({
   effort: 'low', // optional; describing an image needs little thinking
 })
 ```
-
-The `media_type` sent alongside the bytes comes from what the thumbnail URL
-served, falling back to the collection's `imageThumbnailMimeType`.
 
 `supportedMimeTypes` is limited to what the Messages API accepts: JPEG, PNG, GIF
 and WebP. Documents in other formats keep their generate button disabled.
@@ -387,7 +381,6 @@ export const myResolver = ({ apiKey }: { apiKey: string }) =>
         })
       }
 
-      // Return the parsed JSON object.
       return await response.json()
     },
     inlineImage: true,
