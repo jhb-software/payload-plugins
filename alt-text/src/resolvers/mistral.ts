@@ -51,9 +51,10 @@ const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/web
  * Creates a Mistral-based resolver for alt text generation.
  *
  * The image is downloaded and sent as bytes rather than handed to Mistral as a
- * URL. Mistral's own fetcher requires a publicly reachable file — never true in
- * local development, and not true for private buckets — and some hosts refuse it
- * outright, which surfaces as `File could not be fetched from url` (error 3310).
+ * URL. Mistral's own fetcher requires a publicly reachable file, and even that is
+ * not sufficient: hosts serving the image fine to everyone else were observed
+ * refusing it with `File could not be fetched from url` (error 3310). See #184
+ * for the reproduction.
  *
  * @example
  * ```typescript
