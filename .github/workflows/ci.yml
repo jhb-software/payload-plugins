@@ -16,17 +16,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies in all packages
-        run: pnpm install:all
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Run format
         run: pnpm format:all
@@ -42,22 +33,12 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
-    needs: format
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install:all
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Run ESLint (admin-search)
         run: cd admin-search && pnpm lint
@@ -88,44 +69,24 @@ jobs:
 
   typecheck:
     runs-on: ubuntu-latest
-    needs: format
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install:all
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Typecheck all plugins
         run: pnpm typecheck:all
 
   test-unit:
     runs-on: ubuntu-latest
-    needs: format
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install:all
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
       - name: Run tests (admin-search)
         run: cd admin-search && pnpm test
@@ -153,7 +114,6 @@ jobs:
 
   test-pages-localized:
     runs-on: ubuntu-latest
-    needs: format
     strategy:
       fail-fast: false
       matrix:
@@ -182,17 +142,10 @@ jobs:
             echo "SQLITE_URL=file:./payload-test.db" >> pages/dev/.env
           fi
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install:all
+          install: install:pages
 
       - name: Run tests
         run: cd pages && pnpm test:localized:${{ matrix.database }}
@@ -201,7 +154,6 @@ jobs:
 
   test-pages-unlocalized:
     runs-on: ubuntu-latest
-    needs: format
     strategy:
       fail-fast: false
       matrix:
@@ -229,17 +181,10 @@ jobs:
             echo "SQLITE_URL=file:./payload-test.db" >> pages/dev_unlocalized/.env
           fi
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install:all
+          install: install:pages
 
       - name: Run tests
         run: cd pages && pnpm test:unlocalized:${{ matrix.database }}
@@ -248,7 +193,6 @@ jobs:
 
   test-pages-multi-tenant:
     runs-on: ubuntu-latest
-    needs: format
     strategy:
       fail-fast: false
       matrix:
@@ -276,17 +220,10 @@ jobs:
             echo "SQLITE_URL=file:./payload-test.db" >> pages/dev_multi_tenant/.env
           fi
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install:all
+          install: install:pages
 
       - name: Run tests
         run: cd pages && pnpm test:multi-tenant:${{ matrix.database }}
