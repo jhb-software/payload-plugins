@@ -10,9 +10,9 @@ import { mistralResolver } from '../src/resolvers/mistral.ts'
  * The Mistral resolver differs from the OpenAI one in a way that is easy to
  * regress: it downloads the image and sends the bytes instead of handing the
  * provider a URL. That is not a preference. Mistral's own fetcher needs the file
- * to be reachable from the public internet — never true in local development,
- * not true for private buckets — and some hosts refuse it outright with
- * `File could not be fetched from url` (error 3310). Switching back to a URL
+ * to be reachable from the public internet, and a public URL is not even
+ * sufficient: some hosts refuse the fetcher while serving the image fine to
+ * everyone else (`File could not be fetched from url`, error 3310). Switching back to a URL
  * would leave those setups generating nothing, with the failure only visible in
  * a provider error message.
  *

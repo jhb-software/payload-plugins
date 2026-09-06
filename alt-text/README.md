@@ -268,9 +268,8 @@ openAIResolver({
 ```
 
 OpenAI fetches the thumbnail URL itself, so it must be reachable from the public
-internet — a `localhost` URL or a private bucket is not. Behind either, use
-[`mistralResolver`](#mistral-resolver) or [`anthropicResolver`](#anthropic-resolver),
-which send the bytes.
+internet. If it is not, use [`mistralResolver`](#mistral-resolver) or
+[`anthropicResolver`](#anthropic-resolver), which send the bytes instead.
 
 | Option               | Type       | Required | Description                                                                                                                                                                                 |
 | -------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -292,8 +291,10 @@ mistralResolver({
 })
 ```
 
-This resolver sends the image bytes rather than the thumbnail URL. Some hosts
-also refuse Mistral's own fetcher outright, which surfaces as
+This resolver sends the image bytes rather than the thumbnail URL. A public URL
+is not even sufficient for Mistral: its fetcher is refused by some hosts that
+serve the image fine to everyone else — `raw.githubusercontent.com` and
+`upload.wikimedia.org` among them — reporting
 `File could not be fetched from url` (error 3310).
 
 Because there is no image conversion step, `supportedMimeTypes` is limited to

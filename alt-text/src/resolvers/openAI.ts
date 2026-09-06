@@ -49,9 +49,9 @@ const OPENAI_SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'im
  * Creates an OpenAI-based resolver for alt text generation.
  *
  * The thumbnail URL is handed to OpenAI, which fetches it itself — so the URL
- * has to be reachable from the public internet, which a `localhost` URL or a
- * private bucket is not. Behind either, reach for a resolver that inlines the
- * bytes instead (`mistralResolver`, `anthropicResolver`).
+ * has to be reachable from the public internet. When it is not, reach for a
+ * resolver that inlines the bytes instead (`mistralResolver`,
+ * `anthropicResolver`).
  *
  * @example
  * ```typescript
