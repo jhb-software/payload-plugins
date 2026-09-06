@@ -291,12 +291,6 @@ mistralResolver({
 })
 ```
 
-This resolver sends the image bytes rather than the thumbnail URL. A public URL
-is not even sufficient for Mistral: its fetcher is refused by some hosts that
-serve the image fine to everyone else — `raw.githubusercontent.com` and
-`upload.wikimedia.org` among them — reporting
-`File could not be fetched from url` (error 3310).
-
 Because there is no image conversion step, `supportedMimeTypes` is limited to
 what the Mistral API accepts directly: JPEG, PNG, GIF and WebP. Documents in
 other formats — SVG or AVIF, for instance — keep their generate button disabled.
@@ -321,9 +315,8 @@ anthropicResolver({
 })
 ```
 
-Like the Mistral resolver, this one sends the image bytes rather than the URL.
-The base64 block's `media_type` comes from what the thumbnail URL served, falling
-back to the collection's `imageThumbnailMimeType`.
+The `media_type` sent alongside the bytes comes from what the thumbnail URL
+served, falling back to the collection's `imageThumbnailMimeType`.
 
 `supportedMimeTypes` is limited to what the Messages API accepts: JPEG, PNG, GIF
 and WebP. Documents in other formats keep their generate button disabled.
