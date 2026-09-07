@@ -145,7 +145,7 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-workspace
         with:
-          install: install:pages
+          scope: pages
 
       - name: Run tests
         run: cd pages && pnpm test:localized:${{ matrix.database }}
@@ -184,7 +184,7 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-workspace
         with:
-          install: install:pages
+          scope: pages
 
       - name: Run tests
         run: cd pages && pnpm test:unlocalized:${{ matrix.database }}
@@ -223,7 +223,7 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-workspace
         with:
-          install: install:pages
+          scope: pages
 
       - name: Run tests
         run: cd pages && pnpm test:multi-tenant:${{ matrix.database }}

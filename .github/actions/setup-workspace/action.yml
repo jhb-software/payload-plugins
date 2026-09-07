@@ -2,13 +2,14 @@ name: Setup workspace
 description: Installs pnpm and Node.js, restores the pnpm store and installs dependencies.
 
 inputs:
-  install:
+  scope:
     description: >-
-      The root package.json install script to run, e.g. `install:all` for every
-      plugin or `install:pages` for a single one. Jobs that only exercise one
-      plugin should name it rather than installing all nine.
+      Which workspaces to install: `all` for every plugin, or a single plugin
+      directory name such as `pages`. Selects the `install:<scope>` script from
+      the root package.json, and keys the pnpm store cache so a job installing
+      one plugin never overwrites the entry a job installing all nine wrote.
     required: false
-    default: install:all
+    default: all
 
 runs:
   using: composite
@@ -34,16 +35,21 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ env.PNPM_STORE_PATH }}
-        # Every lockfile feeds the key. The nine plugin lockfiles decide what
+        # The scope belongs in the key: jobs run concurrently and a store built
+        # by `install:pages` holds a fraction of what `install:all` needs, so a
+        # single shared key lets whichever job finishes first decide what every
+        # later run restores.
+        #
+        # Every lockfile feeds the hash. The nine plugin lockfiles decide what
         # the store holds, so hashing the root one alone (what setup-node's
         # built-in `cache: pnpm` does) restores a stale store on any commit
         # that leaves the root lockfile untouched -- and, because the key still
         # hits, never writes the refreshed store back.
-        key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+        key: pnpm-store-${{ runner.os }}-${{ inputs.scope }}-${{ hashFiles('**/pnpm-lock.yaml') }}
         # A near miss still restores most of the store, leaving pnpm to fetch
         # only the delta, and the exact key is saved afterwards.
-        restore-keys: pnpm-store-${{ runner.os }}-
+        restore-keys: pnpm-store-${{ runner.os }}-${{ inputs.scope }}-
 
     - name: Install dependencies
       shell: bash
-      run: pnpm ${{ inputs.install }}
+      run: pnpm install:${{ inputs.scope }}

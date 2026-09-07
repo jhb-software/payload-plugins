@@ -46,7 +46,7 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-workspace
         with:
-          install: install:${{ inputs.plugin }}
+          scope: ${{ inputs.plugin }}
 
       - name: Bump version
         id: version
