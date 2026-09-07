@@ -5,9 +5,8 @@ export const en: GenericTranslationsObject = {
     // Deployment Info Feature
     deploymentInfoActiveDeployment: 'Active Deployment',
     deploymentInfoDeploymentCompletedSuccessfully: 'New deployment completed successfully',
-    deploymentInfoDeploymentTriggeredFailed: 'Failed to redeploy the latest production deployment',
-    deploymentInfoDeploymentTriggeredSuccessfully:
-      'Latest production deployment redeployed successfully',
+    deploymentInfoDeploymentTriggeredFailed: 'Could not start deployment',
+    deploymentInfoDeploymentTriggeredSuccessfully: 'Deployment started',
     deploymentInfoError: 'Error fetching deployment info',
     deploymentInfoInspectDeployment: 'Inspect Deployment',
     deploymentInfoLatestDeployment: 'Latest Deployment',

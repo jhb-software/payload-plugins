@@ -5,8 +5,8 @@ export const de: GenericTranslationsObject = {
     // Deployment Info Feature
     deploymentInfoActiveDeployment: 'Aktive Veröffentlichung',
     deploymentInfoDeploymentCompletedSuccessfully: 'Veröffentlichung abgeschlossen',
-    deploymentInfoDeploymentTriggeredFailed: 'Veröffentlichung fehlgeschlagen',
-    deploymentInfoDeploymentTriggeredSuccessfully: 'Veröffentlichung erfolgreich',
+    deploymentInfoDeploymentTriggeredFailed: 'Veröffentlichung konnte nicht gestartet werden',
+    deploymentInfoDeploymentTriggeredSuccessfully: 'Veröffentlichung gestartet',
     deploymentInfoError: 'Fehler beim Laden der Veröffentlichungen',
     deploymentInfoInspectDeployment: 'Details anzeigen',
     deploymentInfoLatestDeployment: 'Neueste Veröffentlichung',

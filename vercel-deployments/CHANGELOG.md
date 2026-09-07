@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: clarify in the i18n labels that a deployment was started, not completed
+
 ## 0.4.0
 
 - **BREAKING**: `vercel.projectId` and `widget.websiteUrl` moved into a single `deploymentTarget` option, which also accepts a function resolving them per request (e.g. from the selected tenant). Replace them with `deploymentTarget: { projectId, websiteUrl }`.
