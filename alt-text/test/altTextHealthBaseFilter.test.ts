@@ -115,7 +115,9 @@ function createRequest(
       ],
       healthCheck: true,
       healthCheckBaseFilter: baseFilter,
+      // As the plugin normalizes a project with localization disabled.
       locale: 'en',
+      locales: [],
     },
   }
 

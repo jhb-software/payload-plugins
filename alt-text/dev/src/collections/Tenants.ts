@@ -11,5 +11,17 @@ export const Tenants: CollectionConfig = {
       type: 'text',
       required: true,
     },
+    // The subset of the config's locales this tenant serves — read by `filterLocales`.
+    {
+      name: 'locales',
+      type: 'select',
+      hasMany: true,
+      required: true,
+      defaultValue: ['en', 'de'],
+      options: [
+        { label: 'English', value: 'en' },
+        { label: 'Deutsch', value: 'de' },
+      ],
+    },
   ],
 }

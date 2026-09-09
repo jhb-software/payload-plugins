@@ -162,6 +162,26 @@ export default buildConfig({
               // list:
               // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
             }),
+      // Narrows generation and the health report to the selected tenant's
+      // locales. Switch the selector to Globex and the widget counts German
+      // alone, instead of reporting its images as permanently incomplete.
+      filterLocales: async ({ locales, req }) => {
+        const tenantId = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+        if (!tenantId) {
+          return locales
+        }
+
+        const tenant = await req.payload.findByID({
+          id: tenantId,
+          collection: 'tenants',
+          depth: 0,
+          req,
+          select: { locales: true },
+        })
+
+        return tenant?.locales?.length ? tenant.locales : locales
+      },
       // Cap how many images a single bulk-generate request may process.
       // Selecting more than this in the list view returns a 400 instead of
       // fanning out into an unbounded number of paid resolver calls.
@@ -258,9 +278,25 @@ export default buildConfig({
       })
     }
 
-    // Two tenants with deliberately different alt text coverage, so the health
-    // widget's numbers visibly change when the tenant selector is switched:
-    // Acme has one complete image, Globex has two images with none.
+    // No resolver reads SVG: a bulk run over this collection reports it as
+    // skipped rather than failed. (`media` declares a thumbnail type, so only
+    // this collection still checks each document's own format.)
+    const existingLogo = await payload.find({
+      collection: 'media-with-folders',
+      limit: 1,
+    })
+
+    if (existingLogo.docs.length === 0) {
+      await payload.create({
+        collection: 'media-with-folders',
+        data: { alt: 'A logo an editor has to describe by hand' },
+        filePath: path.resolve(dirname, '../seed/sample-logo.svg'),
+      })
+    }
+
+    // Two tenants whose numbers differ when the tenant selector is switched:
+    // Acme serves both locales and has one image in English only (partial),
+    // Globex serves German alone and has one complete image and one empty.
     const existingTenants = await payload.find({ collection: 'tenants', limit: 1 })
 
     if (existingTenants.docs.length === 0) {
@@ -268,24 +304,25 @@ export default buildConfig({
 
       const acme = await payload.create({
         collection: 'tenants',
-        data: { name: 'Acme' },
+        data: { name: 'Acme', locales: ['en', 'de'] },
       })
       const globex = await payload.create({
         collection: 'tenants',
-        data: { name: 'Globex' },
+        data: { name: 'Globex', locales: ['de'] },
       })
 
-      const images: { alt: string; tenant: string }[] = [
-        { alt: 'An Acme product photo', tenant: acme.id as string },
-        { alt: '', tenant: globex.id as string },
-        { alt: '', tenant: globex.id as string },
+      const images: { alt: string; locale: 'de' | 'en'; tenant: string }[] = [
+        { alt: 'An Acme product photo', locale: 'en', tenant: acme.id as string },
+        { alt: 'Ein Globex Produktfoto', locale: 'de', tenant: globex.id as string },
+        { alt: '', locale: 'de', tenant: globex.id as string },
       ]
 
-      for (const { alt, tenant } of images) {
+      for (const { alt, locale, tenant } of images) {
         await payload.create({
           collection: 'images',
           data: { alt, tenant },
           filePath: seedImage,
+          locale,
         })
       }
     }

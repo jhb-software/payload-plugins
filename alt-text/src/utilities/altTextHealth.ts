@@ -11,6 +11,7 @@ import type { AltTextHealthCacheFactory } from './altTextHealthCache.js'
 import { createCachedAltTextHealthScan } from './altTextHealthCache.js'
 import { localesFromConfig } from './localesFromConfig.js'
 import { buildMimeTypeWhere } from './mimeTypes.js'
+import { configuredLocales, resolveLocales } from './resolveLocales.js'
 import { stableStringify } from './stableStringify.js'
 import { summarizeCollection } from './summarizeCollection.js'
 
@@ -21,6 +22,7 @@ export const ALT_TEXT_HEALTH_GLOBAL_TAG = 'alt-text-health'
 export type AltTextHealthErrorCode =
   | 'ALT_TEXT_BASE_FILTER_FAILED'
   | 'ALT_TEXT_COLLECTION_READ_FAILED'
+  | 'ALT_TEXT_LOCALES_FILTER_FAILED'
   | 'ALT_TEXT_PLUGIN_CONFIG_MISSING'
 
 export type AltTextHealthError = {
@@ -252,8 +254,6 @@ export async function getAltTextHealthScan(
 ): Promise<AltTextHealthScan> {
   const { payload } = req
   const pluginConfig = payload.config.custom?.altTextPluginConfig as AltTextPluginConfig | undefined
-  const localeCodes =
-    localesFromConfig(payload.config) ?? (pluginConfig?.locale ? [pluginConfig.locale] : [])
   const isLocalized = Boolean(payload.config.localization)
 
   if (!pluginConfig) {
@@ -263,8 +263,37 @@ export async function getAltTextHealthScan(
         message: 'Alt text plugin config not found',
       },
       isLocalized,
-      localeCodes,
+      localeCodes: localesFromConfig(payload.config) ?? [],
     })
+  }
+
+  const configured = configuredLocales(pluginConfig)
+
+  // Measuring a tenant against locales it does not serve leaves it permanently
+  // partial, in a way no editor of that tenant can fix.
+  let localeCodes = configured
+
+  if (pluginConfig.filterLocales) {
+    try {
+      localeCodes = await resolveLocales({ pluginConfig, req })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+
+      payload.logger.error({
+        err: error,
+        msg: 'Alt text health check failed while resolving the locales to report on.',
+        plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
+      })
+
+      return createUnknownScan({
+        error: {
+          code: 'ALT_TEXT_LOCALES_FILTER_FAILED',
+          message: `Failed to resolve the alt text health locales: ${message}`,
+        },
+        isLocalized,
+        localeCodes: configured,
+      })
+    }
   }
 
   const collections = pluginConfig.collections

@@ -103,6 +103,7 @@ export const payloadAltTextPlugin =
       collections: normalizedCollections,
       enabled: incomingPluginConfig.enabled ?? true,
       fieldsOverride: incomingPluginConfig.fieldsOverride,
+      filterLocales: incomingPluginConfig.filterLocales,
       getImageThumbnail: incomingPluginConfig.getImageThumbnail,
       healthCheck: enableHealthCheck,
       healthCheckAccess,

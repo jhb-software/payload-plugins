@@ -6,12 +6,16 @@ import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
-import { localesFromConfig } from '../utilities/localesFromConfig.js'
 import { getUnsupportedSourceMimeTypeError, matchesMimeType } from '../utilities/mimeTypes.js'
+import { resolveLocales } from '../utilities/resolveLocales.js'
 import { bulkGenerateAltTextsRequestSchema, formatZodError } from './schemas.js'
 
 /**
- * Generates and updates alt text for multiple images in all locales.
+ * Generates and updates alt text for multiple images in all target locales.
+ *
+ * Files nothing can be generated for are reported as `skippedDocs` rather than
+ * `erroredDocs` — burying them among real failures hides those — each with the
+ * reason that decides what the editor has to do next. See {@link SkipReason}.
  */
 export const bulkGenerateAltTextsEndpoint =
   (access: AltTextPluginConfig['access']): PayloadHandler =>
@@ -27,6 +31,7 @@ export const bulkGenerateAltTextsEndpoint =
 
       let updatedDocs = 0
       const erroredDocs: (number | string)[] = []
+      const skippedDocs: SkippedDoc[] = []
 
       // Get plugin config from payload config
       const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
@@ -68,10 +73,9 @@ export const bulkGenerateAltTextsEndpoint =
         )
       }
 
-      // determine target locales based on config
-      const locales = localesFromConfig(req.payload.config)
-      const targetLocales = locales ?? [pluginConfig.locale!]
-      if (!targetLocales) {
+      const targetLocales = await resolveLocales({ pluginConfig, req })
+
+      if (targetLocales.length === 0) {
         return Response.json(
           {
             error:
@@ -85,7 +89,7 @@ export const bulkGenerateAltTextsEndpoint =
         uniqueIds,
         async (id) => {
           try {
-            await generateAndUpdateAltText({
+            const skipReason = await generateAndUpdateAltText({
               id,
               collection,
               locales: targetLocales,
@@ -93,6 +97,13 @@ export const bulkGenerateAltTextsEndpoint =
               pluginConfig,
               req,
             })
+
+            if (skipReason) {
+              skippedDocs.push({ id, reason: skipReason.reason })
+              req.payload.logger.info(`Skipped ${id}: ${skipReason.detail}`)
+              return
+            }
+
             updatedDocs++
             req.payload.logger.info(
               `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
@@ -118,6 +129,7 @@ export const bulkGenerateAltTextsEndpoint =
 
       return Response.json({
         erroredDocs,
+        skippedDocs,
         totalDocs: uniqueIds.length,
         updatedDocs,
       })
@@ -140,6 +152,19 @@ export const bulkGenerateAltTextsEndpoint =
     }
   }
 
+/**
+ * Why a document was left alone.
+ *
+ * - `notTracked` — the collection does not track this file type, so it needs no
+ *   alt text at all.
+ * - `unsupportedFormat` — a tracked file whose format the resolver cannot read.
+ *   It still needs alt text; an editor has to write it.
+ */
+export type SkipReason = 'notTracked' | 'unsupportedFormat'
+
+export type SkippedDoc = { id: number | string; reason: SkipReason }
+
+/** Returns why the document was skipped, or `undefined` once it has been written. */
 async function generateAndUpdateAltText({
   id,
   collection,
@@ -154,7 +179,7 @@ async function generateAndUpdateAltText({
   payload: BasePayload
   pluginConfig: AltTextPluginConfig
   req: PayloadRequest
-}) {
+}): Promise<{ detail: string; reason: SkipReason } | undefined> {
   const imageDoc = await payload.findByID({
     id,
     collection,
@@ -177,9 +202,10 @@ async function generateAndUpdateAltText({
   const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)!
 
   if (mimeType && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
-    throw new Error(
-      `Alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection. Tracked types: ${collectionConfig.mimeTypes.join(', ')}.`,
-    )
+    return {
+      detail: `alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection`,
+      reason: 'notTracked',
+    }
   }
 
   const unsupportedSourceError = getUnsupportedSourceMimeTypeError({
@@ -188,7 +214,7 @@ async function generateAndUpdateAltText({
     supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
   })
   if (unsupportedSourceError) {
-    throw new Error(unsupportedSourceError)
+    return { detail: unsupportedSourceError, reason: 'unsupportedFormat' }
   }
 
   const imageThumbnailUrl = await pluginConfig.getImageThumbnail(imageDoc, { collection, req })
