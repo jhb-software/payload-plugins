@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.12.0
 
 - **BREAKING**: bulk generation reports files no provider call was made for as `skippedDocs` instead of `erroredDocs`, each with a `reason` of `notTracked` or `unsupportedFormat`. Callers that alert on `erroredDocs` must read `skippedDocs` to keep seeing them.
 - **BREAKING**: the count-dependent translation keys gained `_one`/`_other` variants, so a count of one reads "1 locale", not "1 locales". Projects overriding `xOfYImagesUpdated`, `failedToGenerateForXImages`, `localeCount` or `totalImageCount` must override the new key names.
