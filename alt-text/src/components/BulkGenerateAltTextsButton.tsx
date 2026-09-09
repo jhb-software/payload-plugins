@@ -8,10 +8,12 @@ import type {
   PluginAltTextTranslationKeys,
   PluginAltTextTranslations,
 } from '../translations/index.js'
+import type { BulkGenerateResult } from './summarizeBulkGenerate.js'
 
 import { PLUGIN_SLUG } from '../constants.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
+import { summarizeBulkGenerate } from './summarizeBulkGenerate.js'
 
 export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug: string }) {
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
@@ -53,35 +55,10 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
           return
         }
 
-        const data = (await response.json()) as {
-          erroredDocs: string[]
-          totalDocs: number
-          updatedDocs: number
-        }
+        const data = (await response.json()) as BulkGenerateResult
 
-        if (data.erroredDocs.length > 0) {
-          toast.error(
-            t('@jhb.software/payload-alt-text-plugin:failedToGenerateForXImages', {
-              count: data.erroredDocs.length,
-            }),
-          )
-        }
-
-        // in case not all images were updated, show a warning instead of a success message:
-        if (data.updatedDocs === data.totalDocs) {
-          toast.success(
-            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated', {
-              total: data.totalDocs,
-              updated: data.updatedDocs,
-            }),
-          )
-        } else {
-          toast.warning(
-            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated', {
-              total: data.totalDocs,
-              updated: data.updatedDocs,
-            }),
-          )
+        for (const { severity, translationKey, variables } of summarizeBulkGenerate(data)) {
+          toast[severity](t(`@jhb.software/payload-alt-text-plugin:${translationKey}`, variables))
         }
 
         // deselect all previously selected images

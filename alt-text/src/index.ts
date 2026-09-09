@@ -18,6 +18,7 @@ export type {
   AltTextCollectionConfig,
   AltTextHealthBaseFilter,
   AltTextHealthCheckConfig,
+  FilterLocales,
   GetImageThumbnail,
   IncomingAltTextPluginConfig as AltTextPluginConfig,
 } from './types/AltTextPluginConfig.js'

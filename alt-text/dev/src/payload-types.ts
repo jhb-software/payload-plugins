@@ -168,6 +168,7 @@ export interface User {
 export interface Tenant {
   id: string;
   name: string;
+  locales: ('en' | 'de')[];
   updatedAt: string;
   createdAt: string;
 }
@@ -453,6 +454,7 @@ export interface MediaWithFoldersSelect<T extends boolean = true> {
  */
 export interface TenantsSelect<T extends boolean = true> {
   name?: T;
+  locales?: T;
   updatedAt?: T;
   createdAt?: T;
 }

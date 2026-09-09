@@ -45,6 +45,21 @@ export type AltTextHealthBaseFilter = (args: {
   req: PayloadRequest
 }) => Promise<Where> | Where
 
+/**
+ * Narrows the locales a request generates for and is measured against — in a
+ * multi-tenant CMS, to the locales of the tenant the request is for.
+ *
+ * Must return a non-empty subset of `locales`; anything else ends the operation
+ * with an error rather than writing into a locale the project does not define.
+ *
+ * @param args.locales The locales configured on the Payload config.
+ * @param args.req The request being served.
+ */
+export type FilterLocales = (args: {
+  locales: string[]
+  req: PayloadRequest
+}) => Promise<string[]> | string[]
+
 /** Configuration of the alt text health feature. */
 export type AltTextHealthCheckConfig = {
   /**
@@ -100,6 +115,14 @@ export type IncomingAltTextPluginConfig = {
 
   /** Override the default fields inserted by the plugin via a function that receives the default fields and returns the new fields */
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
+
+  /**
+   * Narrows the locales this request targets. See {@link FilterLocales}.
+   *
+   * Governs bulk generation, the generate endpoint's locale validation, and the
+   * health report.
+   */
+  filterLocales?: FilterLocales
 
   /**
    * Builds the image URL sent to the resolver. See {@link GetImageThumbnail}.
@@ -183,6 +206,9 @@ export type AltTextPluginConfig = {
   /** Override the default fields inserted by the plugin via a function that receives the default fields and returns the new fields */
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
+  /** Narrows the locales one request targets. See {@link FilterLocales}. */
+  filterLocales?: FilterLocales
+
   /** Function to get the thumbnail URL of an image document. */
   getImageThumbnail: GetImageThumbnail
 
@@ -198,7 +224,7 @@ export type AltTextPluginConfig = {
   /** The locale to generate alt texts in when localization is disabled. */
   locale?: string
 
-  /** The locales to generate alt texts for. */
+  /** The locales configured on the Payload config. Empty when localization is disabled. */
   locales: string[]
 
   /** Maximum number of concurrent API requests for bulk generate operations. */

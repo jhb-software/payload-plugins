@@ -23,10 +23,20 @@ export const de: GenericTranslationsObject = {
       'Fehler beim Generieren des Alternativtextes. Bitte versuchen Sie es erneut.',
     failedToGenerate:
       'Generierung des Alternativtextes fehlgeschlagen. Bitte versuchen Sie es erneut.',
-    failedToGenerateForXImages:
+    failedToGenerateForXImages_one:
+      'Generierung des Alternativtextes für {{count}} Bild fehlgeschlagen.',
+    failedToGenerateForXImages_other:
       'Generierung des Alternativtextes für {{count}} Bilder fehlgeschlagen.',
     noAltTextGenerated: 'Kein Alternativtext generiert. Bitte versuchen Sie es erneut.',
-    xOfYImagesUpdated: '{{updated}} von {{total}} Bildern aktualisiert.',
+    skippedNoAltTextNeeded_one: '{{count}} Datei übersprungen, die keinen Alternativtext benötigt.',
+    skippedNoAltTextNeeded_other:
+      '{{count}} Dateien übersprungen, die keinen Alternativtext benötigen.',
+    skippedUnsupportedFormat_one:
+      'Für {{count}} Datei kann kein Alternativtext generiert werden. Bitte manuell ergänzen.',
+    skippedUnsupportedFormat_other:
+      'Für {{count}} Dateien kann kein Alternativtext generiert werden. Bitte manuell ergänzen.',
+    xOfYImagesUpdated_one: '{{updated}} von {{total}} Bild aktualisiert.',
+    xOfYImagesUpdated_other: '{{updated}} von {{total}} Bildern aktualisiert.',
 
     // Help text
     altTextDescription:
@@ -50,10 +60,12 @@ export const de: GenericTranslationsObject = {
     altTextHealthWidget: 'Alternativtexte',
     collectionCheckFailed: 'Status nicht verfügbar',
     healthCheckPartialWarning: 'Einige Sammlungen konnten gerade nicht geprüft werden.',
-    localeCount: '{{count}} Sprachen',
+    localeCount_one: '{{count}} Sprache',
+    localeCount_other: '{{count}} Sprachen',
     noImagesFound: 'In den konfigurierten Sammlungen wurden noch keine Bilder gefunden.',
     statusHealthy: 'Alle vorhanden',
     statusUnhealthy: '{{count}} fehlend',
-    totalImageCount: '{{count}} Bilder',
+    totalImageCount_one: '{{count}} Bild',
+    totalImageCount_other: '{{count}} Bilder',
   },
 }

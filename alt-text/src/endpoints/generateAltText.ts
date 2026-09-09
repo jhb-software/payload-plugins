@@ -6,6 +6,7 @@ import { ZodError } from 'zod'
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { getUnsupportedSourceMimeTypeError, matchesMimeType } from '../utilities/mimeTypes.js'
+import { resolveLocales } from '../utilities/resolveLocales.js'
 import { formatZodError, generateAltTextRequestSchema } from './schemas.js'
 
 /**
@@ -96,20 +97,19 @@ export const generateAltTextEndpoint =
         return Response.json({ error: unsupportedSourceError }, { status: 400 })
       }
 
-      // When localization is enabled, the requested locale must be one of the
-      // configured locales. Reject anything else before it can be written to an
-      // unconfigured locale or interpolated into the resolver's prompt.
-      if (
-        locale != null &&
-        pluginConfig.locales.length > 0 &&
-        !pluginConfig.locales.includes(locale)
-      ) {
-        return Response.json(
-          {
-            error: `Locale "${locale}" is not configured. Configured locales: ${pluginConfig.locales.join(', ')}.`,
-          },
-          { status: 400 },
-        )
+      // Reject a locale this request may not write before it reaches the
+      // document or the resolver's prompt, which interpolates it verbatim.
+      if (locale != null && pluginConfig.locales.length > 0) {
+        const availableLocales = await resolveLocales({ pluginConfig, req })
+
+        if (!availableLocales.includes(locale)) {
+          return Response.json(
+            {
+              error: `Locale "${locale}" is not available. Available locales: ${availableLocales.join(', ')}.`,
+            },
+            { status: 400 },
+          )
+        }
       }
 
       // determine target locale

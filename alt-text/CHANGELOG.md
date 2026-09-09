@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **BREAKING**: bulk generation reports files no provider call was made for as `skippedDocs` instead of `erroredDocs`, each with a `reason` of `notTracked` or `unsupportedFormat`. Callers that alert on `erroredDocs` must read `skippedDocs` to keep seeing them.
+- **BREAKING**: the count-dependent translation keys gained `_one`/`_other` variants, so a count of one reads "1 locale", not "1 locales". Projects overriding `xOfYImagesUpdated`, `failedToGenerateForXImages`, `localeCount` or `totalImageCount` must override the new key names.
+- fix: a bulk run over a selection of files that all need no generated alt text no longer reports "0 of 0 images updated"
+- feat: add `filterLocales`, narrowing the locales a request generates for and is measured against — in a multi-tenant CMS, to the locales the selected tenant serves. Governs bulk generation, the generate endpoint and the health report.
+
 ## 0.11.0
 
 - fix: a provider's error response is no longer repeated into the admin panel — OpenAI quotes the rejected API key back in a 401. The message names the provider and status; the body goes to the server log.
