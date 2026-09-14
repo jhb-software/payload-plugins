@@ -45,7 +45,7 @@
     "format:vercel-deployments": "cd ./vercel-deployments && pnpm format",
     "install:all": "pnpm install:admin-search && pnpm install:alt-text && pnpm install:astro-payload-richtext-lexical && pnpm install:chat-agent && pnpm install:cloudinary && pnpm install:geocoding && pnpm install:pages && pnpm install:content-translator && pnpm install:vercel-deployments",
     "install:chat-agent": "cd ./chat-agent && pnpm install --frozen-lockfile",
-    "install:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm install",
+    "install:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm install --frozen-lockfile",
     "install:admin-search": "cd ./admin-search && pnpm install --frozen-lockfile",
     "install:alt-text": "cd ./alt-text && pnpm install --frozen-lockfile",
     "install:cloudinary": "cd ./cloudinary && pnpm install --frozen-lockfile",
