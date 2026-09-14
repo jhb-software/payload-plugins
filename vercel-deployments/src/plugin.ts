@@ -5,7 +5,7 @@ import type { VercelDeploymentsPluginConfig } from './types.js'
 import { PLUGIN_SLUG } from './constants.js'
 import { getDeploymentsEndpoint } from './endpoints/getDeployments.js'
 import { triggerDeploymentEndpoint } from './endpoints/triggerDeployment.js'
-import { translations } from './translations/index.js'
+import { withLanguageFallbacks } from './translations/withLanguageFallbacks.js'
 import { deepMergeSimple } from './utilities/deepMergeSimple.js'
 
 export const vercelDeploymentsPlugin =
@@ -59,7 +59,10 @@ export const vercelDeploymentsPlugin =
       ],
       i18n: {
         ...config.i18n,
-        translations: deepMergeSimple(translations, config.i18n?.translations ?? {}),
+        translations: deepMergeSimple(
+          withLanguageFallbacks(config.i18n),
+          config.i18n?.translations ?? {},
+        ),
       },
     }
   }

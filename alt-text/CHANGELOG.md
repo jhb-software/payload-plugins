@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: admin languages the plugin ships no strings for fall back to the English strings instead of crashing the dashboard
+
 ## 0.12.0
 
 - **BREAKING**: bulk generation reports files no provider call was made for as `skippedDocs` instead of `erroredDocs`, each with a `reason` of `notTracked` or `unsupportedFormat`. Callers that alert on `erroredDocs` must read `skippedDocs` to keep seeing them.

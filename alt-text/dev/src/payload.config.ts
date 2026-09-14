@@ -10,6 +10,8 @@ import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
+// ru has no bundled plugin strings: switching the admin language to it exercises the English fallback (issue #220)
+import { ru } from '@payloadcms/translations/languages/ru'
 import path from 'path'
 import type { Where } from 'payload'
 import { buildConfig } from 'payload'
@@ -80,7 +82,7 @@ export default buildConfig({
     fallback: false,
   },
   i18n: {
-    supportedLanguages: { en, de },
+    supportedLanguages: { en, de, ru },
   },
   collections: [
     {
