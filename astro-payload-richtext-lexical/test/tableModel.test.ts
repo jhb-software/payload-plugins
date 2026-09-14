@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 
 import { buildTableModel, isHeaderCell, isHeaderRow } from '../src/nodes/tableModel.ts'
 import type { RenderCell } from '../src/nodes/tableModel.ts'
