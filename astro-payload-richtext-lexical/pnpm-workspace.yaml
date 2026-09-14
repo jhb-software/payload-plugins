@@ -7,8 +7,20 @@ allowBuilds:
   sharp: true
   '@swc/core': true
 
+minimumReleaseAgeExclude:
+  - '@payloadcms/db-sqlite@3.89.0'
+  - '@payloadcms/next@3.89.0'
+  - '@payloadcms/richtext-lexical@3.89.0'
+  - '@payloadcms/translations@3.89.0'
+  - '@payloadcms/ui@3.89.0'
+  - payload@3.89.0
+  - '@payloadcms/live-preview@3.89.0'
+  - '@payloadcms/drizzle@3.89.0'
+  - '@payloadcms/graphql@3.89.0'
+
 overrides:
+  js-yaml: '^4.3.2'
   dompurify: '^3.4.13'
   prettier: '3.9.6'
-  next: '16.3.3'
+  next: '16.3.4'
   esbuild: '^0.28.1'
