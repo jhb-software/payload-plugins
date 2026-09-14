@@ -2,7 +2,7 @@ import type { Config } from 'payload'
 
 import type { AdminSearchPluginConfig } from './types/AdminSearchPluginConfig.js'
 
-import { translations } from './translations/index.js'
+import { withLanguageFallbacks } from './translations/withLanguageFallbacks.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
 export const adminSearchPlugin =
@@ -41,7 +41,10 @@ export const adminSearchPlugin =
       },
       i18n: {
         ...incomingConfig.i18n,
-        translations: deepMergeSimple(translations, incomingConfig.i18n?.translations ?? {}),
+        translations: deepMergeSimple(
+          withLanguageFallbacks(incomingConfig.i18n),
+          incomingConfig.i18n?.translations ?? {},
+        ),
       },
     }
   }

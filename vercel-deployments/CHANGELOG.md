@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
 - fix: clarify in the i18n labels that a deployment was started, not completed
 
 ## 0.4.0

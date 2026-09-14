@@ -14,6 +14,8 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import { de } from 'payload/i18n/de'
 import { en } from 'payload/i18n/en'
+// ru has no bundled plugin strings: switching the admin language to it exercises the English fallback (issue #220)
+import { ru } from 'payload/i18n/ru'
 import { fileURLToPath } from 'url'
 
 import { authorsSchema } from './collections/authors'
@@ -111,7 +113,7 @@ export default buildConfig({
   editor: lexicalEditor(),
 
   i18n: {
-    supportedLanguages: { de, en },
+    supportedLanguages: { de, en, ru },
   },
 
   localization: {

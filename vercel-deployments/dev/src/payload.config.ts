@@ -6,6 +6,8 @@ import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { de } from '@payloadcms/translations/languages/de'
+// ru has no bundled plugin strings: switching the admin language to it exercises the English fallback (issue #220)
+import { ru } from '@payloadcms/translations/languages/ru'
 import { en } from '@payloadcms/translations/languages/en'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -70,7 +72,7 @@ export default buildConfig({
     url: process.env.MONGODB_URL!,
   }),
   i18n: {
-    supportedLanguages: { de, en },
+    supportedLanguages: { de, en, ru },
   },
   localization: {
     defaultLocale: 'en',

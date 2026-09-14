@@ -13,6 +13,8 @@ import { Redirects } from './collections/redirects'
 import { BlogpostCategories } from './collections/blogpost-categories'
 import { en } from 'payload/i18n/en'
 import { de } from 'payload/i18n/de'
+// ru has no bundled plugin strings: switching the admin language to it exercises the English fallback (issue #220)
+import { ru } from 'payload/i18n/ru'
 import { databaseAdapter } from './test/databaseAdapter'
 
 const filename = fileURLToPath(import.meta.url)
@@ -53,7 +55,7 @@ export default buildConfig({
     defaultLocale: 'de',
   },
   i18n: {
-    supportedLanguages: { en, de },
+    supportedLanguages: { en, de, ru },
   },
   plugins: [
     payloadPagesPlugin({
