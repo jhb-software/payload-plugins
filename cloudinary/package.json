@@ -43,10 +43,10 @@
     "@types/react-dom": "19.3.0",
     "copyfiles": "2.4.1",
     "eslint": "^9.39.4",
-    "prettier": "3.9.6",
+    "prettier": "3.9.7",
     "rimraf": "6.1.3",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   },
   "peerDependencies": {
     "@payloadcms/plugin-cloud-storage": "^3.89.0",
