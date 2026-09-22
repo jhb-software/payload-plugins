@@ -10,7 +10,7 @@ import type {
 } from '../../translations/index.js'
 import type { BaseFilterState } from '../../types/BaseFilterState.js'
 
-import { getSearchShortcut } from '../../utils/getSearchShortcut.js'
+import { useSearchShortcut } from '../../utils/useSearchShortcut.js'
 import { SearchModal } from '../SearchModal/SearchModal.js'
 
 export function SearchButton({
@@ -20,6 +20,7 @@ export function SearchButton({
 }): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const { t } = useTranslation<PluginAdminSearchTranslations, PluginAdminSearchTranslationKeys>()
+  const shortcut = useSearchShortcut()
 
   useHotkey(
     {
@@ -40,7 +41,7 @@ export function SearchButton({
         onClick={() => setIsModalOpen(true)}
         size="small"
         tooltip={t('@jhb.software/payload-admin-search:searchTooltip', {
-          shortcut: getSearchShortcut(),
+          shortcut,
         })}
       >
         <SearchIcon />
