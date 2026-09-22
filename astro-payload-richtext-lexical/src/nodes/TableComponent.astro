@@ -16,49 +16,45 @@ const { headRows, bodyRows } = buildTableModel(node)
 ---
 
 <table>
-  {
-    headRows.length > 0 && (
-      <thead>
-        {headRows.map((row) => (
-          <tr>
-            {row.cells.map((cell) => {
-              const CellTag = cell.tag
-              return (
-                <CellTag colspan={cell.colSpan} rowspan={cell.rowSpan}>
-                  <RichTextRenderer
-                    nodes={cell.children}
-                    BlockRenderer={BlockRenderer}
-                    UploadRenderer={UploadRenderer}
-                  />
-                </CellTag>
-              )
-            })}
-          </tr>
-        ))}
-      </thead>
-    )
-  }
+  {headRows.length > 0 && (
+    <thead>
+      {headRows.map((row) => (
+        <tr>
+          {row.cells.map((cell) => {
+            const CellTag = cell.tag
+            return (
+              <CellTag colspan={cell.colSpan} rowspan={cell.rowSpan}>
+                <RichTextRenderer
+                  nodes={cell.children}
+                  BlockRenderer={BlockRenderer}
+                  UploadRenderer={UploadRenderer}
+                />
+              </CellTag>
+            )
+          })}
+        </tr>
+      ))}
+    </thead>
+  )}
 
-  {
-    bodyRows.length > 0 && (
-      <tbody>
-        {bodyRows.map((row) => (
-          <tr>
-            {row.cells.map((cell) => {
-              const CellTag = cell.tag
-              return (
-                <CellTag colspan={cell.colSpan} rowspan={cell.rowSpan}>
-                  <RichTextRenderer
-                    nodes={cell.children}
-                    BlockRenderer={BlockRenderer}
-                    UploadRenderer={UploadRenderer}
-                  />
-                </CellTag>
-              )
-            })}
-          </tr>
-        ))}
-      </tbody>
-    )
-  }
+  {bodyRows.length > 0 && (
+    <tbody>
+      {bodyRows.map((row) => (
+        <tr>
+          {row.cells.map((cell) => {
+            const CellTag = cell.tag
+            return (
+              <CellTag colspan={cell.colSpan} rowspan={cell.rowSpan}>
+                <RichTextRenderer
+                  nodes={cell.children}
+                  BlockRenderer={BlockRenderer}
+                  UploadRenderer={UploadRenderer}
+                />
+              </CellTag>
+            )
+          })}
+        </tr>
+      ))}
+    </tbody>
+  )}
 </table>

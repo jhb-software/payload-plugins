@@ -43,17 +43,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: cd ${{ inputs.plugin }} && pnpm install --frozen-lockfile
+          scope: ${{ inputs.plugin }}
 
       - name: Bump version
         id: version

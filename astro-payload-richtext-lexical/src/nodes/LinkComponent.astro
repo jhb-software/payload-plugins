@@ -81,5 +81,7 @@ const linkElement = createLinkElement(node, resolveInternalLink ?? defaultResolv
   href={linkElement.href}
   target={linkElement.target}
   rel={linkElement.rel}
-  style={linkElement.style}><slot /></a
+  style={linkElement.style}
 >
+  <slot />
+</a>

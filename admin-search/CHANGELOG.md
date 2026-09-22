@@ -3,6 +3,7 @@
 ## Unreleased
 
 - fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
+- fix: the header search button no longer causes a hydration mismatch on macOS, where the server rendered the `Ctrl+K` tooltip and the browser `⌘K`, making React re-render the whole admin page on the client
 
 ## 0.4.0
 
