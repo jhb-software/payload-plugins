@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: the header search button no longer causes a hydration mismatch on macOS, where the server rendered the `Ctrl+K` tooltip and the browser `⌘K`, making React re-render the whole admin page on the client
+
 ## 0.4.0
 
 - feat: add a `baseFilter` option restricting search results to a constraint resolved against the current request, e.g. the tenant selected in a multi-tenant admin panel. A filter that cannot be evaluated is logged and the search returns no results, rather than widening to the documents the filter was meant to hide
