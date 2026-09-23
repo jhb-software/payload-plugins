@@ -15,6 +15,7 @@ pnpm add @jhb.software/payload-cloudinary-plugin @payloadcms/plugin-cloud-storag
 - Configure the `collections` object to specify which collections should use the Cloudinary adapter. The slug _must_ match one of your existing collection slugs.
 - When enabled, this package will automatically set `disableLocalStorage` to `true` for each collection.
 - When deploying to Vercel, server uploads are limited with 4.5MB. Set `clientUploads` to `true` upload directly on the client.
+- Since Payload 3.90, server uploads are capped at 20MB per file and 50MB per request by default. Raise `upload.limits.fileSize` and `upload.requestSizeLimit` in `buildConfig` for larger files such as videos, or enable `clientUploads`, which bypasses both limits.
 
 ```ts
 import { cloudinaryStorage } from '@jhb.software/payload-cloudinary-plugin'

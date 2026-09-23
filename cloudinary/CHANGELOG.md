@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- chore: require Payload `^3.90.1`, which ships critical security fixes
+- chore: require Payload `^3.90.1`, which ships critical security fixes. Note two upgrade effects on upload collections: `@payloadcms/plugin-cloud-storage` now adds an `_objectKey` column, so Postgres and SQLite projects need a migration, and Payload caps server uploads at 20MB per file / 50MB per request by default (see the README for how to raise the limits)
 
 ## 0.4.1
 
