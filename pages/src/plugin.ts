@@ -6,7 +6,7 @@ import type { IncomingRedirectsCollectionConfig } from './types/RedirectsCollect
 
 import { createPageCollectionConfig } from './collections/PageCollectionConfig.js'
 import { createRedirectsCollectionConfig } from './collections/RedirectsCollectionConfig.js'
-import { translations } from './translations/index.js'
+import { withLanguageFallbacks } from './translations/withLanguageFallbacks.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
 import { isPageCollectionConfig } from './utils/pageCollectionConfigHelpers.js'
 import { parentCollections } from './utils/parentRef.js'
@@ -55,7 +55,10 @@ export const payloadPagesPlugin =
       ...config,
       i18n: {
         ...config.i18n,
-        translations: deepMergeSimple(translations, incomingConfig.i18n?.translations ?? {}),
+        translations: deepMergeSimple(
+          withLanguageFallbacks(incomingConfig.i18n),
+          incomingConfig.i18n?.translations ?? {},
+        ),
       },
     }
   }

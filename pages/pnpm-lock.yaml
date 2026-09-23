@@ -49,6 +49,9 @@ importers:
       '@payloadcms/eslint-config':
         specifier: 3.28.0
         version: 3.28.0(@typescript-eslint/eslint-plugin@8.70.0(@typescript-eslint/parser@8.70.0(eslint@9.39.4)(typescript@6.0.3))(eslint@9.39.4)(typescript@6.0.3))(ts-api-utils@2.5.0(typescript@6.0.3))
+      '@payloadcms/translations':
+        specifier: ^3.89.0
+        version: 3.89.0
       '@swc/cli':
         specifier: ^0.8.1
         version: 0.8.1(@swc/core@1.16.2(@swc/helpers@0.5.23))

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
+
 ## 0.9.0-beta.4
 
 - fix: log the missing-redirects-collection warning through the Payload logger instead of `console`, so it respects the project's log level and formatting
