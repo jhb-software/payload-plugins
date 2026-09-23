@@ -94,7 +94,7 @@ export async function AltTextHealthWidget({ req }: WidgetServerProps) {
                   {getCollectionLabel(
                     collection.collection,
                     req.payload.config.collections,
-                    req.locale,
+                    req.i18n,
                   )}
                 </a>
 

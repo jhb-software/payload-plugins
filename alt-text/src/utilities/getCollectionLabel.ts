@@ -1,27 +1,14 @@
+import type { I18nClient } from '@payloadcms/translations'
 import type { SanitizedCollectionConfig } from 'payload'
+
+import { getTranslation } from '@payloadcms/translations'
 
 export function getCollectionLabel(
   slug: string,
   collections: SanitizedCollectionConfig[],
-  locale: null | string | undefined,
+  i18n: I18nClient,
 ): string {
-  const collectionConfig = collections.find((c) => c.slug === slug)
+  const label = collections.find((c) => c.slug === slug)?.labels?.plural
 
-  if (!collectionConfig?.labels?.plural) {
-    return slug
-  }
-
-  const label = collectionConfig.labels.plural
-
-  if (typeof label === 'string') {
-    return label
-  }
-
-  if (typeof label === 'function') {
-    return slug
-  }
-
-  const record = label as Record<string, string>
-
-  return record[locale as string] ?? record[Object.keys(record)[0]] ?? slug
+  return label ? getTranslation(label, i18n) : slug
 }
