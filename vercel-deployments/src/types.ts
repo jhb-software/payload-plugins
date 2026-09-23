@@ -27,7 +27,7 @@ export type ResolveDeploymentTarget = (args: {
 
 export type VercelDeploymentsPluginConfig = {
   /**
-   * Custom access control function for the plugin's API endpoints.
+   * Custom access control function for the plugin's API endpoints and dashboard widget.
    * Receives the Payload request and should return true to allow access.
    * Defaults to checking `req.user` (i.e. any authenticated admin user).
    */

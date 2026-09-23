@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: apply the `access` option to the dashboard widget, which previously showed the deployment status, website link, and deploy button to users the option denies
 - chore: require Payload `^3.90.1`, which ships critical security fixes
 - fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
 - fix: clarify in the i18n labels that a deployment was started, not completed

@@ -64,7 +64,7 @@ export default buildConfig({
 | `widget.minWidth`             | `WidgetWidth`                                 | No       | Minimum widget width (default: 'medium')                                                                                                                                        |
 | `widget.maxWidth`             | `WidgetWidth`                                 | No       | Maximum widget width (default: 'full')                                                                                                                                          |
 | `enabled`                     | `boolean`                                     | No       | Enable/disable the plugin (default: true)                                                                                                                                       |
-| `access`                      | `({ req }) => boolean \| Promise<boolean>`    | No       | Access control for the plugin's API endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                           |
+| `access`                      | `({ req }) => boolean \| Promise<boolean>`    | No       | Access control for the plugin's API endpoints and dashboard widget. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)      |
 
 ### Multi-tenant support
 
@@ -148,7 +148,7 @@ vercelDeploymentsPlugin({
 })
 ```
 
-The same gate applies to the dashboard widget, which calls these endpoints.
+The same gate applies to the dashboard widget: a user it denies sees a notice instead of the deployment status, the website link, and the deploy button.
 
 ### Example: Trigger a deployment via API
 

@@ -10,6 +10,7 @@ export const en: GenericTranslationsObject = {
     deploymentInfoError: 'Error fetching deployment info',
     deploymentInfoInspectDeployment: 'Inspect Deployment',
     deploymentInfoLatestDeployment: 'Latest Deployment',
+    deploymentInfoNoAccess: 'You do not have permission to view deployments.',
     deploymentInfoNoTarget: 'No Vercel project selected.',
     deploymentInfoTitle: 'Deployments',
     deploymentInfoTriggerRedeploy: 'Redeploy',
