@@ -2,6 +2,7 @@ import type { PayloadHandler, PayloadRequest } from 'payload'
 
 import type { VercelDeploymentsPluginConfig } from '../types.js'
 
+import { hasAccess } from '../utilities/hasAccess.js'
 import { resolveTarget } from '../utilities/resolveTarget.js'
 import { VercelApiClient } from '../utilities/vercelApiClient.js'
 
@@ -10,8 +11,6 @@ import { VercelApiClient } from '../utilities/vercelApiClient.js'
  * Triggers a new production deployment by redeploying the latest READY deployment.
  * Requires authentication.
  */
-const defaultAccess: NonNullable<VercelDeploymentsPluginConfig['access']> = ({ req }) => !!req.user
-
 export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequest) => {
   const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
     undefined | VercelDeploymentsPluginConfig
@@ -20,8 +19,7 @@ export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequ
     return Response.json({ error: 'Plugin config not found' }, { status: 500 })
   }
 
-  const access = pluginConfig.access ?? defaultAccess
-  if (!(await access({ req }))) {
+  if (!(await hasAccess({ pluginConfig, req }))) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
