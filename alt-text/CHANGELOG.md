@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: the health report applies row-level `read` access (e.g. tenant-scoped rules), so counts and document IDs no longer include documents the requesting user cannot read
 - chore: require Payload `^3.90.1`, which ships critical security fixes
 - fix: admin languages the plugin ships no strings for fall back to the English strings instead of crashing the dashboard
 - fix: uploading an image without alt text through a storage adapter that returns upload metadata (e.g. S3) no longer fails intermittently with "alternate text is required", and the first edit of such an image validates its alt text again

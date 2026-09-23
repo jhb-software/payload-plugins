@@ -1,6 +1,7 @@
-import type { Payload, PayloadRequest, Where } from 'payload'
+import type { PayloadRequest, Where } from 'payload'
 
 import { unstable_cache } from 'next/cache.js'
+import { createLocalReq } from 'payload'
 
 import type {
   AltTextPluginConfig,
@@ -64,7 +65,7 @@ type AltTextHealthComputationArgs = {
   collections: NormalizedAltTextCollectionConfig[]
   isLocalized: boolean
   localeCodes: string[]
-  payload: Payload
+  req: PayloadRequest
 }
 
 const createUnknownScan = ({
@@ -96,7 +97,7 @@ const isEmptyWhere = (where: undefined | Where): boolean =>
   !where || Object.keys(where).length === 0
 
 async function fetchAllDocs(
-  payload: Payload,
+  req: PayloadRequest,
   collection: string,
   isLocalized: boolean,
   mimeTypes: readonly string[],
@@ -107,8 +108,6 @@ async function fetchAllDocs(
     return []
   }
 
-  // The scan runs with `overrideAccess: true`, so a narrowing constraint has to be
-  // part of the query itself — this is what keeps the aggregate within one tenant.
   const where = isEmptyWhere(baseFilter) ? mimeTypeWhere : { and: [mimeTypeWhere, baseFilter!] }
 
   const docs: { alt: unknown; id: number | string }[] = []
@@ -116,14 +115,18 @@ async function fetchAllDocs(
   let hasMore = true
 
   while (hasMore) {
-    const result = await payload.find({
+    // Runs as the requesting user so Payload applies the collection's `read`
+    // access at row level: a tenant-scoped rule narrows the aggregate to that
+    // tenant without any plugin configuration.
+    const result = await req.payload.find({
       collection,
       depth: 0,
       fallbackLocale: isLocalized ? false : undefined,
       limit: PAGE_SIZE,
       locale: isLocalized ? 'all' : undefined,
-      overrideAccess: true,
+      overrideAccess: false,
       page,
+      req,
       select: {
         alt: true,
       },
@@ -149,12 +152,14 @@ async function computeAltTextHealthScan({
   collections,
   isLocalized,
   localeCodes,
-  payload,
+  req,
 }: AltTextHealthComputationArgs): Promise<AltTextHealthScan> {
+  const { payload } = req
+
   const collectionSummaries = await Promise.all(
     collections.map(async ({ slug, mimeTypes }): Promise<AltTextHealthScanCollection> => {
       try {
-        const docs = await fetchAllDocs(payload, slug, isLocalized, mimeTypes, baseFilters[slug])
+        const docs = await fetchAllDocs(req, slug, isLocalized, mimeTypes, baseFilters[slug])
 
         return summarizeCollection({
           collection: slug,
@@ -209,8 +214,8 @@ export const getAltTextHealthCollectionTag = (collectionSlug: string): string =>
  * A throwing filter (a tenant cookie pointing at a deleted tenant, say) must not
  * take the dashboard down, and must never fall back to an unfiltered scan — so it
  * ends the scan with an error the widget and the endpoint report. The error carries
- * the slug in its message rather than in `collection`, so it survives the read-access
- * filter that drops errors for collections the caller cannot read.
+ * the slug in its message rather than in `collection`, so it reads as a config
+ * problem rather than as a failed read of that collection.
  */
 async function resolveBaseFilters(
   req: PayloadRequest,
@@ -246,6 +251,47 @@ async function resolveBaseFilters(
   }
 
   return { baseFilters }
+}
+
+/**
+ * Evaluates each scanned collection's `read` access for the requesting user.
+ * `false` (or a throwing access function, e.g. `Forbidden`) excludes the
+ * collection from the report entirely, so a restricted collection never leaks
+ * even its existence. `true` or a `Where` constraint keeps it; the scan itself
+ * then runs as the user, so Payload enforces the constraint at row level. The
+ * resolved constraints also key the cache, keeping scopes apart.
+ */
+async function resolveReadableCollections(
+  req: PayloadRequest,
+  collections: NormalizedAltTextCollectionConfig[],
+): Promise<{
+  constraints: Record<string, true | Where>
+  readable: NormalizedAltTextCollectionConfig[]
+}> {
+  const constraints: Record<string, true | Where> = {}
+  const readable: NormalizedAltTextCollectionConfig[] = []
+
+  for (const collection of collections) {
+    const readAccess = req.payload.collections?.[collection.slug]?.config.access?.read
+    let result: boolean | Where = true
+
+    if (typeof readAccess === 'function') {
+      try {
+        result = await readAccess({ req })
+      } catch {
+        result = false
+      }
+    }
+
+    if (result === false) {
+      continue
+    }
+
+    constraints[collection.slug] = result
+    readable.push(collection)
+  }
+
+  return { constraints, readable }
 }
 
 export async function getAltTextHealthScan(
@@ -296,7 +342,25 @@ export async function getAltTextHealthScan(
     }
   }
 
-  const collections = pluginConfig.collections
+  // The Local API writes the locale it is called with onto the request it is
+  // given, and joins that request's transaction. The dashboard request is shared
+  // by every widget, so the scan runs on a detached request that carries only
+  // what access rules and filters read: the user, the headers and the context.
+  const scanReq = await createLocalReq(
+    {
+      context: req.context,
+      fallbackLocale: false,
+      locale: isLocalized ? 'all' : undefined,
+      req: { headers: req.headers, i18n: req.i18n },
+      user: req.user ?? undefined,
+    },
+    payload,
+  )
+
+  const { constraints, readable: collections } = await resolveReadableCollections(
+    scanReq,
+    pluginConfig.collections,
+  )
 
   const resolved = await resolveBaseFilters(req, collections, pluginConfig.healthCheckBaseFilter)
 
@@ -314,9 +378,11 @@ export async function getAltTextHealthScan(
       .join(','),
     localeCodes.join(','),
     // The scan is shared across requests, so a scoped scan needs a scoped cache
-    // entry. Deriving the key from the resolved filters — rather than taking one
-    // from the caller — makes it impossible to narrow the scan without also
-    // narrowing its cache, which would serve one tenant's counts to another.
+    // entry. Deriving the key from the resolved access constraints and filters —
+    // rather than taking one from the caller — makes it impossible to narrow the
+    // scan without also narrowing its cache, which would serve one tenant's
+    // counts to another.
+    `access:${stableStringify(constraints)}`,
     `filter:${stableStringify(baseFilters)}`,
   ]
 
@@ -334,57 +400,13 @@ export async function getAltTextHealthScan(
         collections,
         isLocalized,
         localeCodes,
-        payload,
+        req: scanReq,
       }),
     revalidate: ALT_TEXT_HEALTH_CACHE_TTL,
     tags,
   })
 
   return getCachedHealthScan()
-}
-
-/**
- * Whether `req.user` is allowed to read the given collection at the collection
- * level. The collection's `read` access is evaluated with the request; `false`
- * denies, while `true` or a scoped `Where` constraint grants visibility of the
- * collection's health aggregate. A thrown access function (e.g. `Forbidden`)
- * counts as denied so a restricted collection never leaks.
- */
-async function userCanReadCollection(req: PayloadRequest, slug: string): Promise<boolean> {
-  const readAccess = req.payload.collections?.[slug]?.config.access?.read
-
-  if (typeof readAccess !== 'function') {
-    return true
-  }
-
-  try {
-    return (await readAccess({ req })) !== false
-  } catch {
-    return false
-  }
-}
-
-/**
- * Filters a shared, elevated-access health scan down to the collections the
- * requesting user may read. The scan is computed once with `overrideAccess: true`
- * so it stays complete and cacheable; access is applied per request at
- * collection granularity, matching the aggregate's altitude.
- */
-export async function filterScanByReadAccess(
-  req: PayloadRequest,
-  scan: AltTextHealthScan,
-): Promise<AltTextHealthScan> {
-  const visibility = await Promise.all(
-    scan.collections.map((collection) => userCanReadCollection(req, collection.collection)),
-  )
-
-  const collections = scan.collections.filter((_, index) => visibility[index])
-  const allowedSlugs = new Set(collections.map((collection) => collection.collection))
-  const errors = scan.errors.filter(
-    (error) => !error.collection || allowedSlugs.has(error.collection),
-  )
-
-  return { ...scan, collections, errors }
 }
 
 /**
@@ -413,12 +435,16 @@ export function toWidgetData(scan: AltTextHealthScan): AltTextHealthWidgetData {
   }
 }
 
+/**
+ * The health report for the requesting user: only the collections and rows
+ * their `read` access admits, further narrowed by `healthCheck.baseFilter`.
+ */
 export async function getAltTextHealth(req: PayloadRequest): Promise<AltTextHealthScan> {
-  return filterScanByReadAccess(req, await getAltTextHealthScan(req))
+  return getAltTextHealthScan(req)
 }
 
 export async function getAltTextHealthWidgetData(
   req: PayloadRequest,
 ): Promise<AltTextHealthWidgetData> {
-  return toWidgetData(await filterScanByReadAccess(req, await getAltTextHealthScan(req)))
+  return toWidgetData(await getAltTextHealthScan(req))
 }

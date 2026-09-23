@@ -88,7 +88,8 @@ function createRequest(
     },
   }
 
-  return { payload } as unknown as PayloadRequest
+  // `i18n` present so the scan's detached request does not build one from config.
+  return { i18n: {}, payload } as unknown as PayloadRequest
 }
 
 const imagesOf = (scan: AltTextHealthScan) =>

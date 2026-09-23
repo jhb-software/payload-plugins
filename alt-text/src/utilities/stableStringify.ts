@@ -12,6 +12,11 @@ export function stableStringify(value: unknown): string {
   }
 
   if (value && typeof value === 'object') {
+    // A Date in a constraint would otherwise serialize as `{}`.
+    if ('toJSON' in value && typeof value.toJSON === 'function') {
+      return stableStringify(value.toJSON())
+    }
+
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, entryValue]) => entryValue !== undefined)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

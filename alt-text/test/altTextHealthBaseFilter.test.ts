@@ -10,10 +10,9 @@ import type { AltTextHealthCacheFactory } from '../src/utilities/altTextHealthCa
 import { getAltTextHealthScan } from '../src/utilities/altTextHealth.ts'
 
 /**
- * `healthCheck.baseFilter` narrows the scan, which runs with `overrideAccess: true`
- * and is shared through the cache. Both halves matter: the query has to be narrowed,
- * and the cache entry has to be narrowed with it — otherwise one tenant is served
- * another tenant's counts.
+ * `healthCheck.baseFilter` narrows the scan, which is shared through the cache.
+ * Both halves matter: the query has to be narrowed, and the cache entry has to be
+ * narrowed with it — otherwise one tenant is served another tenant's counts.
  */
 
 type Doc = { alt: unknown; id: string; mimeType: string; tenant?: string }
@@ -121,7 +120,8 @@ function createRequest(
     },
   }
 
-  return { payload } as unknown as PayloadRequest
+  // `i18n` present so the scan's detached request does not build one from config.
+  return { i18n: {}, payload } as unknown as PayloadRequest
 }
 
 const countsFor = (scan: AltTextHealthScan, collection: string) =>
@@ -201,8 +201,8 @@ describe('healthCheck.baseFilter', () => {
     assert.equal(scan.errors.length, 1)
     assert.equal(scan.errors[0].code, 'ALT_TEXT_BASE_FILTER_FAILED')
     assert.match(scan.errors[0].message, /deleted tenant/)
-    // Errors carrying a `collection` are dropped for users who cannot read it; this one
-    // names the collection in its message so it survives to the widget.
+    // A config problem, not a failed read of that collection, so the slug is in the
+    // message rather than in `collection`.
     assert.equal(scan.errors[0].collection, undefined)
     assert.match(scan.errors[0].message, /images/)
   })

@@ -247,7 +247,9 @@ Set `healthCheck: false` in the plugin config to disable the REST endpoint, cach
 
 #### Gating and scoping the report
 
-`healthCheck` also takes an object. The main use of `baseFilter` is multi-tenancy: scope the report to the tenant selected in the admin panel, whose id [@payloadcms/plugin-multi-tenant](https://payloadcms.com/docs/plugins/multi-tenant) keeps in the `payload-tenant` cookie.
+The report honours each collection's `read` access for the requesting user: collections whose access returns `false` are omitted, and a `Where` constraint (a tenant-scoped rule, say) limits the counts and document IDs to the rows it admits. This needs no configuration.
+
+`healthCheck` also takes an object. The main use of `baseFilter` is to narrow the report further than access already does — in a multi-tenant project, to the tenant selected in the admin panel, whose id [@payloadcms/plugin-multi-tenant](https://payloadcms.com/docs/plugins/multi-tenant) keeps in the `payload-tenant` cookie — so a user who may read several tenants sees the numbers of the one they are working on.
 
 ```ts
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
@@ -265,11 +267,11 @@ healthCheck: {
 }
 ```
 
-`baseFilter` returns a `Where` that is ANDed onto the scan's MIME type filter. It is resolved once per configured collection, so a collection that does not carry the constraining field — a media library shared across tenants, say — can return `{}` and be scanned whole. Omitting `baseFilter` entirely does the same for every collection.
+`baseFilter` returns a `Where` that is ANDed onto the scan's MIME type filter, on top of the user's read access. It is resolved once per configured collection, so a collection that does not carry the constraining field — a media library shared across tenants, say — can return `{}` and be scanned whole. Omitting `baseFilter` entirely does the same for every collection.
 
-The scan is cached across requests, and its cache key is derived from the resolved filters: a narrowed scan always gets its own cache entry, so one tenant's counts can never be served to another. Cache invalidation stays per collection, so a write in one tenant refreshes the report for all of them.
+The scan is cached across requests, and its cache key is derived from the resolved read access and filters: a narrowed scan always gets its own cache entry, so one tenant's counts can never be served to another. Users with the same constraint share an entry; a constraint specific to one user (`createdBy`, say) means one scan per user. Cache invalidation stays per collection, so a write in one tenant refreshes the report for all of them.
 
-This scopes what the report counts, not who may see it — use `access` for that. Independently of both, the report always omits the collections the requesting user cannot read.
+`baseFilter` scopes what the report counts within what the user may read; it is not an access control. Use the collection's `read` access to restrict rows, and `access` to restrict who may see the report at all.
 
 Which locales a document is measured against is scoped separately, by [`filterLocales`](#per-request-locales).
 
@@ -495,7 +497,7 @@ That default fits a setup where every Payload user is trusted staff. Generating 
 access: ({ req }) => req.user?.role === 'editor'
 ```
 
-Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections the requesting user can read (and can be gated separately via `healthCheck.access`).
+Beyond that gate, the generate endpoints enforce each collection's own access control on the documents they read and write, and the health endpoint reports only the collections and documents the requesting user can read (and can be gated separately via `healthCheck.access`).
 
 ### `POST /api/alt-text/generate`
 
