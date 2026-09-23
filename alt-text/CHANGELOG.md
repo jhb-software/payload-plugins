@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.13.0
 
 - feat: `filterLocales` receives the document being generated for as `doc`, so each image is written in its own tenant's locales; a failing filter errors only that image. Bulk runs revalidate the health cache once per run instead of per write
 - fix: the health report applies row-level `read` access (e.g. tenant-scoped rules), so counts and document IDs no longer include documents the requesting user cannot read
