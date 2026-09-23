@@ -164,11 +164,21 @@ export default buildConfig({
               // list:
               // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
             }),
-      // Narrows generation and the health report to the selected tenant's
-      // locales. Switch the selector to Globex and the widget counts German
-      // alone, instead of reporting its images as permanently incomplete.
-      filterLocales: async ({ locales, req }) => {
-        const tenantId = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+      // Narrows generation and the health report to a tenant's locales. Switch
+      // the selector to Globex and the widget counts German alone, instead of
+      // reporting its images as permanently incomplete.
+      //
+      // During generation `doc` is the image, so its own tenant decides: bulk
+      // generate Acme and Globex images together (no tenant selected) and each
+      // is written in its tenant's locales only. The health report passes no
+      // `doc`, so it falls back to the tenant selected in the cookie.
+      filterLocales: async ({ doc, locales, req }) => {
+        const docTenant = doc?.tenant
+        const tenantId =
+          (docTenant && typeof docTenant === 'object'
+            ? (docTenant as { id: number | string }).id
+            : (docTenant as number | string | undefined)) ??
+          getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
         if (!tenantId) {
           return locales

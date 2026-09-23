@@ -93,8 +93,8 @@ describe('filterLocales (bulk generation)', () => {
 
     const response = await bulkGenerateAltTextsEndpoint(({ req }) => !!req.user)(req)
 
-    assert.equal(response.status, 500)
-    assert.match((await response.json()).error, /fr/)
+    assert.equal(response.status, 200)
+    assert.deepEqual((await response.json()).erroredDocs, ['doc-1'])
     assert.equal(bulkCalls.length, 0)
     assert.equal(updateCalls.length, 0)
   })
@@ -109,15 +109,15 @@ describe('filterLocales (bulk generation)', () => {
 
     const response = await bulkGenerateAltTextsEndpoint(({ req }) => !!req.user)(req)
 
-    assert.equal(response.status, 500)
+    assert.deepEqual((await response.json()).erroredDocs, ['doc-1'])
     assert.equal(bulkCalls.length, 0)
     assert.equal(updateCalls.length, 0)
   })
 
-  test('passes the configured locales and the request to the filter', async () => {
-    const seen: { locales: string[]; user: unknown }[] = []
-    const pluginConfig = buildConfig(({ locales, req }) => {
-      seen.push({ locales: [...locales], user: req.user })
+  test('passes the configured locales, the request and the document to the filter', async () => {
+    const seen: { doc: unknown; locales: string[]; user: unknown }[] = []
+    const pluginConfig = buildConfig(({ doc, locales, req }) => {
+      seen.push({ doc, locales: [...locales], user: req.user })
       return ['en']
     })
     const { req } = buildEndpointRequest({ collection: 'media', ids: ['doc-1'] }, { pluginConfig })
@@ -127,6 +127,7 @@ describe('filterLocales (bulk generation)', () => {
     assert.equal(seen.length, 1)
     assert.deepEqual(seen[0].locales, ['en', 'de'])
     assert.equal((seen[0].user as { id: string }).id, 'low-priv-user')
+    assert.equal((seen[0].doc as { id: string }).id, 'doc-1')
   })
 })
 

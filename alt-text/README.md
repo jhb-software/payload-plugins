@@ -77,20 +77,20 @@ This is also the recommended escape hatch if you hit Payload's Postgres SQL-buil
 
 ### Plugin Options
 
-| Option                       | Type                                                  | Required | Description                                                                                                                                                                                                                                                                                           |
-| ---------------------------- | ----------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `collections`                | `(CollectionSlug \| CollectionObj)[]`                 | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))                                                                                                                                                                                                 |
-| `resolver`                   | `AltTextResolver`                                     | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                                                                                                                                                                                                     |
-| `getImageThumbnail`          | `Function`                                            | Yes      | Function to get the thumbnail URL from an image document                                                                                                                                                                                                                                              |
-| `enabled`                    | `boolean`                                             | No       | Disables the plugin entirely when `false` (default: `true`)                                                                                                                                                                                                                                           |
-| `access`                     | `({ req }) => boolean \| Promise<boolean>`            | No       | Access control for the plugin's REST endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                                                                                                                                                |
-| `locale`                     | `string`                                              | No       | Locale for alt text generation (required when localization is disabled)                                                                                                                                                                                                                               |
-| `filterLocales`              | `({ locales, req }) => string[] \| Promise<string[]>` | No       | Narrows the locales a request generates for and is measured against — in a multi-tenant CMS, to the locales the selected tenant serves (see [Per-request locales](#per-request-locales))                                                                                                              |
-| `maxBulkGenerateConcurrency` | `number`                                              | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                                                                                                                                                                                                     |
-| `maxBulkGenerateIds`         | `number`                                              | No       | Maximum number of image IDs accepted per bulk generate request; larger requests are rejected with `400`. Duplicate IDs are collapsed before the limit is applied (default: 100)                                                                                                                       |
-| `fieldsOverride`             | `Function`                                            | No       | Override the default fields inserted by the plugin                                                                                                                                                                                                                                                    |
-| `healthCheck`                | `boolean \| AltTextHealthCheckConfig`                 | No       | Alt text health tracking (REST endpoint, cache revalidation hooks, dashboard widget). `false` disables it; `true` enables it for every document, gated by `access`; an object enables it and configures its `access` gate and `baseFilter` (see [Health report](#dashboard-widget)) (default: `true`) |
-| `imageThumbnailMimeType`     | `string`                                              | No       | The MIME type `getImageThumbnail` delivers. Set it when your thumbnail URL transcodes the image, so the stored format no longer decides whether generation is possible (see [Transcoding thumbnails](#transcoding-thumbnails))                                                                        |
+| Option                       | Type                                                       | Required | Description                                                                                                                                                                                                                                                                                           |
+| ---------------------------- | ---------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collections`                | `(CollectionSlug \| CollectionObj)[]`                      | Yes      | Collections to enable alt text generation for (see [Per-collection options](#per-collection-options))                                                                                                                                                                                                 |
+| `resolver`                   | `AltTextResolver`                                          | Yes      | Alt text resolver to use (e.g., `openAIResolver`)                                                                                                                                                                                                                                                     |
+| `getImageThumbnail`          | `Function`                                                 | Yes      | Function to get the thumbnail URL from an image document                                                                                                                                                                                                                                              |
+| `enabled`                    | `boolean`                                                  | No       | Disables the plugin entirely when `false` (default: `true`)                                                                                                                                                                                                                                           |
+| `access`                     | `({ req }) => boolean \| Promise<boolean>`                 | No       | Access control for the plugin's REST endpoints. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)                                                                                                                                                |
+| `locale`                     | `string`                                                   | No       | Locale for alt text generation (required when localization is disabled)                                                                                                                                                                                                                               |
+| `filterLocales`              | `({ doc, locales, req }) => string[] \| Promise<string[]>` | No       | Narrows the locales a document or request generates for and is measured against — in a multi-tenant CMS, to the locales its tenant serves (see [Per-request locales](#per-request-locales))                                                                                                           |
+| `maxBulkGenerateConcurrency` | `number`                                                   | No       | Maximum concurrent API requests for bulk operations (default: 16)                                                                                                                                                                                                                                     |
+| `maxBulkGenerateIds`         | `number`                                                   | No       | Maximum number of image IDs accepted per bulk generate request; larger requests are rejected with `400`. Duplicate IDs are collapsed before the limit is applied (default: 100)                                                                                                                       |
+| `fieldsOverride`             | `Function`                                                 | No       | Override the default fields inserted by the plugin                                                                                                                                                                                                                                                    |
+| `healthCheck`                | `boolean \| AltTextHealthCheckConfig`                      | No       | Alt text health tracking (REST endpoint, cache revalidation hooks, dashboard widget). `false` disables it; `true` enables it for every document, gated by `access`; an object enables it and configures its `access` gate and `baseFilter` (see [Health report](#dashboard-widget)) (default: `true`) |
+| `imageThumbnailMimeType`     | `string`                                                   | No       | The MIME type `getImageThumbnail` delivers. Set it when your thumbnail URL transcodes the image, so the stored format no longer decides whether generation is possible (see [Transcoding thumbnails](#transcoding-thumbnails))                                                                        |
 
 `getImageThumbnail` receives the document and `{ collection, req }`, so a single function can build different URLs per collection:
 
@@ -109,13 +109,14 @@ getImageThumbnail: async (doc, { req }) => await presignThumbnailUrl(String(doc.
 
 Payload's locale list is config-wide. A multi-tenant project therefore configures the union of every tenant's locales — and without narrowing, every tenant is served all of them: a bulk generation writes (and pays for) locales the tenant does not serve, and the health report counts its images as incomplete until locales it will never publish are filled.
 
-`filterLocales` narrows that list per request:
+`filterLocales` narrows that list per document and per request. During generation it receives the document being generated for as `doc` and is called once per document, so a bulk run spanning several tenants writes each image in its own tenant's locales. The health report counts many documents at once and passes no `doc`, so fall back to the request there — e.g. the tenant selected in the admin panel:
 
 ```ts
 import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 
-filterLocales: async ({ locales, req }) => {
-  const tenantId = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+filterLocales: async ({ doc, locales, req }) => {
+  // The document's own tenant during generation, the selected one for the health report.
+  const tenantId = doc?.tenant ?? getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
 
   // No tenant selected: every configured locale, matching the tenant selector.
   if (!tenantId) {
@@ -138,11 +139,11 @@ It governs all three locale-dependent behaviors:
 
 | Behavior                       | Effect                                                                                      |
 | ------------------------------ | ------------------------------------------------------------------------------------------- |
-| `POST /alt-text/generate/bulk` | Generates and writes only the admitted locales                                              |
-| `POST /alt-text/generate`      | Rejects a request `locale` outside them with `400`, before the resolver runs                |
+| `POST /alt-text/generate/bulk` | Generates and writes only the locales admitted for each document                            |
+| `POST /alt-text/generate`      | Rejects a request `locale` outside the document's with `400`, before the resolver runs      |
 | Health report and widget       | Counts a document complete once the admitted locales are filled, and scopes its cache entry |
 
-The returned codes must be a non-empty subset of the configured locales; anything else fails the request rather than writing into a locale the project does not define. Omit the option and every request targets the full configured list — no call is made, so a project that does not scope locales pays nothing for it.
+The returned codes must be a non-empty subset of the configured locales; anything else fails the request rather than writing into a locale the project does not define. In a bulk run, a filter that throws or returns such a list fails only that document, which is reported in `erroredDocs`. Omit the option and every request targets the full configured list — no call is made, so a project that does not scope locales pays nothing for it.
 
 ### Per-collection options
 
@@ -286,6 +287,8 @@ await payload.create({
   context: { disableRevalidate: true },
 })
 ```
+
+A bulk generation does this itself: its writes skip the per-write revalidation, and the collection's cache is revalidated once at the end of the run.
 
 ### Resolvers
 

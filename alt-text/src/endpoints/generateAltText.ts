@@ -97,10 +97,10 @@ export const generateAltTextEndpoint =
         return Response.json({ error: unsupportedSourceError }, { status: 400 })
       }
 
-      // Reject a locale this request may not write before it reaches the
-      // document or the resolver's prompt, which interpolates it verbatim.
+      // Reject a locale this document may not be written in before it reaches
+      // the document or the resolver's prompt, which interpolates it verbatim.
       if (locale != null && pluginConfig.locales.length > 0) {
-        const availableLocales = await resolveLocales({ pluginConfig, req })
+        const availableLocales = await resolveLocales({ doc: imageDoc, pluginConfig, req })
 
         if (!availableLocales.includes(locale)) {
           return Response.json(

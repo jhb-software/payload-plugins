@@ -45,11 +45,22 @@ function safeRevalidateTag(req: PayloadRequest, tag: string): void {
   }
 }
 
+/**
+ * Invalidates the cached health scan of one collection. Deferred past the
+ * response inside a Next.js request; warns and skips outside one.
+ */
+export function revalidateAltTextHealthCollection(
+  req: PayloadRequest,
+  collectionSlug: string,
+): void {
+  safeRevalidateTag(req, getAltTextHealthCollectionTag(collectionSlug))
+}
+
 export const createRevalidateAltTextHealthAfterChangeHook =
   (collectionSlug: string): CollectionAfterChangeHook =>
   ({ doc, req }) => {
     if (!req.context?.disableRevalidate) {
-      safeRevalidateTag(req, getAltTextHealthCollectionTag(collectionSlug))
+      revalidateAltTextHealthCollection(req, collectionSlug)
     }
 
     return doc
@@ -59,7 +70,7 @@ export const createRevalidateAltTextHealthAfterDeleteHook =
   (collectionSlug: string): CollectionAfterDeleteHook =>
   ({ doc, req }) => {
     if (!req.context?.disableRevalidate) {
-      safeRevalidateTag(req, getAltTextHealthCollectionTag(collectionSlug))
+      revalidateAltTextHealthCollection(req, collectionSlug)
     }
 
     return doc

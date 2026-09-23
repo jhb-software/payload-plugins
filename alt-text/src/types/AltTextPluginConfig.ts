@@ -47,15 +47,21 @@ export type AltTextHealthBaseFilter = (args: {
 
 /**
  * Narrows the locales a request generates for and is measured against — in a
- * multi-tenant CMS, to the locales of the tenant the request is for.
+ * multi-tenant CMS, to the locales of the tenant the document or request belongs to.
  *
  * Must return a non-empty subset of `locales`; anything else ends the operation
  * with an error rather than writing into a locale the project does not define.
+ * During bulk generation that error fails only the one document.
  *
+ * @param args.doc The document alt text is generated for. Present during
+ * generation — called once per document, so a bulk run spanning several tenants
+ * writes each document in its own tenant's locales. Absent for the health report,
+ * which counts many documents at once.
  * @param args.locales The locales configured on the Payload config.
  * @param args.req The request being served.
  */
 export type FilterLocales = (args: {
+  doc?: Record<string, unknown>
   locales: string[]
   req: PayloadRequest
 }) => Promise<string[]> | string[]
@@ -117,7 +123,7 @@ export type IncomingAltTextPluginConfig = {
   fieldsOverride?: (args: { defaultFields: Field[] }) => Field[]
 
   /**
-   * Narrows the locales this request targets. See {@link FilterLocales}.
+   * Narrows the locales a document or request targets. See {@link FilterLocales}.
    *
    * Governs bulk generation, the generate endpoint's locale validation, and the
    * health report.

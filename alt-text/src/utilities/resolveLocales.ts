@@ -3,16 +3,18 @@ import type { PayloadRequest } from 'payload'
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 /**
- * The locales one request generates for and is measured against — the configured
- * list itself when no `filterLocales` is set.
+ * The locales one document (or, without `doc`, one request) generates for and is
+ * measured against — the configured list itself when no `filterLocales` is set.
  *
  * Throws on an empty or out-of-range result, which would otherwise write into a
  * locale the project does not define.
  */
 export async function resolveLocales({
+  doc,
   pluginConfig,
   req,
 }: {
+  doc?: Record<string, unknown>
   pluginConfig: AltTextPluginConfig
   req: PayloadRequest
 }): Promise<string[]> {
@@ -24,7 +26,7 @@ export async function resolveLocales({
 
   // Deduplicated: a repeated locale would be generated and written twice, and
   // reach the resolver as a duplicate key in the schema it must answer with.
-  const filtered = [...new Set(await pluginConfig.filterLocales({ locales: configured, req }))]
+  const filtered = [...new Set(await pluginConfig.filterLocales({ doc, locales: configured, req }))]
 
   const unconfigured = filtered.filter((locale) => !configured.includes(locale))
 

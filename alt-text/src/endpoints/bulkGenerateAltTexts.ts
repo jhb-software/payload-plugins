@@ -6,8 +6,9 @@ import { ZodError } from 'zod'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
+import { revalidateAltTextHealthCollection } from '../hooks/revalidateAltTextHealth.js'
 import { getUnsupportedSourceMimeTypeError, matchesMimeType } from '../utilities/mimeTypes.js'
-import { resolveLocales } from '../utilities/resolveLocales.js'
+import { configuredLocales, resolveLocales } from '../utilities/resolveLocales.js'
 import { bulkGenerateAltTextsRequestSchema, formatZodError } from './schemas.js'
 
 /**
@@ -73,9 +74,10 @@ export const bulkGenerateAltTextsEndpoint =
         )
       }
 
-      const targetLocales = await resolveLocales({ pluginConfig, req })
-
-      if (targetLocales.length === 0) {
+      // Fail fast only when nothing is configured at all. `filterLocales` is
+      // resolved per document below, since the locales a document may be
+      // written in can depend on the document (its tenant, say).
+      if (configuredLocales(pluginConfig).length === 0) {
         return Response.json(
           {
             error:
@@ -85,43 +87,56 @@ export const bulkGenerateAltTextsEndpoint =
         )
       }
 
-      await pMap(
-        uniqueIds,
-        async (id) => {
-          try {
-            const skipReason = await generateAndUpdateAltText({
-              id,
-              collection,
-              locales: targetLocales,
-              payload: req.payload,
-              pluginConfig,
-              req,
-            })
+      // Also set by documents that fail after a locale was already written.
+      let wroteAnyDoc = false
 
-            if (skipReason) {
-              skippedDocs.push({ id, reason: skipReason.reason })
-              req.payload.logger.info(`Skipped ${id}: ${skipReason.detail}`)
-              return
-            }
+      try {
+        await pMap(
+          uniqueIds,
+          async (id) => {
+            try {
+              const skipReason = await generateAndUpdateAltText({
+                id,
+                collection,
+                onWrite: () => {
+                  wroteAnyDoc = true
+                },
+                payload: req.payload,
+                pluginConfig,
+                req,
+              })
 
-            updatedDocs++
-            req.payload.logger.info(
-              `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
-            )
-          } catch (error) {
-            // A Forbidden means the user has no read/update access to the
-            // collection at all — it applies to every id, so fail the whole
-            // request with a real 403 instead of silently listing all ids as
-            // errored. Row-level NotFound stays a per-doc error (partial success).
-            if (error instanceof Forbidden) {
-              throw error
+              if (skipReason) {
+                skippedDocs.push({ id, reason: skipReason.reason })
+                req.payload.logger.info(`Skipped ${id}: ${skipReason.detail}`)
+                return
+              }
+
+              updatedDocs++
+              req.payload.logger.info(
+                `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
+              )
+            } catch (error) {
+              // A Forbidden means the user has no read/update access to the
+              // collection at all — it applies to every id, so fail the whole
+              // request with a real 403 instead of silently listing all ids as
+              // errored. Row-level NotFound stays a per-doc error (partial success).
+              if (error instanceof Forbidden) {
+                throw error
+              }
+              req.payload.logger.error({ err: error }, `Error generating alt text for ${id}`)
+              erroredDocs.push(id)
             }
-            req.payload.logger.error({ err: error }, `Error generating alt text for ${id}`)
-            erroredDocs.push(id)
-          }
-        },
-        { concurrency },
-      )
+          },
+          { concurrency },
+        )
+      } finally {
+        // The writes skip the per-write revalidation; one for the whole run
+        // replaces them, even when the run is aborted partway.
+        if (wroteAnyDoc && pluginConfig.healthCheck) {
+          revalidateAltTextHealthCollection(req, collection)
+        }
+      }
 
       if (erroredDocs.length > 0) {
         req.payload.logger.error(`Failed for: ${erroredDocs.join(', ')}`)
@@ -168,14 +183,14 @@ export type SkippedDoc = { id: number | string; reason: SkipReason }
 async function generateAndUpdateAltText({
   id,
   collection,
-  locales,
+  onWrite,
   payload,
   pluginConfig,
   req,
 }: {
   collection: CollectionSlug
   id: number | string
-  locales: string[]
+  onWrite: () => void
   payload: BasePayload
   pluginConfig: AltTextPluginConfig
   req: PayloadRequest
@@ -217,6 +232,10 @@ async function generateAndUpdateAltText({
     return { detail: unsupportedSourceError, reason: 'unsupportedFormat' }
   }
 
+  // Resolved before the resolver runs, so no locale the document may not be
+  // written in is ever generated (and billed).
+  const locales = await resolveLocales({ doc: imageDoc, pluginConfig, req })
+
   const imageThumbnailUrl = await pluginConfig.getImageThumbnail(imageDoc, { collection, req })
 
   const result = await pluginConfig.resolver.resolveBulk({
@@ -240,6 +259,8 @@ async function generateAndUpdateAltText({
       await payload.update({
         id,
         collection,
+        // The endpoint revalidates the health cache once for the whole run.
+        context: { disableRevalidate: true },
         data: {
           alt: localeResult.altText,
           keywords: localeResult.keywords,
@@ -250,6 +271,7 @@ async function generateAndUpdateAltText({
         overrideAccess: false,
         user: req.user,
       })
+      onWrite()
     }
   }
 }
