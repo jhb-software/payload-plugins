@@ -72,13 +72,13 @@ describe('validateAltText', () => {
     assert.equal(result, '@jhb.software/payload-alt-text-plugin:theAlternateTextIsRequired')
   })
 
-  test('allows an empty alt text on the initial upload regardless of mime type', () => {
+  test('allows an empty alt text in the storage adapter update that follows an upload', () => {
     const result = validateAltText(
       '',
       asArgs({
-        data: { createdAt, updatedAt: createdAt, mimeType: 'image/png' },
+        data: { createdAt, updatedAt, mimeType: 'image/png' },
         operation: 'update',
-        req: { t },
+        req: { context: { skipCloudStorage: true }, t },
       }),
       ['image/*'],
     )

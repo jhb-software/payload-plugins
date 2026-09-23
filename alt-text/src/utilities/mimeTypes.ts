@@ -233,13 +233,12 @@ export function validateAltText(
   const data = (args.data ?? {}) as Record<string, unknown>
   const { operation, req } = args
 
-  // Since https://github.com/payloadcms/payload/pull/14988, when using external storage (e.g., S3),
-  // it is no longer possible to detect whether this validation runs during the initial upload
-  // or a regular update by checking the existence of the ID.
-  // Instead, compare the timestamps of the createdAt and updatedAt fields.
-  const isInitialUpload =
-    operation === 'create' ||
-    ('createdAt' in data && 'updatedAt' in data && data.createdAt === data.updatedAt)
+  // Storage adapters whose `handleUpload` returns metadata (e.g. S3) make the cloud-storage
+  // plugin persist it in a second, internal `update` right after the upload. That update
+  // always runs with `req.context.skipCloudStorage` set, so it is treated as part of the
+  // initial upload. Comparing `createdAt` and `updatedAt` is not reliable: database adapters
+  // may set both timestamps in different milliseconds.
+  const isInitialUpload = operation === 'create' || req.context?.skipCloudStorage === true
 
   if (isInitialUpload) {
     return true

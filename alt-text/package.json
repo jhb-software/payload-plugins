@@ -43,7 +43,9 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@payloadcms/db-sqlite": "^3.90.1",
     "@payloadcms/eslint-config": "^3.28.0",
+    "@payloadcms/plugin-cloud-storage": "^3.90.1",
     "@payloadcms/translations": "^3.90.1",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.16.2",
