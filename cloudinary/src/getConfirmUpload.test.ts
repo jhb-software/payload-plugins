@@ -1,12 +1,14 @@
 import { v2 as cloudinary } from 'cloudinary'
 import { APIError, Forbidden, type PayloadRequest } from 'payload'
-import { verifyClientUploadReceipt } from 'payload/internal'
+import { createClientUploadReceipt, verifyClientUploadReceipt } from 'payload/internal'
 import { describe, expect, it } from 'vitest'
 
 import { getConfirmUpload } from './getConfirmUpload.js'
 
 const apiSecret = 'test-secret'
 const cloudName = 'demo'
+
+type AccessFn = () => boolean
 
 /** Signs like Cloudinary signs upload responses: SHA-1, signature version 1. */
 function signResponse(publicId: string, version: number | string): string {
@@ -20,14 +22,16 @@ function signResponse(publicId: string, version: number | string): string {
 }
 
 function makeReq({
+  allowRestrictedFileTypes,
   body,
   collectionSlug = 'media',
-  createAccess,
+  createAccess = () => true,
   user = { id: '1', collection: 'users' },
 }: {
-  body: unknown
+  allowRestrictedFileTypes?: boolean
+  body?: unknown
   collectionSlug?: string
-  createAccess?: () => boolean
+  createAccess?: AccessFn
   user?: unknown
 }): PayloadRequest {
   return {
@@ -35,7 +39,10 @@ function makeReq({
     payload: {
       collections: {
         [collectionSlug]: {
-          config: { access: createAccess ? { create: createAccess } : {} },
+          config: {
+            access: { create: createAccess, update: () => false },
+            upload: { allowRestrictedFileTypes },
+          },
         },
       },
       secret: 'payload-secret',
@@ -45,12 +52,34 @@ function makeReq({
   } as unknown as PayloadRequest
 }
 
+/** A pending receipt as the signature endpoint issues it. */
+function pendingReceipt({
+  collectionSlug = 'media',
+  filename = 'photo.jpg',
+  mimeType = 'image/jpeg',
+  publicId = 'media/photo-1a2b3c4d',
+  user,
+}: {
+  collectionSlug?: string
+  filename?: string
+  mimeType?: string
+  publicId?: string
+  user?: unknown
+} = {}): string {
+  return createClientUploadReceipt({
+    collectionSlug,
+    context: { mimeType, publicId },
+    filename,
+    req: makeReq({ collectionSlug, user }),
+  })
+}
+
 function validBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  const publicId = (overrides.publicId as string | undefined) ?? 'media/photo'
+  const publicId = (overrides.publicId as string | undefined) ?? 'media/photo-1a2b3c4d'
   const version = (overrides.version as number | undefined) ?? 1700000000
   return {
-    filename: 'photo.jpg',
     format: 'jpg',
+    pendingReceipt: pendingReceipt({ publicId }),
     publicId,
     resourceType: 'image',
     signature: signResponse(publicId, version),
@@ -61,35 +90,33 @@ function validBody(overrides: Record<string, unknown> = {}): Record<string, unkn
 
 async function confirm(
   args: {
-    access?: () => boolean
+    access?: AccessFn
+    allowRestrictedFileTypes?: boolean
     body?: unknown
-    collectionPrefixes?: Record<string, string>
     collectionSlug?: string
-    createAccess?: () => boolean
-    folder?: string
-    useFilename?: boolean
+    createAccess?: AccessFn
+    user?: unknown
   } = {},
 ): Promise<{ req: PayloadRequest; res: Response }> {
   const handler = getConfirmUpload({
     access: args.access,
     apiSecret,
     cloudName,
-    collectionPrefixes: args.collectionPrefixes ?? {},
     collections: ['media'],
-    folder: 'folder' in args ? args.folder : 'media',
-    useFilename: args.useFilename ?? true,
   })
-  const req = makeReq({
-    body: args.body ?? validBody(),
-    collectionSlug: args.collectionSlug,
-    createAccess: args.createAccess,
-  })
+  const req = makeReq({ ...args, body: args.body ?? validBody() })
   return { req, res: await handler(req) }
 }
 
 async function readReceipt(req: PayloadRequest, res: Response) {
   const { signedReceipt } = await res.json()
   return verifyClientUploadReceipt({ collectionSlug: 'media', req, signedReceipt })
+}
+
+async function expectStatus(promise: Promise<unknown>, status: number) {
+  const error = await promise.catch((err: unknown) => err)
+  expect(error).toBeInstanceOf(APIError)
+  expect(error).toMatchObject({ status })
 }
 
 describe('getConfirmUpload', () => {
@@ -100,26 +127,32 @@ describe('getConfirmUpload', () => {
     const receipt = await readReceipt(req, res)
     expect(receipt.filename).toBe('photo.jpg')
     expect(receipt.context).toEqual({
-      publicId: 'media/photo',
-      secureUrl: 'https://res.cloudinary.com/demo/image/upload/v1700000000/media/photo.jpg',
+      publicId: 'media/photo-1a2b3c4d',
+      secureUrl:
+        'https://res.cloudinary.com/demo/image/upload/v1700000000/media/photo-1a2b3c4d.jpg',
     })
   })
 
-  it('builds a raw file URL without appending the format, since raw public ids keep their extension', async () => {
+  it('builds a raw file URL without appending the format', async () => {
+    const publicId = 'media/report-1a2b3c4d'
     const { req, res } = await confirm({
       body: validBody({
-        filename: 'report.pdf',
         format: undefined,
-        publicId: 'media/report.pdf',
+        pendingReceipt: pendingReceipt({
+          filename: 'report.zip',
+          mimeType: 'application/zip',
+          publicId,
+        }),
+        publicId,
         resourceType: 'raw',
       }),
-      useFilename: false,
     })
 
     const receipt = await readReceipt(req, res)
+    expect(receipt.filename).toBe('report.zip')
     expect(receipt.context).toEqual({
-      publicId: 'media/report.pdf',
-      secureUrl: 'https://res.cloudinary.com/demo/raw/upload/v1700000000/media/report.pdf',
+      publicId,
+      secureUrl: `https://res.cloudinary.com/demo/raw/upload/v1700000000/${publicId}`,
     })
   })
 
@@ -131,51 +164,81 @@ describe('getConfirmUpload', () => {
 
   it('rejects a signature issued for a different version of the asset', async () => {
     await expect(
-      confirm({ body: validBody({ signature: signResponse('media/photo', 1) }) }),
+      confirm({ body: validBody({ signature: signResponse('media/photo-1a2b3c4d', 1) }) }),
     ).rejects.toThrow(Forbidden)
   })
 
-  it('rejects a public id outside the configured folder', async () => {
-    await expect(confirm({ body: validBody({ publicId: 'other/photo' }) })).rejects.toThrow(
-      Forbidden,
+  it('rejects a confirmation for a public id the server did not mint', async () => {
+    // A genuinely signed Cloudinary response for another asset in the same cloud.
+    const otherId = 'media/someone-elses-photo'
+    await expect(
+      confirm({
+        body: validBody({
+          pendingReceipt: pendingReceipt(),
+          publicId: otherId,
+          signature: signResponse(otherId, 1700000000),
+        }),
+      }),
+    ).rejects.toThrow(Forbidden)
+  })
+
+  it('rejects a pending receipt issued to another user', async () => {
+    await expectStatus(
+      confirm({
+        body: validBody({
+          pendingReceipt: pendingReceipt({ user: { id: '2', collection: 'users' } }),
+        }),
+      }),
+      400,
     )
   })
 
-  it('rejects a public id that does not match the signed filename when useFilename is on', async () => {
-    await expect(confirm({ body: validBody({ publicId: 'media/someone-else' }) })).rejects.toThrow(
-      Forbidden,
+  it('rejects a pending receipt issued for another collection', async () => {
+    await expectStatus(
+      confirm({ body: validBody({ pendingReceipt: pendingReceipt({ collectionSlug: 'docs' }) }) }),
+      400,
     )
   })
 
-  it('expects the collection prefix in the public id when useFilename is on', async () => {
-    await expect(confirm({ collectionPrefixes: { media: 'uploads-' } })).rejects.toThrow(Forbidden)
+  it('rejects a confirmed upload receipt passed off as a pending one', async () => {
+    const { res } = await confirm()
+    const { signedReceipt } = await res.json()
 
+    await expectStatus(confirm({ body: validBody({ pendingReceipt: signedReceipt }) }), 400)
+  })
+
+  it('rejects a resource type that does not match the signed MIME type', async () => {
+    await expectStatus(confirm({ body: validBody({ resourceType: 'video' }) }), 400)
+  })
+
+  it.each([
+    ['video/mp4', 'video'],
+    ['audio/mpeg', 'video'],
+    ['application/pdf', 'image'],
+  ])('accepts a %s upload that Cloudinary stores as %s', async (mimeType, resourceType) => {
+    const publicId = 'media/file-1a2b3c4d'
     const { res } = await confirm({
-      body: validBody({ publicId: 'media/uploads-photo' }),
-      collectionPrefixes: { media: 'uploads-' },
-    })
-    expect(res.status).toBe(200)
-  })
-
-  it('matches the public id Cloudinary stores for a filename with characters it does not allow', async () => {
-    const { req, res } = await confirm({
-      body: validBody({ filename: 'photo+1#2.jpg', publicId: 'media/photo_1_2' }),
+      body: validBody({
+        format: undefined,
+        pendingReceipt: pendingReceipt({ mimeType, publicId }),
+        publicId,
+        resourceType,
+      }),
     })
 
     expect(res.status).toBe(200)
-    expect((await readReceipt(req, res)).context).toMatchObject({ publicId: 'media/photo_1_2' })
   })
 
-  it('accepts any public id inside the folder when useFilename is off', async () => {
+  it('rejects an svg format on a collection that does not allow restricted file types', async () => {
+    await expectStatus(confirm({ body: validBody({ format: 'SVG' }) }), 400)
+  })
+
+  it('accepts an svg format on a collection that allows restricted file types', async () => {
     const { res } = await confirm({
-      body: validBody({ publicId: 'media/k2jf8sd9' }),
-      useFilename: false,
+      allowRestrictedFileTypes: true,
+      body: validBody({ format: 'svg' }),
     })
-    expect(res.status).toBe(200)
-  })
 
-  it('accepts a public id without folder when no folder is configured', async () => {
-    const { res } = await confirm({ body: validBody({ publicId: 'photo' }), folder: undefined })
     expect(res.status).toBe(200)
   })
 
@@ -185,8 +248,12 @@ describe('getConfirmUpload', () => {
     )
   })
 
-  it('rejects a user who lacks create access to the target collection', async () => {
+  it('rejects a user who lacks create and update access to the target collection', async () => {
     await expect(confirm({ createAccess: () => false })).rejects.toThrow(Forbidden)
+  })
+
+  it('rejects an unauthenticated caller even when the custom access rule allows everyone', async () => {
+    await expect(confirm({ access: () => true, user: null })).rejects.toThrow(Forbidden)
   })
 
   it.each([
@@ -194,15 +261,9 @@ describe('getConfirmUpload', () => {
     ['a zero version', { version: 0 }],
     ['an unknown resource type', { resourceType: 'authenticated' }],
     ['a format with path characters', { format: 'jpg/../x' }],
-    ['a public id with a parent segment', { publicId: 'media/../secret' }],
-    ['a public id with a leading slash', { publicId: '/media/photo' }],
-    ['a public id with control characters', { publicId: 'media/photo\n' }],
-    ['a missing filename', { filename: undefined }],
+    ['a missing public id', { publicId: undefined }],
+    ['a missing pending receipt', { pendingReceipt: undefined }],
   ])('rejects a body with %s', async (_label, overrides) => {
-    const error = await confirm({ body: validBody(overrides), useFilename: false }).catch(
-      (err: unknown) => err,
-    )
-    expect(error).toBeInstanceOf(APIError)
-    expect(error).toMatchObject({ status: 400 })
+    await expectStatus(confirm({ body: validBody(overrides) }), 400)
   })
 })

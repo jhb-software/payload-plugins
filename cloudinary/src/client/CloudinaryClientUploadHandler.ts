@@ -2,16 +2,11 @@
 
 import { createClientUploadHandler } from '@payloadcms/plugin-cloud-storage/client'
 
-import { generatePublicId } from '../utilities/generatePublicId.js'
-
 export type CloudinaryClientUploadHandlerExtra = {
   apiKey: string
   cloudName: string
   /** Path of the endpoint that verifies the Cloudinary upload and issues a Payload receipt. */
   confirmHandlerPath: string
-  folder?: string
-  prefix: string
-  useFilename?: boolean
 }
 
 /** Context the browser submits with the document. Core verifies the receipt server-side. */
@@ -23,6 +18,24 @@ export type ClientUploadContext = {
 export type VerifiedClientUploadContext = {
   publicId: string
   secureUrl: string
+}
+
+/** Context of the pending receipt the signature endpoint issues and the confirm endpoint redeems. */
+export type PendingClientUploadContext = {
+  mimeType: string
+  /** The full public id, including the folder, that Cloudinary will store the upload under. */
+  publicId: string
+}
+
+/** Upload parameters minted and signed by the signature endpoint, sent to Cloudinary verbatim. */
+export type CloudinarySignatureResponse = {
+  folder?: string
+  overwrite: 'false'
+  pendingReceipt: string
+  /** Public id without the folder; Cloudinary prepends `folder` itself. */
+  publicId: string
+  signature: string
+  timestamp: number
 }
 
 type CloudinaryUploadResponse = {
@@ -39,40 +52,23 @@ const CHUNKED_UPLOAD_THRESHOLD = 100 * 1024 * 1024
 // 20MB default chunk size (minimum is 5MB)
 const DEFAULT_CHUNK_SIZE = 20 * 1024 * 1024
 
-// Params to sign: all request params except file, cloud_name, resource_type, api_key
-// see https://cloudinary.com/documentation/authentication_signatures#manual_signature_generation
-function buildParamsToSign({
-  folder,
-  publicId,
-  timestamp,
+async function getSignature({
+  apiRoute,
+  collectionSlug,
+  file,
+  serverHandlerPath,
+  serverURL,
 }: {
-  folder?: string
-  publicId?: string
-  timestamp: string
-}): Record<string, string> {
-  const params: Record<string, string> = { timestamp }
-  if (folder) {
-    params.folder = folder
-  }
-  if (publicId) {
-    params.public_id = publicId
-  }
-  return params
-}
-
-async function getSignature(
-  paramsToSign: Record<string, string>,
-  serverHandlerPath: string,
-  serverURL: string,
-  apiRoute: string,
-  collectionSlug: string,
-): Promise<string> {
+  apiRoute: string
+  collectionSlug: string
+  file: File
+  serverHandlerPath: string
+  serverURL: string
+}): Promise<CloudinarySignatureResponse> {
   const response = await fetch(
     `${serverURL}${apiRoute}${serverHandlerPath}?collectionSlug=${collectionSlug}`,
     {
-      body: JSON.stringify({
-        paramsToSign,
-      }),
+      body: JSON.stringify({ filename: file.name, mimeType: file.type, size: file.size }),
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
@@ -83,25 +79,25 @@ async function getSignature(
 
   const data = await response.json()
 
-  if (!data.signature) {
-    throw new Error('No signature found')
+  if (!response.ok || typeof data?.signature !== 'string') {
+    throw new Error('Failed to sign the upload')
   }
 
-  return data.signature
+  return data as CloudinarySignatureResponse
 }
 
 async function confirmUpload({
   apiRoute,
   collectionSlug,
   confirmHandlerPath,
-  filename,
+  pendingReceipt,
   response,
   serverURL,
 }: {
   apiRoute: string
   collectionSlug: string
   confirmHandlerPath: string
-  filename: string
+  pendingReceipt: string
   response: CloudinaryUploadResponse
   serverURL: string
 }): Promise<ClientUploadContext> {
@@ -109,8 +105,8 @@ async function confirmUpload({
     `${serverURL}${apiRoute}${confirmHandlerPath}?collectionSlug=${collectionSlug}`,
     {
       body: JSON.stringify({
-        filename,
         format: response.format,
+        pendingReceipt,
         publicId: response.public_id,
         resourceType: response.resource_type,
         signature: response.signature,
@@ -136,24 +132,24 @@ async function confirmUpload({
 function buildFormData({
   apiKey,
   file,
-  paramsToSign,
-  signature,
+  signed,
 }: {
   apiKey: string
   file: Blob | File
-  paramsToSign: Record<string, string>
-  signature: string
+  signed: CloudinarySignatureResponse
 }): FormData {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('api_key', apiKey)
-
-  for (const [key, value] of Object.entries(paramsToSign)) {
-    formData.append(key, value)
+  // Exactly the parameters the server signed; anything else would invalidate the signature.
+  if (signed.folder) {
+    formData.append('folder', signed.folder)
   }
-
+  formData.append('overwrite', signed.overwrite)
+  formData.append('public_id', signed.publicId)
+  formData.append('timestamp', String(signed.timestamp))
   formData.append('resource_type', 'auto')
-  formData.append('signature', signature)
+  formData.append('signature', signed.signature)
 
   return formData
 }
@@ -162,29 +158,28 @@ export const CloudinaryClientUploadHandler: ReturnType<
   typeof createClientUploadHandler<CloudinaryClientUploadHandlerExtra>
 > = createClientUploadHandler<CloudinaryClientUploadHandlerExtra>({
   handler: async ({ apiRoute, collectionSlug, extra, file, serverHandlerPath, serverURL }) => {
-    const { apiKey, cloudName, confirmHandlerPath, folder, prefix, useFilename } = extra
+    const { apiKey, cloudName, confirmHandlerPath } = extra
+
+    // The server mints the public id and signs the upload parameters.
+    const signed = await getSignature({
+      apiRoute,
+      collectionSlug,
+      file,
+      serverHandlerPath,
+      serverURL,
+    })
+
     const getReceipt = (response: CloudinaryUploadResponse) =>
       confirmUpload({
         apiRoute,
         collectionSlug,
         confirmHandlerPath,
-        filename: file.name,
+        pendingReceipt: signed.pendingReceipt,
         response,
         serverURL,
       })
 
     const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
-    const timestamp = Math.round(new Date().getTime() / 1000).toString()
-    const publicId = useFilename ? generatePublicId(prefix, file.name) : undefined
-
-    const paramsToSign = buildParamsToSign({ folder, publicId, timestamp })
-    const signature = await getSignature(
-      paramsToSign,
-      serverHandlerPath,
-      serverURL,
-      apiRoute,
-      collectionSlug,
-    )
 
     // Use chunked upload for files larger than 100MB
     if (file.size > CHUNKED_UPLOAD_THRESHOLD) {
@@ -199,7 +194,7 @@ export const CloudinaryClientUploadHandler: ReturnType<
         const end = Math.min(start + DEFAULT_CHUNK_SIZE, totalSize)
         const chunk = file.slice(start, end)
 
-        const formData = buildFormData({ apiKey, file: chunk, paramsToSign, signature })
+        const formData = buildFormData({ apiKey, file: chunk, signed })
 
         const response = await fetch(url, {
           body: formData,
@@ -231,7 +226,7 @@ export const CloudinaryClientUploadHandler: ReturnType<
     }
 
     // Regular upload for smaller files
-    const formData = buildFormData({ apiKey, file, paramsToSign, signature })
+    const formData = buildFormData({ apiKey, file, signed })
 
     const response = await fetch(url, {
       body: formData,

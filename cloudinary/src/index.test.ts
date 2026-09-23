@@ -276,6 +276,16 @@ describe('payloadCloudinaryPlugin server re-upload of processed client uploads',
     expect(uploadOptions[0].overwrite).toBeUndefined()
   })
 
+  it('rejects a pending signature receipt used in place of a confirmed upload receipt', async () => {
+    await expect(
+      runCreate({
+        clientUploadContext: { mimeType: 'image/jpeg', publicId: 'media/photo' } as never,
+        processedBySharp: false,
+      }),
+    ).rejects.toMatchObject({ status: 400 })
+    expect(uploadOptions).toHaveLength(0)
+  })
+
   it('uploads a server-side file into the folder under a generated public id', async () => {
     await runCreate({ processedBySharp: false })
 
@@ -301,10 +311,11 @@ describe('payloadCloudinaryPlugin static file serving', () => {
 
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
-        headers: new Headers({ 'Content-Type': 'image/jpeg' }),
-      }),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(new Uint8Array(4), { headers: { 'Content-Type': 'image/jpeg' } }),
+        ),
     )
 
     const req = {

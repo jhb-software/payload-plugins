@@ -11,11 +11,13 @@ import type {
   Field,
   Payload,
   Plugin,
+  UploadConfig,
 } from 'payload'
 
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import { initClientUploads } from '@payloadcms/plugin-cloud-storage/utilities'
 import { v2 as cloudinary } from 'cloudinary'
+import { APIError } from 'payload'
 
 import type {
   CloudinaryClientUploadHandlerExtra,
@@ -59,6 +61,9 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       {
         name: 'cloudinaryPublicId',
         type: 'text',
+        // Only the plugin writes this field (from hooks and adapter callbacks, which bypass field
+        // access). A caller-supplied id would point the document at an arbitrary asset.
+        access: { create: () => false, update: () => false },
         admin: {
           disableBulkEdit: true,
           hidden: true,
@@ -97,20 +102,18 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       collections: options.collections,
       config: incomingConfig,
       enabled: clientUploadsEnabled,
-      extraClientHandlerProps: (collection) =>
+      extraClientHandlerProps: () =>
         ({
           apiKey: options.credentials.apiKey,
           cloudName: options.cloudName,
           confirmHandlerPath,
-          folder: options.folder,
-          prefix: (typeof collection === 'object' && collection.prefix) || '',
-          useFilename: options.useFilename,
         }) satisfies CloudinaryClientUploadHandlerExtra,
       serverHandler: getGenerateSignature({
         access: clientUploadsAccess,
         apiSecret: options.credentials.apiSecret,
-        collections: Object.keys(options.collections),
+        collectionPrefixes,
         folder: options.folder,
+        useFilename: options.useFilename,
       }),
       serverHandlerPath: '/cloudinary-generate-signature',
     })
@@ -123,10 +126,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
             access: clientUploadsAccess,
             apiSecret: options.credentials.apiSecret,
             cloudName: options.cloudName,
-            collectionPrefixes,
             collections: Object.keys(options.collections),
-            folder: options.folder,
-            useFilename: options.useFilename,
           }),
           method: 'post',
           path: confirmHandlerPath,
@@ -213,11 +213,21 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
         req.file as { clientUploadContext?: VerifiedClientUploadContext } | undefined
       )?.clientUploadContext
 
-      if (clientUploadContext?.publicId) {
-        req.context[clientUploadContextKey] = clientUploadContext
-      } else {
+      if (!clientUploadContext) {
         delete req.context[clientUploadContextKey]
+        return
       }
+
+      // Core accepts any receipt this plugin issued, including the pending one from the signature
+      // endpoint. Only a confirmed upload carries a server-built URL.
+      if (
+        typeof clientUploadContext.publicId !== 'string' ||
+        typeof clientUploadContext.secureUrl !== 'string'
+      ) {
+        throw new APIError('A confirmed client upload reference is required.', 400)
+      }
+
+      req.context[clientUploadContextKey] = clientUploadContext
     }
 
     const incomingOnInit = result.onInit
@@ -247,16 +257,23 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       // "missing on the disk". The plugin's static handler resolves the file by filename, so register
       // it as the first handler for those collections. Other collections already get the static handler
       // from cloud-storage unconditionally.
+      // Core runs every handler when fetching a client upload, so this one skips requests with a
+      // `clientUploadContext` (cloud-storage's handler serves those) to fetch the file only once.
       if (typeof collOptions !== 'object' || collOptions.disablePayloadAccessControl !== true) {
         return withHook
       }
 
       const upload = typeof collection.upload === 'object' ? collection.upload : {}
+      const staticHandler = getStaticHandler({ cloudName: options.cloudName })
+      const serveByFilename: NonNullable<UploadConfig['handlers']>[number] = (req, args) =>
+        'clientUploadContext' in args.params && args.params.clientUploadContext
+          ? undefined
+          : staticHandler(req, args)
       const existingHandlers = Array.isArray(upload.handlers) ? upload.handlers : []
 
       return {
         ...withHook,
-        upload: { ...upload, handlers: [getStaticHandler(), ...existingHandlers] },
+        upload: { ...upload, handlers: [serveByFilename, ...existingHandlers] },
       }
     })
 
@@ -281,7 +298,7 @@ function cloudinaryStorageAdapter(
         useFilename: options.useFilename,
       }),
       requiresClientUploadReceipt: true,
-      staticHandler: getStaticHandler(),
+      staticHandler: getStaticHandler({ cloudName: options.cloudName }),
     }
   }
 }

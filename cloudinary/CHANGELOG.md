@@ -3,9 +3,11 @@
 ## Unreleased
 
 - chore: require Payload `^3.90.1`, which ships critical security fixes. Note two upgrade effects on upload collections: `@payloadcms/plugin-cloud-storage` now adds an `_objectKey` column, so Postgres and SQLite projects need a migration, and Payload caps server uploads at 20MB per file / 50MB per request by default (see the README for how to raise the limits)
-- fix: verify client uploads server-side before a document can reference them, so users can no longer point a document at an arbitrary URL or Cloudinary public ID
+- **BREAKING**: fix: verify client uploads server-side through a sign → upload → confirm flow backed by a Payload receipt, so documents can only reference assets the server minted for that user. The server now mints client-upload public IDs (with a random suffix) and signs `overwrite=false`. Custom clients must `POST /api/cloudinary-generate-signature?collectionSlug=…` with `{ filename, mimeType, size }`, upload with exactly the returned parameters, then `POST /api/cloudinary-confirm-upload?collectionSlug=…` with the returned `pendingReceipt` and Cloudinary's response
+- **BREAKING**: fix: `cloudinaryPublicId` can no longer be set through the API; only the plugin writes it
 - fix: replace the browser-uploaded asset instead of leaving an orphaned copy in Cloudinary when Payload re-encodes a client-uploaded image on the server
 - fix: replace characters Cloudinary does not allow in public IDs (`? & # \ % < > +`) with underscores when deriving the public ID from the filename, so such files upload and confirm reliably
+- fix: stream files from Cloudinary with `Range` support, serve SVG/XML with a restrictive `Content-Security-Policy`, and serve server-uploaded files through Payload's file route again (Payload 3.90 no longer stores their `url`)
 
 ## 0.4.1
 

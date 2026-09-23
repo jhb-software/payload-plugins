@@ -38,7 +38,8 @@ export type CloudinaryStorageOptions = {
   folder?: string
 
   /**
-   * Whether to use the original filename as part of the public ID
+   * Whether to use the original filename as part of the public ID. Client uploads append a random
+   * suffix to it.
    * @default true
    */
   useFilename?: boolean

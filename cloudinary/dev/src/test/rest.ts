@@ -1,6 +1,6 @@
 import type { SanitizedConfig } from 'payload'
 
-import { REST_POST } from '@payloadcms/next/routes'
+import { REST_GET, REST_PATCH, REST_POST } from '@payloadcms/next/routes'
 
 /**
  * Sends requests through the same REST route handler the dev app mounts at `/api/[...slug]`, so
@@ -22,22 +22,37 @@ export type ClientUploadFile = {
 }
 
 export const createRESTClient = ({ config, token }: RESTClientArgs) => {
-  const post = REST_POST(config)
+  const routes = { GET: REST_GET(config), PATCH: REST_PATCH(config), POST: REST_POST(config) }
 
-  const send = async (path: string, init: { body: BodyInit; headers?: HeadersInit }) => {
+  const send = async (
+    path: string,
+    init: { body?: BodyInit; headers?: HeadersInit; method?: keyof typeof routes },
+  ) => {
+    const method = init.method ?? 'POST'
     const url = new URL(`http://localhost:3000/api/${path.replace(/^\//, '')}`)
     const headers = new Headers(init.headers)
     if (token) {
       headers.set('Authorization', `JWT ${token}`)
     }
 
-    const request = new Request(url, { body: init.body, headers, method: 'POST' })
+    const request = new Request(url, { body: init.body, headers, method })
     const slug = url.pathname.replace(/^\/api\//, '').split('/')
 
-    return await post(request, { params: Promise.resolve({ slug }) })
+    return await routes[method](request, { params: Promise.resolve({ slug }) })
   }
 
   return {
+    /** GETs a path relative to `/api`, e.g. a file served through the collection's static handler. */
+    get: (path: string, headers?: HeadersInit) => send(path, { headers, method: 'GET' }),
+
+    /** PATCHes a JSON body, e.g. to update a document by id. */
+    patchJSON: (path: string, body: unknown) =>
+      send(path, {
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      }),
+
     /** POSTs a JSON body, e.g. to a custom endpoint. `path` is relative to `/api` and may carry a query. */
     postJSON: (path: string, body: unknown) =>
       send(path, {

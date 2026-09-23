@@ -1,23 +1,15 @@
 import type { ClientUploadsAccess } from '@payloadcms/plugin-cloud-storage/types'
 
 import { APIError, Forbidden, type PayloadRequest } from 'payload'
+import { assertClientUploadAccess as assertCollectionWriteAccess } from 'payload/internal'
 
-/**
- * By default a user may only use the client-upload endpoints if they are allowed to create
- * documents in the target upload collection. Falling back to mere authentication would let
- * any logged-in user sign or confirm uploads for collections they cannot upload to.
- */
-const defaultAccess: ClientUploadsAccess = async ({ collectionSlug, req }) => {
-  const createAccess = req.payload?.collections?.[collectionSlug]?.config?.access?.create
-  if (!createAccess) {
-    return !!req.user
-  }
-  return Boolean(await createAccess({ data: {}, req }))
-}
+/** Matches the official storage adapters: the custom rule only narrows core's baseline check. */
+const defaultAccess: ClientUploadsAccess = ({ req }) => !!req.user
 
 /**
  * Resolves the `collectionSlug` search param and throws unless it names a collection this plugin
- * manages and the user passes the access check.
+ * manages, the user may create or update documents in it (core's baseline, which also requires
+ * authentication), and the user passes the plugin's `clientUploads.access` rule.
  */
 export async function assertClientUploadAccess({
   access = defaultAccess,
@@ -31,14 +23,16 @@ export async function assertClientUploadAccess({
   const collectionSlug = req.searchParams.get('collectionSlug')
 
   if (!collectionSlug) {
-    throw new APIError('No payload was provided')
+    throw new APIError('No collectionSlug was provided.', 400)
   }
 
-  // Otherwise the access check could be satisfied via any collection the user can create in,
+  // Otherwise the access check could be satisfied via any collection the user can write to,
   // even ones unrelated to client uploads.
   if (!collections.includes(collectionSlug)) {
     throw new Forbidden()
   }
+
+  await assertCollectionWriteAccess({ collectionSlug, req })
 
   if (!(await access({ collectionSlug, req }))) {
     throw new Forbidden()

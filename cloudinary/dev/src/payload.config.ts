@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 import { Images } from './collections/images'
 import { Videos } from './collections/videos'
 import { ProcessedImages } from './collections/processedImages'
+import { VectorImages } from './collections/vectorImages'
 import sharp from 'sharp'
 import { databaseAdapter } from './databaseAdapter'
 
@@ -24,6 +25,7 @@ export default buildConfig({
     Videos,
     Images,
     ProcessedImages,
+    VectorImages,
     {
       slug: 'users',
       auth: true,
@@ -48,6 +50,7 @@ export default buildConfig({
           prefix: 'videos',
         },
         'processed-images': true,
+        'vector-images': true,
       },
       folder: 'cloudinary-storage-plugin-test',
       cloudName: process.env.CLOUDINARY_CLOUD_NAME!,

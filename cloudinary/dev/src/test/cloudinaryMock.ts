@@ -50,6 +50,49 @@ export const signCloudinaryResponse = ({
     1,
   )
 
+/**
+ * Plays Cloudinary's part of a signed browser upload: rejects the request unless `signature`
+ * matches the upload parameters, stores the asset under `folder/public_id` (as Cloudinary does
+ * when both are sent), and answers with a response signed over `{ public_id, version }`.
+ */
+export const fakeSignedBrowserUpload = ({
+  params,
+  signature,
+}: {
+  params: Record<string, number | string | undefined>
+  signature: string
+}): {
+  format: string
+  public_id: string
+  resource_type: string
+  signature: string
+  version: number
+} => {
+  const signedParams = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined),
+  )
+  const expected = (cloudinary.utils.api_sign_request as unknown as SignRequest)(
+    signedParams,
+    process.env.CLOUDINARY_API_SECRET!,
+    null,
+    2,
+  )
+  if (signature !== expected) {
+    throw new Error('Invalid Signature')
+  }
+
+  const folder = typeof params.folder === 'string' ? params.folder : ''
+  const publicId = folder ? `${folder}/${String(params.public_id)}` : String(params.public_id)
+  const version = 1
+  return {
+    format: 'jpg',
+    public_id: publicId,
+    resource_type: 'image',
+    signature: signCloudinaryResponse({ publicId, version }),
+    version,
+  }
+}
+
 const state = vi.hoisted(() => ({
   destroys: [] as RecordedDestroy[],
   uploads: [] as RecordedUpload[],
