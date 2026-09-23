@@ -5,7 +5,12 @@ import type stream from 'stream'
 import { v2 as cloudinary } from 'cloudinary'
 import fs from 'fs'
 
+import type { VerifiedClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
+
 import { generatePublicId } from './utilities/generatePublicId.js'
+
+/** `req.context` key holding the verified browser upload of the current create/update operation. */
+export const clientUploadContextKey = 'cloudinaryClientUpload'
 
 type HandleUploadArgs = {
   folderSrc: string
@@ -20,12 +25,28 @@ export const getHandleUpload = ({
   prefix = '',
   useFilename,
 }: HandleUploadArgs): HandleUpload => {
-  return async ({ data, file }) => {
-    const uploadOptions: UploadApiOptions = {
-      folder: folderSrc,
-      public_id: useFilename ? generatePublicId(prefix, file.filename) : undefined,
-      resource_type: 'auto',
-    }
+  return async ({ data, file, req }) => {
+    const clientUpload = req.context?.[clientUploadContextKey] as
+      undefined | VerifiedClientUploadContext
+
+    // When core re-encodes a browser upload with sharp, it drops the client upload context and the
+    // processed bytes arrive here. Replace the browser upload in place instead of orphaning it.
+    // Only the main file qualifies: generated image sizes carry their own filenames.
+    const replacedPublicId =
+      clientUpload?.publicId && file.filename === data.filename ? clientUpload.publicId : undefined
+
+    const uploadOptions: UploadApiOptions = replacedPublicId
+      ? {
+          invalidate: true,
+          overwrite: true,
+          public_id: replacedPublicId,
+          resource_type: 'auto',
+        }
+      : {
+          folder: folderSrc,
+          public_id: useFilename ? generatePublicId(prefix, file.filename) : undefined,
+          resource_type: 'auto',
+        }
 
     const fileBufferOrStream: Buffer | stream.Readable = file.tempFilePath
       ? fs.createReadStream(file.tempFilePath)

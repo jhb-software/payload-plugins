@@ -7,14 +7,30 @@ import { generatePublicId } from '../utilities/generatePublicId.js'
 export type CloudinaryClientUploadHandlerExtra = {
   apiKey: string
   cloudName: string
+  /** Path of the endpoint that verifies the Cloudinary upload and issues a Payload receipt. */
+  confirmHandlerPath: string
   folder?: string
   prefix: string
   useFilename?: boolean
 }
 
+/** Context the browser submits with the document. Core verifies the receipt server-side. */
 export type ClientUploadContext = {
+  signedReceipt: string
+}
+
+/** Context core hands to hooks and the static handler once the receipt is verified. */
+export type VerifiedClientUploadContext = {
   publicId: string
   secureUrl: string
+}
+
+type CloudinaryUploadResponse = {
+  format?: string
+  public_id: string
+  resource_type: string
+  signature: string
+  version: number
 }
 
 // 100MB threshold for chunked upload
@@ -74,6 +90,49 @@ async function getSignature(
   return data.signature
 }
 
+async function confirmUpload({
+  apiRoute,
+  collectionSlug,
+  confirmHandlerPath,
+  filename,
+  response,
+  serverURL,
+}: {
+  apiRoute: string
+  collectionSlug: string
+  confirmHandlerPath: string
+  filename: string
+  response: CloudinaryUploadResponse
+  serverURL: string
+}): Promise<ClientUploadContext> {
+  const res = await fetch(
+    `${serverURL}${apiRoute}${confirmHandlerPath}?collectionSlug=${collectionSlug}`,
+    {
+      body: JSON.stringify({
+        filename,
+        format: response.format,
+        publicId: response.public_id,
+        resourceType: response.resource_type,
+        signature: response.signature,
+        version: response.version,
+      }),
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    },
+  )
+
+  const data = await res.json()
+
+  if (!res.ok || typeof data?.signedReceipt !== 'string') {
+    throw new Error('Failed to confirm the upload')
+  }
+
+  return { signedReceipt: data.signedReceipt }
+}
+
 function buildFormData({
   apiKey,
   file,
@@ -103,7 +162,16 @@ export const CloudinaryClientUploadHandler: ReturnType<
   typeof createClientUploadHandler<CloudinaryClientUploadHandlerExtra>
 > = createClientUploadHandler<CloudinaryClientUploadHandlerExtra>({
   handler: async ({ apiRoute, collectionSlug, extra, file, serverHandlerPath, serverURL }) => {
-    const { apiKey, cloudName, folder, prefix, useFilename } = extra
+    const { apiKey, cloudName, confirmHandlerPath, folder, prefix, useFilename } = extra
+    const getReceipt = (response: CloudinaryUploadResponse) =>
+      confirmUpload({
+        apiRoute,
+        collectionSlug,
+        confirmHandlerPath,
+        filename: file.name,
+        response,
+        serverURL,
+      })
 
     const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
     const timestamp = Math.round(new Date().getTime() / 1000).toString()
@@ -124,7 +192,7 @@ export const CloudinaryClientUploadHandler: ReturnType<
       const totalChunks = Math.ceil(totalSize / DEFAULT_CHUNK_SIZE)
       const uniqueUploadId = `uqid-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
 
-      let responseData: { public_id: string; secure_url: string } | null = null
+      let responseData: CloudinaryUploadResponse | null = null
 
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
         const start = chunkIndex * DEFAULT_CHUNK_SIZE
@@ -159,10 +227,7 @@ export const CloudinaryClientUploadHandler: ReturnType<
         throw new Error('No response data received from chunked upload')
       }
 
-      return {
-        publicId: responseData.public_id,
-        secureUrl: responseData.secure_url,
-      } satisfies ClientUploadContext
+      return await getReceipt(responseData)
     }
 
     // Regular upload for smaller files
@@ -177,12 +242,8 @@ export const CloudinaryClientUploadHandler: ReturnType<
       throw new Error('Failed to upload file')
     }
 
-    const responseData = await response.json()
-
-    // This data is sent as the 'clientUploadContext' to the staticHandler function
-    return {
-      publicId: responseData.public_id,
-      secureUrl: responseData.secure_url,
-    } satisfies ClientUploadContext
+    // The receipt is sent as the 'clientUploadContext'. Core verifies it and replaces it with the
+    // server-verified { publicId, secureUrl } before hooks and the static handler see it.
+    return await getReceipt((await response.json()) as CloudinaryUploadResponse)
   },
 })

@@ -68,6 +68,10 @@ cloudinaryStorage({
 })
 ```
 
+After the browser finishes uploading, it asks a second endpoint (`/cloudinary-confirm-upload`, same access rule) to confirm the upload. The server verifies Cloudinary's response signature with the API secret, checks that the public ID lies in the configured folder (and matches the filename when `useFilename` is on), builds the file URL itself, and returns a Payload receipt that binds the asset to the user, collection, and filename. Payload rejects client uploads without a valid receipt, so a document can only reference assets confirmed this way.
+
+When Payload re-encodes a client-uploaded image on the server (`resizeOptions`, `formatOptions`, `trimOptions`, or animated GIF/WebP with `sharp` configured), the processed file is uploaded from the server under the same public ID, replacing the browser upload. Generated `imageSizes` are always uploaded from the server.
+
 ## Roadmap
 
 > ⚠️ **Warning**: This plugin is actively evolving and may undergo significant changes. While it is functional, please thoroughly test before using in production environments.

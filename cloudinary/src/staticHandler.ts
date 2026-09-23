@@ -1,6 +1,6 @@
 import type { StaticHandler } from '@payloadcms/plugin-cloud-storage/types'
 
-import type { ClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
+import type { VerifiedClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
 
 // This is called:
 // - after the client upload is finished with the clientUploadContext
@@ -9,7 +9,7 @@ export const getStaticHandler = (): StaticHandler => {
   return async (req, { doc, params }) => {
     try {
       type Params = {
-        clientUploadContext?: ClientUploadContext
+        clientUploadContext?: VerifiedClientUploadContext
         collection: string
         filename: string
       }
