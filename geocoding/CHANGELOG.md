@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- chore: require Payload `^3.90.1`, which ships critical security fixes
+
 ## 0.2.2
 
 - feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- chore: require Payload `^3.90.1`, which ships critical security fixes
+
 ## 0.1.0-beta.9
 
 BREAKING CHANGES:

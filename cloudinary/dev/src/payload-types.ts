@@ -128,6 +128,7 @@ export interface Video {
   cloudinaryPublicId?: string | null;
   description?: string | null;
   prefix?: string | null;
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -148,6 +149,7 @@ export interface Image {
   id: string;
   cloudinaryPublicId?: string | null;
   alt?: string | null;
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -173,6 +175,7 @@ export interface User {
   resetPasswordExpiration?: string | null;
   salt?: string | null;
   hash?: string | null;
+  resetPasswordRequestedAt?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
   sessions?:
@@ -271,6 +274,7 @@ export interface VideosSelect<T extends boolean = true> {
   cloudinaryPublicId?: T;
   description?: T;
   prefix?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -290,6 +294,7 @@ export interface VideosSelect<T extends boolean = true> {
 export interface ImagesSelect<T extends boolean = true> {
   cloudinaryPublicId?: T;
   alt?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -314,6 +319,7 @@ export interface UsersSelect<T extends boolean = true> {
   resetPasswordExpiration?: T;
   salt?: T;
   hash?: T;
+  resetPasswordRequestedAt?: T;
   loginAttempts?: T;
   lockUntil?: T;
   sessions?:

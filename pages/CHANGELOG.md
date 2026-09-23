@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- chore: require Payload `^3.90.1`, which ships critical security fixes
 - fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
 
 ## 0.9.0-beta.4

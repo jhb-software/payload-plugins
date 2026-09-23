@@ -7,18 +7,18 @@ allowBuilds:
   sharp: true
 
 minimumReleaseAgeExclude:
-  - '@payloadcms/translations@3.89.0'
-  - '@payloadcms/ui@3.89.0'
-  - payload@3.89.0
-  - '@payloadcms/db-mongodb@3.89.0'
-  - '@payloadcms/next@3.89.0'
-  - '@payloadcms/graphql@3.89.0'
+  - '@payloadcms/translations@3.90.1'
+  - '@payloadcms/ui@3.90.1'
+  - payload@3.90.1
+  - '@payloadcms/db-mongodb@3.90.1'
+  - '@payloadcms/next@3.90.1'
+  - '@payloadcms/graphql@3.90.1'
 
 overrides:
   js-yaml: '^4.3.2'
-  prettier: '3.9.6'
+  prettier: '3.9.8'
   '@eslint/plugin-kit': '^0.3.4'
-  next: '16.3.4'
+  next: '16.3.5'
   '@typescript-eslint/utils': '^8.59.3'
   '@typescript-eslint/eslint-plugin': '^8.59.3'
   '@typescript-eslint/parser': '^8.59.3'
