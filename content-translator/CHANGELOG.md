@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
+- fix: `i18n.translations` set by the project now override the plugin's own strings instead of being overridden by them
+
 ## 0.6.0
 
 - fix: a named tab without source data no longer stops translation of the fields after it

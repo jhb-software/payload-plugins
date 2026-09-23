@@ -15,7 +15,7 @@ import {
   createRevalidateAltTextHealthAfterChangeHook,
   createRevalidateAltTextHealthAfterDeleteHook,
 } from './hooks/revalidateAltTextHealth.js'
-import { translations } from './translations/index.js'
+import { withLanguageFallbacks } from './translations/withLanguageFallbacks.js'
 import { isValidMimeType, normalizeCollectionsConfig } from './utilities/mimeTypes.js'
 import { deepMergeSimple } from './utils/deepMergeSimple.js'
 
@@ -257,7 +257,10 @@ export const payloadAltTextPlugin =
       ],
       i18n: {
         ...config.i18n,
-        translations: deepMergeSimple(translations, incomingConfig.i18n?.translations ?? {}),
+        translations: deepMergeSimple(
+          withLanguageFallbacks(incomingConfig.i18n),
+          incomingConfig.i18n?.translations ?? {},
+        ),
       },
       onInit: async (payload) => {
         for (const warning of configWarnings) {

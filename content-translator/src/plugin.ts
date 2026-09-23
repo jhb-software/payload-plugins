@@ -6,7 +6,7 @@ import type { TranslatorConfig } from './types.js'
 
 import { CustomButton } from './client/components/CustomButton/index.js'
 import { PLUGIN_SLUG } from './constants.js'
-import { translations } from './i18n/translations.js'
+import { withLanguageFallbacks } from './i18n/withLanguageFallbacks.js'
 import { translateEndpoint } from './translate/endpoint.js'
 
 export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) => Plugin = (
@@ -104,9 +104,11 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
         }) ?? [],
       i18n: {
         ...config.i18n,
-        translations: {
-          ...deepMerge(config.i18n?.translations ?? {}, translations),
-        },
+        // The host's own strings win, so projects can override any of the plugin's.
+        translations: deepMerge(
+          withLanguageFallbacks(config.i18n),
+          config.i18n?.translations ?? {},
+        ),
       },
     }
 

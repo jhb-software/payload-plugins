@@ -43,6 +43,7 @@
     "qs-esm": "^8.0.2"
   },
   "peerDependencies": {
+    "@payloadcms/translations": "^3.89.0",
     "@payloadcms/ui": "^3.89.0",
     "next": "^15.0.0 || ^16.0.0",
     "payload": "^3.89.0",
@@ -51,6 +52,7 @@
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "3.28.0",
+    "@payloadcms/translations": "^3.89.0",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.16.2",
     "@types/react": "19.3.0",
