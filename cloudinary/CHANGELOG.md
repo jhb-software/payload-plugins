@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- chore: require Payload `^3.90.1`, which ships critical security fixes
+
 ## 0.4.1
 
 - fix: log the static handler's 404 diagnostics and `generateURL`'s missing-`mimeType` warning through the Payload logger instead of `console`, so they respect the project's log level and formatting

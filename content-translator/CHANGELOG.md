@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- chore: require Payload `^3.90.1`, which ships critical security fixes
 - fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
 - fix: `i18n.translations` set by the project now override the plugin's own strings instead of being overridden by them
 
