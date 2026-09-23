@@ -212,6 +212,7 @@ export interface User {
   resetPasswordExpiration?: string | null;
   salt?: string | null;
   hash?: string | null;
+  resetPasswordRequestedAt?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
   sessions?:
@@ -367,6 +368,7 @@ export interface ServiceAccount {
   enableAPIKey?: boolean | null;
   apiKey?: string | null;
   apiKeyIndex?: string | null;
+  hasAPIKey?: boolean | null;
   collection: 'service-accounts';
 }
 /**
@@ -528,6 +530,7 @@ export interface UsersSelect<T extends boolean = true> {
   resetPasswordExpiration?: T;
   salt?: T;
   hash?: T;
+  resetPasswordRequestedAt?: T;
   loginAttempts?: T;
   lockUntil?: T;
   sessions?:
@@ -627,6 +630,7 @@ export interface ServiceAccountsSelect<T extends boolean = true> {
   enableAPIKey?: T;
   apiKey?: T;
   apiKeyIndex?: T;
+  hasAPIKey?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
