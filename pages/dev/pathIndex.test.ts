@@ -360,6 +360,41 @@ describe('listPagePaths', () => {
       title: 'Root',
     })
   })
+
+  test("a later write sharing the request still runs under the request's locale", async () => {
+    const first = await createPage({ title: 'First', slug: 'first', _status: 'draft' })
+    const second = await createPage({ title: 'Second', slug: 'second', _status: 'draft' })
+
+    // e.g. a cache purge in the first write's afterChange enumerating paths
+    const req = await createLocalReq({ locale: 'de' }, payload)
+    await payload.update({ collection: 'pages', id: first.id, data: { _status: 'published' }, req })
+    await listPagePaths({ req })
+    await payload.update({
+      collection: 'pages',
+      id: second.id,
+      data: { _status: 'published' },
+      req,
+    })
+
+    const entries = await listPagePaths({ req: await createLocalReq({}, payload) })
+    expect(new Set(entries.map((entry) => entry.path))).toEqual(
+      new Set(['/de/first', '/de/second']),
+    )
+  })
+
+  test("a write running concurrently on the request still runs under the request's locale", async () => {
+    const page = await createPage({ title: 'Concurrent', slug: 'concurrent', _status: 'draft' })
+
+    // a bulk publish runs its documents in parallel on one request, so one document's
+    // afterChange enumeration overlaps the next document's write
+    const req = await createLocalReq({ locale: 'de' }, payload)
+    const enumeration = listPagePaths({ req })
+    await payload.update({ collection: 'pages', id: page.id, data: { _status: 'published' }, req })
+    await enumeration
+
+    const entries = await listPagePaths({ req: await createLocalReq({}, payload) })
+    expect(entries.map((entry) => entry.path)).toEqual(['/de/concurrent'])
+  })
 })
 
 describe('pathChanges', () => {

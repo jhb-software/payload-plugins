@@ -1,4 +1,4 @@
-import payload from 'payload'
+import payload, { createLocalReq } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   clearPathCache,
@@ -203,6 +203,41 @@ describe('findPageByPath query options', () => {
 
     expect(scoped?.doc.id).toBe(page.id)
     expect(excluded).toBeNull()
+  })
+
+  test("a write sharing the request after a lookup in another locale still runs under the request's locale", async () => {
+    const page = await createPage({ title: 'Über uns', slug: 'ueber-uns' })
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale: 'en',
+      data: { title: 'About us', slug: 'about-us', content: 'About us' },
+    })
+
+    const req = await createLocalReq({ locale: 'en' }, payload)
+    await findPageByPath({ cache: false, path: '/de/ueber-uns', req })
+    await payload.update({ collection: 'pages', id: page.id, data: { title: 'About' }, req })
+
+    const stored = await payload.findByID({ collection: 'pages', id: page.id, locale: 'all' })
+    expect(stored.title).toEqual({ de: 'Über uns', en: 'About' })
+  })
+
+  test("a write running concurrently with a lookup in another locale still runs under the request's locale", async () => {
+    const page = await createPage({ title: 'Über uns', slug: 'ueber-uns' })
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      locale: 'en',
+      data: { title: 'About us', slug: 'about-us', content: 'About us' },
+    })
+
+    const req = await createLocalReq({ locale: 'en' }, payload)
+    const lookup = findPageByPath({ cache: false, path: '/de/ueber-uns', req })
+    await payload.update({ collection: 'pages', id: page.id, data: { title: 'About' }, req })
+    await lookup
+
+    const stored = await payload.findByID({ collection: 'pages', id: page.id, locale: 'all' })
+    expect(stored.title).toEqual({ de: 'Über uns', en: 'About' })
   })
 })
 

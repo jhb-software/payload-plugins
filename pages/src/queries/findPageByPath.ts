@@ -6,6 +6,7 @@ import { getSelectMode } from 'payload/shared'
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 import type { FindPageByPathArgs, PageDocument, PageDocumentResult } from './types.js'
 
+import { isolateRequestLocale } from '../utils/isolateRequestLocale.js'
 import { localeCodesOf } from '../utils/localeFromRequest.js'
 import { parseLocalizedPath } from '../utils/localePrefix.js'
 import {
@@ -41,6 +42,9 @@ import { buildPathCacheKey, type PathCacheEntry } from './pathCache.js'
  * published lookup (and vice versa). The cache only maps a path to a document id — the
  * document itself is re-fetched on every lookup, so a content change to a draft is always
  * reflected without invalidating the cached path.
+ *
+ * A passed `req` keeps its `locale` and `fallbackLocale`, so other operations on it, including
+ * concurrent ones, are unaffected by the locale of the lookup.
  *
  * @example
  * ```ts
@@ -121,12 +125,14 @@ export async function findPageByPath<TDoc extends PageDocument = PageDocument>(
    * The request every internal query runs on. Computing the virtual `path` walks the ancestor
    * chain of each candidate, and those ancestor fetches are cached on the request context. One
    * shared request therefore lets the scan and the document fetch reuse a single walk instead of
-   * repeating it. A caller-provided request is passed through unchanged, so its transaction, user
-   * and context keep applying.
+   * repeating it. A caller-provided request keeps applying its transaction, user and context, but
+   * not the locale of the lookup.
    */
   let localReq: Promise<PayloadRequest> | undefined
   const getReq = (): Promise<PayloadRequest> =>
-    args.req ? Promise.resolve(args.req) : (localReq ??= createLocalReq({}, payload))
+    (localReq ??= args.req
+      ? Promise.resolve(isolateRequestLocale(args.req))
+      : createLocalReq({}, payload))
 
   /**
    * Runs a cache maintenance write. Deferred via `args.waitUntil` when provided (the lookup

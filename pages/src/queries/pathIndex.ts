@@ -19,6 +19,7 @@ import {
   pathCaptures,
 } from '../hooks/capturePreviousPaths.js'
 import { computeDocPaths, noDocPaths } from '../utils/computeDocPaths.js'
+import { isolateRequestLocale } from '../utils/isolateRequestLocale.js'
 import { assembleDescendantPaths, loadDescendants } from '../utils/loadDescendants.js'
 import { localeCodesOf } from '../utils/localeFromRequest.js'
 import {
@@ -102,6 +103,8 @@ export type ListPagePathsArgs = {
  * skipped access control are defaults, not restrictions — infrastructure code (a cache warmer,
  * a multi-tenant sitemap sweep, build-time enumeration) lifts them via `baseFilter: false` and
  * scopes explicitly through `where`, or opts into enforcement via `overrideAccess: false`.
+ * `req` keeps its `locale` and `fallbackLocale`, so it is safe to call from a write hook
+ * that shares the request with later or concurrent writes.
  *
  * @experimental This API is experimental and may change or be removed in a future minor
  * release without a breaking-change bump. It needs more real-world testing before it is
@@ -148,6 +151,8 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
   const pluginConfig = pagesPluginConfigOf(collections[0])
   const baseFilter = args.baseFilter === false ? undefined : pluginConfig?.baseFilter?.({ req })
 
+  const queryReq = isolateRequestLocale(req)
+
   const enumerateCollection = async (
     collection: PageCollectionConfig,
   ): Promise<PagePathEntry[]> => {
@@ -174,7 +179,7 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
       locale,
       overrideAccess: args.overrideAccess,
       pagination: false,
-      req,
+      req: queryReq,
       select: {
         [labelField]: true,
         path: true,

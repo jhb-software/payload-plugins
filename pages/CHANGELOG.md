@@ -4,6 +4,7 @@
 
 - chore: require Payload `^3.90.1`, which ships critical security fixes
 - fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
+- fix: `listPagePaths` and `findPageByPath` no longer switch the passed `req` to the locale they query, which broke later and concurrent writes on the same request (e.g. a bulk publish whose hook enumerates paths)
 
 ## 0.9.0-beta.4
 
