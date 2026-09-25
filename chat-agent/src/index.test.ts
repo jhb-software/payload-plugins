@@ -58,6 +58,9 @@ vi.mock('ai', async () => {
  * tests can assert on the factory's call log and on the exact instance the
  * handler hands to `streamText`.
  */
+/** Minimal `req.payload` for handlers that only run the default access check. */
+const adminPayload = { config: { admin: { user: 'users' } } }
+
 /**
  * The sentinel is typed as `LanguageModel` only at the boundary — its real
  * shape (`{ id, __fake }`) never reaches a provider, because `streamText`
@@ -202,8 +205,8 @@ describe('chatAgentPlugin', () => {
             },
           ],
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(response.status).toBe(500)
@@ -232,8 +235,8 @@ describe('chatAgentPlugin', () => {
           Promise.resolve({
             messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
           }),
-        payload: { config: { collections: [], globals: [] } },
-        user: { id: 1 },
+        payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+        user: { id: 1, collection: 'users' },
       })
 
       expect(response.status).toBe(500)
@@ -259,8 +262,8 @@ describe('chatAgentPlugin', () => {
 
     const response = await handler({
       json: () => Promise.reject(new Error('Invalid JSON')),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(response.status).toBe(400)
@@ -277,8 +280,8 @@ describe('chatAgentPlugin', () => {
 
     const response = await handler({
       json: () => Promise.resolve({ messages: [] }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(response.status).toBe(400)
@@ -330,8 +333,8 @@ describe('chatAgentPlugin tool-call sanitization', () => {
             },
           ],
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     const sent = vi.mocked(streamText).mock.calls[0][0].messages as Array<{
@@ -399,8 +402,8 @@ describe('chatAgentPlugin tool-call sanitization', () => {
         Promise.resolve({
           messages: [{ id: 'u1', parts: [{ type: 'text', text: 'skip' }], role: 'user' }],
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     const sent = vi.mocked(streamText).mock.calls[0][0].messages as Array<{
@@ -458,7 +461,10 @@ describe('chatAgentPlugin modes', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
-    const response = await handler({ user: { id: 'u1' } })
+    const response = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users' },
+    })
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.modes).toEqual(['read', 'ask', 'read-write'])
@@ -476,7 +482,10 @@ describe('chatAgentPlugin modes', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
-    const response = await handler({ user: { id: 'u1' } })
+    const response = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users' },
+    })
     const body = await response.json()
     expect(body.modes).toContain('superuser')
   })
@@ -495,12 +504,18 @@ describe('chatAgentPlugin modes', () => {
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
     // Non-admin user
-    const res1 = await handler({ user: { id: 'u1', role: 'editor' } })
+    const res1 = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users', role: 'editor' },
+    })
     const body1 = await res1.json()
     expect(body1.modes).not.toContain('read-write')
 
     // Admin user
-    const res2 = await handler({ user: { id: 'u2', role: 'admin' } })
+    const res2 = await handler({
+      payload: adminPayload,
+      user: { id: 'u2', collection: 'users', role: 'admin' },
+    })
     const body2 = await res2.json()
     expect(body2.modes).toContain('read-write')
   })
@@ -514,7 +529,10 @@ describe('chatAgentPlugin modes', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
-    const response = await handler({ user: { id: 'u1' } })
+    const response = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users' },
+    })
     const body = await response.json()
     expect(body.default).toBe('read-write')
   })
@@ -532,7 +550,10 @@ describe('chatAgentPlugin modes', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
-    const response = await handler({ user: { id: 'u1' } })
+    const response = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users' },
+    })
     const body = await response.json()
     expect(body.emptyState).toEqual({
       description: 'I can help with **content**.',
@@ -556,7 +577,10 @@ describe('chatAgentPlugin modes', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
-    const response = await handler({ user: { id: 'u1' } })
+    const response = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users' },
+    })
     const body = await response.json()
     expect(body.emptyState).toEqual({
       starterPrompts: [],
@@ -572,7 +596,10 @@ describe('chatAgentPlugin modes', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
-    const response = await handler({ user: { id: 'u1' } })
+    const response = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users' },
+    })
     const body = await response.json()
     expect(body.emptyState).toBeUndefined()
   })
@@ -589,7 +616,10 @@ describe('chatAgentPlugin modes', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
-    const response = await handler({ user: { id: 'u1' } })
+    const response = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users' },
+    })
     const body = await response.json()
     expect(body.emptyState).toEqual({
       starterPrompts: ['Draft a post'],
@@ -609,7 +639,10 @@ describe('chatAgentPlugin modes', () => {
     const result = plugin({ endpoints: [] })
     const handler = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
 
-    const response = await handler({ user: { id: 'u1' } })
+    const response = await handler({
+      payload: adminPayload,
+      user: { id: 'u1', collection: 'users' },
+    })
     const body = await response.json()
     expect(body.emptyState).toEqual({
       starterPrompts: ['Hello'],
@@ -631,8 +664,8 @@ describe('chatAgentPlugin modes', () => {
           messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
           mode: 'invalid',
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(response.status).toBe(403)
@@ -659,8 +692,8 @@ describe('chatAgentPlugin modes', () => {
           messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
           mode: 'superuser',
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(response.status).toBe(403)
@@ -867,8 +900,8 @@ describe('chatAgentPlugin model validation', () => {
           messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
           model: 'claude-opus-4-20250514',
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(response.status).toBe(400)
@@ -895,8 +928,8 @@ describe('chatAgentPlugin model validation', () => {
           messages: [{ id: '1', parts: [{ type: 'text', text: 'test' }], role: 'user' }],
           model: 'any-model-id',
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(response.status).not.toBe(400)
@@ -937,8 +970,8 @@ describe('chatAgentPlugin model factory', () => {
             messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
             model: 'gpt-4o',
           }),
-        payload: { config: { collections: [], globals: [] } },
-        user: { id: 1 },
+        payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+        user: { id: 1, collection: 'users' },
       })
     } catch {
       // streamText will reject because the fake model isn't a real LanguageModel
@@ -963,8 +996,8 @@ describe('chatAgentPlugin model factory', () => {
           Promise.resolve({
             messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
           }),
-        payload: { config: { collections: [], globals: [] } },
-        user: { id: 1 },
+        payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+        user: { id: 1, collection: 'users' },
       })
     } catch {
       // streamText rejects on fake model
@@ -989,8 +1022,8 @@ describe('chatAgentPlugin model factory', () => {
         Promise.resolve({
           messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(response.status).toBe(500)
@@ -1024,8 +1057,8 @@ describe('chatAgentPlugin model factory', () => {
         Promise.resolve({
           messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
         }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(vi.mocked(streamText)).toHaveBeenCalledTimes(1)
@@ -1056,9 +1089,9 @@ describe('chatAgentPlugin model factory', () => {
         Promise.resolve({
           messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
         }),
-      payload: { config: { collections: [], globals: [] } },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
       signal: controller.signal,
-      user: { id: 1 },
+      user: { id: 1, collection: 'users' },
     })
 
     const forwarded = vi.mocked(streamText).mock.calls[0][0].abortSignal
@@ -1104,8 +1137,8 @@ describe('chatAgentPlugin model factory', () => {
               messages: [{ id: '1', parts: [{ type: 'text', text: 'hi' }], role: 'user' }],
               model: modelId,
             }),
-          payload: { config: { collections: [], globals: [] } },
-          user: { id: 1 },
+          payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+          user: { id: 1, collection: 'users' },
         })
       } catch {
         // Expected — fake model
@@ -1145,7 +1178,10 @@ describe('chatAgentPlugin models endpoint', () => {
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat/models')
 
-    const response = await ep.handler({ user: { id: 1 } })
+    const response = await ep.handler({
+      payload: adminPayload,
+      user: { id: 1, collection: 'users' },
+    })
     const body = await response.json()
     expect(body.defaultModel).toBe('claude-sonnet-4-20250514')
     expect(body.availableModels).toHaveLength(2)
@@ -1159,7 +1195,10 @@ describe('chatAgentPlugin models endpoint', () => {
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat/models')
 
-    const response = await ep.handler({ user: { id: 1 } })
+    const response = await ep.handler({
+      payload: adminPayload,
+      user: { id: 1, collection: 'users' },
+    })
     const body = await response.json()
     expect(body.defaultModel).toBe('gpt-4o-mini')
     expect(body.availableModels).toEqual([])
@@ -1175,8 +1214,8 @@ describe('chatAgentPlugin models endpoint', () => {
     const ep = config.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat/models')
 
     const response = await ep.handler({
-      payload: { config: { custom: config.custom } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, custom: config.custom } },
+      user: { id: 1, collection: 'users' },
     })
     expect(response.status).toBe(401)
   })
@@ -1202,8 +1241,8 @@ describe('chatAgentPlugin access()', () => {
     const config = denyingPlugin()({ endpoints: [] })
     const handler = config.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/modes').handler
     const response = await handler({
-      payload: { config: { custom: config.custom } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, custom: config.custom } },
+      user: { id: 1, collection: 'users' },
     })
     expect(response.status).toBe(401)
   })
@@ -1213,8 +1252,8 @@ describe('chatAgentPlugin access()', () => {
     const handler = config.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/chat').handler
     const response = await handler({
       json: () => Promise.resolve({ messages: [] }),
-      payload: { config: { custom: config.custom } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, custom: config.custom } },
+      user: { id: 1, collection: 'users' },
     })
     expect(response.status).toBe(401)
   })
@@ -1225,15 +1264,15 @@ describe('chatAgentPlugin access()', () => {
       (ep: Endpoint) => ep.path === '/chat-agent/chat/models',
     ).handler
     const response = await handler({
-      payload: { config: { custom: config.custom } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, custom: config.custom } },
+      user: { id: 1, collection: 'users' },
     })
     expect(response.status).toBe(401)
   })
 
   it('denies every conversation CRUD endpoint', async () => {
     const config = denyingPlugin()({ endpoints: [] })
-    const payload = { config: { custom: config.custom } }
+    const payload = { config: { admin: { user: 'users' }, custom: config.custom } }
     const routes = [
       ['get', '/chat-agent/chat/conversations'],
       ['get', '/chat-agent/chat/conversations/:id'],
@@ -1249,7 +1288,7 @@ describe('chatAgentPlugin access()', () => {
         json: () => Promise.resolve({}),
         payload,
         routeParams: { id: 'c1' },
-        user: { id: 1 },
+        user: { id: 1, collection: 'users' },
       })
       expect(response.status, `${method} ${path}`).toBe(401)
     }
@@ -1293,8 +1332,8 @@ describe('chatAgentPlugin budget', () => {
 
     const res = await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(res.status).toBe(429)
@@ -1315,8 +1354,8 @@ describe('chatAgentPlugin budget', () => {
 
     const res = await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(res.status).toBe(200)
@@ -1338,8 +1377,8 @@ describe('chatAgentPlugin budget', () => {
 
     const res = await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(res.status).toBe(200)
@@ -1365,8 +1404,8 @@ describe('chatAgentPlugin budget', () => {
 
     const res = await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(res.status).toBe(500)
@@ -1401,8 +1440,8 @@ describe('chatAgentPlugin budget', () => {
 
     await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 7 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 7, collection: 'users' },
     })
 
     const { _streamTextOpts } = lastStreamTextHandle()
@@ -1427,8 +1466,8 @@ describe('chatAgentPlugin budget', () => {
     ).handler
     await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
     const { _streamTextOpts } = lastStreamTextHandle()
 
@@ -1460,7 +1499,7 @@ describe('chatAgentPlugin GET /chat-agent/budget', () => {
     const result = plugin({ endpoints: [] })
     const ep = result.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/budget')
     expect(ep).toBeDefined()
-    const res = await ep.handler({ user: { id: 1 } })
+    const res = await ep.handler({ payload: adminPayload, user: { id: 1, collection: 'users' } })
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ remaining: 42 })
   })
@@ -1475,8 +1514,8 @@ describe('chatAgentPlugin GET /chat-agent/budget', () => {
     const config = plugin({ endpoints: [] })
     const ep = config.endpoints.find((ep: Endpoint) => ep.path === '/chat-agent/budget')
     const res = await ep.handler({
-      payload: { config: { custom: config.custom } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, custom: config.custom } },
+      user: { id: 1, collection: 'users' },
     })
     expect(res.status).toBe(401)
   })
@@ -1533,8 +1572,8 @@ describe('chatAgentPlugin tools', () => {
 
     await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     const { _streamTextOpts } = lastStreamTextHandle()
@@ -1560,8 +1599,8 @@ describe('chatAgentPlugin tools', () => {
 
     await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(receivedDefaults).toBeDefined()
@@ -1589,8 +1628,8 @@ describe('chatAgentPlugin tools', () => {
 
     await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     const { _streamTextOpts } = lastStreamTextHandle()
@@ -1611,8 +1650,8 @@ describe('chatAgentPlugin tools', () => {
 
     await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     const { _streamTextOpts } = lastStreamTextHandle()
@@ -1636,10 +1675,10 @@ describe('chatAgentPlugin tools', () => {
       (ep: Endpoint) => ep.path === '/chat-agent/chat',
     ).handler
 
-    const fakeUser = { id: 7, email: 'user@test.com' }
+    const fakeUser = { id: 7, collection: 'users', email: 'user@test.com' }
     await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
       user: fakeUser,
     })
 
@@ -1681,15 +1720,15 @@ describe('chatAgentPlugin tools', () => {
 
     await handler({
       json: () => Promise.resolve({ ...validChatBody, model: 'gpt-5-mini' }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
     expect(lastStreamTextHandle()._streamTextOpts.tools!.webSearch).toBeUndefined()
 
     await handler({
       json: () => Promise.resolve({ ...validChatBody, model: 'claude-sonnet-4-20250514' }),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
     expect(lastStreamTextHandle()._streamTextOpts.tools!.webSearch).toBeDefined()
   })
@@ -1712,8 +1751,8 @@ describe('chatAgentPlugin tools', () => {
 
     await handler({
       json: () => Promise.resolve(validChatBody),
-      payload: { config: { collections: [], globals: [] } },
-      user: { id: 1 },
+      payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+      user: { id: 1, collection: 'users' },
     })
 
     expect(receivedModelIds).toEqual(['claude-sonnet-4-20250514'])
@@ -1741,8 +1780,8 @@ describe('chatAgentPlugin tools', () => {
       ).handler
       await handler({
         json: () => Promise.resolve(validChatBody),
-        payload: { config: { collections: [], globals: [] } },
-        user: { id: 1 },
+        payload: { config: { admin: { user: 'users' }, collections: [], globals: [] } },
+        user: { id: 1, collection: 'users' },
       })
       return lastStreamTextHandle()._streamTextOpts.tools
     }

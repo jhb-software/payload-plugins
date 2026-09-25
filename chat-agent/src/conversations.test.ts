@@ -53,9 +53,14 @@ type MockReq = {
   user?: unknown
 }
 
-/** Call a handler with a partial `PayloadRequest` — avoids per-call casts. */
+/**
+ * Call a handler with a partial `PayloadRequest` — avoids per-call casts.
+ * Like a real request, `payload.config.admin.user` names the admin user
+ * collection unless the test's `payload` stub overrides `config`.
+ */
 function callHandler(handler: PayloadHandler, req: MockReq): Promise<Response> | Response {
-  return handler(req as unknown as PayloadRequest)
+  const payload = { config: { admin: { user: 'users' } }, ...(req.payload as object) }
+  return handler({ ...req, payload } as unknown as PayloadRequest)
 }
 
 // ---------------------------------------------------------------------------
@@ -70,9 +75,20 @@ describe('conversationsCollection', () => {
 
   it('returns a where constraint for read with a user', () => {
     const result = conversationsCollection.access!.read!(
-      asAccessArgs({ req: { user: { id: 'u1' } } }),
+      asAccessArgs({ req: { user: { id: 'u1', collection: 'users' } } }),
     )
     expect(result).toEqual({ user: { equals: 'u1' } })
+  })
+
+  // On SQL databases ids are per-collection counters, so `customers` #5 and
+  // `users` #5 share the id 5. An id-only filter would hand the customer the
+  // editor's conversations.
+  it("hides an editor's conversations from a user of another auth collection with the same id", () => {
+    const req = { user: { id: 5, collection: 'customers' } }
+    expect(conversationsCollection.access!.read!(asAccessArgs({ req }))).toBe(false)
+    expect(conversationsCollection.access!.update!(asAccessArgs({ req }))).toBe(false)
+    expect(conversationsCollection.access!.delete!(asAccessArgs({ req }))).toBe(false)
+    expect(conversationsCollection.access!.create!(asAccessArgs({ req }))).toBe(false)
   })
 
   it('denies create access without a user', () => {
@@ -82,7 +98,7 @@ describe('conversationsCollection', () => {
 
   it('allows create access with a user', () => {
     const result = conversationsCollection.access!.create!(
-      asAccessArgs({ req: { user: { id: 'u1' } } }),
+      asAccessArgs({ req: { user: { id: 'u1', collection: 'users' } } }),
     )
     expect(result).toBe(true)
   })
@@ -106,7 +122,7 @@ describe('conversationsCollection', () => {
       const result = await hook({
         data: { messages: [], title: 'hi', user: 'someone-else' },
         operation: 'create',
-        req: { user: { id: 'me' } },
+        req: { user: { id: 'me', collection: 'users' } },
       })
       expect(result.user).toBe('me')
     })
@@ -115,7 +131,7 @@ describe('conversationsCollection', () => {
       const result = await hook({
         data: { title: 'renamed', user: 'someone-else' },
         operation: 'update',
-        req: { user: { id: 'me' } },
+        req: { user: { id: 'me', collection: 'users' } },
       })
       expect(result.user).toBe('me')
     })
@@ -196,7 +212,10 @@ function payloadWithAccess(
   access: (req: PayloadRequest) => boolean | Promise<boolean>,
   extra: Record<string, unknown> = {},
 ) {
-  return { config: { custom: { chatAgent: { pluginOptions: { access } } } }, ...extra }
+  return {
+    config: { admin: { user: 'users' }, custom: { chatAgent: { pluginOptions: { access } } } },
+    ...extra,
+  }
 }
 
 describe('conversation endpoints respect plugin access()', () => {
@@ -212,7 +231,20 @@ describe('conversation endpoints respect plugin access()', () => {
       json: () => Promise.resolve({}),
       payload: payloadWithAccess(() => false),
       routeParams: { id: 'c1' },
-      user: { id: 'u1' },
+      user: { id: 'u1', collection: 'users' },
+    })
+    expect(res.status).toBe(401)
+  })
+
+  // A custom `access` may admit other auth collections (e.g. service
+  // accounts), but conversations belong to `users` documents only.
+  it("does not list an editor's conversations to an admitted user of another auth collection", async () => {
+    const handler = findHandler(conversationEndpoints, 'get', '/chat-agent/chat/conversations')
+    const res = await callHandler(handler, {
+      payload: payloadWithAccess(() => true, {
+        find: () => ({ docs: [{ id: 'c1', title: "Editor #5's chat" }] }),
+      }),
+      user: { id: 5, collection: 'service-accounts' },
     })
     expect(res.status).toBe(401)
   })
@@ -239,7 +271,7 @@ describe('conversation endpoint handlers', () => {
             return { docs }
           },
         },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -260,7 +292,7 @@ describe('conversation endpoint handlers', () => {
             return { docs: [] }
           },
         },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect((captured as unknown as { select?: Record<string, boolean> }).select).toEqual({
         title: true,
@@ -288,7 +320,10 @@ describe('conversation endpoint handlers', () => {
         'get',
         '/chat-agent/chat/conversations/:id',
       )
-      const res = await callHandler(handler, { routeParams: {}, user: { id: 'u1' } })
+      const res = await callHandler(handler, {
+        routeParams: {},
+        user: { id: 'u1', collection: 'users' },
+      })
       expect(res.status).toBe(400)
     })
 
@@ -308,7 +343,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'c1' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual(doc)
@@ -327,7 +362,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'nope' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(404)
     })
@@ -355,7 +390,7 @@ describe('conversation endpoint handlers', () => {
             return created
           },
         },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(201)
       expect(await res.json()).toEqual(created)
@@ -365,7 +400,7 @@ describe('conversation endpoint handlers', () => {
       const handler = findHandler(conversationEndpoints, 'post', '/chat-agent/chat/conversations')
       const res = await callHandler(handler, {
         json: () => Promise.reject(new Error('bad')),
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(400)
     })
@@ -391,7 +426,7 @@ describe('conversation endpoint handlers', () => {
             return { id: 'c1' }
           },
         },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(201)
       expect(captured?.data?.mode).toBe('read-write')
@@ -416,7 +451,7 @@ describe('conversation endpoint handlers', () => {
             return { id: 'c1' }
           },
         },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(201)
       expect(captured?.data?.totalTokens).toBe(200)
@@ -454,7 +489,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'c1' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(200)
     })
@@ -482,7 +517,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'c1' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(200)
       expect(captured?.data?.mode).toBe('read')
@@ -511,7 +546,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'c1' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(200)
       expect(captured?.data?.totalTokens).toBe(80)
@@ -533,7 +568,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'c1' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       // totalTokens is only written when messages change, so a pure rename
       // leaves the existing aggregate untouched.
@@ -554,7 +589,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'nope' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(404)
     })
@@ -587,7 +622,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'c1' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ deleted: true })
@@ -606,7 +641,7 @@ describe('conversation endpoint handlers', () => {
           },
         },
         routeParams: { id: 'nope' },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       })
       expect(res.status).toBe(404)
     })

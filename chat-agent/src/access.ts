@@ -12,8 +12,9 @@ export function getPluginAccess(payload: Payload | undefined): PluginAccessFn | 
  * Shared access check for the chat agent plugin.
  *
  * Reads the plugin's `access` function and evaluates it against the current
- * request. When no access function is configured, falls back to
- * "any authenticated user".
+ * request. When no access function is configured, only users of the admin
+ * user collection (`admin.user`) are allowed: other auth collections, such as
+ * site customers, must be admitted explicitly.
  */
 export async function isPluginAccessAllowed(
   req: Pick<PayloadRequest, 'payload' | 'user'>,
@@ -22,5 +23,5 @@ export async function isPluginAccessAllowed(
   if (access) {
     return Boolean(await access(req as PayloadRequest))
   }
-  return !!req?.user
+  return Boolean(req?.user) && req.user?.collection === req.payload.config.admin.user
 }

@@ -68,8 +68,8 @@ describe('ChatNavLinkServer', () => {
   it('renders the nav link for an authenticated user with no custom access', async () => {
     const jsx = await ChatNavLinkServer(
       asServerProps({
-        payload: { config: { custom: { chatAgent: {} } } },
-        user: { id: 'u1' },
+        payload: { config: { admin: { user: 'users' }, custom: { chatAgent: {} } } },
+        user: { id: 'u1', collection: 'users' },
       }),
     )
 
@@ -80,7 +80,7 @@ describe('ChatNavLinkServer', () => {
   it('hides the nav link when user is null', async () => {
     const jsx = await ChatNavLinkServer(
       asServerProps({
-        payload: { config: { custom: { chatAgent: {} } } },
+        payload: { config: { admin: { user: 'users' }, custom: { chatAgent: {} } } },
         user: undefined,
       }),
     )
@@ -96,7 +96,7 @@ describe('ChatNavLinkServer', () => {
             custom: { chatAgent: { pluginOptions: { access: () => false } } },
           },
         },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       }),
     )
 
@@ -111,7 +111,7 @@ describe('ChatNavLinkServer', () => {
             custom: { chatAgent: { pluginOptions: { access: () => true } } },
           },
         },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       }),
     )
 
@@ -124,9 +124,9 @@ describe('ChatNavLinkServer', () => {
       asServerProps({
         path: '/assistant',
         payload: {
-          config: { custom: { chatAgent: {} } },
+          config: { admin: { user: 'users' }, custom: { chatAgent: {} } },
         },
-        user: { id: 'u1' },
+        user: { id: 'u1', collection: 'users' },
       }),
     )
 

@@ -15,6 +15,22 @@ import { AGENT_MODES, type AgentMode } from './types.js'
 
 export const CONVERSATIONS_SLUG = 'agent-conversations'
 
+/** The auth collection conversations belong to (the `user` field's `relationTo`). */
+const OWNER_COLLECTION = 'users'
+
+/**
+ * Ids are only unique within a collection (SQL databases count them per
+ * collection), so ownership checks must match the collection as well as the id.
+ */
+export function isConversationOwner(
+  user: PayloadRequest['user'] | undefined,
+): user is NonNullable<PayloadRequest['user']> {
+  return user?.collection === OWNER_COLLECTION
+}
+
+const ownConversations = ({ req }: AccessArgs) =>
+  isConversationOwner(req.user) ? { user: { equals: req.user.id } } : false
+
 // ---------------------------------------------------------------------------
 // Collection definition
 // ---------------------------------------------------------------------------
@@ -22,25 +38,10 @@ export const CONVERSATIONS_SLUG = 'agent-conversations'
 export const conversationsCollection: CollectionConfig = {
   slug: CONVERSATIONS_SLUG,
   access: {
-    create: ({ req }: AccessArgs) => !!req.user,
-    delete: ({ req }: AccessArgs) => {
-      if (!req.user) {
-        return false
-      }
-      return { user: { equals: req.user.id } }
-    },
-    read: ({ req }: AccessArgs) => {
-      if (!req.user) {
-        return false
-      }
-      return { user: { equals: req.user.id } }
-    },
-    update: ({ req }: AccessArgs) => {
-      if (!req.user) {
-        return false
-      }
-      return { user: { equals: req.user.id } }
-    },
+    create: ({ req }: AccessArgs) => isConversationOwner(req.user),
+    delete: ownConversations,
+    read: ownConversations,
+    update: ownConversations,
   },
   admin: {
     group: 'Chat',
@@ -71,7 +72,7 @@ export const conversationsCollection: CollectionConfig = {
       // by the same field. Without an index, both degrade to a full scan
       // once the collection grows beyond a trivial size.
       index: true,
-      relationTo: 'users',
+      relationTo: OWNER_COLLECTION,
       required: true,
     },
     {
@@ -118,7 +119,7 @@ export const conversationsCollection: CollectionConfig = {
 
 /** GET /api/chat-agent/chat/conversations — list user's conversations */
 async function listConversations(req: PayloadRequest): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req)) || !req.user) {
+  if (!(await isPluginAccessAllowed(req)) || !isConversationOwner(req.user)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -139,7 +140,7 @@ async function listConversations(req: PayloadRequest): Promise<Response> {
 
 /** GET /api/chat-agent/chat/conversations/:id — get single conversation */
 async function getConversation(req: PayloadRequest): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req)) || !req.user) {
+  if (!(await isPluginAccessAllowed(req)) || !isConversationOwner(req.user)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -193,7 +194,7 @@ function sumMessageTokens(messages: undefined | unknown[]): number {
 
 /** POST /api/chat-agent/chat/conversations — create a conversation */
 async function createConversation(req: PayloadRequest): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req)) || !req.user) {
+  if (!(await isPluginAccessAllowed(req)) || !isConversationOwner(req.user)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -221,7 +222,7 @@ async function createConversation(req: PayloadRequest): Promise<Response> {
 
 /** PATCH /api/chat-agent/chat/conversations/:id — update a conversation */
 async function updateConversation(req: PayloadRequest): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req)) || !req.user) {
+  if (!(await isPluginAccessAllowed(req)) || !isConversationOwner(req.user)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -272,7 +273,7 @@ async function updateConversation(req: PayloadRequest): Promise<Response> {
 
 /** DELETE /api/chat-agent/chat/conversations/:id — delete a conversation */
 async function deleteConversation(req: PayloadRequest): Promise<Response> {
-  if (!(await isPluginAccessAllowed(req)) || !req.user) {
+  if (!(await isPluginAccessAllowed(req)) || !isConversationOwner(req.user)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -7,7 +7,7 @@ import { formatAdminURL } from 'payload/shared'
 import type { AgentMode } from '../types.js'
 
 import { isPluginAccessAllowed } from '../access.js'
-import { CONVERSATIONS_SLUG } from '../conversations.js'
+import { CONVERSATIONS_SLUG, isConversationOwner } from '../conversations.js'
 import { resolveEmptyState } from '../index.js'
 import { getDefaultMode, resolveAvailableModes } from '../modes.js'
 import { getPluginCustomConfig, getPluginOptions } from '../plugin-custom-config.js'
@@ -83,7 +83,7 @@ export default async function ChatViewServer({
   // The sidebar only uses `id`, `title`, and `updatedAt`; selecting just
   // those avoids sending the full `messages` JSON of every conversation on
   // the first paint.
-  const { docs: conversations } = user
+  const { docs: conversations } = isConversationOwner(user)
     ? await payload.find({
         collection: CONVERSATIONS_SLUG,
         depth: 0,
@@ -98,7 +98,7 @@ export default async function ChatViewServer({
   let initialMessages: undefined | unknown[]
   let initialMode: AgentMode | undefined
   let initialModel: string | undefined
-  if (conversationId && user) {
+  if (conversationId && isConversationOwner(user)) {
     try {
       const doc = await payload.findByID({
         id: conversationId,
