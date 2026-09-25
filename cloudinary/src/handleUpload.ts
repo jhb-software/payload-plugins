@@ -48,34 +48,41 @@ export const getHandleUpload = ({
           resource_type: 'auto',
         }
 
-    const fileBufferOrStream: Buffer | stream.Readable = file.tempFilePath
-      ? fs.createReadStream(file.tempFilePath)
-      : file.buffer
+    /** Writes the file into the SDK's upload stream: temp files are piped, buffers written. */
+    const send = (target: stream.Writable, reject: (error: Error) => void) => {
+      if (file.tempFilePath) {
+        fs.createReadStream(file.tempFilePath).on('error', reject).pipe(target)
+      } else {
+        target.end(file.buffer)
+      }
+    }
 
     async function uploadStream(): Promise<UploadApiResponse> {
       if (file.buffer.length > 0 && file.buffer.length < multipartThreshold) {
         return await new Promise((resolve, reject) => {
-          cloudinary.uploader
-            .upload_stream(uploadOptions, (error, result) => {
+          send(
+            cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
               if (error) {
                 reject(new Error(`Upload error: ${error.message}`))
               }
 
               resolve(result!)
-            })
-            .end(fileBufferOrStream)
+            }),
+            reject,
+          )
         })
       } else {
         return await new Promise((resolve, reject) => {
-          cloudinary.uploader
-            .upload_chunked_stream(uploadOptions, (error, result) => {
+          send(
+            cloudinary.uploader.upload_chunked_stream(uploadOptions, (error, result) => {
               if (error) {
                 reject(new Error(`Chunked upload error: ${error.message}`))
               }
 
               resolve(result!)
-            })
-            .end(fileBufferOrStream)
+            }),
+            reject,
+          )
         })
       }
     }

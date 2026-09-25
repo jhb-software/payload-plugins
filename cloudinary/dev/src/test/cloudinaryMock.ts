@@ -2,7 +2,7 @@ import type { UploadApiOptions, UploadApiResponse } from 'cloudinary'
 
 import { v2 as cloudinary } from 'cloudinary'
 import { randomUUID } from 'crypto'
-import { Readable } from 'stream'
+import { Writable } from 'stream'
 import { vi } from 'vitest'
 
 /**
@@ -106,20 +106,6 @@ export const resetCloudinaryMock = () => {
   state.destroys.length = 0
 }
 
-const countBytes = async (input: Buffer | Readable | undefined): Promise<number> => {
-  if (!input) {
-    return 0
-  }
-  if (Buffer.isBuffer(input)) {
-    return input.length
-  }
-  let bytes = 0
-  for await (const chunk of input) {
-    bytes += (chunk as Buffer).length
-  }
-  return bytes
-}
-
 vi.mock('cloudinary', async (importOriginal) => {
   const actual = await importOriginal<typeof import('cloudinary')>()
 
@@ -131,35 +117,42 @@ vi.mock('cloudinary', async (importOriginal) => {
     return folder ? `${folder}/${id}` : id
   }
 
+  /**
+   * Like the SDK's `upload_stream`, returns a real Writable: it accepts written or piped chunks
+   * and rejects anything else (e.g. `.end(readStream)`) the way Node does.
+   */
   const fakeUploadStream = (
     options: UploadApiOptions,
     callback: (error: Error | undefined, result?: UploadApiResponse) => void,
-  ) => ({
-    end: (input?: Buffer | Readable) => {
-      void countBytes(input).then(
-        (bytes) => {
-          state.uploads.push({ bytes, options })
+  ) => {
+    let bytes = 0
+    return new Writable({
+      final(done) {
+        state.uploads.push({ bytes, options })
 
-          const publicId = resolvePublicId(options)
-          const version = 1
-          callback(undefined, {
-            format: 'jpg',
-            public_id: publicId,
-            resource_type: 'image',
-            secure_url: `https://res.cloudinary.com/demo/image/upload/v${version}/${publicId}.jpg`,
-            signature: (actual.v2.utils.api_sign_request as unknown as SignRequest)(
-              { public_id: publicId, version },
-              process.env.CLOUDINARY_API_SECRET!,
-              null,
-              1,
-            ),
-            version,
-          } as UploadApiResponse)
-        },
-        (error: Error) => callback(error),
-      )
-    },
-  })
+        const publicId = resolvePublicId(options)
+        const version = 1
+        callback(undefined, {
+          format: 'jpg',
+          public_id: publicId,
+          resource_type: 'image',
+          secure_url: `https://res.cloudinary.com/demo/image/upload/v${version}/${publicId}.jpg`,
+          signature: (actual.v2.utils.api_sign_request as unknown as SignRequest)(
+            { public_id: publicId, version },
+            process.env.CLOUDINARY_API_SECRET!,
+            null,
+            1,
+          ),
+          version,
+        } as UploadApiResponse)
+        done()
+      },
+      write(chunk: Buffer, _encoding, done) {
+        bytes += chunk.length
+        done()
+      },
+    })
+  }
 
   const fakeDestroy = (
     publicId: string,
