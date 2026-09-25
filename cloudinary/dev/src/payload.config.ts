@@ -4,7 +4,10 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Images } from './collections/images'
 import { Videos } from './collections/videos'
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { ProcessedImages } from './collections/processedImages'
+import { VectorImages } from './collections/vectorImages'
+import sharp from 'sharp'
+import { databaseAdapter } from './databaseAdapter'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -21,17 +24,20 @@ export default buildConfig({
   collections: [
     Videos,
     Images,
+    ProcessedImages,
+    VectorImages,
     {
       slug: 'users',
       auth: true,
       fields: [],
     },
   ],
-  db: mongooseAdapter({
-    url: process.env.DATABASE_URI!,
-  }),
+  db: databaseAdapter,
   secret: process.env.PAYLOAD_SECRET!,
+  sharp,
   typescript: {
+    // The SQLite test runs would otherwise rewrite the committed (MongoDB) types with numeric IDs.
+    autoGenerate: process.env.PAYLOAD_DATABASE !== 'sqlite',
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   plugins: [
@@ -43,6 +49,8 @@ export default buildConfig({
         videos: {
           prefix: 'videos',
         },
+        'processed-images': true,
+        'vector-images': true,
       },
       folder: 'cloudinary-storage-plugin-test',
       cloudName: process.env.CLOUDINARY_CLOUD_NAME!,

@@ -69,6 +69,8 @@ export interface Config {
   collections: {
     videos: Video;
     images: Image;
+    'processed-images': ProcessedImage;
+    'vector-images': VectorImage;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -79,6 +81,8 @@ export interface Config {
   collectionsSelect: {
     videos: VideosSelect<false> | VideosSelect<true>;
     images: ImagesSelect<false> | ImagesSelect<true>;
+    'processed-images': ProcessedImagesSelect<false> | ProcessedImagesSelect<true>;
+    'vector-images': VectorImagesSelect<false> | VectorImagesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -164,6 +168,48 @@ export interface Image {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "processed-images".
+ */
+export interface ProcessedImage {
+  id: string;
+  cloudinaryPublicId?: string | null;
+  alt?: string | null;
+  _objectKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "vector-images".
+ */
+export interface VectorImage {
+  id: string;
+  cloudinaryPublicId?: string | null;
+  alt?: string | null;
+  _objectKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -219,6 +265,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'images';
         value: string | Image;
+      } | null)
+    | ({
+        relationTo: 'processed-images';
+        value: string | ProcessedImage;
+      } | null)
+    | ({
+        relationTo: 'vector-images';
+        value: string | VectorImage;
       } | null)
     | ({
         relationTo: 'users';
@@ -292,6 +346,46 @@ export interface VideosSelect<T extends boolean = true> {
  * via the `definition` "images_select".
  */
 export interface ImagesSelect<T extends boolean = true> {
+  cloudinaryPublicId?: T;
+  alt?: T;
+  _objectKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "processed-images_select".
+ */
+export interface ProcessedImagesSelect<T extends boolean = true> {
+  cloudinaryPublicId?: T;
+  alt?: T;
+  _objectKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "vector-images_select".
+ */
+export interface VectorImagesSelect<T extends boolean = true> {
   cloudinaryPublicId?: T;
   alt?: T;
   _objectKey?: T;

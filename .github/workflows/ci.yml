@@ -112,6 +112,22 @@ jobs:
       - name: Run tests (chat-agent)
         run: cd chat-agent && pnpm test
 
+  test-cloudinary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          scope: cloudinary
+
+      # Runs on SQLite with fixed test credentials set in cloudinary/dev/vitest.config.ts,
+      # so no database service or .env file is needed.
+      - name: Run integration tests
+        run: pnpm test:cloudinary:integration
+
   test-pages-localized:
     runs-on: ubuntu-latest
     strategy:

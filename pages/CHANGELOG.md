@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: a read excluding `path` and `breadcrumbs` no longer walks ancestors in collections without `meta.alternatePaths`, and excluding another field of the `meta` group (e.g. `{ meta: { title: false } }`) no longer drops `alternatePaths`
+
 ## 0.9.0-beta.5
 
 - chore: require Payload `^3.90.1`, which ships critical security fixes

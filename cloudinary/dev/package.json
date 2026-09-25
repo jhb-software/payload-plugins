@@ -13,7 +13,9 @@
     "payload": "payload",
     "generate:types": "payload generate:types",
     "generate:schema": "payload-graphql generate:schema",
-    "generate:importmap": "payload generate:importmap"
+    "generate:importmap": "payload generate:importmap",
+    "test": "cross-env PAYLOAD_DATABASE=sqlite vitest run",
+    "test:watch": "cross-env PAYLOAD_DATABASE=sqlite vitest watch"
   },
   "dependencies": {
     "@jhb.software/payload-cloudinary-plugin": "workspace:*",
@@ -23,13 +25,17 @@
     "next": "16.3.6",
     "payload": "^3.90.2",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
+    "@payloadcms/db-sqlite": "^3.90.2",
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
     "dotenv": "^18.0.3",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.1"
   },
   "engines": {
     "node": ">=22.12.0"

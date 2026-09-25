@@ -42,7 +42,10 @@ export const selectDependentFieldsBeforeOperation: CollectionBeforeOperationHook
     const pageConfig = asPageCollectionConfigOrThrow(args.collection.config)
     const selectMode = getSelectMode(args.select)
     const dependendSelectedFields = dependentFields(pageConfig)
-    const hasVirtualFieldsSelected = hasVirtualFieldSelected(args.select)
+    const hasVirtualFieldsSelected = hasVirtualFieldSelected(
+      args.select,
+      args.collection.config.flattenedFields,
+    )
 
     // On a read the virtual fields are only computed when the caller asked for one, so the
     // dependent fields are only needed then. On a mutation `setVirtualFieldsAfterChange` runs
