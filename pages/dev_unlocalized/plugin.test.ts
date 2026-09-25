@@ -1,5 +1,5 @@
 import payload, { CollectionSlug, ValidationError } from 'payload'
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import config from './src/payload.config'
 import type { Config } from 'payload/generated-types'
 import {
@@ -384,6 +384,52 @@ describe('Path and breadcrumb virtual fields are set correctly for find operatio
 
     // Path must be defined and non-empty
     expect(pageWithSelect.path).toEqual(pageWithoutSelect.path)
+  })
+
+  test('a read excluding path and breadcrumbs does not look up the ancestors of the page', async () => {
+    const rootPageId = (
+      await payload.create({
+        collection: 'pages',
+        data: { title: 'Root', slug: 'root', content: 'Root', ...virtualFields },
+      })
+    ).id
+    const childPageId = (
+      await payload.create({
+        collection: 'pages',
+        data: {
+          title: 'Child',
+          slug: 'child',
+          content: 'Child',
+          parent: rootPageId,
+          ...virtualFields,
+        },
+      })
+    ).id
+    const find = vi.spyOn(payload.db, 'find')
+    const findOne = vi.spyOn(payload.db, 'findOne')
+    const dbReads = () => find.mock.calls.length + findOne.mock.calls.length
+
+    // depth 0: the exclude select keeps `parent`, whose population would add a read of its own
+    await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      depth: 0,
+      select: { title: true },
+    })
+    const readsWithoutVirtualFields = dbReads()
+
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPageId,
+      depth: 0,
+      select: { breadcrumbs: false, path: false },
+    })
+    const readsExcludingVirtualFields = dbReads() - readsWithoutVirtualFields
+    find.mockRestore()
+    findOne.mockRestore()
+
+    expect(doc.title).toBe('Child')
+    expect(readsExcludingVirtualFields).toBe(readsWithoutVirtualFields)
   })
 })
 

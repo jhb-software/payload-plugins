@@ -1934,6 +1934,47 @@ describe('Select during read operation', () => {
     expect(fetchedWithEmptySelectDepth1.id).toEqual(fetchedWithAllFields.id) // id is correct
   })
 
+  test('a read excluding path, breadcrumbs and an unrelated meta field still returns the alternate paths', async () => {
+    const rootPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Root Page',
+        slug: '',
+        content: 'Root content',
+        isRootPage: true,
+        ...virtualFields,
+      },
+    })
+
+    const childPage = await payload.create({
+      collection: 'pages',
+      locale: 'de',
+      data: {
+        title: 'Child Page',
+        slug: 'child-page',
+        content: 'Child content',
+        parent: rootPage.id,
+        ...virtualFields,
+      },
+    })
+
+    const doc = await payload.findByID({
+      collection: 'pages',
+      id: childPage.id,
+      locale: 'de',
+      select: {
+        breadcrumbs: false,
+        meta: { title: false },
+        path: false,
+      },
+    })
+
+    expect(doc.meta?.alternatePaths).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: '/de/child-page' })]),
+    )
+  })
+
   test('Respect selection (field: true) of the virtual fields', async () => {
     // Create root page
     const rootPage = await payload.create({
