@@ -15,13 +15,13 @@
     "generate:importmap": "payload generate:importmap"
   },
   "dependencies": {
-    "@payloadcms/db-sqlite": "^3.90.1",
-    "@payloadcms/next": "^3.90.1",
-    "@payloadcms/richtext-lexical": "^3.90.1",
-    "@payloadcms/translations": "^3.90.1",
-    "@payloadcms/ui": "^3.90.1",
-    "next": "16.3.5",
-    "payload": "^3.90.1",
+    "@payloadcms/db-sqlite": "^3.90.2",
+    "@payloadcms/next": "^3.90.2",
+    "@payloadcms/richtext-lexical": "^3.90.2",
+    "@payloadcms/translations": "^3.90.2",
+    "@payloadcms/ui": "^3.90.2",
+    "next": "16.3.6",
+    "payload": "^3.90.2",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

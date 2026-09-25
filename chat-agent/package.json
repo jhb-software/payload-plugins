@@ -31,17 +31,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/react": "^4.0.112",
-    "ai": "^7.0.109",
+    "@ai-sdk/react": "^4.0.116",
+    "ai": "^7.0.113",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "zod": "^4.6.5"
   },
   "peerDependencies": {
-    "@payloadcms/next": "^3.90.1",
-    "@payloadcms/ui": "^3.90.1",
+    "@payloadcms/next": "^3.90.2",
+    "@payloadcms/ui": "^3.90.2",
     "next": "^15.0.0 || ^16.0.0",
-    "payload": "^3.90.1",
+    "payload": "^3.90.2",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -55,10 +55,10 @@
     "copyfiles": "^2.4.1",
     "eslint": "^9.39.4",
     "jsdom": "^30.1.1",
-    "prettier": "3.9.8",
+    "prettier": "3.9.9",
     "rimraf": "^6.1.3",
     "typescript": "^6.0.3",
-    "vite": "^8.3.0",
+    "vite": "^8.3.1",
     "vitest": "^5.0.1"
   },
   "files": [
