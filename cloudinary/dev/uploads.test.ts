@@ -306,6 +306,33 @@ describe('client uploads', () => {
     expect((await payload.count({ collection: 'images' })).totalDocs).toBe(0)
   })
 
+  test("does not fetch another document's file for an unconfirmed pending receipt", async () => {
+    const filename = 'existing.jpg'
+    const existing = await rest.createWithFile('images', { file: jpegFile(filename) })
+    expect(existing.status).toBe(201)
+
+    const signatureResponse = await rest.postJSON(
+      'cloudinary-generate-signature?collectionSlug=images',
+      { filename, mimeType: 'image/jpeg', size: jpeg.length },
+    )
+    const { pendingReceipt } = (await signatureResponse.json()) as { pendingReceipt: string }
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockClear()
+
+    const response = await rest.createWithClientUpload('images', {
+      file: {
+        clientUploadContext: { signedReceipt: pendingReceipt },
+        filename,
+        mimeType: 'image/jpeg',
+        size: jpeg.length,
+      },
+    })
+
+    expect(response.status).toBe(400)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect((await payload.count({ collection: 'images' })).totalDocs).toBe(1)
+  })
+
   test('accepts a client upload confirmed through the server-issued receipt', async () => {
     const filename = 'client-photo.jpg'
     const { publicId, signedReceipt } = await confirmClientUpload({

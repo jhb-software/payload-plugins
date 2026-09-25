@@ -31,7 +31,13 @@ export const getStaticHandler = ({ cloudName }: { cloudName: string }): StaticHa
 
       let secureUrl: string | undefined
 
-      if (clientUploadContext?.publicId && clientUploadContext.secureUrl) {
+      if (clientUploadContext) {
+        // Core fetches client uploads before any hook runs, so a pending receipt from the signature
+        // endpoint reaches this handler too. Without a server-built URL it must not fall back to
+        // the filename lookup, which would fetch another document's file.
+        if (!clientUploadContext.secureUrl) {
+          return new Response(null, { status: 400, statusText: 'Bad Request' })
+        }
         secureUrl = clientUploadContext.secureUrl
       } else {
         const stored =
