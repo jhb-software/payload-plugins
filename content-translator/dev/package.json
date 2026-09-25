@@ -18,25 +18,25 @@
     "seed": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts tsx seed-db.ts"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^4.0.72",
+    "@ai-sdk/openai": "^4.0.74",
     "@jhb.software/payload-content-translator-plugin": "workspace:*",
     "@jhb.software/payload-pages-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.90.1",
-    "@payloadcms/next": "^3.90.1",
-    "@payloadcms/richtext-lexical": "^3.90.1",
-    "@payloadcms/translations": "^3.90.1",
-    "@payloadcms/ui": "^3.90.1",
-    "ai": "^7.0.109",
-    "next": "16.3.5",
-    "openai": "^7.21.0",
-    "payload": "^3.90.1",
+    "@payloadcms/db-mongodb": "^3.90.2",
+    "@payloadcms/next": "^3.90.2",
+    "@payloadcms/richtext-lexical": "^3.90.2",
+    "@payloadcms/translations": "^3.90.2",
+    "@payloadcms/ui": "^3.90.2",
+    "ai": "^7.0.113",
+    "next": "16.3.6",
+    "openai": "^7.23.0",
+    "payload": "^3.90.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "dotenv": "^18.0.2",
+    "dotenv": "^18.0.3",
     "tsx": "^4.23.15"
   },
   "engines": {

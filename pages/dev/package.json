@@ -22,22 +22,22 @@
   },
   "dependencies": {
     "@jhb.software/payload-pages-plugin": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.90.1",
-    "@payloadcms/db-sqlite": "^3.90.1",
-    "@payloadcms/next": "^3.90.1",
-    "@payloadcms/translations": "^3.90.1",
-    "@payloadcms/ui": "^3.90.1",
-    "next": "16.3.5",
-    "payload": "^3.90.1",
+    "@payloadcms/db-mongodb": "^3.90.2",
+    "@payloadcms/db-sqlite": "^3.90.2",
+    "@payloadcms/next": "^3.90.2",
+    "@payloadcms/translations": "^3.90.2",
+    "@payloadcms/ui": "^3.90.2",
+    "next": "16.3.6",
+    "payload": "^3.90.2",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
-    "dotenv": "^18.0.2",
+    "dotenv": "^18.0.3",
     "typescript": "6.0.3",
-    "vite": "^8.3.0",
+    "vite": "^8.3.1",
     "vitest": "^5.0.1"
   },
   "engines": {

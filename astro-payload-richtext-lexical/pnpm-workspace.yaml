@@ -21,6 +21,6 @@ minimumReleaseAgeExclude:
 overrides:
   js-yaml: '^4.3.2'
   dompurify: '^3.4.13'
-  prettier: '3.9.8'
-  next: '16.3.5'
+  prettier: '3.9.9'
+  next: '16.3.6'
   esbuild: '^0.28.1'

@@ -20,9 +20,9 @@ minimumReleaseAgeExclude:
 overrides:
   js-yaml: '^4.3.2'
   dompurify: '^3.4.13'
-  prettier: '3.9.8'
+  prettier: '3.9.9'
   '@eslint/plugin-kit': '^0.3.4'
-  next: '16.3.5'
+  next: '16.3.6'
   '@typescript-eslint/utils': '^8.59.3'
   '@typescript-eslint/eslint-plugin': '^8.59.3'
   '@typescript-eslint/parser': '^8.59.3'
