@@ -372,6 +372,8 @@ $RECYCLE.BIN/
 # Custom
 /media
 *.db
+*.db-journal
+*.db-wal
 tsconfig.tsbuildinfo
 /dist
 .notes/

@@ -55,9 +55,9 @@ The plugin automatically adds a `cloudinaryPublicId` field to your upload collec
 
 ## Authentication
 
-With `clientUploads` enabled the plugin registers a signature endpoint that mints Cloudinary upload signatures for the browser. A user may only request a signature for a collection they are allowed to create documents in.
+With `clientUploads` enabled the plugin registers a signature endpoint that mints Cloudinary upload signatures for the browser. Like Payload's official storage adapters, it requires an authenticated user who may create or update documents in the target collection, and then applies `clientUploads.access` (default: any authenticated user).
 
-Because the default derives from collection access, an upload collection with a permissive `access.create` also opens signature minting. Projects with public sign-up or customer-facing accounts should verify what `access.create` on their upload collections actually grants, and override `clientUploads.access` when the signature endpoint needs a stricter rule than the collection:
+Because the baseline derives from collection access, an upload collection with a permissive `access.create` or `access.update` also opens signature minting. Projects with public sign-up or customer-facing accounts should verify what those rules actually grant, and set `clientUploads.access` when the signature endpoint needs a stricter rule than the collection:
 
 ```ts
 cloudinaryStorage({
@@ -67,6 +67,14 @@ cloudinaryStorage({
   // …
 })
 ```
+
+The browser sends `{ filename, mimeType, size }` to the signature endpoint. The server checks the file type against the collection (SVG and XML only with `allowRestrictedFileTypes`), mints the public ID (with a random suffix, so uploads never collide), signs it with `overwrite=false`, and returns the upload parameters plus a pending receipt. After uploading with exactly those parameters, the browser sends Cloudinary's response and the pending receipt to a second endpoint (`/cloudinary-confirm-upload`, same access rule). The server verifies Cloudinary's response signature with the API secret, checks that the public ID is the one it minted for this user and collection, builds the file URL itself, and returns a Payload receipt. Payload rejects client uploads without a valid receipt, so a confirmed upload proves the asset exists in this cloud under an ID the server minted for this user and collection.
+
+Response signatures are verified with the Cloudinary SDK's global `signature_algorithm` (SHA-1 by default). Accounts configured for SHA-256 must set it via `cloudinary.config({ signature_algorithm: 'sha256' })`.
+
+The `cloudinaryPublicId` field is written only by the plugin and cannot be set through the API.
+
+When Payload re-encodes a client-uploaded image on the server (`resizeOptions`, `formatOptions`, `trimOptions`, or animated GIF/WebP with `sharp` configured), the processed file is uploaded from the server under the same public ID, replacing the browser upload. Generated `imageSizes` are always uploaded from the server.
 
 ## Roadmap
 
