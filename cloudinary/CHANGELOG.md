@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 - chore: require Payload `^3.90.1`, which ships critical security fixes. Note two upgrade effects on upload collections: `@payloadcms/plugin-cloud-storage` now adds an `_objectKey` column, so Postgres and SQLite projects need a migration, and Payload caps server uploads at 20MB per file / 50MB per request by default (see the README for how to raise the limits)
 - **BREAKING**: fix: verify client uploads server-side through a sign → upload → confirm flow backed by a Payload receipt, so documents can only reference assets the server minted for that user. The server now mints client-upload public IDs (with a random suffix) and signs `overwrite=false`. Custom clients must `POST /api/cloudinary-generate-signature?collectionSlug=…` with `{ filename, mimeType, size }`, upload with exactly the returned parameters, then `POST /api/cloudinary-confirm-upload?collectionSlug=…` with the returned `pendingReceipt` and Cloudinary's response
