@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
+
 ## 0.13.0
 
 - feat: `filterLocales` receives the document being generated for as `doc`, so each image is written in its own tenant's locales; a failing filter errors only that image. Bulk runs revalidate the health cache once per run instead of per write

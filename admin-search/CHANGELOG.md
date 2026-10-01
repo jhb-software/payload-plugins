@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
+
 ## 0.5.0
 
 - chore: require Payload `^3.90.1`, which ships critical security fixes

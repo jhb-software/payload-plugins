@@ -40,10 +40,10 @@ importers:
         specifier: ^3.90.2
         version: 3.90.2(graphql@16.12.0)(typescript@6.0.3)
       react:
-        specifier: 19.3.0
+        specifier: ^19.2.0
         version: 19.3.0
       react-dom:
-        specifier: 19.3.0
+        specifier: ^19.2.0
         version: 19.3.0(react@19.3.0)
       zod:
         specifier: ^4.6.5

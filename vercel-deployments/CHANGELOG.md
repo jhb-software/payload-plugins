@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
 - fix: apply the `access` option to the dashboard widget, which previously showed the deployment status, website link, and deploy button to users the option denies
 - chore: require Payload `^3.90.1`, which ships critical security fixes
 - fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys

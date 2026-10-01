@@ -40,8 +40,8 @@
     "@payloadcms/ui": "^3.90.2",
     "next": "^15.0.0 || ^16.0.0",
     "payload": "^3.90.2",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",

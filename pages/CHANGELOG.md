@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
 - fix: a read excluding `path` and `breadcrumbs` no longer walks ancestors in collections without `meta.alternatePaths`, and excluding another field of the `meta` group (e.g. `{ meta: { title: false } }`) no longer drops `alternatePaths`
 
 ## 0.9.0-beta.5

@@ -6,7 +6,10 @@ BREAKING CHANGES:
 
 - fix!: the default `access` only admits users of the admin user collection (`admin.user`) instead of any authenticated user, and saved conversations are only visible to their owning `users` document. Previously a user of another auth collection with a colliding ID could read and change an editor's conversations. Pass a custom `access` to admit other auth collections.
 
+OTHER CHANGES:
+
 - chore: require Payload `^3.90.1`, which ships critical security fixes
+- fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
 
 ## 0.1.0-beta.9
 
