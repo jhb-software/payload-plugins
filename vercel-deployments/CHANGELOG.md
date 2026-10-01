@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1
 
 - fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
 - fix: apply the `access` option to the dashboard widget, which previously showed the deployment status, website link, and deploy button to users the option denies
