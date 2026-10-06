@@ -29,14 +29,11 @@ import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConfigAtrributes.js'
 
 export type PathFieldProps = {
-  /** Label of an ancestor without a slug in the edited locale, which leaves the page without a path. */
-  ancestorWithoutSlug?: string
   /** Each locale's path prefix, resolved on the server from the plugin's `localeRouting`. */
   localePrefixes?: Record<Locale, string>
 }
 
 export const PathField = ({
-  ancestorWithoutSlug,
   field,
   localePrefixes,
   path: fieldPath,
@@ -63,6 +60,9 @@ export const PathField = ({
   // effects below must re-run when the parent actually changes, not on every render, so they
   // depend on this key rather than on the value.
   const parentKey = parentRef ? parentRefKey(parentRef) : ''
+  // Only an ancestor without a slug in the edited locale leaves a page with a slug and a parent
+  // without a path.
+  const hasAncestorWithoutSlug = Boolean(slug && parentRef && !path)
 
   /**
    * Sets the path, but only if the new path is different from the current path.
@@ -253,11 +253,9 @@ export const PathField = ({
         </div>
       </div>
 
-      {ancestorWithoutSlug && (
+      {hasAncestorWithoutSlug && (
         <FieldDescription
-          description={t('@jhb.software/payload-pages-plugin:noPathAncestorWithoutSlug', {
-            label: ancestorWithoutSlug,
-          })}
+          description={t('@jhb.software/payload-pages-plugin:noPathAncestorWithoutSlug')}
           path={fieldPath}
         />
       )}

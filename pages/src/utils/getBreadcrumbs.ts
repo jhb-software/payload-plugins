@@ -211,7 +211,7 @@ function docToBreadcrumb(
 }
 
 /** Picks the value of a localized or unlocalized field. */
-export function pickFieldValue(field: unknown, locale: Locale | undefined): string | undefined {
+function pickFieldValue(field: unknown, locale: Locale | undefined): string | undefined {
   if (typeof field === 'string') {
     return field
   }

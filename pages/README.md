@@ -292,7 +292,7 @@ Create and update responses are the exception: a write carries only the written 
 
 #### Ancestors without a slug or not published
 
-A page has a path in a locale only when it and every ancestor have a slug in that locale. Without one, the page gets no path there: no `path`, `breadcrumbs` or `alternatePaths` entry, no `listPagePaths` entry, and `findPageByPath` does not resolve it. The admin's path field names the ancestor which is missing the slug.
+A page has a path in a locale only when it and every ancestor have a slug in that locale. Without one, the page gets no path there: no `path`, `breadcrumbs` or `alternatePaths` entry, no `listPagePaths` entry, and `findPageByPath` does not resolve it. The admin's path field then explains why the page has no path.
 
 An ancestor's publish status does not affect its descendants: a published child of an unpublished parent keeps its path and stays resolvable. Its breadcrumbs still list the parent, but on a published read the parent's breadcrumb carries `path: null` when the parent is not live in that locale, so a breadcrumb navigation never links to a URL which does not resolve. Render such an entry as plain text, and leave it out of a `BreadcrumbList` JSON-LD. Draft reads keep every path for the preview.
 

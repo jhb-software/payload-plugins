@@ -14,7 +14,7 @@ export const de: GenericTranslationsObject = {
     isRootPage: 'ist Startseite',
     label: 'Beschriftung',
     noPathAncestorWithoutSlug:
-      'Diese Seite hat in dieser Sprache keine URL: Die übergeordnete Seite „{{label}}“ hat darin keinen Slug.',
+      'Diese Seite hat in dieser Sprache keine URL: Eine übergeordnete Seite hat darin keinen Slug.',
     parent: 'Übergeordnete Seite',
     path: 'Pfad',
     redirectCreated: 'Weiterleitung erstellt',

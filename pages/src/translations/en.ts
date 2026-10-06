@@ -14,7 +14,7 @@ export const en: GenericTranslationsObject = {
     isRootPage: 'is Root Page',
     label: 'Label',
     noPathAncestorWithoutSlug:
-      'This page has no URL in this language: its parent page "{{label}}" has no slug in it.',
+      'This page has no URL in this language: one of its parent pages has no slug in it.',
     parent: 'Parent Page',
     path: 'Path',
     redirectCreated: 'Redirect Created',
