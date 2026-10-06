@@ -1,6 +1,11 @@
+import { v2 as cloudinary } from 'cloudinary'
+
+import type { DeliveryType } from '../types.js'
+
 export type GenerateCloudinaryUrlArgs = {
   cloudinaryPublicId: string
   cloudName: string
+  deliveryType?: DeliveryType
   mimeType?: string
   transformOptions?: string
 }
@@ -12,6 +17,7 @@ export type GenerateCloudinaryUrlArgs = {
 export function generateCloudinaryUrl({
   cloudinaryPublicId,
   cloudName,
+  deliveryType = 'upload',
   mimeType,
   transformOptions,
 }: GenerateCloudinaryUrlArgs): string {
@@ -25,6 +31,19 @@ export function generateCloudinaryUrl({
     resourceType = 'video'
   } else {
     resourceType = 'raw'
+  }
+
+  // The signature covers the transformation too, so the SDK builds the whole URL.
+  if (deliveryType === 'authenticated') {
+    return cloudinary.url(cloudinaryPublicId, {
+      type: 'authenticated',
+      cloud_name: cloudName,
+      raw_transformation: transformOptions,
+      resource_type: resourceType,
+      secure: true,
+      sign_url: true,
+      urlAnalytics: false,
+    })
   }
 
   const transformPart = transformOptions ? `${transformOptions}/` : ''

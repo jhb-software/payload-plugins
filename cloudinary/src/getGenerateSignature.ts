@@ -13,6 +13,7 @@ import type {
   CloudinarySignatureResponse,
   PendingClientUploadContext,
 } from './client/CloudinaryClientUploadHandler.js'
+import type { DeliveryType } from './types.js'
 
 import { assertClientUploadAccess, normalizeFolder } from './utilities/clientUploadAccess.js'
 import { generatePublicId } from './utilities/generatePublicId.js'
@@ -22,6 +23,7 @@ type Args = {
   apiSecret: string
   /** Prefix by slug of every collection this plugin manages. Signatures may only be requested for these. */
   collectionPrefixes: Record<string, string>
+  deliveryType?: DeliveryType
   folder?: string
   useFilename?: boolean
 }
@@ -75,7 +77,14 @@ function mintPublicId({
  * It is only used when clientUploads is enabled.
  */
 export const getGenerateSignature =
-  ({ access, apiSecret, collectionPrefixes, folder, useFilename }: Args): PayloadHandler =>
+  ({
+    access,
+    apiSecret,
+    collectionPrefixes,
+    deliveryType = 'upload',
+    folder,
+    useFilename,
+  }: Args): PayloadHandler =>
   async (req) => {
     const collectionSlug = await assertClientUploadAccess({
       access,
@@ -109,6 +118,8 @@ export const getGenerateSignature =
       overwrite: 'false' as const,
       public_id: publicId,
       timestamp: Math.round(Date.now() / 1000),
+      // Signed, so the browser cannot upload a private asset as a public one.
+      ...(deliveryType !== 'upload' ? { type: deliveryType } : {}),
     }
 
     const pendingReceipt = createClientUploadReceipt({
@@ -122,6 +133,7 @@ export const getGenerateSignature =
     })
 
     return Response.json({
+      type: params.type,
       folder: params.folder,
       overwrite: params.overwrite,
       pendingReceipt,

@@ -9,6 +9,7 @@ import type {
   PendingClientUploadContext,
   VerifiedClientUploadContext,
 } from './client/CloudinaryClientUploadHandler.js'
+import type { DeliveryType } from './types.js'
 
 import { assertClientUploadAccess } from './utilities/clientUploadAccess.js'
 
@@ -18,6 +19,7 @@ type Args = {
   cloudName: string
   /** Slugs of the collections this plugin manages. Uploads may only be confirmed for these. */
   collections: string[]
+  deliveryType?: DeliveryType
 }
 
 type ResourceType = 'image' | 'raw' | 'video'
@@ -129,7 +131,7 @@ function signaturesMatch(actual: string, expected: string): boolean {
  * document can only reference assets this endpoint verified.
  */
 export const getConfirmUpload =
-  ({ access, apiSecret, cloudName, collections }: Args): PayloadHandler =>
+  ({ access, apiSecret, cloudName, collections, deliveryType = 'upload' }: Args): PayloadHandler =>
   async (req) => {
     const collectionSlug = await assertClientUploadAccess({ access, collections, req })
 
@@ -179,12 +181,13 @@ export const getConfirmUpload =
     }
 
     const secureUrl = cloudinary.url(publicId, {
-      type: 'upload',
+      type: deliveryType,
       cloud_name: cloudName,
       // Raw assets are addressed by their public id alone.
       format: resourceType === 'raw' ? undefined : format,
       resource_type: resourceType,
       secure: true,
+      sign_url: deliveryType === 'authenticated',
       urlAnalytics: false,
       version,
     })

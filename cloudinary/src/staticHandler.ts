@@ -3,6 +3,7 @@ import type { StaticHandler } from '@payloadcms/plugin-cloud-storage/types'
 import { isXmlMimeType, UPLOAD_CONTENT_SECURITY_POLICY } from 'payload/internal'
 
 import type { VerifiedClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
+import type { DeliveryType } from './types.js'
 
 import { generateCloudinaryUrl } from './utilities/generateCloudinaryUrl.js'
 
@@ -19,7 +20,13 @@ const forwardedHeaders = [
 // This is called:
 // - after the client upload is finished with the clientUploadContext
 // - whenever the file is requested from the api/[collection]/[filename] path
-export const getStaticHandler = ({ cloudName }: { cloudName: string }): StaticHandler => {
+export const getStaticHandler = ({
+  cloudName,
+  deliveryType,
+}: {
+  cloudName: string
+  deliveryType?: DeliveryType
+}): StaticHandler => {
   return async (req, { doc, params }) => {
     try {
       type Params = {
@@ -56,14 +63,17 @@ export const getStaticHandler = ({ cloudName }: { cloudName: string }): StaticHa
 
         if (typeof stored?.cloudinaryPublicId === 'string') {
           // Payload does not persist `url` for server uploads, and a read `url` may be Payload's own
-          // file route, so only a Cloudinary URL is used as is.
+          // file route, so only a Cloudinary URL is used as is. Authenticated URLs are always rebuilt
+          // so they carry a signature.
           secureUrl =
+            deliveryType !== 'authenticated' &&
             typeof stored.url === 'string' &&
             stored.url.startsWith(`https://res.cloudinary.com/${cloudName}/`)
               ? stored.url
               : generateCloudinaryUrl({
                   cloudinaryPublicId: stored.cloudinaryPublicId,
                   cloudName,
+                  deliveryType,
                   mimeType: typeof stored.mimeType === 'string' ? stored.mimeType : undefined,
                 })
         }

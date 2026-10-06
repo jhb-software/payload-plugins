@@ -8,6 +8,7 @@ import {
   getRecordedDestroys,
   fakeSignedBrowserUpload,
   getRecordedUploads,
+  getStoredAssets,
   resetCloudinaryMock,
 } from './src/test/cloudinaryMock'
 import { createRESTClient } from './src/test/rest'
@@ -24,6 +25,7 @@ const uploadCollections: CollectionSlug[] = [
   'videos',
   'processed-images',
   'vector-images',
+  'private-images',
 ]
 
 let payload: Payload
@@ -56,13 +58,16 @@ const jpegFile = (filename: string) =>
  */
 const confirmClientUpload = async ({
   collection,
+  endpointSuffix = '',
   filename,
 }: {
   collection: CollectionSlug
+  /** Set for collections of the second plugin instance, whose endpoints carry a `-1` suffix. */
+  endpointSuffix?: string
   filename: string
 }) => {
   const signatureResponse = await rest.postJSON(
-    `cloudinary-generate-signature?collectionSlug=${collection}`,
+    `cloudinary-generate-signature${endpointSuffix}?collectionSlug=${collection}`,
     { filename, mimeType: 'image/jpeg', size: jpeg.length },
   )
   expect(signatureResponse.status).toBe(200)
@@ -73,6 +78,7 @@ const confirmClientUpload = async ({
     publicId: string
     signature: string
     timestamp: number
+    type?: string
   }
 
   const cloudinaryResponse = fakeSignedBrowserUpload({
@@ -81,12 +87,13 @@ const confirmClientUpload = async ({
       overwrite: signed.overwrite,
       public_id: signed.publicId,
       timestamp: signed.timestamp,
+      type: signed.type,
     },
     signature: signed.signature,
   })
 
   const confirmResponse = await rest.postJSON(
-    `cloudinary-confirm-upload?collectionSlug=${collection}`,
+    `cloudinary-confirm-upload${endpointSuffix}?collectionSlug=${collection}`,
     {
       format: cloudinaryResponse.format,
       pendingReceipt: signed.pendingReceipt,
@@ -100,7 +107,7 @@ const confirmClientUpload = async ({
   const { signedReceipt } = (await confirmResponse.json()) as { signedReceipt: string }
   expect(typeof signedReceipt).toBe('string')
 
-  return { publicId: cloudinaryResponse.public_id, signedReceipt }
+  return { publicId: cloudinaryResponse.public_id, signedReceipt, type: signed.type }
 }
 
 /** Stands in for a remote host serving `bytes`, honouring `Range` requests like Cloudinary does. */
@@ -385,5 +392,72 @@ describe('client uploads', () => {
 
     const stored = await findStored('processed-images', doc.id)
     expect(stored?.cloudinaryPublicId).toBe(publicId)
+  })
+})
+
+describe('authenticated delivery', () => {
+  /** Matches a URL Cloudinary delivers an authenticated asset under: signed with the API secret. */
+  const signedAuthenticatedURL =
+    /^https:\/\/res\.cloudinary\.com\/demo\/image\/authenticated\/s--[\w-]{8}--\//
+
+  const lastFetchedURL = () => String(vi.mocked(fetch).mock.calls.at(-1)?.[0])
+
+  test('stores a server upload as an authenticated asset and serves it through a signed URL', async () => {
+    const response = await rest.createWithFile('private-images', {
+      file: jpegFile('private-photo.jpg'),
+    })
+    expect(response.status).toBe(201)
+    expect(getRecordedUploads()[0].options.type).toBe('authenticated')
+
+    const served = await rest.get('private-images/file/private-photo.jpg')
+
+    expect(served.status).toBe(200)
+    expect(lastFetchedURL()).toMatch(signedAuthenticatedURL)
+  })
+
+  test('signs the authenticated type into client uploads and fetches them through a signed URL', async () => {
+    const filename = 'private-client-photo.jpg'
+    const { signedReceipt, type } = await confirmClientUpload({
+      collection: 'private-images',
+      endpointSuffix: '-1',
+      filename,
+    })
+    expect(type).toBe('authenticated')
+
+    const response = await rest.createWithClientUpload('private-images', {
+      file: {
+        clientUploadContext: { signedReceipt },
+        filename,
+        mimeType: 'image/jpeg',
+        size: jpeg.length,
+      },
+    })
+
+    expect(response.status).toBe(201)
+    expect(lastFetchedURL()).toMatch(signedAuthenticatedURL)
+  })
+
+  test('returns a signed admin thumbnail URL', async () => {
+    const response = await rest.createWithFile('private-images', {
+      file: jpegFile('private-thumb.jpg'),
+    })
+    const { doc } = (await response.json()) as { doc: { id: number | string } }
+
+    const found = await payload.findByID({ collection: 'private-images', id: doc.id })
+
+    expect(found.thumbnailURL).toMatch(signedAuthenticatedURL)
+  })
+
+  test('deleting a document destroys its authenticated Cloudinary asset', async () => {
+    const response = await rest.createWithFile('private-images', {
+      file: jpegFile('private-delete.jpg'),
+    })
+    const { doc } = (await response.json()) as { doc: { id: number | string } }
+    const stored = await findStored('private-images', doc.id)
+    expect(getStoredAssets()).toContain(stored?.cloudinaryPublicId)
+
+    await payload.delete({ collection: 'private-images', id: doc.id })
+
+    expect(getStoredAssets()).not.toContain(stored?.cloudinaryPublicId)
   })
 })

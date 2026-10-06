@@ -3,7 +3,11 @@ import type { HandleDelete } from '@payloadcms/plugin-cloud-storage/types'
 import { v2 as cloudinary } from 'cloudinary'
 import { APIError } from 'payload'
 
-export const getHandleDelete = (): HandleDelete => {
+import type { DeliveryType } from './types.js'
+
+export const getHandleDelete = ({
+  deliveryType = 'upload',
+}: { deliveryType?: DeliveryType } = {}): HandleDelete => {
   return async ({ doc }) => {
     if (
       !('cloudinaryPublicId' in doc) ||
@@ -21,6 +25,7 @@ export const getHandleDelete = (): HandleDelete => {
     }
 
     const result = (await cloudinary.uploader.destroy(doc.cloudinaryPublicId, {
+      type: deliveryType,
       resource_type: doc.mimeType.startsWith('video')
         ? 'video'
         : doc.mimeType.startsWith('image')
