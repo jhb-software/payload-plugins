@@ -21,9 +21,11 @@ const forwardedHeaders = [
 // - after the client upload is finished with the clientUploadContext
 // - whenever the file is requested from the api/[collection]/[filename] path
 export const getStaticHandler = ({
+  apiSecret,
   cloudName,
   deliveryType,
 }: {
+  apiSecret: string
   cloudName: string
   deliveryType?: DeliveryType
 }): StaticHandler => {
@@ -63,14 +65,13 @@ export const getStaticHandler = ({
 
         if (typeof stored?.cloudinaryPublicId === 'string') {
           // Payload does not persist `url` for server uploads, and a read `url` may be Payload's own
-          // file route, so only a Cloudinary URL is used as is. Authenticated URLs are always rebuilt
-          // so they carry a signature.
+          // file route, so only a Cloudinary URL is used as is.
           secureUrl =
-            deliveryType !== 'authenticated' &&
             typeof stored.url === 'string' &&
             stored.url.startsWith(`https://res.cloudinary.com/${cloudName}/`)
               ? stored.url
               : generateCloudinaryUrl({
+                  apiSecret,
                   cloudinaryPublicId: stored.cloudinaryPublicId,
                   cloudName,
                   deliveryType,

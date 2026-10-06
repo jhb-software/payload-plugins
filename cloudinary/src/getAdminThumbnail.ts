@@ -4,17 +4,22 @@ import { generateCloudinaryUrl } from './utilities/generateCloudinaryUrl.js'
 
 type GetAdminThumbnail = (args: { doc: Record<string, unknown> }) => false | null | string
 
-type GetAdminThumbnailFactory = (
-  cloudName: string,
-  deliveryType?: DeliveryType,
-) => GetAdminThumbnail
+type GetAdminThumbnailFactory = (args: {
+  apiSecret: string
+  cloudName: string
+  deliveryType?: DeliveryType
+}) => GetAdminThumbnail
 
 /**
  * Factory function to create the adminThumbnail function with access to cloudName.
  * This generates thumbnail URLs directly from cloudinaryPublicId instead of relying on doc.url,
  * which may still be a relative path when Payload's thumbnailURL hook runs.
  */
-export const getAdminThumbnailFactory: GetAdminThumbnailFactory = (cloudName, deliveryType) => {
+export const getAdminThumbnailFactory: GetAdminThumbnailFactory = ({
+  apiSecret,
+  cloudName,
+  deliveryType,
+}) => {
   return ({ doc }) => {
     const cloudinaryPublicId = doc.cloudinaryPublicId
     const mimeType = doc.mimeType
@@ -35,6 +40,7 @@ export const getAdminThumbnailFactory: GetAdminThumbnailFactory = (cloudName, de
     if (mimeType.startsWith('video/')) {
       const publicIdWithoutExt = cloudinaryPublicId.replace(/\.[^/.]+$/, '')
       return generateCloudinaryUrl({
+        apiSecret,
         cloudinaryPublicId: `${publicIdWithoutExt}.webp`,
         cloudName,
         deliveryType,
@@ -44,6 +50,7 @@ export const getAdminThumbnailFactory: GetAdminThumbnailFactory = (cloudName, de
     }
 
     return generateCloudinaryUrl({
+      apiSecret,
       cloudinaryPublicId,
       cloudName,
       deliveryType,

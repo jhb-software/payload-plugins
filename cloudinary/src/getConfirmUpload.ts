@@ -182,6 +182,7 @@ export const getConfirmUpload =
 
     const secureUrl = cloudinary.url(publicId, {
       type: deliveryType,
+      api_secret: apiSecret,
       cloud_name: cloudName,
       // Raw assets are addressed by their public id alone.
       format: resourceType === 'raw' ? undefined : format,

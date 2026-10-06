@@ -74,6 +74,18 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       },
     ]
 
+    if (options.deliveryType === 'authenticated') {
+      const exposed = Object.entries(options.collections).find(
+        ([, collOptions]) =>
+          typeof collOptions === 'object' && collOptions.disablePayloadAccessControl,
+      )
+      if (exposed) {
+        throw new Error(
+          `payloadCloudinaryPlugin: collection "${exposed[0]}" sets disablePayloadAccessControl, which would hand every reader a permanent signed URL to its authenticated assets.`,
+        )
+      }
+    }
+
     const isPluginDisabled = options.enabled === false
     const clientUploadsEnabled = !isPluginDisabled && Boolean(options.clientUploads)
     const clientUploadsAccess =
@@ -169,7 +181,11 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
           fields: [...fields, ...(collection.fields || [])],
           upload: {
             ...(typeof collection.upload === 'object' ? collection.upload : {}),
-            adminThumbnail: getAdminThumbnailFactory(options.cloudName, options.deliveryType),
+            adminThumbnail: getAdminThumbnailFactory({
+              apiSecret: options.credentials.apiSecret,
+              cloudName: options.cloudName,
+              deliveryType: options.deliveryType,
+            }),
             crop: false,
             disableLocalStorage: true,
           },
@@ -267,6 +283,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
 
       const upload = typeof collection.upload === 'object' ? collection.upload : {}
       const staticHandler = getStaticHandler({
+        apiSecret: options.credentials.apiSecret,
         cloudName: options.cloudName,
         deliveryType: options.deliveryType,
       })
@@ -305,6 +322,7 @@ function cloudinaryStorageAdapter(
       }),
       requiresClientUploadReceipt: true,
       staticHandler: getStaticHandler({
+        apiSecret: options.credentials.apiSecret,
         cloudName: options.cloudName,
         deliveryType: options.deliveryType,
       }),

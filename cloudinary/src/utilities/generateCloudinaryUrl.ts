@@ -3,6 +3,8 @@ import { v2 as cloudinary } from 'cloudinary'
 import type { DeliveryType } from '../types.js'
 
 export type GenerateCloudinaryUrlArgs = {
+  /** Signs `authenticated` URLs. Passed explicitly since plugin instances share the SDK config. */
+  apiSecret?: string
   cloudinaryPublicId: string
   cloudName: string
   deliveryType?: DeliveryType
@@ -15,6 +17,7 @@ export type GenerateCloudinaryUrlArgs = {
  * Shared logic used by both generateURL and getAdminThumbnail.
  */
 export function generateCloudinaryUrl({
+  apiSecret,
   cloudinaryPublicId,
   cloudName,
   deliveryType = 'upload',
@@ -37,6 +40,7 @@ export function generateCloudinaryUrl({
   if (deliveryType === 'authenticated') {
     return cloudinary.url(cloudinaryPublicId, {
       type: 'authenticated',
+      api_secret: apiSecret,
       cloud_name: cloudName,
       raw_transformation: transformOptions,
       resource_type: resourceType,

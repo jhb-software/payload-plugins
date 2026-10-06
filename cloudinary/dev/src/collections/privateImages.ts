@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload'
 
 /**
  * Images stored as Cloudinary `authenticated` assets. Cloudinary only delivers them through URLs
