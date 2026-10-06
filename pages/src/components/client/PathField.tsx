@@ -2,14 +2,20 @@
 import type { TextFieldClientProps } from 'payload'
 
 import {
+  FieldDescription,
   FieldLabel,
   TextInput,
   useConfig,
   useField,
   useFormFields,
   useLocale,
+  useTranslation,
 } from '@payloadcms/ui'
 
+import type {
+  PluginPagesTranslationKeys,
+  PluginPagesTranslations,
+} from '../../translations/index.js'
 import type { Breadcrumb } from '../../types/Breadcrumb.js'
 import type { Locale } from '../../types/Locale.js'
 
@@ -23,16 +29,20 @@ import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConfigAtrributes.js'
 
 export type PathFieldProps = {
+  /** Label of an ancestor without a slug in the edited locale, which leaves the page without a path. */
+  ancestorWithoutSlug?: string
   /** Each locale's path prefix, resolved on the server from the plugin's `localeRouting`. */
   localePrefixes?: Record<Locale, string>
 }
 
 export const PathField = ({
+  ancestorWithoutSlug,
   field,
   localePrefixes,
   path: fieldPath,
 }: PathFieldProps & TextFieldClientProps) => {
   const { config } = useConfig()
+  const { t } = useTranslation<PluginPagesTranslations, PluginPagesTranslationKeys>()
   const pageConfig = usePageCollectionConfigAttributes()
   const {
     breadcrumbs: { labelField: breadcrumbLabelFieldName },
@@ -242,6 +252,15 @@ export const PathField = ({
           <BreadcrumbsFieldModalButton />
         </div>
       </div>
+
+      {ancestorWithoutSlug && (
+        <FieldDescription
+          description={t('@jhb.software/payload-pages-plugin:noPathAncestorWithoutSlug', {
+            label: ancestorWithoutSlug,
+          })}
+          path={fieldPath}
+        />
+      )}
     </div>
   )
 }

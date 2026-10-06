@@ -12,7 +12,7 @@
  */
 export type Breadcrumbs = {
   slug: string;
-  path: string;
+  path?: string | null;
   label: string;
   id?: string | null;
 }[];

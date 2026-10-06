@@ -170,6 +170,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
           slug: '',
           content: 'Home',
           isRootPage: true,
+          _status: 'published',
           ...virtualFields,
         },
       })
@@ -280,11 +281,13 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       title: 'Root Page DE',
       slug: 'root-page-de',
       content: 'Root Page DE',
+      _status: 'published' as const,
     }
     const rootPageDataEn = {
       title: 'Root Page EN',
       slug: 'root-page-en',
       content: 'Root Page EN',
+      _status: 'published' as const,
     }
     const nestedPageDataDe = {
       title: 'Nested Page DE',
@@ -518,6 +521,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       title: 'Root Page DE',
       slug: 'root-page-de-one-locale',
       content: 'Root Page DE',
+      _status: 'published' as const,
     }
     const nestedPageDataDe = {
       title: 'Nested Page DE',
@@ -697,6 +701,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       title: 'Authors',
       slug: 'authors',
       content: 'Authors page',
+      _status: 'published' as const,
     }
     const authorPageData = {
       name: 'Test Author',
@@ -1792,6 +1797,7 @@ describe('Virtual fields in findVersions operation', () => {
       title: 'Parent Page',
       slug: 'parent-page',
       content: 'Parent content',
+      _status: 'published' as const,
       ...virtualFields,
     }
     const childPageData = {
@@ -2968,6 +2974,7 @@ describe('The afterChange hook doc and previousDoc contain the path of the page.
           title: 'Parent',
           slug: 'parent',
           content: 'Parent',
+          _status: 'published',
           ...virtualFields,
         },
       })
@@ -3363,6 +3370,7 @@ describe('The request is forwarded to the ancestor queries during breadcrumb com
       locale: 'de',
       data: {
         title: 'Context Parent',
+        _status: 'published',
         slug: 'context-parent',
         content: 'parent',
         ...virtualFields,
@@ -3383,6 +3391,7 @@ describe('The request is forwarded to the ancestor queries during breadcrumb com
           title: 'Uncommitted Parent',
           slug: 'uncommitted-parent',
           content: 'parent',
+          _status: 'published',
         },
       })
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **BREAKING**: a page whose ancestor has no slug in a locale no longer gets a path in that locale, instead of a path that silently skipped the ancestor's segment (e.g. `/de/product` instead of `/de/shop/product`) and could match another page. The admin's path field names the ancestor missing the slug. On published reads, the breadcrumb of an ancestor that is not live in the locale now has `path: null`, so `Breadcrumb.path` is typed `string | null`: render such breadcrumbs without a link and leave them out of JSON-LD.
 - fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
 - fix: a read excluding `path` and `breadcrumbs` no longer walks ancestors in collections without `meta.alternatePaths`, and excluding another field of the `meta` group (e.g. `{ meta: { title: false } }`) no longer drops `alternatePaths`
 

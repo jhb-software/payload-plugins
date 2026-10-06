@@ -290,6 +290,12 @@ Reads follow the same rule: a published read lists only the live locales in `pat
 
 Create and update responses are the exception: a write carries only the written locale's slug, so its response lists that locale alone in `alternatePaths` (root pages list every locale unless `_status` is localized). Read the document back for the full set.
 
+#### Ancestors without a slug or not published
+
+A page has a path in a locale only when it and every ancestor have a slug in that locale. Without one, the page gets no path there: no `path`, `breadcrumbs` or `alternatePaths` entry, no `listPagePaths` entry, and `findPageByPath` does not resolve it. The admin's path field names the ancestor which is missing the slug.
+
+An ancestor's publish status does not affect its descendants: a published child of an unpublished parent keeps its path and stays resolvable. Its breadcrumbs still list the parent, but on a published read the parent's breadcrumb carries `path: null` when the parent is not live in that locale, so a breadcrumb navigation never links to a URL which does not resolve. Render such an entry as plain text, and leave it out of a `BreadcrumbList` JSON-LD. Draft reads keep every path for the preview.
+
 #### Known limitation: routing is per request, not per document
 
 The routing is a function of the request, never of the document. In the admin, a user who sees documents of several tenants at once — a super-admin without a tenant cookie, or a list view spanning tenants — sees every `path` computed under the _request's_ routing, and `listPagePaths` indexes one tenant per call.
@@ -521,7 +527,7 @@ const sitemap = entries.map(({ path, updatedAt }) => ({
 }))
 ```
 
-On a localized install the result carries one entry per (document, locale); a locale whose slug is unset yields no entry. On an unlocalized install `locale` is absent from every entry. `title` carries the value of each collection's `breadcrumbs.labelField`. Options:
+On a localized install the result carries one entry per (document, locale); a locale in which the document or one of its ancestors has no slug yields no entry. On an unlocalized install `locale` is absent from every entry. `title` carries the value of each collection's `breadcrumbs.labelField`. Options:
 
 - `collections`: The page collections to enumerate. Defaults to every registered page collection, so a newly added page collection appears without a code change.
 - `locale`: Narrows a localized install to one locale.

@@ -13,6 +13,8 @@ export const de: GenericTranslationsObject = {
     creatingRedirect: 'Erstelle Weiterleitung...',
     isRootPage: 'ist Startseite',
     label: 'Beschriftung',
+    noPathAncestorWithoutSlug:
+      'Diese Seite hat in dieser Sprache keine URL: Die übergeordnete Seite „{{label}}“ hat darin keinen Slug.',
     parent: 'Übergeordnete Seite',
     path: 'Pfad',
     redirectCreated: 'Weiterleitung erstellt',

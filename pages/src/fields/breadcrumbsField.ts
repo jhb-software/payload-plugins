@@ -52,7 +52,7 @@ export function breadcrumbsField({ admin }: { admin?: ArrayField['admin'] } = {}
             name: 'path',
             type: 'text',
             label: translatedLabel('path'),
-            required: true,
+            // Not required: `null` for an ancestor which is not live in the locale.
             // Validate by default to allow the document to be updated, without having to set the breadcrumbs field.
             admin: {
               width: '33%',
