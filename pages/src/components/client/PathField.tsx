@@ -2,14 +2,20 @@
 import type { TextFieldClientProps } from 'payload'
 
 import {
+  FieldDescription,
   FieldLabel,
   TextInput,
   useConfig,
   useField,
   useFormFields,
   useLocale,
+  useTranslation,
 } from '@payloadcms/ui'
 
+import type {
+  PluginPagesTranslationKeys,
+  PluginPagesTranslations,
+} from '../../translations/index.js'
 import type { Breadcrumb } from '../../types/Breadcrumb.js'
 import type { Locale } from '../../types/Locale.js'
 
@@ -33,6 +39,7 @@ export const PathField = ({
   path: fieldPath,
 }: PathFieldProps & TextFieldClientProps) => {
   const { config } = useConfig()
+  const { t } = useTranslation<PluginPagesTranslations, PluginPagesTranslationKeys>()
   const pageConfig = usePageCollectionConfigAttributes()
   const {
     breadcrumbs: { labelField: breadcrumbLabelFieldName },
@@ -53,6 +60,9 @@ export const PathField = ({
   // effects below must re-run when the parent actually changes, not on every render, so they
   // depend on this key rather than on the value.
   const parentKey = parentRef ? parentRefKey(parentRef) : ''
+  // Only an ancestor without a slug in the edited locale leaves a page with a slug and a parent
+  // without a path.
+  const hasAncestorWithoutSlug = Boolean(slug && parentRef && !path)
 
   /**
    * Sets the path, but only if the new path is different from the current path.
@@ -242,6 +252,13 @@ export const PathField = ({
           <BreadcrumbsFieldModalButton />
         </div>
       </div>
+
+      {hasAncestorWithoutSlug && (
+        <FieldDescription
+          description={t('@jhb.software/payload-pages-plugin:noPathAncestorWithoutSlug')}
+          path={fieldPath}
+        />
+      )}
     </div>
   )
 }

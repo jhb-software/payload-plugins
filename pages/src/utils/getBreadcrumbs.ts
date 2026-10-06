@@ -99,7 +99,8 @@ export async function getBreadcrumbs({
       req,
     })
 
-    parentBreadcrumbsFor = (locale) => ancestorsToBreadcrumbs(ancestors, locale, localePrefixes)
+    parentBreadcrumbsFor = (locale) =>
+      ancestorsToBreadcrumbs({ ancestors, draft, locale, localePrefixes })
   } else {
     // Client components have no `req`, so the parent's already-computed breadcrumbs are read
     // through the REST API instead of walking the chain.
@@ -156,26 +157,37 @@ export async function getBreadcrumbs({
  *
  * Each ancestor's path is built from the breadcrumbs above it, which is what the previous
  * implementation achieved by reading each ancestor's own computed `breadcrumbs` field.
+ *
+ * An ancestor without a slug in the locale keeps an `undefined` slug, which leaves the document
+ * without a path in that locale (see `setPageDocumentVirtualFields`).
  */
-function ancestorsToBreadcrumbs(
-  ancestors: Ancestor[],
-  locale: Locale | undefined,
-  localePrefixes: Record<Locale, string> | undefined,
-): Breadcrumb[] {
+function ancestorsToBreadcrumbs({
+  ancestors,
+  draft,
+  locale,
+  localePrefixes,
+}: {
+  ancestors: Ancestor[]
+  draft: boolean
+  locale: Locale | undefined
+  localePrefixes: Record<Locale, string> | undefined
+}): Breadcrumb[] {
   const breadcrumbs: Breadcrumb[] = []
 
   for (const ancestor of ancestors) {
     const slug = ancestor.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(ancestor.slug, locale)!
 
+    // A root page is the site root of every locale — its path is the locale prefix (or `/`)
+    // rather than a path assembled from slugs, and it does not depend on the locale carrying
+    // a stored slug. Mirrors `setRootPageDocumentVirtualFields`.
+    const path = ancestor.isRootPage
+      ? rootPathFromPrefixes(localePrefixes, locale)
+      : pathFromBreadcrumbs({ additionalSlug: slug, breadcrumbs, locale, localePrefixes })
+
     breadcrumbs.push({
       slug,
       label: pickFieldValue(ancestor.label, locale)!,
-      // A root page is the site root of every locale — its path is the locale prefix (or `/`)
-      // rather than a path assembled from slugs, and it does not depend on the locale carrying
-      // a stored slug. Mirrors `setRootPageDocumentVirtualFields`.
-      path: ancestor.isRootPage
-        ? rootPathFromPrefixes(localePrefixes, locale)
-        : pathFromBreadcrumbs({ additionalSlug: slug, breadcrumbs, locale, localePrefixes }),
+      path: draft || ancestor.live[locale ?? ''] ? path : null,
     })
   }
 

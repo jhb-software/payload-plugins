@@ -62,11 +62,18 @@ export async function setPageDocumentVirtualFields({
             (doc.slug as Record<string, unknown>)[localeCode]) ||
           (typeof doc.slug === 'string' && doc.slug && (locale === 'all' || locale === localeCode))
 
+        // An ancestor without a slug in the locale leaves no path to build: dropping its segment
+        // would yield another page's URL.
+        const ancestorsHaveSlugs = breadcrumbs[localeCode]
+          .slice(0, -1)
+          .every(({ slug }) => typeof slug === 'string')
+
         if (
           hasSlug &&
+          ancestorsHaveSlugs &&
           (includeDraftLocales || draft || isPublishedInLocale(doc, collection, localeCode))
         ) {
-          acc[localeCode] = breadcrumbs[localeCode].at(-1)!.path
+          acc[localeCode] = breadcrumbs[localeCode].at(-1)!.path!
         }
         return acc
       },
@@ -117,7 +124,7 @@ export async function setPageDocumentVirtualFields({
     return {
       ...doc,
       breadcrumbs,
-      path: breadcrumbs.at(-1)!.path,
+      path: breadcrumbs.at(-1)!.path!,
     }
   }
 }
