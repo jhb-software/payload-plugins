@@ -347,3 +347,58 @@ describe('payloadCloudinaryPlugin static file serving', () => {
     expect(served?.headers.get('Content-Type')).toBe('image/jpeg')
   })
 })
+
+describe('payloadCloudinaryPlugin authenticated delivery', () => {
+  const thumbnailOf = (collection: CollectionConfig) => {
+    const adminThumbnail = typeof collection.upload === 'object' && collection.upload.adminThumbnail
+    if (typeof adminThumbnail !== 'function') {
+      throw new Error('adminThumbnail is not a function')
+    }
+    return adminThumbnail({ doc: { cloudinaryPublicId: 'private/photo', mimeType: 'image/jpeg' } })
+  }
+
+  const signedWith = (apiSecret: string) =>
+    cloudinary.url('private/photo', {
+      type: 'authenticated',
+      api_secret: apiSecret,
+      cloud_name: 'demo',
+      raw_transformation: 'w_300,h_300,c_fill,f_auto,q_auto,dpr_auto',
+      resource_type: 'image',
+      secure: true,
+      sign_url: true,
+      urlAnalytics: false,
+    })
+
+  it('signs URLs with its own API secret when another plugin instance is registered after it', () => {
+    const incomingConfig = {
+      collections: [
+        { slug: 'media', fields: [], upload: true },
+        { slug: 'other-media', fields: [], upload: true },
+      ],
+    } as unknown as Config
+
+    const withPrivate = payloadCloudinaryPlugin({
+      ...baseOptions,
+      collections: { media: true },
+      credentials: { apiKey: 'key-a', apiSecret: 'secret-a' },
+      deliveryType: 'authenticated',
+    })(incomingConfig) as Config
+    const config = payloadCloudinaryPlugin({
+      ...baseOptions,
+      collections: { 'other-media': true },
+      credentials: { apiKey: 'key-b', apiSecret: 'secret-b' },
+    })(withPrivate) as Config
+
+    expect(thumbnailOf(getCollection(config, 'media'))).toBe(signedWith('secret-a'))
+  })
+
+  it('rejects disablePayloadAccessControl, which would expose permanent signed URLs to every reader', () => {
+    expect(() =>
+      buildConfig({
+        ...baseOptions,
+        collections: { media: { disablePayloadAccessControl: true } },
+        deliveryType: 'authenticated',
+      }),
+    ).toThrow(/disablePayloadAccessControl/)
+  })
+})

@@ -53,6 +53,14 @@ export default buildConfig({
 
 The plugin automatically adds a `cloudinaryPublicId` field to your upload collections. This can be used to directly access the uploaded file from Cloudinary.
 
+### Private assets
+
+Set `deliveryType: 'authenticated'` to store uploads as [authenticated](https://cloudinary.com/documentation/control_access_to_media#authenticated_media_assets) Cloudinary assets. Cloudinary then only delivers them through URLs signed with the API secret, which the plugin generates for file serving and admin thumbnails. Files are served through Payload's access-controlled file route, so `disablePayloadAccessControl` is rejected for these collections.
+
+- Signed URLs do not expire. Admin thumbnails (`thumbnailURL`) are signed 300×300 renditions, so a user who could read a document once keeps access to its thumbnail until the API secret is rotated.
+- The delivery type applies to all collections of a plugin instance. To mix public and private collections, register a second instance with the same Cloudinary account (the SDK configuration is shared between instances).
+- Switching an existing collection to `authenticated` does not move its assets. Convert them first (e.g. with the Admin API's `rename` and `to_type: 'authenticated'`), otherwise they can no longer be served or deleted.
+
 ## Authentication
 
 With `clientUploads` enabled the plugin registers a signature endpoint that mints Cloudinary upload signatures for the browser. Like Payload's official storage adapters, it requires an authenticated user who may create or update documents in the target collection, and then applies `clientUploads.access` (default: any authenticated user).

@@ -74,6 +74,18 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       },
     ]
 
+    if (options.deliveryType === 'authenticated') {
+      const exposed = Object.entries(options.collections).find(
+        ([, collOptions]) =>
+          typeof collOptions === 'object' && collOptions.disablePayloadAccessControl,
+      )
+      if (exposed) {
+        throw new Error(
+          `payloadCloudinaryPlugin: collection "${exposed[0]}" sets disablePayloadAccessControl, which would hand every reader a permanent signed URL to its authenticated assets.`,
+        )
+      }
+    }
+
     const isPluginDisabled = options.enabled === false
     const clientUploadsEnabled = !isPluginDisabled && Boolean(options.clientUploads)
     const clientUploadsAccess =
@@ -112,6 +124,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
         access: clientUploadsAccess,
         apiSecret: options.credentials.apiSecret,
         collectionPrefixes,
+        deliveryType: options.deliveryType,
         folder: options.folder,
         useFilename: options.useFilename,
       }),
@@ -127,6 +140,7 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
             apiSecret: options.credentials.apiSecret,
             cloudName: options.cloudName,
             collections: Object.keys(options.collections),
+            deliveryType: options.deliveryType,
           }),
           method: 'post',
           path: confirmHandlerPath,
@@ -167,7 +181,11 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
           fields: [...fields, ...(collection.fields || [])],
           upload: {
             ...(typeof collection.upload === 'object' ? collection.upload : {}),
-            adminThumbnail: getAdminThumbnailFactory(options.cloudName),
+            adminThumbnail: getAdminThumbnailFactory({
+              apiSecret: options.credentials.apiSecret,
+              cloudName: options.cloudName,
+              deliveryType: options.deliveryType,
+            }),
             crop: false,
             disableLocalStorage: true,
           },
@@ -264,7 +282,11 @@ export const payloadCloudinaryPlugin: (cloudinaryStorageOpts: CloudinaryStorageO
       }
 
       const upload = typeof collection.upload === 'object' ? collection.upload : {}
-      const staticHandler = getStaticHandler({ cloudName: options.cloudName })
+      const staticHandler = getStaticHandler({
+        apiSecret: options.credentials.apiSecret,
+        cloudName: options.cloudName,
+        deliveryType: options.deliveryType,
+      })
       const serveByFilename: NonNullable<UploadConfig['handlers']>[number] = (req, args) =>
         'clientUploadContext' in args.params && args.params.clientUploadContext
           ? undefined
@@ -291,14 +313,19 @@ function cloudinaryStorageAdapter(
       name: 'cloudinary',
       clientUploads: options.clientUploads,
       generateURL: getGenerateUrl({ getLogger, options }),
-      handleDelete: getHandleDelete(),
+      handleDelete: getHandleDelete({ deliveryType: options.deliveryType }),
       handleUpload: getHandleUpload({
+        deliveryType: options.deliveryType,
         folderSrc,
         prefix,
         useFilename: options.useFilename,
       }),
       requiresClientUploadReceipt: true,
-      staticHandler: getStaticHandler({ cloudName: options.cloudName }),
+      staticHandler: getStaticHandler({
+        apiSecret: options.credentials.apiSecret,
+        cloudName: options.cloudName,
+        deliveryType: options.deliveryType,
+      }),
     }
   }
 }
