@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: the "Thinking…" section renders the model's reasoning instead of staying empty. It read the text off a `reasoning` property that `ReasoningUIPart` has never carried — the text is on `text`, as on every other part — and an `as unknown as` cast kept the compiler from reporting it.
+
 ## 0.1.0-beta.10
 
 BREAKING CHANGES:

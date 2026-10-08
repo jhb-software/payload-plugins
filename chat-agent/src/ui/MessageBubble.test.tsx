@@ -108,6 +108,20 @@ describe('MessageBubble', () => {
     expect(screen.getByText('\u2026')).toBeDefined()
   })
 
+  it('shows the summarized reasoning inside the thinking section', () => {
+    const message = makeMessage({
+      parts: [
+        { type: 'reasoning', text: 'Weighing the three hero variants before answering' },
+        { type: 'text', text: 'Standardise on the high-impact hero.' },
+      ],
+      role: 'assistant',
+    })
+
+    render(<MessageBubble message={message} />)
+
+    expect(screen.getByText('Weighing the three hero variants before answering')).toBeDefined()
+  })
+
   it('expands tool call output on click and collapses on second click', () => {
     const message = {
       id: '1',
