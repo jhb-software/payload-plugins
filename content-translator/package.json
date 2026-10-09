@@ -33,7 +33,7 @@
   "dependencies": {
     "@payloadcms/translations": "^3.90.2",
     "bson-objectid": "^2.0.4",
-    "he": "^1.2.0"
+    "he": "^2.0.0"
   },
   "peerDependencies": {
     "@payloadcms/ui": "^3.90.2",
