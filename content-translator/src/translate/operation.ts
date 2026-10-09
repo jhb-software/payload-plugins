@@ -1,4 +1,4 @@
-import he from 'he'
+import { decode } from 'he'
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
 import type { TranslatorCustomConfig } from '../types.js'
@@ -110,11 +110,11 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     }
   } else {
     resolveResult.translatedTexts.forEach((translated, index) => {
-      // he.decode() calls String.prototype.replace internally, so a
+      // decode() calls String.prototype.replace internally, so a
       // non-string value (e.g. an array slipping through from a hasMany
       // field) would throw "e.replace is not a function". Guard against it
       // and pass non-strings through untouched.
-      const formattedValue = typeof translated === 'string' ? he.decode(translated) : translated
+      const formattedValue = typeof translated === 'string' ? decode(translated) : translated
 
       valuesToTranslate[index].onTranslate(formattedValue)
     })
