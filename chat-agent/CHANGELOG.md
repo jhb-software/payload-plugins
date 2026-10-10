@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.11
 
 - fix: the "Thinking…" section shows the model's reasoning instead of staying empty, and is omitted when a reasoning part has no text
 
