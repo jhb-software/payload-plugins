@@ -26,7 +26,7 @@ export function hasPendingApproval(messages: UIMessage[]): boolean {
     if (!isToolUIPart(part)) {
       continue
     }
-    if ((part as { state?: unknown }).state === 'approval-requested') {
+    if (part.state === 'approval-requested') {
       return true
     }
   }
