@@ -122,6 +122,20 @@ describe('MessageBubble', () => {
     expect(screen.getByText('Weighing the three hero variants before answering')).toBeDefined()
   })
 
+  it('omits the thinking section when the reasoning part has no text', () => {
+    const message = makeMessage({
+      parts: [
+        { type: 'reasoning', text: '' },
+        { type: 'text', text: 'Standardise on the high-impact hero.' },
+      ],
+      role: 'assistant',
+    })
+
+    render(<MessageBubble message={message} />)
+
+    expect(screen.queryByText('Thinking\u2026')).toBeNull()
+  })
+
   it('expands tool call output on click and collapses on second click', () => {
     const message = {
       id: '1',

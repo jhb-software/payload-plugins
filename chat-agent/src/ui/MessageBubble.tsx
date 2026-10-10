@@ -452,12 +452,13 @@ export function MessageBubble({
   }
 
   message.parts.forEach((part, i) => {
-    // Reasoning parts render as collapsible "Thinking…" sections. The text is
-    // on `.text`, as it is for every other part — `ReasoningUIPart` has never
-    // carried a `.reasoning` property.
+    // Reasoning parts render as collapsible "Thinking…" sections. Parts without
+    // text (redacted or summary-less reasoning) are skipped.
     if (part.type === 'reasoning') {
-      flushText()
-      rendered.push(<ThinkingSection key={`reasoning-${i}`} text={part.text} />)
+      if (part.text.trim()) {
+        flushText()
+        rendered.push(<ThinkingSection key={`reasoning-${i}`} text={part.text} />)
+      }
       return
     }
     if (part.type === 'text') {
