@@ -271,16 +271,14 @@ export default function ChatView({
 
   const handleToolApprove = useCallback(
     (approvalId: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      void (addToolApprovalResponse as any)({ id: approvalId, approved: true })
+      void addToolApprovalResponse({ id: approvalId, approved: true })
     },
     [addToolApprovalResponse],
   )
 
   const handleToolDeny = useCallback(
     (approvalId: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      void (addToolApprovalResponse as any)({
+      void addToolApprovalResponse({
         id: approvalId,
         approved: false,
         reason: 'User denied this action.',
