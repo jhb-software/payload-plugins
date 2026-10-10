@@ -137,7 +137,7 @@ function useRunningElapsedSeconds(isRunning: boolean): null | number {
 function ToolCallIndicator({
   part,
 }: {
-  part: { errorText?: string; input: unknown; output?: unknown; state: string }
+  part: { errorText?: string; input?: unknown; output?: unknown; state: string }
 }) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -380,7 +380,7 @@ export function MessageBubble({
   // Full concatenated text (used for copy-to-clipboard and the edit flow)
   const textContent = message.parts
     .filter((p) => p.type === 'text')
-    .map((p) => (p as { text: string; type: 'text' }).text)
+    .map((p) => p.text)
     .join('')
 
   const handleCopy = useCallback(() => {
@@ -460,32 +460,21 @@ export function MessageBubble({
       return
     }
     if (part.type === 'text') {
-      textBuffer += (part as { text: string; type: 'text' }).text
+      textBuffer += part.text
       return
     }
     if (!isToolUIPart(part)) {
       return
     }
     flushText()
-    const toolPart = part as {
-      approval?: { approved?: boolean; id: string }
-      input: unknown
-      output?: unknown
-      state: string
-    }
-    const toolName = getToolName(toolPart as Parameters<typeof getToolName>[0])
+    const toolName = getToolName(part)
 
-    if (
-      toolPart.state === 'approval-requested' &&
-      toolPart.approval?.id &&
-      onToolApprove &&
-      onToolDeny
-    ) {
-      const approvalId = toolPart.approval.id
+    if (part.state === 'approval-requested' && part.approval?.id && onToolApprove && onToolDeny) {
+      const approvalId = part.approval.id
       hasToolApproval = true
       rendered.push(
         <ToolConfirmation
-          input={toolPart.input}
+          input={part.input}
           isLoading={isLoading}
           key={`tool-${i}`}
           onAllow={() => onToolApprove(approvalId)}
@@ -496,7 +485,7 @@ export function MessageBubble({
       return
     }
 
-    rendered.push(<ToolCallIndicator key={`tool-${i}`} part={toolPart} />)
+    rendered.push(<ToolCallIndicator key={`tool-${i}`} part={part} />)
   })
   flushText()
 
