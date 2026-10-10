@@ -452,11 +452,12 @@ export function MessageBubble({
   }
 
   message.parts.forEach((part, i) => {
-    // Reasoning parts render as collapsible "Thinking…" sections.
-    if ((part as { type: string }).type === 'reasoning') {
+    // Reasoning parts render as collapsible "Thinking…" sections. The text is
+    // on `.text`, as it is for every other part — `ReasoningUIPart` has never
+    // carried a `.reasoning` property.
+    if (part.type === 'reasoning') {
       flushText()
-      const reasoning = (part as unknown as { reasoning: string; type: 'reasoning' }).reasoning
-      rendered.push(<ThinkingSection key={`reasoning-${i}`} text={reasoning} />)
+      rendered.push(<ThinkingSection key={`reasoning-${i}`} text={part.text} />)
       return
     }
     if (part.type === 'text') {
