@@ -13,6 +13,8 @@ export const en: GenericTranslationsObject = {
     creatingRedirect: 'Creating redirect...',
     isRootPage: 'is Root Page',
     label: 'Label',
+    noPathAncestorWithoutSlug:
+      'This page has no URL in this language: one of its parent pages has no slug in it.',
     parent: 'Parent Page',
     path: 'Path',
     redirectCreated: 'Redirect Created',

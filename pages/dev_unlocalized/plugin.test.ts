@@ -86,6 +86,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
             slug: '',
             content: 'Root Page',
             isRootPage: true,
+            _status: 'published',
             ...virtualFields,
           },
         })
@@ -119,6 +120,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       title: 'Root Page',
       slug: 'root-page',
       content: 'Root Page',
+      _status: 'published' as const,
     }
     const nestedPageData = {
       title: 'Nested Page',
@@ -211,6 +213,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       title: 'Root Page',
       slug: 'root-page',
       content: 'Root Page',
+      _status: 'published' as const,
     }
     const nestedPageData = {
       title: 'Nested Page',
@@ -291,6 +294,7 @@ describe('Path and breadcrumb virtual fields are returned correctly for find ope
       title: 'Authors',
       slug: 'authors',
       content: 'Authors page',
+      _status: 'published' as const,
     }
     const authorPageData = {
       name: 'Test Author',
@@ -773,6 +777,12 @@ describe('Multi-collection parents without localization', () => {
     await payload.delete({ collection: 'pages', where: {} })
   })
 
+  // The published topics would otherwise leak into the path listings of later test files.
+  afterAll(async () => {
+    await payload.delete({ collection: 'topics', where: {} })
+    await payload.delete({ collection: 'pages', where: {} })
+  })
+
   test('breadcrumbs span pages and topics when localization is disabled', async () => {
     const shop = await payload.create({
       collection: 'pages',
@@ -782,6 +792,7 @@ describe('Multi-collection parents without localization', () => {
         content: 'Shop',
         slug: 'shop',
         isRootPage: false,
+        _status: 'published',
         parent: null,
       } as any,
     })
@@ -793,6 +804,7 @@ describe('Multi-collection parents without localization', () => {
         title: 'Mens',
         slug: 'mens',
         parent: { relationTo: 'pages', value: shop.id },
+        _status: 'published',
       } as any,
     })
 
