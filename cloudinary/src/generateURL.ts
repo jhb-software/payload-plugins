@@ -35,8 +35,10 @@ export const getGenerateUrl = ({
     }
 
     return generateCloudinaryUrl({
+      apiSecret: options.credentials.apiSecret,
       cloudinaryPublicId,
       cloudName: options.cloudName,
+      deliveryType: options.deliveryType,
       mimeType,
     })
   }

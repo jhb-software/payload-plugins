@@ -71,6 +71,7 @@ export interface Config {
     images: Image;
     'processed-images': ProcessedImage;
     'vector-images': VectorImage;
+    'private-images': PrivateImage;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -83,6 +84,7 @@ export interface Config {
     images: ImagesSelect<false> | ImagesSelect<true>;
     'processed-images': ProcessedImagesSelect<false> | ProcessedImagesSelect<true>;
     'vector-images': VectorImagesSelect<false> | VectorImagesSelect<true>;
+    'private-images': PrivateImagesSelect<false> | PrivateImagesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -210,6 +212,27 @@ export interface VectorImage {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "private-images".
+ */
+export interface PrivateImage {
+  id: string;
+  cloudinaryPublicId?: string | null;
+  alt?: string | null;
+  _objectKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -273,6 +296,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'vector-images';
         value: string | VectorImage;
+      } | null)
+    | ({
+        relationTo: 'private-images';
+        value: string | PrivateImage;
       } | null)
     | ({
         relationTo: 'users';
@@ -386,6 +413,26 @@ export interface ProcessedImagesSelect<T extends boolean = true> {
  * via the `definition` "vector-images_select".
  */
 export interface VectorImagesSelect<T extends boolean = true> {
+  cloudinaryPublicId?: T;
+  alt?: T;
+  _objectKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "private-images_select".
+ */
+export interface PrivateImagesSelect<T extends boolean = true> {
   cloudinaryPublicId?: T;
   alt?: T;
   _objectKey?: T;
