@@ -13,6 +13,9 @@ minimumReleaseAgeExclude:
   - '@payloadcms/db-mongodb@3.90.1'
   - '@payloadcms/next@3.90.1'
   - '@payloadcms/graphql@3.90.1'
+  - '@payloadcms/translations@3.91.0'
+  - '@payloadcms/ui@3.91.0'
+  - payload@3.91.0
 
 overrides:
   js-yaml: '^4.3.2'
