@@ -2,6 +2,7 @@ import type { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payloa
 
 import { hasDraftsEnabled } from 'payload/shared'
 
+import type { Locale } from '../types/Locale.js'
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
@@ -47,6 +48,7 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
 
   const pageConfig = asPageCollectionConfigOrThrow(collection)
 
+  const locale = localeFromRequest(req)
   const locales = localesFromRequest(req)
   const routing = await resolveLocaleRouting({
     payload: req.payload,
@@ -56,20 +58,23 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
 
   if (doc.isRootPage) {
     // Root pages don't need async lookups, so no try-catch needed
-    return setRootPageDocumentVirtualFields({
-      breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
-      collection,
-      doc,
-      draft: operationDraft(context),
-      locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
-      locales,
-      routing,
-    })
+    return withoutFallbackPaths(
+      setRootPageDocumentVirtualFields({
+        breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+        collection,
+        doc,
+        draft: operationDraft(context),
+        locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
+        locales,
+        routing,
+      }),
+      locale,
+    )
   }
 
   // Without a slug in any locale there is nothing to build a path from. A slug missing in the
-  // requested locale alone is no reason to stop: the locales which do have one get their paths,
-  // and Payload's locale fallback fills the requested locale like any other localized field.
+  // requested locale alone is no reason to stop: the locales which do have one still get their
+  // `alternatePaths`.
   if (!doc.slug) {
     return doc
   }
@@ -81,22 +86,47 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   }
 
   try {
-    return await setPageDocumentVirtualFields({
-      collection,
-      doc,
-      draft: operationDraft(context),
-      locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
-      locales,
-      pageConfigAttributes: pageConfig.page,
-      req,
-      routing,
-    })
+    return withoutFallbackPaths(
+      await setPageDocumentVirtualFields({
+        collection,
+        doc,
+        draft: operationDraft(context),
+        locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
+        locales,
+        pageConfigAttributes: pageConfig.page,
+        req,
+        routing,
+      }),
+      locale,
+    )
   } catch (error) {
     req.payload.logger.error(
       { err: error },
       `Failed to compute virtual fields for doc (id: ${doc.id})`,
     )
     return doc
+  }
+}
+
+/**
+ * On a single-locale read of a locale without a path, replaces the `path` and `breadcrumbs` locale
+ * maps with `{}` so Payload's locale fallback cannot fill in another locale's URL and trail. A `null`
+ * entry would not stop it: Payload falls back on `null` too.
+ */
+function withoutFallbackPaths(
+  doc: Record<string, unknown>,
+  locale: ReturnType<typeof localeFromRequest>,
+): Record<string, unknown> {
+  const paths = doc.path as Record<Locale, string | undefined> | string | undefined
+
+  if (!locale || locale === 'all' || !paths || typeof paths !== 'object' || paths[locale]) {
+    return doc
+  }
+
+  return {
+    ...doc,
+    ...('breadcrumbs' in doc && { breadcrumbs: {} }),
+    path: {},
   }
 }
 

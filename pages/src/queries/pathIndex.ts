@@ -173,7 +173,6 @@ export async function listPagePaths(args: ListPagePathsArgs): Promise<PagePathEn
       depth: 0,
       draft,
       // A locale-narrowed enumeration lists a document only under the locales it has a path in.
-      // Payload's locale fallback would otherwise fill a missing `path` with another locale's URL.
       fallbackLocale: 'none',
       limit: 0,
       locale,

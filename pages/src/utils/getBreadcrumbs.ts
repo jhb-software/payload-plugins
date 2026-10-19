@@ -103,11 +103,13 @@ export async function getBreadcrumbs({
       ancestorsToBreadcrumbs({ ancestors, draft, locale, localePrefixes })
   } else {
     // Client components have no `req`, so the parent's already-computed breadcrumbs are read
-    // through the REST API instead of walking the chain.
+    // through the REST API instead of walking the chain. The admin edits the latest version, so the
+    // parent is read as a draft: a published read has no trail for a locale the parent is only
+    // drafted in.
     if (!apiURL) {
       throw new Error('[Pages Plugin] getBreadcrumbs requires `apiURL` when called without `req`.')
     }
-    const query = stringify({ depth: 0, locale, select: { breadcrumbs: true } })
+    const query = stringify({ depth: 0, draft: true, locale, select: { breadcrumbs: true } })
     const response = await fetch(`${apiURL}/${parentRef.collection}/${parentRef.id}?${query}`, {
       headers: { 'Content-Type': 'application/json' },
       method: 'GET',

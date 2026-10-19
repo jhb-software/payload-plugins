@@ -1,7 +1,11 @@
 import { findPageByPath, listPagePaths } from '@jhb.software/payload-pages-plugin'
+import { GRAPHQL_POST, REST_GET } from '@payloadcms/next/routes'
 import payload, { createLocalReq, type CollectionSlug, type PayloadRequest } from 'payload'
 import type { Config } from 'payload/generated-types'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
+import type { Breadcrumb } from '../src/types/Breadcrumb.js'
+import { getBreadcrumbs } from '../src/utils/getBreadcrumbs.js'
+import { asPageCollectionConfigOrThrow } from '../src/utils/pageCollectionConfigHelpers.js'
 import config from './src/payload.config'
 import {
   clearCapturedAfterChanges,
@@ -593,9 +597,7 @@ describe('per-locale liveness with a localized _status', () => {
     ])
   })
 
-  test('falls back to the published locale’s path on a single-locale read of the draft-only locale', async () => {
-    // `path` is a localized field, so a locale without a path is handled the way Payload handles
-    // any other empty localized value: the request's fallback locale fills it in.
+  test('leaves the path and breadcrumbs absent on a published read of the draft-only locale', async () => {
     const german = await payload.findByID({
       collection: 'pages',
       id: halfPublished,
@@ -603,7 +605,8 @@ describe('per-locale liveness with a localized _status', () => {
       req: await tenantReq(prefixedTenant),
     })
 
-    expect(german.path).toBe('/en/published-en')
+    expect(german.path).toBeUndefined()
+    expect(german.breadcrumbs).toBeNull()
     expect(german.meta?.alternatePaths?.map(({ hreflang, path }) => ({ hreflang, path }))).toEqual([
       { hreflang: 'en', path: '/en/published-en' },
       { hreflang: 'x-default', path: '/en/published-en' },
@@ -638,7 +641,7 @@ describe('per-locale liveness with a localized _status', () => {
     expect(preview.path).toBe('/de/entwurf')
   })
 
-  test('falls back to another locale’s path and breadcrumbs for a page never written in the requested locale', async () => {
+  test('leaves the path and breadcrumbs absent for a page never written in the requested locale, while its content falls back', async () => {
     const german = await payload.findByID({
       collection: 'pages',
       id: englishOnly,
@@ -646,10 +649,9 @@ describe('per-locale liveness with a localized _status', () => {
       req: await tenantReq(prefixedTenant),
     })
 
-    // The whole document falls back, so an English path is the consistent answer.
     expect(german.title).toBe('English only')
-    expect(german.path).toBe('/en/english-only')
-    expect(german.breadcrumbs.map(({ path }) => path)).toEqual(['/en/english-only'])
+    expect(german.path).toBeUndefined()
+    expect(german.breadcrumbs).toBeNull()
     expect(german.meta?.alternatePaths?.map(({ hreflang, path }) => ({ hreflang, path }))).toEqual([
       { hreflang: 'en', path: '/en/english-only' },
       { hreflang: 'x-default', path: '/en/english-only' },
@@ -698,7 +700,7 @@ describe('per-locale liveness with a localized _status', () => {
     )
   })
 
-  test('populates a linked page’s fallback path and its live alternates in the requesting locale', async () => {
+  test('populates a linked page without a path in the requesting locale with its live alternates only', async () => {
     const linking = await createPage({
       de: { slug: 'verweist', title: 'Verweist' },
       en: { slug: 'links-to', title: 'Links to' },
@@ -720,11 +722,152 @@ describe('per-locale liveness with a localized _status', () => {
     })
 
     const target = german.relatedPage as Extract<typeof german.relatedPage, { id: unknown }>
-    expect(target.path).toBe('/en/english-only')
+    expect(target.path).toBeUndefined()
+    expect(target.breadcrumbs).toBeNull()
     expect(target.meta?.alternatePaths?.map(({ hreflang }) => hreflang)).toEqual([
       'en',
       'x-default',
     ])
+  })
+
+  test('previews the path of a child under a parent drafted in the edited locale with the parent’s draft slug', async () => {
+    // The admin path field reads the parent through the REST API; the browser sends the tenant
+    // cookie along.
+    vi.stubGlobal('fetch', async (input: string) => {
+      const url = new URL(input, 'http://localhost')
+      return REST_GET(config)(
+        new Request(url, { headers: { cookie: `payload-tenant=${prefixedTenant}` } }),
+        { params: Promise.resolve({ slug: url.pathname.split('/').slice(2) }) },
+      )
+    })
+
+    try {
+      const breadcrumbs = (await getBreadcrumbs({
+        apiURL: '/api',
+        data: { parent: halfPublished, slug: 'kind', title: 'Kind' },
+        locale: 'de',
+        locales: ['de', 'en'],
+        pageConfig: asPageCollectionConfigOrThrow(payload.collections.pages.config).page,
+      })) as Breadcrumb[]
+
+      expect(breadcrumbs.at(-1)?.path).toBe('/de/entwurf/kind')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('leaves a root page’s path and breadcrumbs absent on a published read of its draft-only locale', async () => {
+    const german = await payload.findByID({
+      collection: 'pages',
+      id: halfPublishedRoot,
+      locale: 'de',
+      req: await tenantReq(halfPublishedRootTenant),
+    })
+
+    expect(german.path).toBeUndefined()
+    expect(german.breadcrumbs).toBeNull()
+  })
+
+  test('leaves the path absent on a draft read of a locale the page was never written in', async () => {
+    const german = await payload.findByID({
+      collection: 'pages',
+      draft: true,
+      id: englishOnly,
+      locale: 'de',
+      req: await tenantReq(prefixedTenant),
+    })
+
+    expect(german.path).toBeUndefined()
+    expect(german.breadcrumbs).toBeNull()
+  })
+
+  test('returns neither another locale’s path nor extra fields when only the path is selected', async () => {
+    const pathOnly = await payload.findByID({
+      collection: 'pages',
+      id: englishOnly,
+      locale: 'de',
+      req: await tenantReq(prefixedTenant),
+      select: { path: true },
+    })
+    expect(pathOnly).toEqual({ id: englishOnly })
+
+    const breadcrumbsOnly = await payload.findByID({
+      collection: 'pages',
+      id: englishOnly,
+      locale: 'de',
+      req: await tenantReq(prefixedTenant),
+      select: { breadcrumbs: true },
+    })
+    expect(breadcrumbsOnly).toEqual({ breadcrumbs: null, id: englishOnly })
+  })
+
+  test('leaves the path absent on a find of a locale without a path and keeps it for the locale with one', async () => {
+    const where = { id: { equals: englishOnly } }
+    const req = await tenantReq(prefixedTenant)
+
+    const [german] = (await payload.find({ collection: 'pages', locale: 'de', req, where })).docs
+    expect(german?.path).toBeUndefined()
+    expect(german?.breadcrumbs).toBeNull()
+
+    const [english] = (
+      await payload.find({
+        collection: 'pages',
+        locale: 'en',
+        req: await tenantReq(prefixedTenant),
+        where,
+      })
+    ).docs
+    expect(english?.path).toBe('/en/english-only')
+    expect(english?.breadcrumbs?.map(({ path }) => path)).toEqual(['/en/english-only'])
+  })
+
+  test('leaves the path absent through the REST API', async () => {
+    const response = await REST_GET(config)(
+      new Request(`http://localhost/api/pages/${englishOnly}?locale=de`, {
+        headers: { cookie: `payload-tenant=${prefixedTenant}` },
+      }),
+      { params: Promise.resolve({ slug: ['pages', String(englishOnly)] }) },
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.title).toBe('English only')
+    expect(body).not.toHaveProperty('path')
+    expect(body.breadcrumbs).toBeNull()
+  })
+
+  test('answers null for the path through the GraphQL API', async () => {
+    const response = await GRAPHQL_POST(config)(
+      new Request('http://localhost/api/graphql', {
+        body: JSON.stringify({
+          query: `query ($id: ${typeof englishOnly === 'number' ? 'Int' : 'String'}!) {
+            Page(id: $id, locale: de) { title path breadcrumbs { path } }
+          }`,
+          variables: { id: englishOnly },
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          cookie: `payload-tenant=${prefixedTenant}`,
+        },
+        method: 'POST',
+      }),
+    )
+    const body = await response.json()
+
+    expect(body.errors).toBeUndefined()
+    expect(body.data.Page).toEqual({ breadcrumbs: null, path: null, title: 'English only' })
+  })
+
+  test('keeps the path of a page with a path in the requested locale', async () => {
+    const german = await payload.findByID({
+      collection: 'pages',
+      id: prefixedContact,
+      locale: 'de',
+      req: await tenantReq(prefixedTenant),
+    })
+
+    expect(german.path).toBe('/de/kontakt')
+    expect(german.breadcrumbs.map(({ path }) => path)).toEqual(['/de/kontakt'])
   })
 
   test('yields no path at all for a document published in no locale', async () => {

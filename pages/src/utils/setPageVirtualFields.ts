@@ -83,8 +83,7 @@ export async function setPageDocumentVirtualFields({
     const alternatePaths = alternatePathsFor(paths, routing)
 
     if (locale === 'all') {
-      // Breadcrumbs follow `path`: a locale without a path gets no trail either, so Payload's
-      // locale fallback treats both fields alike on a single-locale read.
+      // Breadcrumbs follow `path`: a locale without a path gets no trail either.
       const liveBreadcrumbs = Object.fromEntries(
         Object.keys(paths).map((localeCode) => [localeCode, breadcrumbs[localeCode]]),
       ) as Record<Locale, Breadcrumb[]>
