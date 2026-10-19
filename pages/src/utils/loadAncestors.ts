@@ -9,6 +9,8 @@ import type {
 import type { Locale } from '../types/Locale.js'
 import type { ParentRef } from './parentRef.js'
 
+import { livePerLocale } from '../queries/liveness.js'
+import { localeCodesOf } from './localeFromRequest.js'
 import { pageAttributesOf } from './pageCollectionConfigHelpers.js'
 import { extractID, parentRefKey, resolveParentRef } from './parentRef.js'
 
@@ -23,6 +25,11 @@ export type Ancestor = {
   id: DefaultDocumentIDType
   isRootPage: boolean
   label: unknown
+  /**
+   * Whether the stored row is live, keyed by locale (`''` on an unlocalized install). Only
+   * meaningful for published reads: a draft read resolves the latest version instead.
+   */
+  live: Record<string, boolean>
   slug: unknown
 }
 
@@ -237,6 +244,8 @@ async function fetchAncestors({
     isRootPage: true,
     [labelField]: true,
     [parentFieldName]: true,
+    ...(hasDraftsEnabled(collectionConfig) ? { _status: true } : {}),
+    ...(collectionConfig.trash ? { deletedAt: true } : {}),
   }
 
   const documents = new Map<string, Record<string, unknown>>()
@@ -297,6 +306,7 @@ async function fetchAncestors({
       collection,
       isRootPage: doc.isRootPage === true,
       label: doc[labelField],
+      live: livePerLocale(doc, collectionConfig, localeCodesOf(payload)),
       // On a polymorphic parent the next hop's collection comes from the stored value, so a
       // chain may alternate between collections at every level.
       parent: resolveParentRef(doc[parentFieldName], pageAttributes),

@@ -805,6 +805,100 @@ describe('per-locale liveness with a localized _status', () => {
   })
 })
 
+describe('ancestors missing or unpublished in a locale', () => {
+  test('gives a page no path in a locale its parent has no slug in', async () => {
+    const englishParent = (
+      await payload.create({
+        collection: 'pages',
+        locale: 'en',
+        data: {
+          ...virtualFields,
+          content: 'English parent',
+          slug: 'english-parent',
+          tenant: prefixedTenant,
+          title: 'English parent',
+          _status: 'published',
+        },
+      })
+    ).id
+    const child = await createPage({
+      de: { slug: 'kind-ohne-eltern', title: 'Kind' },
+      en: { slug: 'orphaned-child', title: 'Child' },
+      parent: englishParent,
+      tenant: prefixedTenant,
+    })
+
+    const all = await payload.findByID({
+      collection: 'pages',
+      id: child,
+      locale: 'all',
+      req: await tenantReq(prefixedTenant),
+    })
+    expect(all.path).toEqual({ en: '/en/english-parent/orphaned-child' })
+
+    const entries = await listPagePaths({ req: await tenantReq(prefixedTenant) })
+    expect(
+      entries.filter((entry) => entry.id === child).map((entry) => `${entry.locale}:${entry.path}`),
+    ).toEqual(['en:/en/english-parent/orphaned-child'])
+
+    expect(
+      await findPageByPath({ path: '/de/kind-ohne-eltern', req: await tenantReq(prefixedTenant) }),
+    ).toBeNull()
+  })
+
+  test('links no breadcrumb to an ancestor which is not published in the locale', async () => {
+    const parent = await createPage({
+      de: { slug: 'eltern-entwurf', title: 'Eltern' },
+      en: { slug: 'live-parent', title: 'Parent' },
+      publish: ['en'],
+      tenant: prefixedTenant,
+    })
+    const child = await createPage({
+      de: { slug: 'kind', title: 'Kind' },
+      en: { slug: 'child', title: 'Child' },
+      parent,
+      tenant: prefixedTenant,
+    })
+
+    const live = await payload.findByID({
+      collection: 'pages',
+      id: child,
+      locale: 'all',
+      req: await tenantReq(prefixedTenant),
+    })
+
+    // The child stays live: only its own status decides that.
+    expect(live.path).toEqual({ de: '/de/eltern-entwurf/kind', en: '/en/live-parent/child' })
+    expect(
+      await findPageByPath({
+        path: '/de/eltern-entwurf/kind',
+        req: await tenantReq(prefixedTenant),
+      }),
+    ).toMatchObject({ doc: { id: child } })
+    // @ts-expect-error - Payload does not type find operations with locale='all' correctly yet.
+    expect(live.breadcrumbs.de.map(({ path }) => path)).toEqual([null, '/de/eltern-entwurf/kind'])
+    // @ts-expect-error - Payload does not type find operations with locale='all' correctly yet.
+    expect(live.breadcrumbs.en.map(({ path }) => path)).toEqual([
+      '/en/live-parent',
+      '/en/live-parent/child',
+    ])
+
+    const preview = await payload.findByID({
+      collection: 'pages',
+      draft: true,
+      id: child,
+      locale: 'all',
+      req: await tenantReq(prefixedTenant),
+    })
+
+    // @ts-expect-error - Payload does not type find operations with locale='all' correctly yet.
+    expect(preview.breadcrumbs.de.map(({ path }) => path)).toEqual([
+      '/de/eltern-entwurf',
+      '/de/eltern-entwurf/kind',
+    ])
+  })
+})
+
 describe('reserved slugs', () => {
   test('rejects a slug which is a configured locale code, with a translated reason', async () => {
     const error = await payload
