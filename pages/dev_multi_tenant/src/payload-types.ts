@@ -10,12 +10,14 @@
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "Breadcrumbs".
  */
-export type Breadcrumbs = {
-  slug: string;
-  path?: string | null;
-  label: string;
-  id?: string | null;
-}[];
+export type Breadcrumbs =
+  | {
+      slug: string;
+      path?: string | null;
+      label: string;
+      id?: string | null;
+    }[]
+  | null;
 /**
  * Supported timezones in IANA format.
  *
@@ -153,8 +155,8 @@ export interface Page {
   isRootPage?: boolean | null;
   slug: string;
   parent?: (number | null) | Page;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   content: string;
   relatedPage?: (number | null) | Page;
@@ -201,8 +203,8 @@ export interface Topic {
         relationTo: 'topics';
         value: number | Topic;
       };
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   updatedAt: string;
   createdAt: string;
@@ -218,8 +220,8 @@ export interface Author {
   tenant?: (number | null) | Tenant;
   slug: string;
   parent: number | Page;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   name: string;
   content: string;
   updatedAt: string;
@@ -234,8 +236,8 @@ export interface Blogpost {
   tenant?: (number | null) | Tenant;
   slug: string;
   author: number | Author;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   shortTitle: string;
   content: string;
@@ -277,8 +279,8 @@ export interface Country {
   tenant?: (number | null) | Tenant;
   slug: string;
   parent: number | Page;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   content: string;
   updatedAt: string;
@@ -294,8 +296,8 @@ export interface CountryTravelTip {
   tenant?: (number | null) | Tenant;
   slug: string;
   country: number | Country;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   content: string;
   updatedAt: string;

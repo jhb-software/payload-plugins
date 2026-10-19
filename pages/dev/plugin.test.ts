@@ -1,4 +1,4 @@
-import payload, { type PayloadRequest, ValidationError } from 'payload'
+import payload, { configToJSONSchema, type PayloadRequest, ValidationError } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   clearPathCache,
@@ -4296,3 +4296,14 @@ const parentFieldErrorOf = async (operation: Promise<unknown>): Promise<string |
     return error.data.errors.find((e) => e.path === 'parent')?.message
   }
 }
+
+describe('Generated schema', () => {
+  test('does not declare path and breadcrumbs as always present, since a read in a locale without a path omits them', () => {
+    const schema = configToJSONSchema(payload.config, payload.db.defaultIDType)
+    const required = (schema.definitions?.pages?.required ?? []) as string[]
+
+    expect(required).toContain('slug')
+    expect(required).not.toContain('path')
+    expect(required).not.toContain('breadcrumbs')
+  })
+})

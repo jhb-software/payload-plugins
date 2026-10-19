@@ -19,7 +19,7 @@ export function breadcrumbsField({ admin }: { admin?: ArrayField['admin'] } = {}
       singular: translatedLabel('breadcrumb'),
     },
     localized: true,
-    required: true,
+    // Not required: a read in a locale without a path returns `null`.
     virtual: true,
     // Validate by default to allow the document to be updated, without having to set the breadcrumbs field.
     admin: mergeFieldAdmin<NonNullable<ArrayField['admin']>>(

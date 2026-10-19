@@ -13,7 +13,7 @@ export function pathField({ admin }: { admin?: TextField['admin'] } = {}): Field
     name: 'path',
     type: 'text',
     label: translatedLabel('path'),
-    required: true,
+    // Not required: a read in a locale without a path omits it.
     virtual: true,
 
     admin: mergeFieldAdmin<NonNullable<TextField['admin']>>(
