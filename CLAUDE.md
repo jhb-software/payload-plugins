@@ -64,7 +64,7 @@ Name each test by the behavior it protects in one sentence (_"rejects a confirma
 
 Every shipped `fix` or `feat` gets **one** line in the affected plugin's `CHANGELOG.md` describing the user-visible change. The unit is "the change", not "the commit": if a PR makes multiple commits to ship the same thing, edit the existing line rather than adding a new one. Internal-only commits (`chore`, `refactor`, `test`, `docs` that don't change behavior) don't earn a changelog entry.
 
-If there is no section for the upcoming version yet, add an `## Unreleased` heading at the top and list changes under it. When a version is released, the `## Unreleased` heading is replaced with the version number by the release workflow.
+If there is no section for the upcoming version yet, add an `## Unreleased` heading at the top and list changes under it. Before dispatching the release workflow, rename `## Unreleased` to the target version (e.g. `## 0.9.0-beta.6`) in a `docs(<scope>): add <version> changelog heading` commit: the workflow only verifies that the first heading matches the bumped version and fails otherwise.
 
 ## Breaking Changes
 
