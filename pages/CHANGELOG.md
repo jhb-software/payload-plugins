@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0-beta.6
 
 - **BREAKING**: a page whose ancestor has no slug in a locale no longer gets a path in that locale, instead of a path that silently skipped the ancestor's segment (e.g. `/de/product` instead of `/de/shop/product`) and could match another page. The admin's path field explains the missing path. On published reads, the breadcrumb of an ancestor that is not live in the locale now has `path: null`, so `Breadcrumb.path` is typed `string | null`: render such breadcrumbs without a link and leave them out of JSON-LD. This also applies to parents that were never published, e.g. created via the Local API without `_status: 'published'` on a drafts-enabled collection: their breadcrumbs lose their link until the parent is published.
 - **BREAKING**: a single-locale read of a locale the page has no path in (no slug there, or not published there) returns no `path` and `breadcrumbs: null` instead of the fallback locale's. Read `meta.alternatePaths` for other locales' URLs. Both fields are no longer `required`, so the generated types are `path?: string | null` and `breadcrumbs?: Breadcrumbs | null`.
