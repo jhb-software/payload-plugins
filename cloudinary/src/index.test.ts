@@ -349,12 +349,12 @@ describe('payloadCloudinaryPlugin static file serving', () => {
 })
 
 describe('payloadCloudinaryPlugin authenticated delivery', () => {
-  const thumbnailOf = (collection: CollectionConfig) => {
+  const thumbnailOf = (collection: CollectionConfig, mimeType = 'image/jpeg') => {
     const adminThumbnail = typeof collection.upload === 'object' && collection.upload.adminThumbnail
     if (typeof adminThumbnail !== 'function') {
       throw new Error('adminThumbnail is not a function')
     }
-    return adminThumbnail({ doc: { cloudinaryPublicId: 'private/photo', mimeType: 'image/jpeg' } })
+    return adminThumbnail({ doc: { cloudinaryPublicId: 'private/photo', mimeType } })
   }
 
   const signedWith = (apiSecret: string) =>
@@ -400,5 +400,15 @@ describe('payloadCloudinaryPlugin authenticated delivery', () => {
         deliveryType: 'authenticated',
       }),
     ).toThrow(/disablePayloadAccessControl/)
+  })
+
+  it('renders no thumbnail for authenticated documents, whose page would leak through a permanent URL', () => {
+    const config = buildConfig({
+      ...baseOptions,
+      collections: { media: true },
+      deliveryType: 'authenticated',
+    })
+
+    expect(thumbnailOf(getCollection(config, 'media'), 'application/pdf')).toBeFalsy()
   })
 })

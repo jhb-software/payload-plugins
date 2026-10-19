@@ -57,7 +57,7 @@ The plugin automatically adds a `cloudinaryPublicId` field to your upload collec
 
 Set `deliveryType: 'authenticated'` to store uploads as [authenticated](https://cloudinary.com/documentation/control_access_to_media#authenticated_media_assets) Cloudinary assets. Cloudinary then only delivers them through URLs signed with the API secret, which the plugin generates for file serving and admin thumbnails. Files are served through Payload's access-controlled file route, so `disablePayloadAccessControl` is rejected for these collections.
 
-- Signed URLs do not expire. Admin thumbnails (`thumbnailURL`) are signed 300×300 renditions, so a user who could read a document once keeps access to its thumbnail until the API secret is rotated.
+- Signed URLs do not expire, so documents only expose Payload's file route as `url`. Admin thumbnails (`thumbnailURL`) of images and videos are signed 300×300 renditions loaded straight from Cloudinary, so a user who could read a document once keeps access to its thumbnail until the API secret is rotated. Other files, such as PDFs, get no thumbnail.
 - The delivery type applies to all collections of a plugin instance. To mix public and private collections, register a second instance with the same Cloudinary account (the SDK configuration is shared between instances).
 - Switching an existing collection to `authenticated` does not move its assets. Convert them first (e.g. with the Admin API's `rename` and `to_type: 'authenticated'`), otherwise they can no longer be served or deleted.
 

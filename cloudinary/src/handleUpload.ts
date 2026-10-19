@@ -97,7 +97,10 @@ export const getHandleUpload = ({
     if (result && typeof result === 'object' && 'public_id' in result && 'secure_url' in result) {
       // these fields will be stored in the database
       data.cloudinaryPublicId = result.public_id
-      data.url = result.secure_url
+      // A signed URL never expires, so authenticated assets are only served through Payload's file route.
+      if (deliveryType !== 'authenticated') {
+        data.url = result.secure_url
+      }
 
       return data
     } else {

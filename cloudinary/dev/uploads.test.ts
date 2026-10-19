@@ -437,6 +437,47 @@ describe('authenticated delivery', () => {
     expect(lastFetchedURL()).toMatch(signedAuthenticatedURL)
   })
 
+  test('hands readers of a server upload only the access-controlled file route', async () => {
+    const response = await rest.createWithFile('private-images', {
+      file: jpegFile('private-read.jpg'),
+    })
+    const { doc: created } = (await response.json()) as {
+      doc: { id: number | string; url: string }
+    }
+    const read = (await (await rest.get(`private-images/${created.id}`)).json()) as { url: string }
+
+    expect(created.url).toMatch(/\/api\/private-images\/file\/private-read\.jpg$/)
+    expect(read.url).toMatch(/\/api\/private-images\/file\/private-read\.jpg$/)
+  })
+
+  test('hands readers of a client upload only the access-controlled file route', async () => {
+    const filename = 'private-client-read.jpg'
+    const { signedReceipt } = await confirmClientUpload({
+      collection: 'private-images',
+      endpointSuffix: '-1',
+      filename,
+    })
+    const response = await rest.createWithClientUpload('private-images', {
+      file: {
+        clientUploadContext: { signedReceipt },
+        filename,
+        mimeType: 'image/jpeg',
+        size: jpeg.length,
+      },
+    })
+    const { doc: created } = (await response.json()) as {
+      doc: { id: number | string; url: string }
+    }
+    const read = (await (await rest.get(`private-images/${created.id}`)).json()) as { url: string }
+
+    expect(created.url).toMatch(/\/api\/private-images\/file\/private-client-read\.jpg$/)
+    expect(read.url).toMatch(/\/api\/private-images\/file\/private-client-read\.jpg$/)
+
+    const served = await rest.get(`private-images/file/${filename}`)
+    expect(served.status).toBe(200)
+    expect(lastFetchedURL()).toMatch(signedAuthenticatedURL)
+  })
+
   test('returns a signed admin thumbnail URL', async () => {
     const response = await rest.createWithFile('private-images', {
       file: jpegFile('private-thumb.jpg'),

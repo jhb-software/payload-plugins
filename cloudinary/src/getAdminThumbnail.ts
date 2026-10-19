@@ -34,6 +34,16 @@ export const getAdminThumbnailFactory: GetAdminThumbnailFactory = ({
       return undefined as unknown as string
     }
 
+    // A signed thumbnail URL never expires. Skip documents such as PDFs, whose rendered page leaks
+    // more than a downscaled image does.
+    if (
+      deliveryType === 'authenticated' &&
+      !mimeType.startsWith('image/') &&
+      !mimeType.startsWith('video/')
+    ) {
+      return false
+    }
+
     const transformOptions = 'w_300,h_300,c_fill,f_auto,q_auto,dpr_auto'
 
     // For videos, create an image thumbnail (webp format)
