@@ -94,16 +94,21 @@ export const fakeSignedBrowserUpload = ({
 }
 
 const state = vi.hoisted(() => ({
+  /** Delivery type by public id of every asset uploaded through the SDK. */
+  assetTypes: new Map<string, string>(),
   destroys: [] as RecordedDestroy[],
   uploads: [] as RecordedUpload[],
 }))
 
 export const getRecordedUploads = (): RecordedUpload[] => [...state.uploads]
 export const getRecordedDestroys = (): RecordedDestroy[] => [...state.destroys]
+/** Public ids of the assets uploaded through the SDK that have not been destroyed. */
+export const getStoredAssets = (): string[] => [...state.assetTypes.keys()]
 
 export const resetCloudinaryMock = () => {
   state.uploads.length = 0
   state.destroys.length = 0
+  state.assetTypes.clear()
 }
 
 vi.mock('cloudinary', async (importOriginal) => {
@@ -131,12 +136,23 @@ vi.mock('cloudinary', async (importOriginal) => {
         state.uploads.push({ bytes, options })
 
         const publicId = resolvePublicId(options)
+        state.assetTypes.set(publicId, options.type ?? 'upload')
         const version = 1
         callback(undefined, {
           format: 'jpg',
           public_id: publicId,
           resource_type: 'image',
-          secure_url: `https://res.cloudinary.com/demo/image/upload/v${version}/${publicId}.jpg`,
+          // Like Cloudinary, answers with a signed URL for authenticated assets.
+          secure_url: actual.v2.url(publicId, {
+            cloud_name: 'demo',
+            format: 'jpg',
+            resource_type: 'image',
+            secure: true,
+            sign_url: options.type === 'authenticated',
+            type: options.type ?? 'upload',
+            urlAnalytics: false,
+            version,
+          }),
           signature: (actual.v2.utils.api_sign_request as unknown as SignRequest)(
             { public_id: publicId, version },
             process.env.CLOUDINARY_API_SECRET!,
@@ -157,10 +173,21 @@ vi.mock('cloudinary', async (importOriginal) => {
   const fakeDestroy = (
     publicId: string,
     options?: Record<string, unknown>,
-    callback?: (error: unknown, result: { result: 'ok' }) => void,
+    callback?: (error: unknown, result: { result: 'not found' | 'ok' }) => void,
   ) => {
     state.destroys.push({ options, publicId })
-    const result = { result: 'ok' as const }
+    // Cloudinary addresses assets by public id and delivery type, so destroying an asset under
+    // another type finds nothing.
+    const storedType = state.assetTypes.get(publicId)
+    const result = {
+      result:
+        storedType && storedType !== (options?.type ?? 'upload')
+          ? ('not found' as const)
+          : ('ok' as const),
+    }
+    if (result.result === 'ok') {
+      state.assetTypes.delete(publicId)
+    }
     callback?.(undefined, result)
     return Promise.resolve(result)
   }
