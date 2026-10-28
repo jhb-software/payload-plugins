@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.14.0
 
 - feat: export `bulkGenerateAltTexts` to run bulk generation in-process, without an HTTP request to the plugin's endpoint
 - feat: `healthCheck.cache: false` computes the health report on every request, for deployments with several instances and no shared cache handler, where other instances would report stale counts
