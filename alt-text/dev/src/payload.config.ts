@@ -1,5 +1,6 @@
 import {
   anthropicResolver,
+  bulkGenerateAltTexts,
   mistralResolver,
   openAIResolver,
   payloadAltTextPlugin,
@@ -97,6 +98,26 @@ export default buildConfig({
     Images,
     MediaWithFolders,
     Tenants,
+  ],
+  endpoints: [
+    // Calls bulk generation in-process, the way a custom endpoint, a job or an
+    // MCP tool would, instead of going through `POST /api/alt-text/generate/bulk`.
+    // The plugin's `access` option is not applied here, so check it yourself.
+    {
+      path: '/fill-missing-alt-texts',
+      method: 'post',
+      handler: async (req) => {
+        if (!req.user) {
+          return Response.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const { collection } = (await req.json?.()) as { collection: string }
+
+        return Response.json(
+          await bulkGenerateAltTexts({ collection, limit: 5, onlyMissing: true, req }),
+        )
+      },
+    },
   ],
   db: mongooseAdapter({
     url: process.env.MONGODB_URL!,

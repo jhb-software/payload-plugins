@@ -572,6 +572,22 @@ With `onlyMissing` and no `ids`, the endpoint picks the next images with gaps it
 | `notTracked`        | The collection does not track this file type, so it needs no alt text at all                                                     |
 | `unsupportedFormat` | A tracked file whose format the resolver cannot read — it still needs alt text, written by hand                                  |
 
+#### Calling it in-process
+
+Code running inside Payload — a custom endpoint, a job, an MCP tool — can call bulk generation directly instead of sending an HTTP request to the plugin. It takes the same options as the request body and returns the same result. `getAltTextHealth(req)` does the same for the health report.
+
+```ts
+import { bulkGenerateAltTexts } from '@jhb.software/payload-alt-text-plugin'
+
+const { updatedDocs, erroredDocs } = await bulkGenerateAltTexts({
+  collection: 'media',
+  onlyMissing: true,
+  req,
+})
+```
+
+It runs under `req.user`'s collection access, but does not apply the plugin's `access` option, so check that yourself where it matters. A request the endpoint would reject throws an `APIError` carrying the status the endpoint responds with.
+
 ### `GET /api/alt-text/health`
 
 Returns alt text coverage statistics across all configured collections. Only available when `healthCheck` is enabled.

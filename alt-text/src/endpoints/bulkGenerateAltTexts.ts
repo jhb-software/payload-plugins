@@ -16,13 +16,183 @@ import { configuredLocales, resolveLocales } from '../utilities/resolveLocales.j
 import { hasAltValue } from '../utilities/summarizeCollection.js'
 import { bulkGenerateAltTextsRequestSchema, formatZodError } from './schemas.js'
 
+export type BulkGenerateAltTextsArgs = {
+  collection: string
+  /** Images to pass over when `ids` is omitted, e.g. those an earlier run reported as errored. */
+  excludeIds?: (number | string)[]
+  /** The images to generate for. Omit together with `onlyMissing: true` to have them picked. */
+  ids?: (number | string)[]
+  /** How many images to pick when `ids` is omitted. Defaults to `maxBulkGenerateIds`. */
+  limit?: number
+  /** Narrows generation to these locales, within each image's own target locales. */
+  locales?: string[]
+  /** Generate only the empty locales and keep the alt texts already written. */
+  onlyMissing?: boolean
+  /** Generation and writes run under `req.user`'s collection access. */
+  req: PayloadRequest
+}
+
+export type BulkGenerateAltTextsResult = {
+  erroredDocs: (number | string)[]
+  skippedDocs: SkippedDoc[]
+  totalDocs: number
+  updatedDocs: number
+}
+
 /**
- * Generates and updates alt text for multiple images in all target locales.
+ * Generates and updates alt text for multiple images in all target locales —
+ * what `POST /alt-text/generate/bulk` runs, callable in-process (from a job, a
+ * custom endpoint or an MCP tool) without an HTTP round trip. Unlike the
+ * endpoint, it does not apply the plugin's `access` option.
  *
  * Files nothing can be generated for are reported as `skippedDocs` rather than
  * `erroredDocs` — burying them among real failures hides those — each with the
  * reason that decides what the editor has to do next. See {@link SkipReason}.
+ *
+ * @throws APIError with the status the endpoint responds with, for a request it rejects.
  */
+export async function bulkGenerateAltTexts({
+  collection,
+  excludeIds,
+  ids,
+  limit,
+  locales,
+  onlyMissing = false,
+  req,
+}: BulkGenerateAltTextsArgs): Promise<BulkGenerateAltTextsResult> {
+  let updatedDocs = 0
+  const erroredDocs: (number | string)[] = []
+  const skippedDocs: SkippedDoc[] = []
+
+  const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
+    AltTextPluginConfig | undefined
+
+  if (!pluginConfig) {
+    throw new APIError('Plugin config not found', 500)
+  }
+
+  if (!ids && !onlyMissing) {
+    throw new APIError('ids is required unless onlyMissing is true.', 400)
+  }
+
+  // Treat the configured collections as an allowlist. Reject any other
+  // collection before touching the Local API, so only the upload collections
+  // the plugin manages can ever be operated on.
+  if (!pluginConfig.collections.some((entry) => entry.slug === collection)) {
+    throw new APIError(`Collection "${collection}" is not managed by the alt text plugin.`, 403)
+  }
+
+  if (!pluginConfig.resolver) {
+    throw new APIError('No alt text resolver configured', 500)
+  }
+
+  // Fail fast only when nothing is configured at all. `filterLocales` is
+  // resolved per document below, since the locales a document may be
+  // written in can depend on the document (its tenant, say).
+  if (configuredLocales(pluginConfig).length === 0) {
+    throw new APIError(
+      'Could not determine target locales for alt text generation. Please check your plugin configuration.',
+      500,
+    )
+  }
+
+  const unconfigured = locales?.filter(
+    (locale) => !configuredLocales(pluginConfig).includes(locale),
+  )
+
+  if (unconfigured?.length) {
+    throw new APIError(
+      `Locales not configured in the Payload config: ${unconfigured.join(', ')}.`,
+      400,
+    )
+  }
+
+  const scope: GenerationScope = { locales, onlyMissing }
+
+  // Bound the batch so a single request cannot fan out into an unbounded
+  // number of paid resolver calls.
+  const batchSize = ids ? new Set(ids).size : (limit ?? pluginConfig.maxBulkGenerateIds)
+
+  if (batchSize > pluginConfig.maxBulkGenerateIds) {
+    throw new APIError(
+      ids
+        ? `Too many ids: ${batchSize} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`
+        : `limit ${batchSize} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`,
+      400,
+    )
+  }
+
+  // De-duplicated so the same image is never generated (and billed) twice.
+  const uniqueIds = ids
+    ? [...new Set(ids)]
+    : await selectDocsMissingAltText({
+        collection,
+        excludeIds: excludeIds ?? [],
+        limit: batchSize,
+        pluginConfig,
+        req,
+        scope,
+      })
+
+  // Also set by documents that fail after a locale was already written.
+  let wroteAnyDoc = false
+
+  try {
+    await pMap(
+      uniqueIds,
+      async (id) => {
+        try {
+          const skipReason = await generateAndUpdateAltText({
+            id,
+            collection,
+            onWrite: () => {
+              wroteAnyDoc = true
+            },
+            pluginConfig,
+            req,
+            scope,
+          })
+
+          if (skipReason) {
+            skippedDocs.push({ id, reason: skipReason.reason })
+            req.payload.logger.info(`Skipped ${id}: ${skipReason.detail}`)
+            return
+          }
+
+          updatedDocs++
+          req.payload.logger.info(
+            `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
+          )
+        } catch (error) {
+          // A Forbidden means the user has no read/update access to the
+          // collection at all — it applies to every id, so fail the whole
+          // request with a real 403 instead of silently listing all ids as
+          // errored. Row-level NotFound stays a per-doc error (partial success).
+          if (error instanceof Forbidden) {
+            throw error
+          }
+          req.payload.logger.error({ err: error }, `Error generating alt text for ${id}`)
+          erroredDocs.push(id)
+        }
+      },
+      { concurrency: pluginConfig.maxBulkGenerateConcurrency },
+    )
+  } finally {
+    // The writes skip the per-write revalidation; one for the whole run
+    // replaces them, even when the run is aborted partway.
+    if (wroteAnyDoc && pluginConfig.healthCheck && pluginConfig.healthCheckCache) {
+      revalidateAltTextHealthCollection(req, collection)
+    }
+  }
+
+  if (erroredDocs.length > 0) {
+    req.payload.logger.error(`Failed for: ${erroredDocs.join(', ')}`)
+  }
+
+  return { erroredDocs, skippedDocs, totalDocs: uniqueIds.length, updatedDocs }
+}
+
+/** The HTTP wrapper around {@link bulkGenerateAltTexts}, gated by the plugin's `access`. */
 export const bulkGenerateAltTextsEndpoint =
   (access: AltTextPluginConfig['access']): PayloadHandler =>
   async (req: PayloadRequest) => {
@@ -33,159 +203,16 @@ export const bulkGenerateAltTextsEndpoint =
 
       const data = 'json' in req && typeof req.json === 'function' ? await req.json() : null
 
-      const { collection, excludeIds, ids, limit, locales, onlyMissing } =
-        bulkGenerateAltTextsRequestSchema.parse(data)
-
-      let updatedDocs = 0
-      const erroredDocs: (number | string)[] = []
-      const skippedDocs: SkippedDoc[] = []
-
-      // Get plugin config from payload config
-      const pluginConfig = req.payload.config.custom?.altTextPluginConfig as
-        AltTextPluginConfig | undefined
-
-      if (!pluginConfig) {
-        return Response.json({ error: 'Plugin config not found' }, { status: 500 })
-      }
-
-      // Treat the configured collections as an allowlist. Reject any other
-      // collection before touching the Local API, so the endpoint can only ever
-      // operate on the upload collections the plugin manages.
-      const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)
-
-      if (!collectionConfig) {
-        return Response.json(
-          { error: `Collection "${collection}" is not managed by the alt text plugin.` },
-          { status: 403 },
-        )
-      }
-
-      if (!pluginConfig.resolver) {
-        return Response.json({ error: 'No alt text resolver configured' }, { status: 500 })
-      }
-
-      const concurrency = pluginConfig.maxBulkGenerateConcurrency
-
-      // Fail fast only when nothing is configured at all. `filterLocales` is
-      // resolved per document below, since the locales a document may be
-      // written in can depend on the document (its tenant, say).
-      if (configuredLocales(pluginConfig).length === 0) {
-        return Response.json(
-          {
-            error:
-              'Could not determine target locales for alt text generation. Please check your plugin configuration.',
-          },
-          { status: 500 },
-        )
-      }
-
-      const unconfigured = locales?.filter(
-        (locale) => !configuredLocales(pluginConfig).includes(locale),
+      return Response.json(
+        await bulkGenerateAltTexts({ ...bulkGenerateAltTextsRequestSchema.parse(data), req }),
       )
-
-      if (unconfigured?.length) {
-        return Response.json(
-          { error: `Locales not configured in the Payload config: ${unconfigured.join(', ')}.` },
-          { status: 400 },
-        )
-      }
-
-      const scope: GenerationScope = { locales, onlyMissing }
-
-      // Bound the batch so a single request cannot fan out into an unbounded
-      // number of paid resolver calls.
-      const batchSize = ids ? new Set(ids).size : (limit ?? pluginConfig.maxBulkGenerateIds)
-
-      if (batchSize > pluginConfig.maxBulkGenerateIds) {
-        return Response.json(
-          {
-            error: ids
-              ? `Too many ids: ${batchSize} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`
-              : `limit ${batchSize} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`,
-          },
-          { status: 400 },
-        )
-      }
-
-      // De-duplicated so the same image is never generated (and billed) twice.
-      const uniqueIds = ids
-        ? [...new Set(ids)]
-        : await selectDocsMissingAltText({
-            collection,
-            excludeIds: excludeIds ?? [],
-            limit: batchSize,
-            pluginConfig,
-            req,
-            scope,
-          })
-
-      // Also set by documents that fail after a locale was already written.
-      let wroteAnyDoc = false
-
-      try {
-        await pMap(
-          uniqueIds,
-          async (id) => {
-            try {
-              const skipReason = await generateAndUpdateAltText({
-                id,
-                collection,
-                onWrite: () => {
-                  wroteAnyDoc = true
-                },
-                pluginConfig,
-                req,
-                scope,
-              })
-
-              if (skipReason) {
-                skippedDocs.push({ id, reason: skipReason.reason })
-                req.payload.logger.info(`Skipped ${id}: ${skipReason.detail}`)
-                return
-              }
-
-              updatedDocs++
-              req.payload.logger.info(
-                `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
-              )
-            } catch (error) {
-              // A Forbidden means the user has no read/update access to the
-              // collection at all — it applies to every id, so fail the whole
-              // request with a real 403 instead of silently listing all ids as
-              // errored. Row-level NotFound stays a per-doc error (partial success).
-              if (error instanceof Forbidden) {
-                throw error
-              }
-              req.payload.logger.error({ err: error }, `Error generating alt text for ${id}`)
-              erroredDocs.push(id)
-            }
-          },
-          { concurrency },
-        )
-      } finally {
-        // The writes skip the per-write revalidation; one for the whole run
-        // replaces them, even when the run is aborted partway.
-        if (wroteAnyDoc && pluginConfig.healthCheck && pluginConfig.healthCheckCache) {
-          revalidateAltTextHealthCollection(req, collection)
-        }
-      }
-
-      if (erroredDocs.length > 0) {
-        req.payload.logger.error(`Failed for: ${erroredDocs.join(', ')}`)
-      }
-
-      return Response.json({
-        erroredDocs,
-        skippedDocs,
-        totalDocs: uniqueIds.length,
-        updatedDocs,
-      })
     } catch (error) {
       if (error instanceof ZodError) {
         return Response.json(formatZodError(error), { status: 400 })
       }
-      // Surface Payload access errors (Forbidden 403) with their real status so
-      // an agent gets an accurate, non-retryable signal instead of a 500.
+      // Surface the rejections above and Payload access errors (Forbidden 403)
+      // with their real status, so an agent gets an accurate, non-retryable
+      // signal instead of a 500.
       if (error instanceof APIError) {
         return Response.json({ error: error.message }, { status: error.status })
       }

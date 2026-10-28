@@ -1,3 +1,10 @@
+export {
+  bulkGenerateAltTexts,
+  type BulkGenerateAltTextsArgs,
+  type BulkGenerateAltTextsResult,
+  type SkippedDoc,
+  type SkipReason,
+} from './endpoints/bulkGenerateAltTexts.js'
 export { payloadAltTextPlugin } from './plugin.js'
 export { anthropicResolver } from './resolvers/anthropic.js'
 export type { AnthropicResolverConfig } from './resolvers/anthropic.js'

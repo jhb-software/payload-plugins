@@ -6,6 +6,7 @@ import { buildConfig, createLocalReq, getPayload } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, test, vi } from 'vitest'
 
 import { bulkGenerateAltTextsEndpoint } from '../src/endpoints/bulkGenerateAltTexts.ts'
+import { bulkGenerateAltTexts } from '../src/index.ts'
 import { payloadAltTextPlugin } from '../src/plugin.ts'
 
 /**
@@ -270,6 +271,27 @@ describe('bulk generation with onlyMissing', () => {
       const { status } = await bulkGenerate({ limit: 101, onlyMissing: true })
 
       assert.equal(status, 400)
+    })
+  })
+
+  describe('called in-process', () => {
+    test('fills the gaps without going through the HTTP endpoint', async () => {
+      const id = await createImage('half-done', { en: 'Written by an editor' })
+      const req = await createLocalReq({ user }, payload)
+
+      const result = await bulkGenerateAltTexts({ collection: 'media', onlyMissing: true, req })
+
+      assert.deepEqual(result, { erroredDocs: [], skippedDocs: [], totalDocs: 1, updatedDocs: 1 })
+      assert.deepEqual(await altTextsOf(id), { de: 'generated de', en: 'Written by an editor' })
+    })
+
+    test('throws an error carrying the HTTP status for a request the endpoint would reject', async () => {
+      const req = await createLocalReq({ user }, payload)
+
+      await assert.rejects(
+        bulkGenerateAltTexts({ collection: 'media', limit: 101, onlyMissing: true, req }),
+        (error: { status?: number }) => error.status === 400,
+      )
     })
   })
 })

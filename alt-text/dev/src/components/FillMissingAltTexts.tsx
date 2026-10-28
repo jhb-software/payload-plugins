@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 
 /**
- * Demonstrates `onlyMissing` without `ids`, the way an external dashboard calls
- * it: the endpoint picks the next images with gaps in the selected tenant and
- * writes only their empty locales, keeping alt texts editors already wrote.
+ * Demonstrates `onlyMissing` without `ids`: bulk generation picks the next
+ * images with gaps in the selected tenant and writes only their empty locales,
+ * keeping alt texts editors already wrote. The dev app's
+ * `/fill-missing-alt-texts` endpoint runs it in-process via `bulkGenerateAltTexts`.
  */
 export function FillMissingAltTexts() {
   const [isPending, startTransition] = useTransition()
@@ -21,8 +22,8 @@ export function FillMissingAltTexts() {
 
   const fill = (collection: string) =>
     startTransition(async () => {
-      const response = await fetch(`${serverURL ?? ''}${api}/alt-text/generate/bulk`, {
-        body: JSON.stringify({ collection, limit: 5, onlyMissing: true }),
+      const response = await fetch(`${serverURL ?? ''}${api}/fill-missing-alt-texts`, {
+        body: JSON.stringify({ collection }),
         method: 'POST',
       })
       const body = await response.json()
