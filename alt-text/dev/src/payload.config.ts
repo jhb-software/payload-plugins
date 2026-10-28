@@ -202,6 +202,10 @@ export default buildConfig({
       // fanning out into an unbounded number of paid resolver calls.
       maxBulkGenerateIds: 25,
       healthCheck: {
+        // Behind several instances without a shared cache handler, a write
+        // revalidates only the instance that handled it. Start the dev app
+        // with HEALTH_CHECK_CACHE=false to compute the report on every request.
+        cache: process.env.HEALTH_CHECK_CACHE !== 'false',
         // Gates the collection-wide health report (endpoint and widget) more
         // strictly than the per-document generate endpoints, which allow any
         // authenticated user: here only the designated admin sees it.

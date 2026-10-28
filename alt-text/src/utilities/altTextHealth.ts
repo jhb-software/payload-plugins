@@ -370,6 +370,19 @@ export async function getAltTextHealthScan(
 
   const { baseFilters } = resolved
 
+  const computeScan = () =>
+    computeAltTextHealthScan({
+      baseFilters,
+      collections,
+      isLocalized,
+      localeCodes,
+      req: scanReq,
+    })
+
+  if (!pluginConfig.healthCheckCache) {
+    return computeScan()
+  }
+
   const cacheKeyParts = [
     ALT_TEXT_HEALTH_GLOBAL_TAG,
     [...collections]
@@ -394,14 +407,7 @@ export async function getAltTextHealthScan(
   const getCachedHealthScan = createCachedAltTextHealthScan({
     cacheFactory,
     cacheKeyParts,
-    compute: async () =>
-      computeAltTextHealthScan({
-        baseFilters,
-        collections,
-        isLocalized,
-        localeCodes,
-        req: scanReq,
-      }),
+    compute: computeScan,
     revalidate: ALT_TEXT_HEALTH_CACHE_TTL,
     tags,
   })

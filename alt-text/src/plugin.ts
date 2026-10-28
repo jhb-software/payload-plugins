@@ -108,6 +108,7 @@ export const payloadAltTextPlugin =
       healthCheck: enableHealthCheck,
       healthCheckAccess,
       healthCheckBaseFilter: healthCheckConfig.baseFilter,
+      healthCheckCache: healthCheckConfig.cache ?? true,
       locale: incomingPluginConfig.locale,
       locales,
       maxBulkGenerateConcurrency: incomingPluginConfig.maxBulkGenerateConcurrency ?? 16,
@@ -196,16 +197,18 @@ export const payloadAltTextPlugin =
           fields: [...(collectionConfig.fields ?? []), ...fields],
           hooks: {
             ...collectionConfig.hooks,
-            ...(enableHealthCheck && {
-              afterChange: [
-                ...(collectionConfig.hooks?.afterChange ?? []),
-                createRevalidateAltTextHealthAfterChangeHook(collectionConfig.slug),
-              ],
-              afterDelete: [
-                ...(collectionConfig.hooks?.afterDelete ?? []),
-                createRevalidateAltTextHealthAfterDeleteHook(collectionConfig.slug),
-              ],
-            }),
+            // Without a cache there is nothing to revalidate.
+            ...(enableHealthCheck &&
+              pluginConfig.healthCheckCache && {
+                afterChange: [
+                  ...(collectionConfig.hooks?.afterChange ?? []),
+                  createRevalidateAltTextHealthAfterChangeHook(collectionConfig.slug),
+                ],
+                afterDelete: [
+                  ...(collectionConfig.hooks?.afterDelete ?? []),
+                  createRevalidateAltTextHealthAfterDeleteHook(collectionConfig.slug),
+                ],
+              }),
           },
         }
       }

@@ -29,6 +29,7 @@ export function buildPluginConfig(
     getImageThumbnail: () => 'https://example.com/thumb.png',
     healthCheck: true,
     healthCheckAccess: ({ req }) => !!req.user,
+    healthCheckCache: true,
     locale: 'en',
     locales: [],
     maxBulkGenerateConcurrency: 1,

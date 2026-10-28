@@ -113,6 +113,7 @@ function createRequest(
         { slug: 'shared-media', mimeTypes: ['image/*'] },
       ],
       healthCheck: true,
+      healthCheckCache: true,
       healthCheckBaseFilter: baseFilter,
       // As the plugin normalizes a project with localization disabled.
       locale: 'en',

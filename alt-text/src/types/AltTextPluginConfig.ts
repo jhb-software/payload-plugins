@@ -87,6 +87,18 @@ export type AltTextHealthCheckConfig = {
    * the collections the requesting user can read.
    */
   baseFilter?: AltTextHealthBaseFilter
+
+  /**
+   * Whether to cache the report in the Next.js data cache.
+   *
+   * Writes revalidate the cache only on the instance that handled them. With
+   * several instances and no shared cache handler, the others report stale
+   * counts for up to an hour. Disable the cache to compute the report on every
+   * request instead, which reads every tracked document each time.
+   *
+   * @default true
+   */
+  cache?: boolean
 }
 
 /** Configuration options for the alt text plugin. */
@@ -226,6 +238,9 @@ export type AltTextPluginConfig = {
 
   /** Narrows what the health report counts. See {@link AltTextHealthBaseFilter}. */
   healthCheckBaseFilter?: AltTextHealthBaseFilter
+
+  /** Whether the health report is cached. */
+  healthCheckCache: boolean
 
   /** The locale to generate alt texts in when localization is disabled. */
   locale?: string

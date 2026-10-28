@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat: `healthCheck.cache: false` computes the health report on every request, for deployments with several instances and no shared cache handler, where other instances would report stale counts
 - feat: bulk generation takes `onlyMissing` to fill only empty locales without overwriting written alt texts, `locales` to narrow the locales generated, and without `ids` picks the next images with gaps itself, passing over `excludeIds`
 - fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
 

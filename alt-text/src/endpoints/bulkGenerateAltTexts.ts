@@ -165,7 +165,7 @@ export const bulkGenerateAltTextsEndpoint =
       } finally {
         // The writes skip the per-write revalidation; one for the whole run
         // replaces them, even when the run is aborted partway.
-        if (wroteAnyDoc && pluginConfig.healthCheck) {
+        if (wroteAnyDoc && pluginConfig.healthCheck && pluginConfig.healthCheckCache) {
           revalidateAltTextHealthCollection(req, collection)
         }
       }

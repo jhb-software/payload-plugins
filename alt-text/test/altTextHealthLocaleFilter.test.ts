@@ -83,6 +83,7 @@ function createRequest(
       collections: [{ slug: 'images', mimeTypes: ['image/*'] }],
       filterLocales,
       healthCheck: true,
+      healthCheckCache: true,
       healthCheckBaseFilter: () => ({ tenant: { equals: tenant } }),
       locales: ['en', 'de'],
     },
