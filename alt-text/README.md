@@ -532,10 +532,16 @@ Generates and persists alt text for multiple images across every target locale (
 
 **Request body:**
 
-| Field        | Type                   | Required | Description                      |
-| ------------ | ---------------------- | -------- | -------------------------------- |
-| `collection` | `string`               | Yes      | The collection slug              |
-| `ids`        | `(string \| number)[]` | Yes      | Array of document IDs to process |
+| Field         | Type                   | Required                   | Description                                                                                          |
+| ------------- | ---------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `collection`  | `string`               | Yes                        | The collection slug                                                                                  |
+| `ids`         | `(string \| number)[]` | Unless `onlyMissing: true` | Array of document IDs to process                                                                     |
+| `onlyMissing` | `boolean`              | No                         | Generate only the locales without alt text and keep the ones already written (default: `false`)      |
+| `limit`       | `number`               | No                         | Without `ids`: how many images to pick, at most `maxBulkGenerateIds` (default: `maxBulkGenerateIds`) |
+| `locales`     | `string[]`             | No                         | Generate only these locales, within each image's own target locales. Must be configured locales      |
+| `excludeIds`  | `(string \| number)[]` | No                         | Without `ids`: images to pass over, e.g. those an earlier run reported in `erroredDocs`              |
+
+With `onlyMissing` and no `ids`, the endpoint picks the next images with gaps itself, from those the health report counts: the tracked file types, the user's `read` access and `healthCheck.baseFilter`. Images the resolver cannot read are not picked. Call it repeatedly to work through a library, passing the `erroredDocs` collected so far as `excludeIds`, and stop once a run picks nothing (`totalDocs: 0`).
 
 **Response:**
 
@@ -550,10 +556,11 @@ Generates and persists alt text for multiple images across every target locale (
 
 `skippedDocs` holds the documents no provider call was made for. They are reported separately from `erroredDocs` because they are not failures of the run — a selection covering a whole list view routinely contains a few — and each carries the reason, which decides what the editor has to do:
 
-| Reason              | Meaning                                                                                         |
-| ------------------- | ----------------------------------------------------------------------------------------------- |
-| `notTracked`        | The collection does not track this file type, so it needs no alt text at all                    |
-| `unsupportedFormat` | A tracked file whose format the resolver cannot read — it still needs alt text, written by hand |
+| Reason              | Meaning                                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `complete`          | Nothing left to generate: with `onlyMissing`, every target locale already has alt text, or none of the requested `locales` apply |
+| `notTracked`        | The collection does not track this file type, so it needs no alt text at all                                                     |
+| `unsupportedFormat` | A tracked file whose format the resolver cannot read — it still needs alt text, written by hand                                  |
 
 ### `GET /api/alt-text/health`
 

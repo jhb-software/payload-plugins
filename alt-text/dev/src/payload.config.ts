@@ -70,6 +70,9 @@ export default buildConfig({
     dashboard: {
       defaultLayout: [{ widgetSlug: 'alt-text-health', width: 'full' }],
     },
+    components: {
+      beforeDashboard: ['/src/components/FillMissingAltTexts#FillMissingAltTexts'],
+    },
     meta: { titleSuffix: '- Alt Text Dev' },
     user: 'users',
   },

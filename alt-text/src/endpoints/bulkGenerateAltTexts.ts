@@ -1,4 +1,4 @@
-import type { BasePayload, CollectionSlug, PayloadHandler, PayloadRequest } from 'payload'
+import type { CollectionSlug, PayloadHandler, PayloadRequest, Where } from 'payload'
 
 import pMap from 'p-map'
 import { APIError, Forbidden } from 'payload'
@@ -7,8 +7,13 @@ import { ZodError } from 'zod'
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { revalidateAltTextHealthCollection } from '../hooks/revalidateAltTextHealth.js'
-import { getUnsupportedSourceMimeTypeError, matchesMimeType } from '../utilities/mimeTypes.js'
+import {
+  buildMimeTypeWhere,
+  getUnsupportedSourceMimeTypeError,
+  matchesMimeType,
+} from '../utilities/mimeTypes.js'
 import { configuredLocales, resolveLocales } from '../utilities/resolveLocales.js'
+import { hasAltValue } from '../utilities/summarizeCollection.js'
 import { bulkGenerateAltTextsRequestSchema, formatZodError } from './schemas.js'
 
 /**
@@ -28,7 +33,8 @@ export const bulkGenerateAltTextsEndpoint =
 
       const data = 'json' in req && typeof req.json === 'function' ? await req.json() : null
 
-      const { collection, ids } = bulkGenerateAltTextsRequestSchema.parse(data)
+      const { collection, excludeIds, ids, limit, locales, onlyMissing } =
+        bulkGenerateAltTextsRequestSchema.parse(data)
 
       let updatedDocs = 0
       const erroredDocs: (number | string)[] = []
@@ -60,20 +66,6 @@ export const bulkGenerateAltTextsEndpoint =
 
       const concurrency = pluginConfig.maxBulkGenerateConcurrency
 
-      // De-duplicate so the same image is never generated (and billed) twice,
-      // then bound the batch so a single request cannot fan out into an
-      // unbounded number of paid resolver calls.
-      const uniqueIds = [...new Set(ids)]
-
-      if (uniqueIds.length > pluginConfig.maxBulkGenerateIds) {
-        return Response.json(
-          {
-            error: `Too many ids: ${uniqueIds.length} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`,
-          },
-          { status: 400 },
-        )
-      }
-
       // Fail fast only when nothing is configured at all. `filterLocales` is
       // resolved per document below, since the locales a document may be
       // written in can depend on the document (its tenant, say).
@@ -86,6 +78,46 @@ export const bulkGenerateAltTextsEndpoint =
           { status: 500 },
         )
       }
+
+      const unconfigured = locales?.filter(
+        (locale) => !configuredLocales(pluginConfig).includes(locale),
+      )
+
+      if (unconfigured?.length) {
+        return Response.json(
+          { error: `Locales not configured in the Payload config: ${unconfigured.join(', ')}.` },
+          { status: 400 },
+        )
+      }
+
+      const scope: GenerationScope = { locales, onlyMissing }
+
+      // Bound the batch so a single request cannot fan out into an unbounded
+      // number of paid resolver calls.
+      const batchSize = ids ? new Set(ids).size : (limit ?? pluginConfig.maxBulkGenerateIds)
+
+      if (batchSize > pluginConfig.maxBulkGenerateIds) {
+        return Response.json(
+          {
+            error: ids
+              ? `Too many ids: ${batchSize} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`
+              : `limit ${batchSize} exceeds the maximum of ${pluginConfig.maxBulkGenerateIds} per request.`,
+          },
+          { status: 400 },
+        )
+      }
+
+      // De-duplicated so the same image is never generated (and billed) twice.
+      const uniqueIds = ids
+        ? [...new Set(ids)]
+        : await selectDocsMissingAltText({
+            collection,
+            excludeIds: excludeIds ?? [],
+            limit: batchSize,
+            pluginConfig,
+            req,
+            scope,
+          })
 
       // Also set by documents that fail after a locale was already written.
       let wroteAnyDoc = false
@@ -101,9 +133,9 @@ export const bulkGenerateAltTextsEndpoint =
                 onWrite: () => {
                   wroteAnyDoc = true
                 },
-                payload: req.payload,
                 pluginConfig,
                 req,
+                scope,
               })
 
               if (skipReason) {
@@ -170,32 +202,44 @@ export const bulkGenerateAltTextsEndpoint =
 /**
  * Why a document was left alone.
  *
+ * - `complete` — nothing left to generate: with `onlyMissing`, every target
+ *   locale already has alt text, or none of the requested `locales` apply.
  * - `notTracked` — the collection does not track this file type, so it needs no
  *   alt text at all.
  * - `unsupportedFormat` — a tracked file whose format the resolver cannot read.
  *   It still needs alt text; an editor has to write it.
  */
-export type SkipReason = 'notTracked' | 'unsupportedFormat'
+export type SkipReason = 'complete' | 'notTracked' | 'unsupportedFormat'
 
 export type SkippedDoc = { id: number | string; reason: SkipReason }
 
-/** Returns why the document was skipped, or `undefined` once it has been written. */
-async function generateAndUpdateAltText({
+type Skip = { detail: string; reason: SkipReason }
+
+/** Which locales of an image a run generates for. */
+type GenerationScope = {
+  /** Narrows each image's target locales to these. */
+  locales?: string[]
+  /** Leaves out the locales that already have alt text. */
+  onlyMissing: boolean
+}
+
+type GenerationPlan = { imageDoc: Record<string, unknown>; locales: string[] } | { skip: Skip }
+
+/** Decides what one document would be generated for, without calling the resolver. */
+async function planGeneration({
   id,
   collection,
-  onWrite,
-  payload,
   pluginConfig,
   req,
+  scope,
 }: {
   collection: CollectionSlug
   id: number | string
-  onWrite: () => void
-  payload: BasePayload
   pluginConfig: AltTextPluginConfig
   req: PayloadRequest
-}): Promise<{ detail: string; reason: SkipReason } | undefined> {
-  const imageDoc = await payload.findByID({
+  scope: GenerationScope
+}): Promise<GenerationPlan> {
+  const imageDoc = await req.payload.findByID({
     id,
     collection,
     depth: 0,
@@ -218,8 +262,10 @@ async function generateAndUpdateAltText({
 
   if (mimeType && !matchesMimeType(mimeType, collectionConfig.mimeTypes)) {
     return {
-      detail: `alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection`,
-      reason: 'notTracked',
+      skip: {
+        detail: `alt text is not tracked for files of type "${mimeType}" in the "${collection}" collection`,
+        reason: 'notTracked',
+      },
     }
   }
 
@@ -229,20 +275,80 @@ async function generateAndUpdateAltText({
     supportedMimeTypes: pluginConfig.resolver.supportedMimeTypes,
   })
   if (unsupportedSourceError) {
-    return { detail: unsupportedSourceError, reason: 'unsupportedFormat' }
+    return { skip: { detail: unsupportedSourceError, reason: 'unsupportedFormat' } }
   }
 
   // Resolved before the resolver runs, so no locale the document may not be
   // written in is ever generated (and billed).
-  const locales = await resolveLocales({ doc: imageDoc, pluginConfig, req })
+  const targetLocales = (await resolveLocales({ doc: imageDoc, pluginConfig, req })).filter(
+    (locale) => !scope.locales || scope.locales.includes(locale),
+  )
+
+  if (!scope.onlyMissing) {
+    return targetLocales.length > 0
+      ? { imageDoc, locales: targetLocales }
+      : { skip: { detail: 'none of the requested locales apply', reason: 'complete' } }
+  }
+
+  const isLocalized = Boolean(req.payload.config.localization)
+  const { alt } = isLocalized
+    ? await req.payload.findByID({
+        id,
+        collection,
+        depth: 0,
+        fallbackLocale: false,
+        locale: 'all',
+        overrideAccess: false,
+        select: { alt: true },
+        user: req.user,
+      })
+    : (imageDoc as { alt?: unknown })
+
+  const locales = targetLocales.filter(
+    (locale) => !hasAltValue(altInLocale(alt, locale, isLocalized)),
+  )
+
+  if (locales.length === 0) {
+    return {
+      skip: { detail: 'every requested target locale already has alt text', reason: 'complete' },
+    }
+  }
+
+  return { imageDoc, locales }
+}
+
+const altInLocale = (alt: unknown, locale: string, isLocalized: boolean): unknown =>
+  isLocalized ? (alt as Record<string, unknown> | undefined)?.[locale] : alt
+
+/** Returns why the document was skipped, or `undefined` once it has been written. */
+async function generateAndUpdateAltText({
+  id,
+  collection,
+  onWrite,
+  pluginConfig,
+  req,
+  scope,
+}: {
+  collection: CollectionSlug
+  id: number | string
+  onWrite: () => void
+  pluginConfig: AltTextPluginConfig
+  req: PayloadRequest
+  scope: GenerationScope
+}): Promise<Skip | undefined> {
+  const plan = await planGeneration({ id, collection, pluginConfig, req, scope })
+
+  if ('skip' in plan) {
+    return plan.skip
+  }
+
+  const { imageDoc, locales } = plan
+  const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)!
 
   const imageThumbnailUrl = await pluginConfig.getImageThumbnail(imageDoc, { collection, req })
 
   const result = await pluginConfig.resolver.resolveBulk({
-    filename:
-      'filename' in imageDoc && typeof imageDoc.filename === 'string'
-        ? imageDoc.filename
-        : undefined,
+    filename: typeof imageDoc.filename === 'string' ? imageDoc.filename : undefined,
     imageThumbnailMimeType: collectionConfig.imageThumbnailMimeType,
     imageThumbnailUrl,
     locales,
@@ -256,7 +362,7 @@ async function generateAndUpdateAltText({
   for (const locale of locales) {
     const localeResult = result.results[locale]
     if (localeResult) {
-      await payload.update({
+      await req.payload.update({
         id,
         collection,
         // The endpoint revalidates the health cache once for the whole run.
@@ -274,4 +380,108 @@ async function generateAndUpdateAltText({
       onWrite()
     }
   }
+}
+
+const SELECTION_PAGE_SIZE = 500
+
+/**
+ * The next `limit` images with a gap in alt text, among those the health report
+ * counts: the tracked file types, the user's `read` access and the health check's
+ * base filter.
+ *
+ * Only images the run would actually generate for are picked — not those the
+ * resolver cannot read, nor those whose gaps lie outside their own target
+ * locales — so they cannot fill every batch and stall a caller working through
+ * the library. A document whose planning fails is picked, so the run reports it
+ * in `erroredDocs`; the caller passes such documents back as `excludeIds` to
+ * read past them.
+ */
+async function selectDocsMissingAltText({
+  collection,
+  excludeIds,
+  limit,
+  pluginConfig,
+  req,
+  scope,
+}: {
+  collection: CollectionSlug
+  excludeIds: (number | string)[]
+  limit: number
+  pluginConfig: AltTextPluginConfig
+  req: PayloadRequest
+  scope: GenerationScope
+}): Promise<(number | string)[]> {
+  const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)!
+  const mimeTypeWhere = buildMimeTypeWhere(collectionConfig.mimeTypes)
+
+  if (!mimeTypeWhere) {
+    return []
+  }
+
+  const baseFilter = await pluginConfig.healthCheckBaseFilter?.({ collection, req })
+  const where: Where =
+    baseFilter && Object.keys(baseFilter).length > 0
+      ? { and: [mimeTypeWhere, baseFilter] }
+      : mimeTypeWhere
+
+  const isLocalized = Boolean(req.payload.config.localization)
+  const locales = scope.locales ?? configuredLocales(pluginConfig)
+  // Compared as strings: a JSON body may carry a numeric ID as either.
+  const excluded = new Set(excludeIds.map(String))
+  const selected: (number | string)[] = []
+
+  for (let page = 1; selected.length < limit; page++) {
+    const result = await req.payload.find({
+      collection,
+      depth: 0,
+      fallbackLocale: isLocalized ? false : undefined,
+      limit: SELECTION_PAGE_SIZE,
+      locale: isLocalized ? 'all' : undefined,
+      overrideAccess: false,
+      page,
+      select: { alt: true },
+      sort: 'id',
+      user: req.user,
+      where,
+    })
+
+    for (const doc of result.docs) {
+      if (selected.length >= limit) {
+        break
+      }
+
+      if (excluded.has(String(doc.id))) {
+        continue
+      }
+
+      const alt = 'alt' in doc ? doc.alt : undefined
+      const hasGap = locales.some((locale) => !hasAltValue(altInLocale(alt, locale, isLocalized)))
+
+      if (!hasGap) {
+        continue
+      }
+
+      try {
+        const plan = await planGeneration({
+          id: doc.id,
+          collection,
+          pluginConfig,
+          req,
+          scope,
+        })
+
+        if (!('skip' in plan)) {
+          selected.push(doc.id)
+        }
+      } catch {
+        selected.push(doc.id)
+      }
+    }
+
+    if (!result.hasNextPage) {
+      break
+    }
+  }
+
+  return selected
 }
