@@ -29,7 +29,8 @@ export function FillMissingAltTexts() {
       const body = await response.json()
 
       if (!response.ok) {
-        toast.error(body.error ?? 'Failed to fill missing alt texts')
+        // Payload renders an error thrown from a custom endpoint as `{ errors: [{ message }] }`.
+        toast.error(body.errors?.[0]?.message ?? body.error ?? 'Failed to fill missing alt texts')
         return
       }
 

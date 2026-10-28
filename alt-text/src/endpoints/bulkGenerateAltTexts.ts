@@ -8,7 +8,7 @@ import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
 import { revalidateAltTextHealthCollection } from '../hooks/revalidateAltTextHealth.js'
 import {
-  buildMimeTypeWhere,
+  buildTrackedDocsWhere,
   getUnsupportedSourceMimeTypeError,
   matchesMimeType,
 } from '../utilities/mimeTypes.js'
@@ -75,6 +75,14 @@ export async function bulkGenerateAltTexts({
     throw new APIError('ids is required unless onlyMissing is true.', 400)
   }
 
+  if (limit !== undefined && !(Number.isInteger(limit) && limit > 0)) {
+    throw new APIError('limit must be a positive integer.', 400)
+  }
+
+  if (locales?.length === 0) {
+    throw new APIError('locales must not be empty.', 400)
+  }
+
   // Treat the configured collections as an allowlist. Reject any other
   // collection before touching the Local API, so only the upload collections
   // the plugin manages can ever be operated on.
@@ -111,7 +119,10 @@ export async function bulkGenerateAltTexts({
 
   // Bound the batch so a single request cannot fan out into an unbounded
   // number of paid resolver calls.
-  const batchSize = ids ? new Set(ids).size : (limit ?? pluginConfig.maxBulkGenerateIds)
+  // De-duplicated so the same image is never generated (and billed) twice.
+  // Compared as strings: a JSON body may carry a numeric ID as either.
+  const uniqueIds = ids && [...new Map(ids.map((id) => [String(id), id])).values()]
+  const batchSize = uniqueIds ? uniqueIds.length : (limit ?? pluginConfig.maxBulkGenerateIds)
 
   if (batchSize > pluginConfig.maxBulkGenerateIds) {
     throw new APIError(
@@ -122,9 +133,8 @@ export async function bulkGenerateAltTexts({
     )
   }
 
-  // De-duplicated so the same image is never generated (and billed) twice.
-  const uniqueIds = ids
-    ? [...new Set(ids)]
+  const targets: Target[] = uniqueIds
+    ? uniqueIds.map((id) => ({ id }))
     : await selectDocsMissingAltText({
         collection,
         excludeIds: excludeIds ?? [],
@@ -139,8 +149,8 @@ export async function bulkGenerateAltTexts({
 
   try {
     await pMap(
-      uniqueIds,
-      async (id) => {
+      targets,
+      async ({ id, plan }) => {
         try {
           const skipReason = await generateAndUpdateAltText({
             id,
@@ -148,6 +158,7 @@ export async function bulkGenerateAltTexts({
             onWrite: () => {
               wroteAnyDoc = true
             },
+            plan,
             pluginConfig,
             req,
             scope,
@@ -161,7 +172,7 @@ export async function bulkGenerateAltTexts({
 
           updatedDocs++
           req.payload.logger.info(
-            `${updatedDocs}/${uniqueIds.length} updated (${Math.round((updatedDocs / uniqueIds.length) * 100)}%)`,
+            `${updatedDocs}/${targets.length} updated (${Math.round((updatedDocs / targets.length) * 100)}%)`,
           )
         } catch (error) {
           // A Forbidden means the user has no read/update access to the
@@ -189,7 +200,7 @@ export async function bulkGenerateAltTexts({
     req.payload.logger.error(`Failed for: ${erroredDocs.join(', ')}`)
   }
 
-  return { erroredDocs, skippedDocs, totalDocs: uniqueIds.length, updatedDocs }
+  return { erroredDocs, skippedDocs, totalDocs: targets.length, updatedDocs }
 }
 
 /** The HTTP wrapper around {@link bulkGenerateAltTexts}, gated by the plugin's `access`. */
@@ -251,6 +262,9 @@ type GenerationScope = {
 }
 
 type GenerationPlan = { imageDoc: Record<string, unknown>; locales: string[] } | { skip: Skip }
+
+/** A document to run, with its plan when selection already made one. */
+type Target = { id: number | string; plan?: GenerationPlan }
 
 /** Decides what one document would be generated for, without calling the resolver. */
 async function planGeneration({
@@ -352,6 +366,7 @@ async function generateAndUpdateAltText({
   id,
   collection,
   onWrite,
+  plan: preparedPlan,
   pluginConfig,
   req,
   scope,
@@ -359,11 +374,12 @@ async function generateAndUpdateAltText({
   collection: CollectionSlug
   id: number | string
   onWrite: () => void
+  plan?: GenerationPlan
   pluginConfig: AltTextPluginConfig
   req: PayloadRequest
   scope: GenerationScope
 }): Promise<Skip | undefined> {
-  const plan = await planGeneration({ id, collection, pluginConfig, req, scope })
+  const plan = preparedPlan ?? (await planGeneration({ id, collection, pluginConfig, req, scope }))
 
   if ('skip' in plan) {
     return plan.skip
@@ -437,25 +453,34 @@ async function selectDocsMissingAltText({
   pluginConfig: AltTextPluginConfig
   req: PayloadRequest
   scope: GenerationScope
-}): Promise<(number | string)[]> {
+}): Promise<Target[]> {
   const collectionConfig = pluginConfig.collections.find((entry) => entry.slug === collection)!
-  const mimeTypeWhere = buildMimeTypeWhere(collectionConfig.mimeTypes)
+  const baseFilter = await pluginConfig.healthCheckBaseFilter?.({ collection, req })
+  const trackedWhere = buildTrackedDocsWhere(collectionConfig.mimeTypes, baseFilter)
 
-  if (!mimeTypeWhere) {
+  if (!trackedWhere) {
     return []
   }
 
-  const baseFilter = await pluginConfig.healthCheckBaseFilter?.({ collection, req })
+  const { supportedMimeTypes } = pluginConfig.resolver
+  // Leaves out the formats the resolver cannot read in the query itself, so
+  // they are never planned, however many the library holds.
   const where: Where =
-    baseFilter && Object.keys(baseFilter).length > 0
-      ? { and: [mimeTypeWhere, baseFilter] }
-      : mimeTypeWhere
+    supportedMimeTypes && !collectionConfig.imageThumbnailMimeType
+      ? { and: [trackedWhere, { mimeType: { in: supportedMimeTypes } }] }
+      : trackedWhere
 
   const isLocalized = Boolean(req.payload.config.localization)
-  const locales = scope.locales ?? configuredLocales(pluginConfig)
+  // The request's locales are a superset of each image's own, so an image
+  // complete in all of them is never planned. Measured against the configured
+  // locales instead, every image of a tenant serving fewer would be planned and
+  // skipped again on each call.
+  const locales = (await resolveLocales({ pluginConfig, req })).filter(
+    (locale) => !scope.locales || scope.locales.includes(locale),
+  )
   // Compared as strings: a JSON body may carry a numeric ID as either.
   const excluded = new Set(excludeIds.map(String))
-  const selected: (number | string)[] = []
+  const selected: Target[] = []
 
   for (let page = 1; selected.length < limit; page++) {
     const result = await req.payload.find({
@@ -498,10 +523,10 @@ async function selectDocsMissingAltText({
         })
 
         if (!('skip' in plan)) {
-          selected.push(doc.id)
+          selected.push({ id: doc.id, plan })
         }
       } catch {
-        selected.push(doc.id)
+        selected.push({ id: doc.id })
       }
     }
 

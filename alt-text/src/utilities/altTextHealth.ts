@@ -11,7 +11,7 @@ import type { AltTextHealthCacheFactory } from './altTextHealthCache.js'
 
 import { createCachedAltTextHealthScan } from './altTextHealthCache.js'
 import { localesFromConfig } from './localesFromConfig.js'
-import { buildMimeTypeWhere } from './mimeTypes.js'
+import { buildTrackedDocsWhere } from './mimeTypes.js'
 import { configuredLocales, resolveLocales } from './resolveLocales.js'
 import { stableStringify } from './stableStringify.js'
 import { summarizeCollection } from './summarizeCollection.js'
@@ -93,9 +93,6 @@ const createCollectionReadError = (collection: string, message: string) => ({
 
 const PAGE_SIZE = 500
 
-const isEmptyWhere = (where: undefined | Where): boolean =>
-  !where || Object.keys(where).length === 0
-
 async function fetchAllDocs(
   req: PayloadRequest,
   collection: string,
@@ -103,12 +100,10 @@ async function fetchAllDocs(
   mimeTypes: readonly string[],
   baseFilter: undefined | Where,
 ): Promise<{ alt: unknown; id: number | string }[]> {
-  const mimeTypeWhere = buildMimeTypeWhere(mimeTypes)
-  if (!mimeTypeWhere) {
+  const where = buildTrackedDocsWhere(mimeTypes, baseFilter)
+  if (!where) {
     return []
   }
-
-  const where = isEmptyWhere(baseFilter) ? mimeTypeWhere : { and: [mimeTypeWhere, baseFilter!] }
 
   const docs: { alt: unknown; id: number | string }[] = []
   let page = 1

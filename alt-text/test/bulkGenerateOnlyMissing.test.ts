@@ -36,6 +36,8 @@ describe('bulk generation with onlyMissing', () => {
   let payload: Payload
   let user: NonNullable<PayloadRequest['user']>
   const bulkCalls: { filename?: string; locales: string[] }[] = []
+  /** Images whose own target locales were resolved, i.e. that were planned. */
+  const plannedFilenames: unknown[] = []
 
   async function bulkGenerate(body: Record<string, unknown>) {
     const req = await createLocalReq({ user }, payload)
@@ -94,6 +96,13 @@ describe('bulk generation with onlyMissing', () => {
       plugins: [
         payloadAltTextPlugin({
           collections: [{ slug: 'media', mimeTypes: ['image/*'] }],
+          // A tenant may serve fewer locales than the project defines.
+          filterLocales: ({ doc, locales, req }) => {
+            if (doc) {
+              plannedFilenames.push(doc.filename)
+            }
+            return (req.context.servedLocales as string[] | undefined) ?? locales
+          },
           getImageThumbnail: () => 'https://example.com/thumb.png',
           healthCheck: {
             baseFilter: () => ({ tenant: { equals: 'acme' } }),
@@ -131,6 +140,7 @@ describe('bulk generation with onlyMissing', () => {
 
   beforeEach(async () => {
     bulkCalls.length = 0
+    plannedFilenames.length = 0
     await payload.delete({ collection: 'media', where: { id: { exists: true } } })
   })
 
@@ -177,6 +187,15 @@ describe('bulk generation with onlyMissing', () => {
 
       assert.equal(status, 400)
       assert.deepEqual(bulkCalls, [])
+    })
+
+    test('generates an image once when its id is passed both as a number and a string', async () => {
+      const id = await createImage('photo')
+
+      const { body } = await bulkGenerate({ ids: [id, String(id)] })
+
+      assert.equal(body.totalDocs, 1)
+      assert.equal(bulkCalls.length, 1)
     })
 
     test('still regenerates every locale when onlyMissing is not set', async () => {
@@ -283,6 +302,16 @@ describe('bulk generation with onlyMissing', () => {
 
       assert.deepEqual(result, { erroredDocs: [], skippedDocs: [], totalDocs: 1, updatedDocs: 1 })
       assert.deepEqual(await altTextsOf(id), { de: 'generated de', en: 'Written by an editor' })
+    })
+
+    test('does not plan images complete in every locale the request serves', async () => {
+      await createImage('english-done', { en: 'Done' })
+      const req = await createLocalReq({ context: { servedLocales: ['en'] }, user }, payload)
+
+      const result = await bulkGenerateAltTexts({ collection: 'media', onlyMissing: true, req })
+
+      assert.equal(result.totalDocs, 0)
+      assert.deepEqual(plannedFilenames, [])
     })
 
     test('throws an error carrying the HTTP status for a request the endpoint would reject', async () => {

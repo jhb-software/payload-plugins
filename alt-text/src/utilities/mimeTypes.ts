@@ -216,6 +216,23 @@ export function buildMimeTypeWhere(patterns: readonly string[]): null | Where {
 }
 
 /**
+ * The documents the health report counts: the tracked file types within the
+ * health check's base filter. `null` when nothing is tracked.
+ */
+export function buildTrackedDocsWhere(
+  patterns: readonly string[],
+  baseFilter: undefined | Where,
+): null | Where {
+  const mimeTypeWhere = buildMimeTypeWhere(patterns)
+
+  if (!mimeTypeWhere || !baseFilter || Object.keys(baseFilter).length === 0) {
+    return mimeTypeWhere
+  }
+
+  return { and: [mimeTypeWhere, baseFilter] }
+}
+
+/**
  * Default validation logic for the alt text field.
  *
  * - Allows an empty value during the initial upload (no regular update has occurred yet).
