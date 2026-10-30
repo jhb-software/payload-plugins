@@ -10,12 +10,14 @@
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "Breadcrumbs".
  */
-export type Breadcrumbs = {
-  slug: string;
-  path: string;
-  label: string;
-  id?: string | null;
-}[];
+export type Breadcrumbs =
+  | {
+      slug: string;
+      path?: string | null;
+      label: string;
+      id?: string | null;
+    }[]
+  | null;
 /**
  * Supported timezones in IANA format.
  *
@@ -144,8 +146,8 @@ export interface Page {
   isRootPage?: boolean | null;
   slug: string;
   parent?: (string | null) | Page;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   content?: {
     root: {
