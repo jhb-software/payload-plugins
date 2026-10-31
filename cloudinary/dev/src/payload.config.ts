@@ -6,6 +6,7 @@ import { Images } from './collections/images'
 import { Videos } from './collections/videos'
 import { ProcessedImages } from './collections/processedImages'
 import { VectorImages } from './collections/vectorImages'
+import { PrivateImages } from './collections/privateImages'
 import sharp from 'sharp'
 import { databaseAdapter } from './databaseAdapter'
 
@@ -26,6 +27,7 @@ export default buildConfig({
     Images,
     ProcessedImages,
     VectorImages,
+    PrivateImages,
     {
       slug: 'users',
       auth: true,
@@ -53,6 +55,20 @@ export default buildConfig({
         'vector-images': true,
       },
       folder: 'cloudinary-storage-plugin-test',
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
+      credentials: {
+        apiKey: process.env.CLOUDINARY_API_KEY!,
+        apiSecret: process.env.CLOUDINARY_API_SECRET!,
+      },
+      clientUploads: true,
+    }),
+    // A second instance, since the delivery type applies to all collections of an instance.
+    payloadCloudinaryPlugin({
+      collections: {
+        'private-images': true,
+      },
+      deliveryType: 'authenticated',
+      folder: 'cloudinary-storage-plugin-test/private',
       cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
       credentials: {
         apiKey: process.env.CLOUDINARY_API_KEY!,
