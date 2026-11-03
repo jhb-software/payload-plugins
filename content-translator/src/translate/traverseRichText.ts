@@ -90,7 +90,8 @@ const pushTextRun = (run: Record<string, unknown>[], valuesToTranslate: ValueToT
 }
 
 export const traverseRichText = ({
-  emptyOnly,
+  localeFrom,
+  localeTo,
   payloadConfig,
   req,
   root,
@@ -98,7 +99,8 @@ export const traverseRichText = ({
   translatedData,
   valuesToTranslate,
 }: {
-  emptyOnly: boolean
+  localeFrom?: string
+  localeTo?: string
   payloadConfig: SanitizedConfig
   req?: PayloadRequest
   root: Record<string, unknown>
@@ -123,11 +125,15 @@ export const traverseRichText = ({
       const blockConfig = findBlockConfigBySlug(blockName, payloadConfig, req)
 
       if (blockConfig) {
-        // Traverse the fields of the block
+        // Block data is both source and target here, so its fields always look
+        // filled. The caller has already decided this rich text gets translated,
+        // which makes emptyOnly meaningless below this point.
         traverseFields({
           dataFrom: root,
-          emptyOnly,
+          emptyOnly: false,
           fields: blockConfig.fields,
+          localeFrom,
+          localeTo,
           localizedParent: false,
           payloadConfig,
           req,
@@ -170,7 +176,8 @@ export const traverseRichText = ({
       pushTextRun(run, valuesToTranslate)
     } else {
       traverseRichText({
-        emptyOnly,
+        localeFrom,
+        localeTo,
         payloadConfig,
         req,
         root,

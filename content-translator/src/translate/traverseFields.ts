@@ -145,7 +145,7 @@ const traverseArrayField: FieldHandler<'array'> = (field, ctx) => {
     traverseFields({
       ...ctx,
       fields: field.fields,
-      localizedParent: localizedParent ?? field.localized,
+      localizedParent: localizedParent || field.localized,
       siblingDataFrom: arrayDataFrom[index],
       siblingDataTranslated: item,
     })
@@ -223,7 +223,7 @@ const traverseBlocksField: FieldHandler<'blocks'> = (field, ctx) => {
     traverseFields({
       ...ctx,
       fields: blockConfig.fields,
-      localizedParent: localizedParent ?? field.localized,
+      localizedParent: localizedParent || field.localized,
       siblingDataFrom: blocksDataFrom[index],
       siblingDataTranslated: item,
     })
@@ -294,7 +294,8 @@ const traverseRichTextField: FieldHandler<'richText'> = (field, ctx) => {
 
   if (root) {
     traverseRichText({
-      emptyOnly,
+      localeFrom: ctx.localeFrom,
+      localeTo: ctx.localeTo,
       payloadConfig,
       req: ctx.req,
       root,

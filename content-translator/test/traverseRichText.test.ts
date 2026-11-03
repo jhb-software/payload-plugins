@@ -13,7 +13,6 @@ const collect = (root: Record<string, unknown>) => {
   const valuesToTranslate: ValueToTranslate[] = []
 
   traverseRichText({
-    emptyOnly: false,
     payloadConfig,
     root,
     translatedData: {},

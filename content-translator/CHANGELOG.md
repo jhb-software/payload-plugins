@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- fix: "Translate only empty fields" now translates `localized` fields inside rich text blocks when the target rich text is empty, instead of leaving them in the source language
+- fix: `localized` arrays and blocks inside a rich text block keep and translate their nested text and rich text, which were previously dropped from the saved document
+- fix: `beforeTranslate` on a field inside a rich text block receives `localeFrom` and `localeTo` instead of `undefined`
+
 ## 0.6.1
 
 - fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
