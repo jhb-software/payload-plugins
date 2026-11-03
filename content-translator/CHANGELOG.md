@@ -6,6 +6,7 @@
 - fix: `localized` arrays and blocks inside a rich text block keep and translate their nested text and rich text, which were previously dropped from the saved document
 - fix: `beforeTranslate` on a field inside a rich text block receives `localeFrom` and `localeTo` instead of `undefined`
 - fix: a sentence containing a link is translated as one unit instead of being split at the link, so words can move across it and links and formatting move with their words. Autolink URLs are no longer sent for translation. A translation with damaged markers, or a link left empty or torn apart, keeps the source text of that block and logs a warning, instead of writing text into the wrong nodes.
+- fix: the translation prompt asks models to keep the spaces next to links and formatted text, and words a translation attaches to an autolink URL are separated from it, so they do not become part of the link
 
 ## 0.6.1
 

@@ -108,6 +108,45 @@ const parseTokens = (translated: string, entries: RunEntry[]): Token[] | undefin
   return isIntact ? tokens : undefined
 }
 
+// Letters and digits of scripts that separate words with spaces. Others can attach
+// to a URL: Japanese, Chinese and Thai write no spaces, Korean, Arabic and Hebrew
+// attach particles and prefixes.
+const SPACED_WORD_CHARACTER = String.raw`(?![\p{Script=Arabic}\p{Script=Han}\p{Script=Hangul}\p{Script=Hebrew}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Khmer}\p{Script=Lao}\p{Script=Myanmar}\p{Script=Thai}\p{Script=Tibetan}])[\p{L}\p{N}]`
+const ENDS_WITH_WORD = new RegExp(`${SPACED_WORD_CHARACTER}$`, 'u')
+const STARTS_WITH_WORD = new RegExp(`^${SPACED_WORD_CHARACTER}`, 'u')
+
+// A word touching a URL becomes part of the link once the editor re-detects it. This
+// is the one join that is always wrong: elsewhere, words joined at a marker can be a
+// correct German compound or Finnish suffix, so those are left as translated.
+const separateUrlsFromWords = (tokens: Token[]) => {
+  const visible = tokens.filter(({ entry, segment }) => entry.kind === 'autolink' || segment)
+
+  visible.forEach((token, position) => {
+    if (token.entry.kind !== 'autolink') {
+      return
+    }
+
+    const before: Token | undefined = visible[position - 1]
+    const isAdjacentUrl = before?.entry.kind === 'autolink' && !before.segment
+
+    if (before && (isAdjacentUrl || ENDS_WITH_WORD.test(before.segment))) {
+      before.segment += ' '
+    }
+
+    const next: Token | undefined = visible[position + 1]
+    const words = token.segment || next?.entry.kind === 'autolink' ? token : next
+
+    if (words && STARTS_WITH_WORD.test(words.segment)) {
+      // A link keeps its own text, so the space goes behind the URL instead.
+      if (words.entry.kind === 'link') {
+        token.segment = ' '
+      } else {
+        words.segment = ` ${words.segment}`
+      }
+    }
+  })
+}
+
 const nodesOf = (tokens: Token[]): RichTextNode[] =>
   tokens.flatMap(({ entry }) => (entry.kind === 'autolink' ? [] : [entry.node]))
 
@@ -218,6 +257,7 @@ const pushTextRun = (
         return
       }
 
+      separateUrlsFromWords(tokens)
       applyTokens(tokens, children)
     },
     value: entries.map(toMarkedValue).join(''),

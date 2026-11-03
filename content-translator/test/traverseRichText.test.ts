@@ -411,3 +411,110 @@ describe('traverseRichText - autolinks', () => {
     assert.deepEqual(root.children, [{ text: 'Siehe ' }, url, { text: ' jetzt' }])
   })
 })
+
+describe('traverseRichText - spacing at markers', () => {
+  const texts = (root: { children: Record<string, unknown>[] }): unknown[] =>
+    root.children.map((node) =>
+      node.children ? `[${(node.children as { text: string }[])[0].text}]` : node.text,
+    )
+
+  test('leaves words joined at a marker, which can be one word in the target language', () => {
+    const root = {
+      children: [{ children: [{ text: 'Garden' }], type: 'link' }, { text: ' route' }],
+    }
+
+    collect(root)[0].onTranslate('⟦0⟧Garten⟦1⟧route')
+
+    assert.deepEqual(texts(root), ['[Garten]', 'route'])
+  })
+
+  describe('next to an autolink', () => {
+    const URL_TEXT = '[https://example.com]'
+    const url = () => ({ children: [{ text: 'https://example.com' }], type: 'autolink' })
+    const link = () => ({ children: [{ text: 'hier' }], type: 'link' })
+
+    const translate = (children: Record<string, unknown>[], translated: string) => {
+      const root = { children }
+
+      collect(root)[0].onTranslate(translated)
+
+      return texts(root)
+    }
+
+    test('separates the words in front of the URL', () => {
+      assert.deepEqual(translate([{ text: 'Siehe ' }, url()], '⟦0⟧See⟦url:1⟧'), ['See ', URL_TEXT])
+    })
+
+    test('separates words from the following text node', () => {
+      const children = [{ text: 'Siehe ' }, url(), { text: ' jetzt' }]
+
+      assert.deepEqual(translate(children, '⟦0⟧See ⟦url:1⟧⟦2⟧now'), ['See ', URL_TEXT, ' now'])
+    })
+
+    test('separates words the translation put behind the URL', () => {
+      const children = [{ text: 'Siehe ' }, url(), { text: '!' }]
+
+      assert.deepEqual(translate(children, '⟦0⟧See ⟦url:1⟧now⟦2⟧'), ['See ', URL_TEXT, ' now', ''])
+    })
+
+    test('keeps a following link outside of the added space', () => {
+      assert.deepEqual(translate([url(), { text: ' ' }, link()], '⟦url:0⟧⟦1⟧⟦2⟧here'), [
+        URL_TEXT,
+        ' ',
+        '',
+        '[here]',
+      ])
+    })
+
+    test('separates two URLs', () => {
+      assert.deepEqual(translate([{ text: 'Siehe ' }, url(), url()], '⟦0⟧See ⟦url:1⟧⟦url:2⟧'), [
+        'See ',
+        URL_TEXT,
+        ' ',
+        URL_TEXT,
+      ])
+    })
+
+    test('adds no second space to a separator the translation kept', () => {
+      const children = [{ text: 'Siehe ' }, url(), { text: ' jetzt' }]
+
+      assert.deepEqual(translate(children, '⟦0⟧See ⟦url:1⟧⟦2⟧ now'), ['See ', URL_TEXT, ' now'])
+    })
+
+    const attached = {
+      'a closing bracket': ')',
+      'a colon behind': ':',
+      'a Chinese comma': '，',
+      'an Arabic question mark': '؟',
+      'a possessive': "'s",
+      'a suffix after a hyphen': '-Seite',
+    }
+
+    for (const [mark, text] of Object.entries(attached)) {
+      test(`adds no space before ${mark}`, () => {
+        assert.deepEqual(translate([url(), { text: ' x' }], `⟦url:0⟧⟦1⟧${text}`), [URL_TEXT, text])
+      })
+    }
+
+    const opening = {
+      'an opening bracket': 'See (',
+      'a typographic quote': 'Siehe „',
+      'an unspaced script': 'ここで',
+      'a colon': 'See:',
+    }
+
+    for (const [mark, text] of Object.entries(opening)) {
+      test(`adds no space after ${mark}`, () => {
+        assert.deepEqual(translate([{ text: 'x ' }, url()], `⟦0⟧${text}⟦url:1⟧`), [text, URL_TEXT])
+      })
+    }
+
+    const unspaced = { Arabic: 'هنا', Japanese: 'を見る', Korean: '는', Thai: 'ที่นี่' }
+
+    for (const [language, text] of Object.entries(unspaced)) {
+      test(`keeps ${language} words attached behind the URL`, () => {
+        assert.deepEqual(translate([url(), { text: ' x' }], `⟦url:0⟧⟦1⟧${text}`), [URL_TEXT, text])
+      })
+    }
+  })
+})
