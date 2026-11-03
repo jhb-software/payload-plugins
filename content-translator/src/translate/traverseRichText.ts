@@ -8,89 +8,194 @@ import { traverseFields } from './traverseFields.js'
 // (paragraph, heading, list item, quote, ...) so the element can be translated
 // as ONE unit. This lets the translator reorder words across nodes — required
 // for languages like German -> English where the verb moves — while each
-// formatting span (bold, italic, ...) still receives its own translated text.
-// Translating each text node in isolation made the model merge adjacent
+// formatting span (bold, italic, ...) and link still receives its own translated
+// text. Translating each text node in isolation made the model merge adjacent
 // sentence fragments and shift content (and formatting) into the wrong nodes.
-const MARKER_OPEN = '⟦'
-const MARKER_CLOSE = '⟧'
-const buildMarker = (i: number) => `${MARKER_OPEN}${i}${MARKER_CLOSE}`
-const markerRegex = /⟦(\d+)⟧/g
+// Autolinks get a marker of their own without text: their text is the URL, which
+// must never change, and the marker only records where the URL sits.
+const markerRegex = /⟦(url:)?(\d+)⟧/gi
 
 type RichTextNode = Record<string, unknown>
+
+/** A marked part of a run. `item` is the sibling that moves when words reorder. */
+type RunEntry =
+  | { item: RichTextNode; kind: 'autolink' }
+  | { item: RichTextNode; kind: 'link' | 'text'; node: RichTextNode }
+
+type Token = { entry: RunEntry; index: number; segment: string }
 
 const isTextNode = (node: RichTextNode | undefined): boolean => typeof node?.text === 'string'
 
 // Links wrap part of a sentence, so they must not split it into separate values.
-const isLinkNode = (node: RichTextNode | undefined): boolean =>
-  node?.type === 'link' || node?.type === 'autolink'
-
 const isInlineNode = (node: RichTextNode | undefined): boolean =>
-  isTextNode(node) || isLinkNode(node)
+  isTextNode(node) || node?.type === 'link' || node?.type === 'autolink'
 
-/** A text node of a run, with the type of the link wrapping it (if any). */
-type RunEntry = { linkType?: unknown; node: RichTextNode }
-
-const collectRunEntries = (node: RichTextNode, linkType?: unknown): RunEntry[] => {
+const collectTextNodes = (node: RichTextNode): RichTextNode[] => {
   if (isTextNode(node)) {
-    return [{ linkType, node }]
+    return [node]
   }
 
-  const nodeLinkType = linkType ?? node?.type
-
   return Array.isArray(node?.children)
-    ? (node.children as RichTextNode[]).flatMap((child) => collectRunEntries(child, nodeLinkType))
+    ? (node.children as RichTextNode[]).flatMap(collectTextNodes)
     : []
 }
 
-// Nodes keep their position in the document, so a usable translation has every
-// marker exactly once, in ascending order, with nothing in front of the first.
-const splitByMarkers = (translated: string, count: number): string[] | undefined => {
-  const matches = [...translated.matchAll(markerRegex)]
-  const isIntact =
-    matches.length === count &&
-    matches.every((match, index) => match[1] === String(index)) &&
-    !translated.slice(0, matches[0].index).trim()
-
-  return isIntact
-    ? matches.map((match, index) =>
-        translated.slice(match.index + match[0].length, matches[index + 1]?.index),
-      )
-    : undefined
-}
-
-// Autolink text must stay the URL it links to, and a link without text vanishes.
-const fitsNode = ({ linkType, node }: RunEntry, segment: string): boolean => {
-  if (linkType === 'autolink') {
-    return segment === node.text
+const collectRunEntries = (item: RichTextNode): RunEntry[] => {
+  if (item.type === 'autolink') {
+    return [{ item, kind: 'autolink' }]
   }
 
-  return linkType !== 'link' || segment.trim().length > 0
+  const kind = isTextNode(item) ? 'text' : 'link'
+
+  return collectTextNodes(item).map((node) => ({ item, kind, node }))
 }
 
-// Translate a maximal run of inline text nodes. A single node is sent as plain
-// text (no markers). Two or more nodes are joined into one marker-delimited
-// value and split back apart once translated. A damaged translation keeps the
-// source text of the whole run, which is visible to editors, rather than writing
-// text into the wrong nodes.
+const toMarkedValue = (entry: RunEntry, index: number): string =>
+  entry.kind === 'autolink' ? `⟦url:${index}⟧` : `⟦${index}⟧${String(entry.node.text)}`
+
+/** Text nodes can only swap places when they all share the link as their parent. */
+const hasOnlyTextChildren = (item: RichTextNode): boolean =>
+  Array.isArray(item.children) && (item.children as RichTextNode[]).every(isTextNode)
+
+// The text nodes of one link can only move as a whole.
+const keepsLinksTogether = (tokens: Token[]): boolean => {
+  const seenItems = new Set<RichTextNode>()
+
+  return tokens.every(({ entry, index }, position) => {
+    const previous = tokens[position - 1]
+
+    if (previous?.entry.item === entry.item) {
+      return index > previous.index || hasOnlyTextChildren(entry.item)
+    }
+
+    const isFirstVisit = !seenItems.has(entry.item)
+    seenItems.add(entry.item)
+
+    return isFirstVisit
+  })
+}
+
+// A link without any text vanishes from the document.
+const keepsLinkText = (tokens: Token[]): boolean =>
+  tokens.every(
+    ({ entry }) =>
+      entry.kind !== 'link' ||
+      tokens.some((token) => token.entry.item === entry.item && token.segment.trim()),
+  )
+
+// A usable translation has every marker exactly once, with nothing in front of
+// the first, and leaves every link whole and with text.
+const parseTokens = (translated: string, entries: RunEntry[]): Token[] | undefined => {
+  const matches = [...translated.matchAll(markerRegex)]
+
+  if (matches.length !== entries.length || translated.slice(0, matches[0].index).trim()) {
+    return undefined
+  }
+
+  const tokens = matches.map((match, position) => ({
+    entry: entries[Number(match[2])],
+    index: Number(match[2]),
+    isUrl: Boolean(match[1]),
+    segment: translated.slice(match.index + match[0].length, matches[position + 1]?.index),
+  }))
+
+  const isIntact =
+    tokens.every(({ entry, isUrl }) => entry && (entry.kind === 'autolink') === isUrl) &&
+    new Set(tokens.map(({ entry }) => entry)).size === entries.length &&
+    keepsLinkText(tokens) &&
+    keepsLinksTogether(tokens)
+
+  return isIntact ? tokens : undefined
+}
+
+const nodesOf = (tokens: Token[]): RichTextNode[] =>
+  tokens.flatMap(({ entry }) => (entry.kind === 'autolink' ? [] : [entry.node]))
+
+// Words behind an autolink have no node of their own, so they get a new text node
+// formatted like the closest words in front of it, or else the first words.
+const addTextAfterAutolinks = (tokens: Token[], children: RichTextNode[]) => {
+  let [template] = nodesOf(tokens)
+
+  for (const { entry, segment } of tokens) {
+    if (entry.kind !== 'autolink') {
+      template = entry.node
+    } else if (segment) {
+      children.splice(children.indexOf(entry.item) + 1, 0, {
+        type: 'text',
+        detail: 0,
+        format: template.format ?? 0,
+        mode: 'normal',
+        style: template.style ?? '',
+        text: segment,
+        version: 1,
+      })
+    }
+  }
+}
+
+// Unmarked siblings (empty text nodes) keep their position; the marked ones are
+// redistributed over their own positions in the order of the translation.
+const reorder = (children: RichTextNode[], ordered: RichTextNode[]) => {
+  const positions = ordered.map((node) => children.indexOf(node)).sort((a, b) => a - b)
+
+  ordered.forEach((node, order) => {
+    children[positions[order]] = node
+  })
+}
+
+const applyTokens = (tokens: Token[], children: RichTextNode[]) => {
+  for (const { entry, segment } of tokens) {
+    if (entry.kind !== 'autolink') {
+      entry.node.text = segment
+    }
+  }
+
+  const items = [...new Set(tokens.map(({ entry }) => entry.item))]
+
+  reorder(children, items)
+
+  for (const item of items) {
+    if (item.type === 'link' && hasOnlyTextChildren(item)) {
+      const ownTokens = tokens.filter(({ entry }) => entry.item === item)
+
+      reorder(item.children as RichTextNode[], nodesOf(ownTokens))
+    }
+  }
+
+  addTextAfterAutolinks(tokens, children)
+}
+
+// Translate a maximal run of inline nodes. A single text node is sent as plain
+// text (no markers). Anything else is joined into one marker-delimited value and
+// split back apart once translated. A damaged translation keeps the source text
+// of the whole run, which is visible to editors, rather than writing text into
+// the wrong nodes.
 const pushTextRun = (
-  run: RunEntry[],
+  items: RichTextNode[],
+  children: RichTextNode[],
   valuesToTranslate: ValueToTranslate[],
   req?: PayloadRequest,
 ) => {
-  const entries = run.filter(({ node }) => node.text)
+  const entries = items
+    .flatMap(collectRunEntries)
+    .filter((entry) => entry.kind === 'autolink' || entry.node.text)
 
-  if (entries.length === 0) {
+  const hasWords = entries.some(
+    (entry) => entry.kind !== 'autolink' && String(entry.node.text).trim(),
+  )
+
+  if (!hasWords) {
     return
   }
 
-  if (entries.length === 1) {
-    const { node } = entries[0]
+  const [first] = entries
 
+  if (entries.length === 1 && first.kind !== 'autolink') {
     valuesToTranslate.push({
       onTranslate: (translated) => {
-        node.text = translated
+        first.node.text = translated
       },
-      value: node.text,
+      value: first.node.text,
     })
 
     return
@@ -102,9 +207,9 @@ const pushTextRun = (
         return
       }
 
-      const segments = splitByMarkers(translated, entries.length)
+      const tokens = parseTokens(translated, entries)
 
-      if (!segments?.every((segment, index) => fitsNode(entries[index], segment))) {
+      if (!tokens) {
         req?.payload.logger.warn(
           { translated },
           'Keeping the source text of a rich text segment: the translation damaged its markers or links.',
@@ -113,11 +218,9 @@ const pushTextRun = (
         return
       }
 
-      entries.forEach(({ node }, index) => {
-        node.text = segments[index]
-      })
+      applyTokens(tokens, children)
     },
-    value: entries.map(({ node }, index) => buildMarker(index) + String(node.text)).join(''),
+    value: entries.map(toMarkedValue).join(''),
   })
 }
 
@@ -198,14 +301,14 @@ export const traverseRichText = ({
     if (isInlineNode(child)) {
       // Gather a maximal run of inline nodes and translate them together so a
       // sentence split across formatting spans or links stays aligned.
-      const run: RunEntry[] = []
+      const run: RichTextNode[] = []
 
       while (i < children.length && isInlineNode(children[i])) {
-        run.push(...collectRunEntries(children[i]))
+        run.push(children[i])
         i++
       }
 
-      pushTextRun(run, valuesToTranslate, req)
+      pushTextRun(run, children, valuesToTranslate, req)
     } else {
       traverseRichText({
         localeFrom,

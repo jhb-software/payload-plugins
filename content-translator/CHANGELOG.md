@@ -5,7 +5,7 @@
 - fix: "Translate only empty fields" now translates `localized` fields inside rich text blocks when the target rich text is empty, instead of leaving them in the source language
 - fix: `localized` arrays and blocks inside a rich text block keep and translate their nested text and rich text, which were previously dropped from the saved document
 - fix: `beforeTranslate` on a field inside a rich text block receives `localeFrom` and `localeTo` instead of `undefined`
-- fix: a sentence containing a link is translated as one unit instead of being split at the link, so words can move across it. A translation with damaged markers, an empty link or an altered autolink URL keeps the source text of that block and logs a warning, instead of writing text into the wrong nodes.
+- fix: a sentence containing a link is translated as one unit instead of being split at the link, so words can move across it and links and formatting move with their words. Autolink URLs are no longer sent for translation. A translation with damaged markers, or a link left empty or torn apart, keeps the source text of that block and logs a warning, instead of writing text into the wrong nodes.
 
 ## 0.6.1
 

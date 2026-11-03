@@ -56,6 +56,7 @@ describe('createPromptResolver - instructions and input', () => {
     const { instructions } = calls[0]!
     // Segment markers survive rich text only if the model is told about them.
     assert.match(instructions, /⟦0⟧/)
+    assert.match(instructions, /⟦url:1⟧/)
     assert.match(instructions, /Translate each value independently/)
     // The content to translate travels separately from the instructions.
     assert.doesNotMatch(instructions, /Northern Light/)
