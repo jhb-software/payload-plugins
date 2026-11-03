@@ -72,7 +72,7 @@ export type PromptResolverConfig = {
  * Rules dictated by the plugin rather than by the provider: values must stay
  * independent so each one can be written back to the field it came from, and
  * rich text is handed over with `⟦n⟧` segment markers carrying the inline
- * formatting.
+ * formatting and links.
  */
 const buildDefaultInstructions = ({
   localeFrom,
@@ -83,7 +83,7 @@ const buildDefaultInstructions = ({
 
     `IMPORTANT: Use the EXACT SAME KEYS as the input. Translate each value independently and keep it under its own key. Never merge, split, drop, reorder, or add entries — even if two adjacent values look like fragments of the same sentence, they MUST stay as separate keys. Preserve leading and trailing whitespace of each value.`,
 
-    `Some values contain segment markers of the form ⟦0⟧, ⟦1⟧, ⟦2⟧ (a number enclosed in the brackets ⟦ ⟧). These markers separate inline formatting spans within one text. In your translation, keep every marker exactly as it appears — same characters, same numbers, each marker exactly once — and place each marker immediately before the translated words that belong to its segment. You may move words across markers when grammar requires it, but never add, remove, renumber, duplicate, or translate the markers themselves.`,
+    `Some values contain segment markers of the form ⟦0⟧, ⟦1⟧, ⟦2⟧ (a number enclosed in the brackets ⟦ ⟧). These markers separate inline formatting spans and links within one text. In your translation, keep every marker exactly as it appears — same characters, same numbers, each marker exactly once, in ascending order, with no text before the first marker — and place each marker immediately before the translated words that belong to its segment. You may move words across markers when grammar requires it, but never add, remove, renumber, reorder, duplicate, or translate the markers themselves. A segment holding link text must stay the linked phrase and never be empty, and a segment holding a URL must stay unchanged.`,
   ].join('\n\n')
 
 /**

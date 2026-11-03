@@ -16,16 +16,75 @@ const MARKER_CLOSE = '⟧'
 const buildMarker = (i: number) => `${MARKER_OPEN}${i}${MARKER_CLOSE}`
 const markerRegex = /⟦(\d+)⟧/g
 
-// Translate a maximal run of consecutive text-node siblings. A single node is
-// sent as plain text (no markers). Two or more nodes are joined into one
-// marker-delimited value and split back apart once translated.
-const pushTextRun = (run: Record<string, unknown>[], valuesToTranslate: ValueToTranslate[]) => {
-  if (run.length === 1) {
-    const node = run[0]
+type RichTextNode = Record<string, unknown>
 
-    if (!node.text) {
-      return
-    }
+const isTextNode = (node: RichTextNode | undefined): boolean => typeof node?.text === 'string'
+
+// Links wrap part of a sentence, so they must not split it into separate values.
+const isLinkNode = (node: RichTextNode | undefined): boolean =>
+  node?.type === 'link' || node?.type === 'autolink'
+
+const isInlineNode = (node: RichTextNode | undefined): boolean =>
+  isTextNode(node) || isLinkNode(node)
+
+/** A text node of a run, with the type of the link wrapping it (if any). */
+type RunEntry = { linkType?: unknown; node: RichTextNode }
+
+const collectRunEntries = (node: RichTextNode, linkType?: unknown): RunEntry[] => {
+  if (isTextNode(node)) {
+    return [{ linkType, node }]
+  }
+
+  const nodeLinkType = linkType ?? node?.type
+
+  return Array.isArray(node?.children)
+    ? (node.children as RichTextNode[]).flatMap((child) => collectRunEntries(child, nodeLinkType))
+    : []
+}
+
+// Nodes keep their position in the document, so a usable translation has every
+// marker exactly once, in ascending order, with nothing in front of the first.
+const splitByMarkers = (translated: string, count: number): string[] | undefined => {
+  const matches = [...translated.matchAll(markerRegex)]
+  const isIntact =
+    matches.length === count &&
+    matches.every((match, index) => match[1] === String(index)) &&
+    !translated.slice(0, matches[0].index).trim()
+
+  return isIntact
+    ? matches.map((match, index) =>
+        translated.slice(match.index + match[0].length, matches[index + 1]?.index),
+      )
+    : undefined
+}
+
+// Autolink text must stay the URL it links to, and a link without text vanishes.
+const fitsNode = ({ linkType, node }: RunEntry, segment: string): boolean => {
+  if (linkType === 'autolink') {
+    return segment === node.text
+  }
+
+  return linkType !== 'link' || segment.trim().length > 0
+}
+
+// Translate a maximal run of inline text nodes. A single node is sent as plain
+// text (no markers). Two or more nodes are joined into one marker-delimited
+// value and split back apart once translated. A damaged translation keeps the
+// source text of the whole run, which is visible to editors, rather than writing
+// text into the wrong nodes.
+const pushTextRun = (
+  run: RunEntry[],
+  valuesToTranslate: ValueToTranslate[],
+  req?: PayloadRequest,
+) => {
+  const entries = run.filter(({ node }) => node.text)
+
+  if (entries.length === 0) {
+    return
+  }
+
+  if (entries.length === 1) {
+    const { node } = entries[0]
 
     valuesToTranslate.push({
       onTranslate: (translated) => {
@@ -37,55 +96,28 @@ const pushTextRun = (run: Record<string, unknown>[], valuesToTranslate: ValueToT
     return
   }
 
-  let combined = ''
-  run.forEach((node, index) => {
-    combined += buildMarker(index) + String(node.text)
-  })
-
   valuesToTranslate.push({
     onTranslate: (translated) => {
       if (typeof translated !== 'string') {
-        // Without a string there are no markers to split on - keep the originals.
         return
       }
 
-      const matches: { end: number; index: number; start: number }[] = []
-      let match: null | RegExpExecArray
-      markerRegex.lastIndex = 0
+      const segments = splitByMarkers(translated, entries.length)
 
-      while ((match = markerRegex.exec(translated)) !== null) {
-        matches.push({
-          end: markerRegex.lastIndex,
-          index: parseInt(match[1], 10),
-          start: match.index,
-        })
-      }
-
-      if (matches.length === 0) {
-        // No markers survived translation - keep the originals rather than
-        // writing the whole translated blob into the first node.
-        return
-      }
-
-      // Each segment is the text following its marker up to the next marker
-      // in textual order, so reordering across markers is handled correctly.
-      const segments: Record<number, string> = {}
-      for (let m = 0; m < matches.length; m++) {
-        const current = matches[m]
-        const next = matches[m + 1]
-        segments[current.index] = translated.slice(
-          current.end,
-          next ? next.start : translated.length,
+      if (!segments?.every((segment, index) => fitsNode(entries[index], segment))) {
+        req?.payload.logger.warn(
+          { translated },
+          'Keeping the source text of a rich text segment: the translation damaged its markers or links.',
         )
+
+        return
       }
 
-      run.forEach((node, index) => {
-        if (typeof segments[index] === 'string') {
-          node.text = segments[index]
-        }
+      entries.forEach(({ node }, index) => {
+        node.text = segments[index]
       })
     },
-    value: combined,
+    value: entries.map(({ node }, index) => buildMarker(index) + String(node.text)).join(''),
   })
 }
 
@@ -157,23 +189,23 @@ export const traverseRichText = ({
     return
   }
 
-  const children = siblingData.children as Record<string, unknown>[]
+  const children = siblingData.children as RichTextNode[]
   let i = 0
 
   while (i < children.length) {
     const child = children[i]
 
-    if (child && typeof child.text === 'string') {
-      // Gather a maximal run of consecutive text nodes and translate them
-      // together so a sentence split across formatting spans stays aligned.
-      const run: Record<string, unknown>[] = []
+    if (isInlineNode(child)) {
+      // Gather a maximal run of inline nodes and translate them together so a
+      // sentence split across formatting spans or links stays aligned.
+      const run: RunEntry[] = []
 
-      while (i < children.length && children[i] && typeof children[i].text === 'string') {
-        run.push(children[i])
+      while (i < children.length && isInlineNode(children[i])) {
+        run.push(...collectRunEntries(children[i]))
         i++
       }
 
-      pushTextRun(run, valuesToTranslate)
+      pushTextRun(run, valuesToTranslate, req)
     } else {
       traverseRichText({
         localeFrom,

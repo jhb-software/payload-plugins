@@ -280,7 +280,7 @@ export const myResolver = (): TranslateResolver => ({
 Two rules the plugin relies on, regardless of the provider (both handled by `createPromptResolver`):
 
 - **Same length and same order.** `resolve` must return exactly one translation per input text, since each value is written back to the field it came from. The plugin aborts the translation otherwise.
-- **Preserve `⟦n⟧` segment markers.** Rich text arrives as one text per block, with markers such as `⟦0⟧`, `⟦1⟧` separating inline formatting spans. Each marker must survive exactly once, unchanged, in front of the words belonging to its span. Words may move across markers when grammar requires it.
+- **Preserve `⟦n⟧` segment markers.** Rich text arrives as one text per block, with markers such as `⟦0⟧`, `⟦1⟧` separating inline formatting spans and links. Each marker must survive exactly once, unchanged and in ascending order, in front of the words belonging to its span, with no text before the first marker. Words may move across markers when grammar requires it, but link text must not end up empty and autolink URLs must stay unchanged. A translation that breaks these rules keeps the source text of that block and logs a warning.
 
 ## API Endpoint
 
