@@ -1,7 +1,8 @@
 import type { PayloadRequest } from 'payload'
 
 export type ValueToTranslate = {
-  onTranslate: (translatedValue: unknown) => void
+  /** Returns `false` to reject the translation, which leaves the source value in place. */
+  onTranslate: (translatedValue: unknown) => false | void
   value: unknown
 }
 
@@ -48,6 +49,8 @@ export type TranslateResult =
   | {
       success: true
       translatedData: Record<string, unknown>
+      /** Rich text segments that kept their source text, as their translation stayed damaged. */
+      untranslatedSegments: number
     }
 
 /**

@@ -8,6 +8,8 @@ export const translations = {
       modalSourceLanguage: 'Quellsprache',
       modalTitle: 'Felder aus anderer Sprache übersetzen',
       modalTranslating: 'Felder werden übersetzt...',
+      partialSuccessMessage:
+        'Übersetzt, aber Textabschnitte sind in der Quellsprache geblieben: {{amount}}. Bitte prüfen und dann "Speichern" drücken.',
       submitButtonLabelEmpty: 'Nur leere Felder übersetzen',
       submitButtonLabelFull: 'Alle Felder übersetzen',
       successMessage:
@@ -23,6 +25,8 @@ export const translations = {
       modalSourceLanguage: 'Source language',
       modalTitle: 'Translate fields from another language',
       modalTranslating: 'Fields are being translated...',
+      partialSuccessMessage:
+        'Translated, but text passages stayed in the source language: {{amount}}. Check them, then press "Save".',
       submitButtonLabelEmpty: 'Translate only empty fields',
       submitButtonLabelFull: 'Translate all fields',
       successMessage: 'Successfully translated. Press "Save" to apply the changes.',

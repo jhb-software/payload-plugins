@@ -13,3 +13,18 @@ export const mockResolver = (): TranslateResolver => ({
     }
   },
 })
+
+/**
+ * Strips the segment markers of every rich text value, as a careless model would, to
+ * demonstrate the retry and the warning for text left in the source language. Select
+ * it with `TRANSLATOR_RESOLVER=damaged-markers`.
+ */
+export const damagedMarkersResolver = (): TranslateResolver => ({
+  key: 'damaged-markers',
+  resolve: ({ localeTo, texts }) => ({
+    success: true,
+    translatedTexts: texts.map((text) =>
+      /⟦/.test(text) ? text.replaceAll(/⟦[^⟧]*⟧/g, '') : `${text} [Translated to ${localeTo}]`,
+    ),
+  }),
+})

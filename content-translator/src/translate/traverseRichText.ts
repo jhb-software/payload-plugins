@@ -206,14 +206,12 @@ const applyTokens = (tokens: Token[], children: RichTextNode[]) => {
 
 // Translate a maximal run of inline nodes. A single text node is sent as plain
 // text (no markers). Anything else is joined into one marker-delimited value and
-// split back apart once translated. A damaged translation keeps the source text
-// of the whole run, which is visible to editors, rather than writing text into
-// the wrong nodes.
+// split back apart once translated. A damaged translation is rejected, which keeps
+// the source text of the whole run rather than writing text into the wrong nodes.
 const pushTextRun = (
   items: RichTextNode[],
   children: RichTextNode[],
   valuesToTranslate: ValueToTranslate[],
-  req?: PayloadRequest,
 ) => {
   const entries = items
     .flatMap(collectRunEntries)
@@ -242,19 +240,10 @@ const pushTextRun = (
 
   valuesToTranslate.push({
     onTranslate: (translated) => {
-      if (typeof translated !== 'string') {
-        return
-      }
-
-      const tokens = parseTokens(translated, entries)
+      const tokens = typeof translated === 'string' ? parseTokens(translated, entries) : undefined
 
       if (!tokens) {
-        req?.payload.logger.warn(
-          { translated },
-          'Keeping the source text of a rich text segment: the translation damaged its markers or links.',
-        )
-
-        return
+        return false
       }
 
       separateUrlsFromWords(tokens)
@@ -348,7 +337,7 @@ export const traverseRichText = ({
         i++
       }
 
-      pushTextRun(run, children, valuesToTranslate, req)
+      pushTextRun(run, children, valuesToTranslate)
     } else {
       traverseRichText({
         localeFrom,

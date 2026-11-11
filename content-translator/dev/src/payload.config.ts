@@ -25,7 +25,7 @@ import { pagesSchema } from './collections/pages'
 import { postsSchema } from './collections/posts'
 import { makeSlugTranslatable } from './helpers/makeSlugTranslatable'
 import { aiSdkResolver } from './resolvers/aiSdkResolver'
-import { mockResolver } from './resolvers/mockResolver'
+import { damagedMarkersResolver, mockResolver } from './resolvers/mockResolver'
 import { seed } from './seed'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -38,8 +38,9 @@ const protectedTermsInstruction = `Never translate the following product names, 
 // Set TRANSLATOR_RESOLVER to `anthropic`, `mistral` or `ai-sdk` to translate
 // through one of those resolvers instead of the built-in OpenAI one. All of
 // them expose the same `instructions` extension point, so the protected terms
-// above apply whichever one runs. Built lazily so only the selected resolver is
-// constructed.
+// above apply whichever one runs. `damaged-markers` needs no API key and shows
+// the warning for text left in the source language. Built lazily so only the
+// selected resolver is constructed.
 const translatorResolvers: Record<string, () => TranslateResolver> = {
   'ai-sdk': () =>
     aiSdkResolver({
@@ -63,6 +64,7 @@ const translatorResolvers: Record<string, () => TranslateResolver> = {
       instructions: ({ defaultInstructions }) =>
         `${defaultInstructions}\n\n${protectedTermsInstruction}`,
     }),
+  'damaged-markers': damagedMarkersResolver,
   mistral: () =>
     mistralResolver({
       apiKey: process.env.MISTRAL_API_KEY || '',

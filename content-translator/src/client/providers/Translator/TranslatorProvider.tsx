@@ -46,8 +46,8 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
 
   const resolver = (custom as TranslatorClientConfig | undefined)?.translator?.resolver ?? null
 
-  const translatorT = (key: TranslationKey) => {
-    return t(`plugin-translator:${key}` as Parameters<typeof t>[0])
+  const translatorT = (key: TranslationKey, vars?: Record<string, unknown>) => {
+    return t(`plugin-translator:${key}` as Parameters<typeof t>[0], vars)
   }
 
   const apiClient = createClient({ api, serverURL })
@@ -120,7 +120,14 @@ export const TranslatorProvider = ({ children }: { children: ReactNode }) => {
         })
 
         setModified(true)
-        toast.success(translatorT('successMessage'))
+
+        if (result.untranslatedSegments > 0) {
+          toast.warning(
+            translatorT('partialSuccessMessage', { amount: result.untranslatedSegments }),
+          )
+        } else {
+          toast.success(translatorT('successMessage'))
+        }
       }
     } catch (e) {
       console.error(e)

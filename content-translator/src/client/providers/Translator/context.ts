@@ -9,6 +9,7 @@ export type TranslationKey =
   | 'modalSourceLanguage'
   | 'modalTitle'
   | 'modalTranslating'
+  | 'partialSuccessMessage'
   | 'submitButtonLabelEmpty'
   | 'submitButtonLabelFull'
   | 'successMessage'
@@ -22,7 +23,7 @@ type TranslatorContextData = {
   resolver: { key: string } | null
   setLocaleToTranslateFrom: (code: string) => void
   submit: (args: { emptyOnly: boolean }) => Promise<void>
-  translatorT: (key: TranslationKey) => string
+  translatorT: (key: TranslationKey, vars?: Record<string, unknown>) => string
 }
 
 export const TranslatorContext = createContext<null | TranslatorContextData>(null)
