@@ -6,6 +6,7 @@ import { v2 as cloudinary } from 'cloudinary'
 import fs from 'fs'
 
 import type { VerifiedClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
+import type { DeliveryType } from './types.js'
 
 import { generatePublicId } from './utilities/generatePublicId.js'
 
@@ -13,6 +14,7 @@ import { generatePublicId } from './utilities/generatePublicId.js'
 export const clientUploadContextKey = 'cloudinaryClientUpload'
 
 type HandleUploadArgs = {
+  deliveryType?: DeliveryType
   folderSrc: string
   prefix?: string
   useFilename?: boolean
@@ -21,6 +23,7 @@ type HandleUploadArgs = {
 const multipartThreshold = 1024 * 1024 * 99 // 99MB
 
 export const getHandleUpload = ({
+  deliveryType = 'upload',
   folderSrc,
   prefix = '',
   useFilename,
@@ -37,12 +40,14 @@ export const getHandleUpload = ({
 
     const uploadOptions: UploadApiOptions = replacedPublicId
       ? {
+          type: deliveryType,
           invalidate: true,
           overwrite: true,
           public_id: replacedPublicId,
           resource_type: 'auto',
         }
       : {
+          type: deliveryType,
           folder: folderSrc,
           public_id: useFilename ? generatePublicId(prefix, file.filename) : undefined,
           resource_type: 'auto',
@@ -92,7 +97,10 @@ export const getHandleUpload = ({
     if (result && typeof result === 'object' && 'public_id' in result && 'secure_url' in result) {
       // these fields will be stored in the database
       data.cloudinaryPublicId = result.public_id
-      data.url = result.secure_url
+      // A signed URL never expires, so authenticated assets are only served through Payload's file route.
+      if (deliveryType !== 'authenticated') {
+        data.url = result.secure_url
+      }
 
       return data
     } else {

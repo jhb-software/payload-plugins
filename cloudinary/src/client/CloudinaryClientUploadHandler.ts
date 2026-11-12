@@ -2,6 +2,8 @@
 
 import { createClientUploadHandler } from '@payloadcms/plugin-cloud-storage/client'
 
+import type { DeliveryType } from '../types.js'
+
 export type CloudinaryClientUploadHandlerExtra = {
   apiKey: string
   cloudName: string
@@ -36,6 +38,8 @@ export type CloudinarySignatureResponse = {
   publicId: string
   signature: string
   timestamp: number
+  /** Delivery type, only set for non-public assets. */
+  type?: DeliveryType
 }
 
 type CloudinaryUploadResponse = {
@@ -148,6 +152,9 @@ function buildFormData({
   formData.append('overwrite', signed.overwrite)
   formData.append('public_id', signed.publicId)
   formData.append('timestamp', String(signed.timestamp))
+  if (signed.type) {
+    formData.append('type', signed.type)
+  }
   formData.append('resource_type', 'auto')
   formData.append('signature', signed.signature)
 
