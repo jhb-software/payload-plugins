@@ -21,8 +21,8 @@ minimumReleaseAgeExclude:
 overrides:
   js-yaml: '^4.3.2'
   dompurify: '^3.4.13'
-  prettier: '3.9.9'
-  next: '16.4.5'
+  prettier: '3.10.1'
+  next: '16.4.6'
   happy-dom: '^21.0.4'
   'minimatch@>=7.0.0 <11.0.1': '^11.0.1'
   'undici@>=7.0.0 <7.29.1': '^7.29.1'

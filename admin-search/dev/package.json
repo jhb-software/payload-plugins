@@ -26,14 +26,14 @@
     "@payloadcms/richtext-lexical": "^3.93.0",
     "@payloadcms/translations": "^3.93.0",
     "@payloadcms/ui": "^3.93.0",
-    "next": "16.4.5",
+    "next": "16.4.6",
     "payload": "^3.93.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "dotenv": "^18.0.9",
+    "dotenv": "^18.0.10",
     "tsx": "^4.23.15"
   },
   "engines": {
