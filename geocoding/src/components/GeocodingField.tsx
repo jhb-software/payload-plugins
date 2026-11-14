@@ -2,6 +2,7 @@ import type { ClientComponentProps, FieldPaths, ServerComponentProps } from 'pay
 
 import React from 'react'
 
+import { getPluginCustom } from '../pluginCustom.js'
 import { GeocodingFieldClient } from './GeocodingFieldClient.js'
 
 /**
@@ -10,11 +11,11 @@ import { GeocodingFieldClient } from './GeocodingFieldClient.js'
 export const GeocodingField: React.FC<
   ClientComponentProps & Pick<FieldPaths, 'path'> & ServerComponentProps
 > = ({ clientField, path, payload }) => {
-  const googleMapsApiKey = payload.config.custom?.payloadGeocodingPlugin?.googleMapsApiKey
+  const googleMapsApiKey = getPluginCustom(payload.config)?.googleMapsApiKey
 
-  if (!googleMapsApiKey || typeof googleMapsApiKey !== 'string') {
+  if (!googleMapsApiKey) {
     throw new Error(
-      'Geocoding plugin API key not configured. Ensure payloadGeocodingPlugin is added to your Payload config with a googleMapsApiKey.',
+      'The geocoding field needs a Google Maps API key for its address autocomplete. Pass googleMapsApiKey to payloadGeocodingPlugin.',
     )
   }
 

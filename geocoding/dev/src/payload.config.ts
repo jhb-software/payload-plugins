@@ -4,6 +4,7 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Articles } from './collection/articles'
 import { Pages } from './collection/pages'
+import { Venues } from './collection/venues'
 import { testEmailAdapter } from './emailAdapter'
 import { databaseAdapter } from './databaseAdapter'
 
@@ -27,6 +28,7 @@ export default buildConfig({
     },
     Pages,
     Articles,
+    Venues,
   ],
   db: databaseAdapter,
   email: testEmailAdapter,
@@ -36,7 +38,10 @@ export default buildConfig({
   },
   plugins: [
     payloadGeocodingPlugin({
+      // Browser key for the admin autocomplete, restricted by HTTP referrer.
       googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'test-api-key',
+      // Server key for the Geocoding API (the `_address` field, Venues and /api/geocoding/search).
+      googleServerApiKey: process.env.GOOGLE_MAPS_API_KEY,
     }),
   ],
   async onInit(payload) {

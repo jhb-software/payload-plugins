@@ -1,24 +1,58 @@
-import payload, { type CollectionSlug, type SanitizedConfig } from 'payload'
+import payload, { type CollectionSlug, createLocalReq, type SanitizedConfig } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
+import type { Venue } from './src/payload-types'
+
 import config from './src/payload.config'
 
-const MOCK_GOOGLE_RESPONSE = {
-  results: [
-    {
-      address_components: [
-        { long_name: 'Alexanderplatz', short_name: 'Alexanderplatz', types: ['point_of_interest'] },
-        { long_name: 'Berlin', short_name: 'Berlin', types: ['locality'] },
-      ],
-      formatted_address: 'Alexanderplatz, 10178 Berlin, Germany',
-      geometry: {
-        location: { lat: 52.5219, lng: 13.4132 },
-      },
-      place_id: 'ChIJp1l4uWBRqEcR2SPNRBMhtAI',
-      types: ['point_of_interest', 'establishment'],
-    },
-  ],
-  status: 'OK',
+type GoogleResult = {
+  formatted_address: string
+  geometry: { location: { lat: number; lng: number }; location_type: string }
+  partial_match?: boolean
+  place_id: string
+  types: string[]
 }
+
+const ALEXANDERPLATZ: GoogleResult = {
+  formatted_address: 'Alexanderplatz 1, 10178 Berlin, Germany',
+  geometry: { location: { lat: 52.5219, lng: 13.4132 }, location_type: 'ROOFTOP' },
+  place_id: 'ChIJp1l4uWBRqEcR2SPNRBMhtAI',
+  types: ['street_address'],
+}
+
+const MARIENPLATZ: GoogleResult = {
+  formatted_address: 'Marienplatz 1, 80331 München, Germany',
+  geometry: { location: { lat: 48.1374, lng: 11.5755 }, location_type: 'ROOFTOP' },
+  place_id: 'ChIJ2V-Mo_l1nkcRfZixfUq4DAE',
+  types: ['street_address'],
+}
+
+const BERLIN_CITY: GoogleResult = {
+  formatted_address: 'Berlin, Germany',
+  geometry: { location: { lat: 52.52, lng: 13.405 }, location_type: 'APPROXIMATE' },
+  place_id: 'ChIJAVkDPzdOqEcRcDteW0YgIQQ',
+  types: ['locality', 'political'],
+}
+
+/**
+ * Stubs the network boundary: answers Google Geocoding API requests by the queried address and
+ * records every request URL.
+ */
+function stubGoogle(answer: (address: string) => { results?: GoogleResult[]; status: string }) {
+  const urls: URL[] = []
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    urls.push(url)
+    return Response.json(answer(url.searchParams.get('address') ?? ''))
+  })
+  return urls
+}
+
+const byAddress =
+  (table: Record<string, GoogleResult>) =>
+  (address: string): { results?: GoogleResult[]; status: string } => {
+    const match = Object.entries(table).find(([key]) => address.includes(key))
+    return match ? { results: [match[1]], status: 'OK' } : { results: [], status: 'ZERO_RESULTS' }
+  }
 
 /**
  * The Pages collection has `location1` (required point) and `location2` (required point + required meta).
@@ -27,14 +61,12 @@ const MOCK_GOOGLE_RESPONSE = {
 const requiredFields = {
   location1: [0, 0] as [number, number],
   location2: [0, 0] as [number, number],
-  location2_meta: { name: 'Test', formattedAddress: 'Test', googlePlaceId: 'test', types: ['test'] },
-}
-
-/** Returns a fresh mock Response for each call (avoids "Body already read" errors). */
-function mockGoogleGeocodingFetch() {
-  return vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
-    return new Response(JSON.stringify(MOCK_GOOGLE_RESPONSE), { status: 200 })
-  })
+  location2_meta: {
+    name: 'Test',
+    formattedAddress: 'Test',
+    googlePlaceId: 'test',
+    types: ['test'],
+  },
 }
 
 beforeAll(async () => {
@@ -61,7 +93,12 @@ describe('Geocoding plugin field structure', () => {
   beforeEach(async () => await deleteCollection('pages'))
 
   test('creates a page with point and meta fields via the local API', async () => {
-    const meta = { name: 'Berlin', formattedAddress: 'Berlin, Germany', googlePlaceId: 'abc', types: ['locality'] }
+    const meta = {
+      name: 'Berlin',
+      formattedAddress: 'Berlin, Germany',
+      googlePlaceId: 'abc',
+      types: ['locality'],
+    }
     const page = await payload.create({
       collection: 'pages',
       data: {
@@ -90,7 +127,12 @@ describe('Geocoding plugin field structure', () => {
   })
 
   test('geocoding fields work inside a group', async () => {
-    const meta = { name: 'Place', formattedAddress: 'Somewhere', googlePlaceId: 'xyz', types: ['locality'] }
+    const meta = {
+      name: 'Place',
+      formattedAddress: 'Somewhere',
+      googlePlaceId: 'xyz',
+      types: ['locality'],
+    }
     const page = await payload.create({
       collection: 'pages',
       data: {
@@ -108,8 +150,18 @@ describe('Geocoding plugin field structure', () => {
   })
 
   test('geocoding fields work inside an array', async () => {
-    const metaA = { name: 'A', formattedAddress: 'Place A', googlePlaceId: 'a', types: ['locality'] }
-    const metaB = { name: 'B', formattedAddress: 'Place B', googlePlaceId: 'b', types: ['locality'] }
+    const metaA = {
+      name: 'A',
+      formattedAddress: 'Place A',
+      googlePlaceId: 'a',
+      types: ['locality'],
+    }
+    const metaB = {
+      name: 'B',
+      formattedAddress: 'Place B',
+      googlePlaceId: 'b',
+      types: ['locality'],
+    }
     const page = await payload.create({
       collection: 'pages',
       data: {
@@ -128,177 +180,335 @@ describe('Geocoding plugin field structure', () => {
   })
 })
 
-describe('Server-side address geocoding (beforeChange hook)', () => {
+describe('An address sent in {name}_address', () => {
   beforeEach(async () => await deleteCollection('pages'))
 
-  test('auto-geocodes an address string submitted via location_address', async () => {
-    mockGoogleGeocodingFetch()
+  test('fills the point and meta, and remembers how exact the match is', async () => {
+    stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
 
     const page = await payload.create({
       collection: 'pages',
-      data: {
-        title: 'Geocoded Page',
-        location_address: 'Alexanderplatz, Berlin',
-        ...requiredFields,
-      },
+      data: { title: 'Geocoded', location_address: 'Alexanderplatz 1, Berlin', ...requiredFields },
     })
 
-    // Point field should be populated with [lng, lat]
     expect(page.location).toEqual([13.4132, 52.5219])
-
-    // Meta field should contain the geocoding result in LocationMeta shape
-    expect(page.location_meta).toMatchObject({
-      formattedAddress: 'Alexanderplatz, 10178 Berlin, Germany',
+    expect(page.location_meta).toEqual({
+      name: 'Alexanderplatz 1',
+      formattedAddress: 'Alexanderplatz 1, 10178 Berlin, Germany',
       googlePlaceId: 'ChIJp1l4uWBRqEcR2SPNRBMhtAI',
-      name: 'Alexanderplatz',
+      partialMatch: false,
+      precision: 'exact',
+      query: 'Alexanderplatz 1, Berlin',
+      types: ['street_address'],
     })
-
-    // The address field should NOT be persisted (virtual: true)
-    const fetched = await payload.findByID({
-      collection: 'pages',
-      id: page.id,
-    })
-    expect((fetched as Record<string, unknown>).location_address).toBeFalsy()
+    const stored = await payload.findByID({ collection: 'pages', id: page.id })
+    expect(stored).not.toHaveProperty('location_address')
   })
 
-  test('does not geocode when no address is provided', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch')
-
-    await payload.create({
-      collection: 'pages',
-      data: {
-        title: 'No Address Page',
-        location: [1.0, 2.0],
-        ...requiredFields,
-      },
-    })
-
-    expect(fetchSpy).not.toHaveBeenCalled()
-  })
-
-  test('auto-geocodes address on update', async () => {
+  test('replaces the point on update', async () => {
     const page = await payload.create({
       collection: 'pages',
-      data: {
-        title: 'Update Test',
-        location: [0, 0],
-        ...requiredFields,
-      },
+      data: { title: 'Update', location: [0, 0], ...requiredFields },
     })
-
-    mockGoogleGeocodingFetch()
+    stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
 
     const updated = await payload.update({
       collection: 'pages',
       id: page.id,
-      data: {
-        location_address: 'Alexanderplatz, Berlin',
-      },
+      data: { location_address: 'Alexanderplatz 1, Berlin' },
     })
 
     expect(updated.location).toEqual([13.4132, 52.5219])
-    expect(updated.location_meta).toMatchObject({
-      formattedAddress: 'Alexanderplatz, 10178 Berlin, Germany',
+  })
+
+  test('refuses the save with the reason when nothing matches', async () => {
+    stubGoogle(byAddress({}))
+
+    await expectFieldError(
+      payload.create({
+        collection: 'pages',
+        data: { title: 'Nowhere', location_address: 'Nowhere Street 99', ...requiredFields },
+      }),
+      /No place matches "Nowhere Street 99"/,
+    )
+  })
+
+  test('refuses the save naming the server key option when Google refuses the key', async () => {
+    stubGoogle(() => ({ status: 'REQUEST_DENIED' }))
+
+    await expectFieldError(
+      payload.create({
+        collection: 'pages',
+        data: { title: 'Denied', location_address: 'Alexanderplatz 1, Berlin', ...requiredFields },
+      }),
+      /googleServerApiKey/,
+    )
+  })
+
+  test('does not call Google when no address is sent', async () => {
+    const urls = stubGoogle(byAddress({}))
+
+    await payload.create({
+      collection: 'pages',
+      data: { title: 'No address', location: [1, 2], ...requiredFields },
     })
+
+    expect(urls).toHaveLength(0)
+  })
+})
+
+describe('A point filled from the document address (address option)', () => {
+  beforeEach(async () => await deleteCollection('venues'))
+
+  /** Venue data without coordinates: the hook fills them, so the generated type is too strict. */
+  const createVenue = (
+    data: Omit<Venue, 'coordinates' | 'createdAt' | 'id' | 'updatedAt'> & {
+      coordinates?: [number, number]
+    },
+  ) => payload.create({ collection: 'venues', data: data as Venue })
+
+  const berlin = {
+    name: 'Venue',
+    street: 'Alexanderplatz 1',
+    postalCode: '10178',
+    city: 'Berlin',
+    country: 'de',
+  }
+
+  test('fills itself from the address fields, restricted to the country', async () => {
+    const urls = stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
+
+    const venue = await createVenue(berlin)
+
+    expect(venue.coordinates).toEqual([13.4132, 52.5219])
+    expect(urls[0].searchParams.get('address')).toBe('Alexanderplatz 1, 10178 Berlin')
+    expect(urls[0].searchParams.get('components')).toBe('country:DE')
+  })
+
+  test('keeps coordinates someone entered and never calls Google', async () => {
+    const urls = stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
+
+    const venue = await createVenue({ ...berlin, coordinates: [13.0, 52.0] })
+
+    expect(venue.coordinates).toEqual([13.0, 52.0])
+    expect(urls).toHaveLength(0)
+  })
+
+  test('re-geocodes a geocoded point when the address changes', async () => {
+    stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ, Marienplatz: MARIENPLATZ }))
+    const venue = await createVenue(berlin)
+
+    const moved = await payload.update({
+      collection: 'venues',
+      id: venue.id,
+      data: { street: 'Marienplatz 1', postalCode: '80331', city: 'München' },
+    })
+
+    expect(moved.coordinates).toEqual([11.5755, 48.1374])
+  })
+
+  test('leaves an entered point alone when the address changes', async () => {
+    const urls = stubGoogle(byAddress({ Marienplatz: MARIENPLATZ }))
+    const venue = await createVenue({ ...berlin, coordinates: [13.0, 52.0] })
+
+    const moved = await payload.update({
+      collection: 'venues',
+      id: venue.id,
+      data: { street: 'Marienplatz 1', postalCode: '80331', city: 'München' },
+    })
+
+    expect(moved.coordinates).toEqual([13.0, 52.0])
+    expect(urls).toHaveLength(0)
+  })
+
+  test('leaves a point alone once someone replaced the geocoded one', async () => {
+    stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ, Marienplatz: MARIENPLATZ }))
+    const venue = await createVenue(berlin)
+    await payload.update({
+      collection: 'venues',
+      id: venue.id,
+      data: { coordinates: [13.1, 52.1] },
+    })
+
+    const moved = await payload.update({
+      collection: 'venues',
+      id: venue.id,
+      data: { street: 'Marienplatz 1', postalCode: '80331', city: 'München' },
+    })
+
+    expect(moved.coordinates).toEqual([13.1, 52.1])
+  })
+
+  test('refuses a city-level match with the reason instead of storing it', async () => {
+    stubGoogle(() => ({ results: [BERLIN_CITY], status: 'OK' }))
+
+    await expectFieldError(createVenue(berlin), /only approximate.*needs interpolated/)
+  })
+
+  test('refuses the save with the reason when Google is unreachable', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('fetch failed'))
+
+    await expectFieldError(
+      createVenue(berlin),
+      /Google could not be reached \(fetch failed\)\. Retry later/,
+    )
+  })
+
+  test('geocodes each document of a bulk update with its own address', async () => {
+    stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ, Marienplatz: MARIENPLATZ }))
+    const a = await createVenue({ ...berlin, name: 'A' })
+    const b = await createVenue({
+      ...berlin,
+      name: 'B',
+      street: 'Marienplatz 1',
+      postalCode: '80331',
+      city: 'München',
+    })
+
+    await payload.update({
+      collection: 'venues',
+      where: { id: { in: [a.id, b.id] } },
+      // Changes both addresses at once, so both points re-geocode within one request.
+      data: { postalCode: '' },
+    })
+    const [storedA, storedB] = await Promise.all([
+      payload.findByID({ collection: 'venues', id: a.id }),
+      payload.findByID({ collection: 'venues', id: b.id }),
+    ])
+    expect(storedA.coordinates).toEqual([13.4132, 52.5219])
+    expect(storedB.coordinates).toEqual([11.5755, 48.1374])
   })
 })
 
 describe('Geocoding field inside a Lexical block', () => {
   beforeEach(async () => await deleteCollection('articles'))
 
-  test('creates an article with a locationBlock containing point and meta', async () => {
-    const article = await payload.create({
-      collection: 'articles',
-      data: {
-        title: 'Article with Location Block',
-        content: {
-          root: {
-            type: 'root',
+  const article = (fields: Record<string, unknown>) => ({
+    title: 'Article',
+    content: {
+      root: {
+        type: 'root',
+        version: 1,
+        direction: 'ltr' as const,
+        format: '' as const,
+        indent: 0,
+        children: [
+          {
+            type: 'block',
             version: 1,
-            direction: 'ltr',
-            children: [
-              {
-                type: 'block',
-                version: 1,
-                fields: {
-                  id: 'loc-block-1',
-                  blockName: 'Berlin Office',
-                  blockType: 'locationBlock',
-                  label: 'Berlin HQ',
-                  location: [13.4132, 52.5219],
-                  location_meta: { name: 'Berlin', formattedAddress: 'Berlin, Germany', googlePlaceId: 'abc', types: ['locality'] },
-                },
-              },
-            ],
+            fields: { id: 'b1', blockType: 'locationBlock', ...fields },
           },
-        },
+        ],
       },
-    })
-
-    const block = (article.content?.root?.children as any[])?.[0]
-    expect(block).toBeDefined()
-    expect(block.fields.blockType).toBe('locationBlock')
-    expect(block.fields.location).toEqual([13.4132, 52.5219])
-    expect(block.fields.location_meta).toMatchObject({ name: 'Berlin' })
+    },
   })
 
-  test('auto-geocodes an address inside a Lexical block', async () => {
-    mockGoogleGeocodingFetch()
+  const firstBlock = (doc: { content?: unknown }): Record<string, unknown> => {
+    const content = doc.content as {
+      root: { children: Array<{ fields: Record<string, unknown> }> }
+    }
+    return content.root.children[0].fields
+  }
 
-    const article = await payload.create({
+  test('stores point and meta set directly', async () => {
+    const meta = {
+      name: 'Berlin',
+      formattedAddress: 'Berlin, Germany',
+      googlePlaceId: 'abc',
+      types: ['locality'],
+    }
+    const doc = await payload.create({
       collection: 'articles',
-      data: {
-        title: 'Geocoded Block Article',
-        content: {
-          root: {
-            type: 'root',
-            version: 1,
-            direction: 'ltr',
-            children: [
-              {
-                type: 'block',
-                version: 1,
-                fields: {
-                  id: 'loc-block-2',
-                  blockName: 'Auto-geocoded Location',
-                  blockType: 'locationBlock',
-                  label: 'Berlin Office',
-                  location_address: 'Alexanderplatz, Berlin',
-                },
-              },
-            ],
-          },
-        },
-      },
+      data: article({ location: [13.4132, 52.5219], location_meta: meta }),
     })
 
-    const block = (article.content?.root?.children as any[])?.[0]
-    expect(block).toBeDefined()
+    expect(firstBlock(doc).location).toEqual([13.4132, 52.5219])
+    expect(firstBlock(doc).location_meta).toEqual(meta)
+  })
 
-    expect(block.fields.location).toEqual([13.4132, 52.5219])
-    expect(block.fields.location_meta).toMatchObject({
-      formattedAddress: 'Alexanderplatz, 10178 Berlin, Germany',
-      googlePlaceId: 'ChIJp1l4uWBRqEcR2SPNRBMhtAI',
+  test('geocodes an address sent in the block once, without storing it', async () => {
+    const urls = stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
+
+    const doc = await payload.create({
+      collection: 'articles',
+      data: article({ location_address: 'Alexanderplatz 1, Berlin' }),
     })
+    await payload.update({ collection: 'articles', id: doc.id, data: { title: 'Renamed' } })
 
-    // Known Payload bug: virtual fields inside Lexical blocks are still stored in the block's JSON.
-    // The address field has virtual: true, which correctly prevents a DB column for regular fields,
-    // but Lexical blocks serialize all field data as JSON and ignore the virtual flag.
-    // expect(block.fields.location_address).toBeFalsy()
+    expect(firstBlock(doc).location).toEqual([13.4132, 52.5219])
+    expect(firstBlock(doc).location_address).toBeUndefined()
+    expect(urls).toHaveLength(1)
   })
 })
 
-describe('Geocoding search endpoint', () => {
-  test('is registered at /api/geocoding-plugin/search', () => {
-    const endpoints = payload.config.endpoints
-    const geocodingEndpoint = endpoints?.find((e) => e.path === '/geocoding-plugin/search')
+describe('GET /api/geocoding/search', () => {
+  const endpoint = () => {
+    const found = payload.config.endpoints.find((e) => e.path === '/geocoding/search')
+    if (!found) throw new Error('endpoint not registered')
+    return found
+  }
 
-    expect(geocodingEndpoint).toBeDefined()
-    expect(geocodingEndpoint!.method).toBe('get')
+  const call = async (query: string, user: unknown = { id: 1, collection: 'users' }) => {
+    const req = await createLocalReq(
+      { urlSuffix: `/api/geocoding/search${query}`, user: user as never },
+      payload,
+    )
+    const response = await endpoint().handler(req)
+    return { body: await response.json(), status: response.status }
+  }
+
+  test('answers the matches for an address', async () => {
+    const urls = stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
+
+    const { body, status } = await call('?q=Alexanderplatz+1,+Berlin&country=de&language=de')
+
+    expect(status).toBe(200)
+    expect(body.results[0]).toMatchObject({
+      location: { lat: 52.5219, lng: 13.4132 },
+      placeId: 'ChIJp1l4uWBRqEcR2SPNRBMhtAI',
+      precision: 'exact',
+    })
+    expect(urls[0].searchParams.get('components')).toBe('country:DE')
+    expect(urls[0].searchParams.get('language')).toBe('de')
+  })
+
+  test('refuses anonymous callers', async () => {
+    const { status } = await call('?q=Berlin', null)
+    expect(status).toBe(401)
+  })
+
+  test('explains the parameters when q is missing', async () => {
+    const { body, status } = await call('')
+    expect(status).toBe(400)
+    expect(body.errors[0].message).toMatch(/q=Alexanderplatz/)
+  })
+
+  test('answers an empty list with a hint when nothing matches', async () => {
+    stubGoogle(byAddress({}))
+    const { body, status } = await call('?q=Nowhere')
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ results: [], message: expect.stringMatching(/postal code/) })
+  })
+
+  test('answers the reason when Google refuses the key', async () => {
+    stubGoogle(() => ({ status: 'REQUEST_DENIED' }))
+    const { body, status } = await call('?q=Berlin')
+    expect(status).toBe(502)
+    expect(body.reason).toBe('denied')
   })
 })
 
 // --- Helpers ---
+
+/** Asserts a save fails validation and that a field's error message (what REST returns) matches. */
+async function expectFieldError(save: Promise<unknown>, message: RegExp) {
+  const error: unknown = await save.then(
+    () => undefined,
+    (e: unknown) => e,
+  )
+  const errors = (error as { data?: { errors?: Array<{ message: string }> } })?.data?.errors ?? []
+  expect(errors.map((e) => e.message).join('\n')).toMatch(message)
+}
 
 const deleteCollection = async (collection: CollectionSlug) => {
   await payload.db.deleteMany({

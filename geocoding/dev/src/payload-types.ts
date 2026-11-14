@@ -70,6 +70,7 @@ export interface Config {
     users: User;
     pages: Page;
     articles: Article;
+    venues: Venue;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -80,6 +81,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    venues: VenuesSelect<false> | VenuesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -156,6 +158,9 @@ export interface Page {
     name: string;
     formattedAddress: string;
     googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
     types: string[];
   };
   /**
@@ -168,6 +173,9 @@ export interface Page {
     name: string;
     formattedAddress: string;
     googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
     types: string[];
   };
   /**
@@ -180,6 +188,9 @@ export interface Page {
     name: string;
     formattedAddress: string;
     googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
     types: string[];
   };
   /**
@@ -192,6 +203,9 @@ export interface Page {
     name: string;
     formattedAddress: string;
     googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
     types: string[];
   };
   /**
@@ -204,6 +218,9 @@ export interface Page {
     name: string;
     formattedAddress: string;
     googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
     types: string[];
   };
   /**
@@ -217,6 +234,9 @@ export interface Page {
       name: string;
       formattedAddress: string;
       googlePlaceId: string;
+      partialMatch?: boolean;
+      precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+      query?: string;
       types: string[];
     };
     /**
@@ -232,6 +252,9 @@ export interface Page {
           name: string;
           formattedAddress: string;
           googlePlaceId: string;
+          partialMatch?: boolean;
+          precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+          query?: string;
           types: string[];
         };
         /**
@@ -273,6 +296,38 @@ export interface Article {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "venues".
+ */
+export interface Venue {
+  id: number;
+  name: string;
+  street?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  /**
+   * ISO 3166-1 alpha-2 code, e.g. DE
+   */
+  country?: string | null;
+  coordinates_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  coordinates: [number, number];
+  coordinates_address?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -306,6 +361,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'articles';
         value: number | Article;
+      } | null)
+    | ({
+        relationTo: 'venues';
+        value: number | Venue;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -418,6 +477,22 @@ export interface PagesSelect<T extends boolean = true> {
 export interface ArticlesSelect<T extends boolean = true> {
   title?: T;
   content?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "venues_select".
+ */
+export interface VenuesSelect<T extends boolean = true> {
+  name?: T;
+  street?: T;
+  postalCode?: T;
+  city?: T;
+  country?: T;
+  coordinates_meta?: T;
+  coordinates?: T;
+  coordinates_address?: T;
   updatedAt?: T;
   createdAt?: T;
 }
