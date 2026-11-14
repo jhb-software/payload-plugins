@@ -1,5 +1,6 @@
-import type { Field } from 'payload'
+import type { Field, TextField } from 'payload'
 
+import { mergeFieldAdmin } from '../utils/fieldOverrides.js'
 import { translatedLabel } from '../utils/translatedLabel.js'
 
 /**
@@ -7,22 +8,25 @@ import { translatedLabel } from '../utils/translatedLabel.js'
  *
  * It is not stored in the database, because this would not automatically reflect changes in the parent(s) slug(s).
  */
-export function pathField(): Field {
+export function pathField({ admin }: { admin?: TextField['admin'] } = {}): Field {
   return {
     name: 'path',
     type: 'text',
     label: translatedLabel('path'),
-    required: true,
+    // Not required: a read in a locale without a path omits it.
     virtual: true,
 
-    admin: {
-      components: {
-        Field: '@jhb.software/payload-pages-plugin/client#PathField',
+    admin: mergeFieldAdmin<NonNullable<TextField['admin']>>(
+      {
+        components: {
+          Field: '@jhb.software/payload-pages-plugin/server#PathField',
+        },
+        disableBulkEdit: true,
+        position: 'sidebar',
+        readOnly: true,
       },
-      disableBulkEdit: true,
-      position: 'sidebar',
-      readOnly: true,
-    },
+      admin,
+    ),
     hooks: {
       afterRead: [
         // The path is generated in the getVirtualFields collection hook
@@ -30,6 +34,6 @@ export function pathField(): Field {
     },
     localized: true,
     // Validate by default to allow the document to be updated, without having to set the path field:
-    validate: (_: any): true => true,
+    validate: (): true => true,
   }
 }

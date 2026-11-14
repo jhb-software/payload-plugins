@@ -1,6 +1,30 @@
 # Changelog
 
+## 0.5.0
+
+- chore: require Payload `^3.90.1`, which ships critical security fixes. Note two upgrade effects on upload collections: `@payloadcms/plugin-cloud-storage` now adds an `_objectKey` column, so Postgres and SQLite projects need a migration, and Payload caps server uploads at 20MB per file / 50MB per request by default (see the README for how to raise the limits)
+- **BREAKING**: fix: verify client uploads server-side through a sign → upload → confirm flow backed by a Payload receipt, so documents can only reference assets the server minted for that user. The server now mints client-upload public IDs (with a random suffix) and signs `overwrite=false`. Custom clients must `POST /api/cloudinary-generate-signature?collectionSlug=…` with `{ filename, mimeType, size }`, upload with exactly the returned parameters, then `POST /api/cloudinary-confirm-upload?collectionSlug=…` with the returned `pendingReceipt` and Cloudinary's response
+- **BREAKING**: fix: `cloudinaryPublicId` can no longer be set through the API; only the plugin writes it
+- fix: replace the browser-uploaded asset instead of leaving an orphaned copy in Cloudinary when Payload re-encodes a client-uploaded image on the server
+- fix: replace characters Cloudinary does not allow in public IDs (`? & # \ % < > +`) with underscores when deriving the public ID from the filename, so such files upload and confirm reliably
+- fix: stream files from Cloudinary with `Range` support, serve SVG/XML with a restrictive `Content-Security-Policy`, and serve server-uploaded files through Payload's file route again (Payload 3.90 no longer stores their `url`)
+
+## 0.4.1
+
+- fix: log the static handler's 404 diagnostics and `generateURL`'s missing-`mimeType` warning through the Payload logger instead of `console`, so they respect the project's log level and formatting
+
+## 0.4.0
+
+- fix: declare `@payloadcms/plugin-cloud-storage` as a peer dependency instead of a direct dependency, so it resolves to the same version as the host project's Payload suite and no longer pulls in a second copy of `@payloadcms/ui` (which broke the Payload admin with React context errors). **Breaking:** consuming projects must now install `@payloadcms/plugin-cloud-storage` alongside `payload`.
+- fix: restore client uploads on Payload 3.82+. Client-uploaded documents now keep a usable `url`/`cloudinaryPublicId`, and files served from `disablePayloadAccessControl` collections no longer fail with "missing on the disk".
+- fix: harden the client-upload signature endpoint (`/cloudinary-generate-signature`). The endpoint now only signs the `timestamp`, `folder`, and `public_id` parameters, only issues signatures for collections the plugin manages, enforces the configured upload folder, and rejects stale timestamps. The default access control now requires `create` access to the target upload collection instead of merely being authenticated.
+
+## 0.3.4
+
+- feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
+
 ## 0.3.3
+
 - fix: `getAdminThumbnail` now returns `undefined` instead of `false` if the `cloudinaryPublicId` or `mimeType` field is missing in the getAdminThumbnail function (e.g. during the upload process).
 
 ## 0.3.2
@@ -8,7 +32,7 @@
 - fix: `thumbnailURL` now correctly points to Cloudinary in Payload 3.7X
   - The `adminThumbnail` function now generates URLs directly from `cloudinaryPublicId` instead of relying on `doc.url`
   - This ensures the thumbnail URL is correct even when Payload's `thumbnailURL` hook runs before the `url` field is regenerated
-- fix: `generateURL` now does not throw an exception if the `cloudinaryPublicId` field is missing. 
+- fix: `generateURL` now does not throw an exception if the `cloudinaryPublicId` field is missing.
   - Instead, it returns `undefined` which is handled by Payload's default URL handling. This is necessary because in Payload 3.7X `generateURL` is called during upload, therefore its not possible to throw an exception, otherwise the upload would fail.
 
 ## 0.3.1
@@ -35,6 +59,7 @@
 Plugin config migration example:
 
 Before:
+
 ```ts
 payloadCloudinaryPlugin({
     uploadCollections: ['images', 'videos'],
@@ -53,6 +78,7 @@ payloadCloudinaryPlugin({
 ```
 
 After:
+
 ```ts
 payloadCloudinaryPlugin({
   collections: {

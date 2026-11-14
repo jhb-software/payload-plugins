@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, toast, useSelection, useTranslation } from '@payloadcms/ui'
+import { Button, toast, useAuth, useConfig, useSelection, useTranslation } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation.js'
 import { useTransition } from 'react'
 
@@ -8,14 +8,26 @@ import type {
   PluginAltTextTranslationKeys,
   PluginAltTextTranslations,
 } from '../translations/index.js'
+import type { BulkGenerateResult } from './summarizeBulkGenerate.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
+import { summarizeBulkGenerate } from './summarizeBulkGenerate.js'
 
 export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug: string }) {
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
   const [isPending, startTransition] = useTransition()
+  const { permissions } = useAuth()
   const { selected, setSelection } = useSelection()
+
+  const canUpdateCollection = Boolean(permissions?.collections?.[collectionSlug]?.update)
+  const {
+    config: {
+      routes: { api: apiRoute },
+      serverURL,
+    },
+  } = useConfig()
 
   const selectedIds = Array.from(selected.entries())
     .filter(([, isSelected]) => isSelected)
@@ -30,7 +42,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
       }
 
       try {
-        const response = await fetch('/api/alt-text-plugin/bulk-generate-alt-texts', {
+        const response = await fetch(`${serverURL ?? ''}${apiRoute}/${PLUGIN_SLUG}/generate/bulk`, {
           body: JSON.stringify({
             collection: collectionSlug,
             ids: selectedIds,
@@ -43,34 +55,10 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
           return
         }
 
-        const data = (await response.json()) as {
-          erroredDocs: string[]
-          totalDocs: number
-          updatedDocs: number
-        }
+        const data = (await response.json()) as BulkGenerateResult
 
-        if (data.erroredDocs.length > 0) {
-          toast.error(
-            t('@jhb.software/payload-alt-text-plugin:failedToGenerateForXImages').replace(
-              '{X}',
-              data.erroredDocs.length.toString(),
-            ),
-          )
-        }
-
-        // in case not all images were updated, show a warning instead of a success message:
-        if (data.updatedDocs === data.totalDocs) {
-          toast.success(
-            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated')
-              .replace('{X}', data.updatedDocs.toString())
-              .replace('{Y}', data.totalDocs.toString()),
-          )
-        } else {
-          toast.warning(
-            t('@jhb.software/payload-alt-text-plugin:xOfYImagesUpdated')
-              .replace('{X}', data.updatedDocs.toString())
-              .replace('{Y}', data.totalDocs.toString()),
-          )
+        for (const { severity, translationKey, variables } of summarizeBulkGenerate(data)) {
+          toast[severity](t(`@jhb.software/payload-alt-text-plugin:${translationKey}`, variables))
         }
 
         // deselect all previously selected images
@@ -87,6 +75,7 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
   }
 
   return (
+    canUpdateCollection &&
     selectedIds.length > 0 && (
       <div className="m-0" style={{ display: 'flex', justifyContent: 'right' }}>
         <Button
@@ -95,10 +84,9 @@ export function BulkGenerateAltTextsButton({ collectionSlug }: { collectionSlug:
           icon={isPending ? <Spinner /> : <Lightning />}
           onClick={handleGenerateAltTexts}
         >
-          {t('@jhb.software/payload-alt-text-plugin:generateAltTextFor')} {selectedIds.length}{' '}
-          {selectedIds.length === 1
-            ? t('@jhb.software/payload-alt-text-plugin:image')
-            : t('@jhb.software/payload-alt-text-plugin:images')}
+          {t('@jhb.software/payload-alt-text-plugin:generateAltTextFor', {
+            count: selectedIds.length,
+          })}
         </Button>
       </div>
     )

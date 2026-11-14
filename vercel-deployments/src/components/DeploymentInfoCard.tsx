@@ -1,0 +1,393 @@
+import type { I18nClient, TFunction } from '@payloadcms/translations'
+import type { PillProps } from '@payloadcms/ui/elements/Pill'
+
+import { Pill } from '@payloadcms/ui/elements/Pill'
+import { Suspense } from 'react'
+
+import type { DeploymentsInfo } from '../endpoints/getDeployments.js'
+import type { VercelDeploymentsTranslationKeys } from '../translations/index.js'
+import type { DeploymentTarget, VercelDeploymentsPluginConfig } from '../types.js'
+import type { VercelDeployment } from '../utilities/vercelApiClient.js'
+
+import { Card } from './Card.js'
+import { DeploymentStatusPoller } from './DeploymentStatusPoller.js'
+import { FormattedDate } from './FormattedDate.js'
+import { ClockIcon } from './icons/clock.js'
+import { ClockDashedIcon } from './icons/clock-dashed.js'
+import { CloudIcon } from './icons/cloud.js'
+import { GlobeIcon } from './icons/globe.js'
+import { SpinnerIcon } from './icons/spinner.js'
+import { TriggerFrontendDeploymentButton } from './TriggerDeploymentButton.js'
+
+/** A deployment target the card can render from. `error` carries a resolver failure. */
+export type ResolvedWidgetTarget = { error?: string } & DeploymentTarget
+
+/**
+ * The deployment target of the current request. A statically configured target is already
+ * known and renders in the same pass; only a per-request resolver arrives as a promise, so
+ * that the card can render before it settles.
+ */
+export type WidgetTarget = Promise<ResolvedWidgetTarget> | ResolvedWidgetTarget
+
+/**
+ * Renders a part of the card that depends on the target. A target that is already known
+ * renders immediately — no Suspense boundary, so a static configuration shows the website
+ * link and the deploy button in the card's first paint rather than a tick later.
+ */
+function TargetSlot({
+  children,
+  fallback,
+  target,
+}: {
+  children: (target: ResolvedWidgetTarget) => React.ReactNode
+  fallback: React.ReactNode
+  target: WidgetTarget
+}): React.ReactNode {
+  if (!(target instanceof Promise)) {
+    return children(target)
+  }
+
+  return (
+    <Suspense fallback={fallback}>
+      <AwaitedTargetSlot target={target}>{children}</AwaitedTargetSlot>
+    </Suspense>
+  )
+}
+
+async function AwaitedTargetSlot({
+  children,
+  target,
+}: {
+  children: (target: ResolvedWidgetTarget) => React.ReactNode
+  target: Promise<ResolvedWidgetTarget>
+}): Promise<React.ReactNode> {
+  return children(await target)
+}
+
+export function DeploymentInfoCard({
+  i18n,
+  pluginConfig,
+  target,
+}: {
+  i18n: I18nClient
+  pluginConfig: VercelDeploymentsPluginConfig
+  target: WidgetTarget
+}) {
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
+
+  const description = resolveDescription(pluginConfig.widget?.description, i18n.language)
+
+  return (
+    <DeploymentStatusPoller>
+      <Card
+        actions={
+          <TargetSlot fallback={null} target={target}>
+            {({ projectId }) => (projectId ? <TriggerFrontendDeploymentButton /> : null)}
+          </TargetSlot>
+        }
+        icon={<CloudIcon />}
+        title={t('vercel-dashboard:deploymentInfoTitle')}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <TargetSlot fallback={null} target={target}>
+            {({ websiteUrl }) => <WebsiteLink i18n={i18n} websiteUrl={websiteUrl} />}
+          </TargetSlot>
+
+          <Suspense
+            fallback={
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <DeploymentInfoRowSkeleton
+                  icon={<ClockIcon />}
+                  label={t('vercel-dashboard:deploymentInfoActiveDeployment')}
+                />
+              </div>
+            }
+          >
+            <DeploymentInfo i18n={i18n} pluginConfig={pluginConfig} target={target} />
+          </Suspense>
+
+          {description ? (
+            <p style={{ color: 'var(--theme-elevation-500)', fontSize: '0.875rem', margin: 0 }}>
+              {description}
+            </p>
+          ) : null}
+        </div>
+      </Card>
+    </DeploymentStatusPoller>
+  )
+}
+
+/** Renders a failure of either the target resolver or the Vercel API. */
+function DeploymentInfoError({ error, i18n }: { error: string; i18n: I18nClient }) {
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
+
+  return (
+    <div
+      style={{
+        alignItems: 'center',
+        color: 'var(--theme-error-500)',
+        display: 'flex',
+        gap: '0.5rem',
+      }}
+    >
+      <span>
+        {t('vercel-dashboard:deploymentInfoError')}: {error}
+      </span>
+    </div>
+  )
+}
+
+/** Link to the website of the resolved target, if one is configured. */
+function WebsiteLink({ i18n, websiteUrl }: { i18n: I18nClient; websiteUrl?: string }) {
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
+
+  if (!websiteUrl) {
+    return null
+  }
+
+  return (
+    <div
+      style={{
+        alignItems: 'center',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.5rem 0.75rem',
+      }}
+    >
+      <span style={{ alignItems: 'center', display: 'flex', gap: '0.375rem' }}>
+        <GlobeIcon />
+        <span style={{ fontWeight: 500 }}>{t('vercel-dashboard:deploymentInfoWebsite')}:</span>
+      </span>
+      <a
+        href={websiteUrl}
+        rel="noopener noreferrer"
+        style={{
+          color: 'var(--theme-text)',
+          textDecoration: 'none',
+        }}
+        target="_blank"
+      >
+        {websiteUrl.replace(/^https?:\/\//, '')}
+      </a>
+    </div>
+  )
+}
+
+function resolveDescription(
+  description: Record<string, string> | string | undefined,
+  language: string,
+): string | undefined {
+  if (!description) {
+    return undefined
+  }
+  if (typeof description === 'string') {
+    return description
+  }
+  return description[language] ?? description['en'] ?? Object.values(description)[0]
+}
+
+export default async function DeploymentInfo({
+  i18n,
+  pluginConfig,
+  target,
+}: {
+  i18n: I18nClient
+  pluginConfig: VercelDeploymentsPluginConfig
+  target: WidgetTarget
+}) {
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
+
+  let lastReadyDeployment: DeploymentsInfo['lastReadyDeployment'] = undefined
+  let latestDeployment: DeploymentsInfo['latestDeployment'] = undefined
+  let error: string | undefined = undefined
+
+  const resolvedTarget = await target
+
+  if (resolvedTarget.error) {
+    return <DeploymentInfoError error={resolvedTarget.error} i18n={i18n} />
+  }
+
+  // No project resolved for this request (e.g. no tenant selected) — there is nothing
+  // to report on. A hint keeps the card from looking like a project with nothing to show.
+  const { projectId } = resolvedTarget
+
+  if (!projectId) {
+    return (
+      <p style={{ color: 'var(--theme-elevation-500)', margin: 0 }}>
+        {t('vercel-dashboard:deploymentInfoNoTarget')}
+      </p>
+    )
+  }
+
+  try {
+    const { VercelApiClient } = await import('../utilities/vercelApiClient.js')
+    const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
+
+    const deploymentsResponse = await vercelClient.getDeployments({
+      limit: 10,
+      projectId,
+      target: 'production',
+      teamId: pluginConfig.vercel.teamId,
+    })
+
+    const readyDeployment = deploymentsResponse.deployments.find(
+      (deployment) => deployment.state === 'READY',
+    )
+    const latest = deploymentsResponse.deployments.at(0)
+
+    lastReadyDeployment = readyDeployment
+      ? {
+          inspectorUrl: readyDeployment.inspectorUrl,
+          readyAt: new Date(
+            typeof readyDeployment.ready === 'number'
+              ? readyDeployment.ready
+              : readyDeployment.created,
+          ).toISOString(),
+          status: 'READY',
+          uid: readyDeployment.uid,
+        }
+      : undefined
+
+    latestDeployment =
+      latest && latest.state
+        ? {
+            createdAt: new Date(latest.created).toISOString(),
+            inspectorUrl: latest.inspectorUrl,
+            status: latest.state,
+            uid: latest.uid,
+          }
+        : undefined
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Unknown error'
+  }
+
+  if (error) {
+    return <DeploymentInfoError error={error} i18n={i18n} />
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <DeploymentInfoRow
+        deploymentInfo={lastReadyDeployment}
+        i18n={i18n}
+        icon={<ClockIcon />}
+        label={t('vercel-dashboard:deploymentInfoActiveDeployment')}
+      />
+      {latestDeployment && latestDeployment?.uid !== lastReadyDeployment?.uid ? (
+        <DeploymentInfoRow
+          deploymentInfo={latestDeployment}
+          i18n={i18n}
+          icon={<ClockDashedIcon />}
+          label={t('vercel-dashboard:deploymentInfoLatestDeployment')}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+// Mirrors a single DeploymentInfoRow so the loading state reserves the exact
+// same height as the loaded content — the real icon + label stay put and only
+// the value shimmers. The shimmer height matches the Pill (size="small"), whose
+// rendered height is its line-height (calc(var(--base) * 1.2)) since the small
+// pill has zero block padding; a flat 1.25rem bar was shorter and shifted.
+function DeploymentInfoRowSkeleton({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem' }}>
+      <span style={{ alignItems: 'center', display: 'flex', gap: '0.375rem' }}>
+        {icon}
+        <span style={{ fontWeight: 500 }}>{label}:</span>
+      </span>
+      <span
+        aria-hidden="true"
+        style={{
+          animation: 'pulse 2s infinite',
+          backgroundColor: 'var(--theme-elevation-100)',
+          borderRadius: 'var(--style-radius-s)',
+          height: 'calc(var(--base) * 1.2)',
+          width: '11rem',
+        }}
+      />
+    </div>
+  )
+}
+
+function DeploymentInfoRow({
+  deploymentInfo,
+  i18n,
+  icon,
+  label,
+}: {
+  deploymentInfo: DeploymentsInfo['lastReadyDeployment'] | DeploymentsInfo['latestDeployment']
+  i18n: I18nClient
+  icon: React.ReactNode
+  label: string
+}) {
+  const t = i18n.t as TFunction<VercelDeploymentsTranslationKeys>
+
+  const deploymentStatusToPillStyle = (
+    status: VercelDeployment['status'],
+  ): PillProps['pillStyle'] => {
+    switch (status) {
+      case 'BUILDING':
+        return 'warning'
+      case 'CANCELED':
+      case 'DELETED':
+      case 'QUEUED':
+        return 'light-gray'
+      case 'ERROR':
+        return 'error'
+      case 'INITIALIZING':
+        return 'warning'
+      case 'READY':
+        return 'success'
+    }
+  }
+
+  return (
+    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem' }}>
+      <span style={{ alignItems: 'center', display: 'flex', gap: '0.375rem' }}>
+        {icon}
+        <span style={{ fontWeight: 500 }}>{label}:</span>
+      </span>
+      <span style={{ alignItems: 'center', display: 'flex', gap: '0.5rem' }}>
+        {deploymentInfo ? (
+          <FormattedDate
+            date={
+              new Date(
+                'readyAt' in deploymentInfo ? deploymentInfo.readyAt : deploymentInfo.createdAt,
+              )
+            }
+            dateFNSKey={i18n.dateFNSKey}
+          />
+        ) : null}
+        <a
+          aria-label={t('vercel-dashboard:deploymentInfoInspectDeployment')}
+          href={deploymentInfo?.inspectorUrl ?? undefined}
+          rel="noopener noreferrer"
+          target="_blank"
+          title={t('vercel-dashboard:deploymentInfoInspectDeployment')}
+        >
+          <Pill
+            pillStyle={
+              deploymentInfo?.status
+                ? deploymentStatusToPillStyle(deploymentInfo.status as VercelDeployment['status'])
+                : 'light-gray'
+            }
+            size="small"
+          >
+            <div style={{ alignItems: 'center', display: 'flex', gap: '0.25rem' }}>
+              {deploymentInfo?.status
+                ? t(
+                    'vercel-dashboard:vercelDeploymentStatus' +
+                      (deploymentInfo.status.charAt(0).toUpperCase() +
+                        deploymentInfo.status.slice(1).toLowerCase()),
+                  )
+                : t('vercel-dashboard:vercelDeploymentStatusUnknown')}
+              {deploymentInfo?.status === 'BUILDING' ? <SpinnerIcon /> : null}
+            </div>
+          </Pill>
+        </a>
+      </span>
+    </div>
+  )
+}

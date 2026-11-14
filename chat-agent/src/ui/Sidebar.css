@@ -1,0 +1,202 @@
+.chat-agent-sidebar {
+  background: var(--theme-bg);
+  border-right: 1px solid var(--theme-elevation-150);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  width: 260px;
+}
+
+.chat-agent-sidebar__new {
+  border-bottom: 1px solid var(--theme-elevation-150);
+  padding: 12px;
+}
+
+/* Drawer heading: makes it obvious this panel is the conversations list, not
+ * Payload's collection nav (which it would otherwise resemble on mobile). */
+.chat-agent-sidebar__heading {
+  color: var(--theme-elevation-500);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 12px 12px 4px;
+  text-transform: uppercase;
+}
+
+.chat-agent-sidebar__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.chat-agent-sidebar__item {
+  align-items: center;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px 8px;
+}
+
+.chat-agent-sidebar__item:hover {
+  background: var(--theme-elevation-50);
+}
+
+.chat-agent-sidebar__item--active {
+  background: var(--theme-elevation-100);
+  font-weight: 600;
+}
+
+.chat-agent-sidebar__item--active:hover {
+  background: var(--theme-elevation-100);
+}
+
+.chat-agent-sidebar__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Plain <button> so the row height is driven by the title, not by Payload's
+   `Button` component (which has its own min-height / padding). Hidden until
+   hover / focus / active to keep the list visually quiet. */
+.chat-agent-sidebar__delete {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: 18px;
+  justify-content: center;
+  margin: 0;
+  opacity: 0;
+  padding: 0;
+  transition: opacity 0.1s ease;
+  width: 18px;
+}
+
+.chat-agent-sidebar__delete:hover {
+  background: var(--theme-elevation-200);
+}
+
+.chat-agent-sidebar__item:hover .chat-agent-sidebar__delete,
+.chat-agent-sidebar__item:focus-within .chat-agent-sidebar__delete,
+.chat-agent-sidebar__item--active .chat-agent-sidebar__delete {
+  opacity: 1;
+}
+
+/* Search input */
+.chat-agent-sidebar__search {
+  align-items: center;
+  background: var(--theme-input-bg, var(--theme-bg));
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 6px;
+  display: flex;
+  gap: 6px;
+  margin: 8px 12px;
+  padding: 4px 8px;
+}
+
+.chat-agent-sidebar__search-icon {
+  color: var(--theme-elevation-400);
+  flex-shrink: 0;
+}
+
+.chat-agent-sidebar__search-input {
+  background: transparent;
+  border: none;
+  color: var(--theme-text);
+  flex: 1;
+  font-size: 12px;
+  min-width: 0;
+  outline: none;
+  padding: 2px 0;
+}
+
+.chat-agent-sidebar__search-clear {
+  background: none;
+  border: none;
+  color: var(--theme-elevation-400);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
+/* Empty state when search yields no matches */
+.chat-agent-sidebar__empty {
+  color: var(--theme-elevation-400);
+  font-size: 12px;
+  padding: 12px 10px;
+  text-align: center;
+}
+
+/* Inline rename input (replaces title while renaming) */
+.chat-agent-sidebar__rename-input {
+  background: var(--theme-input-bg, var(--theme-bg));
+  border: 1px solid var(--theme-elevation-300);
+  border-radius: 4px;
+  color: var(--theme-text);
+  flex: 1;
+  font-size: 13px;
+  min-width: 0;
+  outline: none;
+  padding: 2px 6px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Mobile drawer
+ *
+ * Below Payload's `--breakpoint-s` (falls back to 768px) the sidebar collapses
+ * into a left-edge off-canvas drawer. The chat fills the viewport; opening
+ * the drawer slides the sidebar in over the chat with a dimmed backdrop.
+ * ------------------------------------------------------------------------ */
+
+.chat-agent-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .chat-agent-sidebar {
+    bottom: 0;
+    left: 0;
+    position: absolute;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    width: min(300px, 85vw);
+    z-index: 20;
+  }
+
+  /* Shadow only on the open drawer — when closed, the off-canvas shadow halo
+   * would otherwise bleed past the sidebar's right edge and show as a faint
+   * vertical line at viewport x=0. */
+  .chat-agent-sidebar--open {
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
+    transform: translateX(0);
+  }
+
+  .chat-agent-backdrop {
+    background: rgba(0, 0, 0, 0.3);
+    bottom: 0;
+    display: block;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 10;
+  }
+}

@@ -7,6 +7,18 @@
  */
 
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "Breadcrumbs".
+ */
+export type Breadcrumbs =
+  | {
+      slug: string;
+      path?: string | null;
+      label: string;
+      id?: string | null;
+    }[]
+  | null;
+/**
  * Supported timezones in IANA format.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -68,6 +80,7 @@ export interface Config {
   blocks: {};
   collections: {
     pages: Page;
+    docs: Doc;
     posts: Post;
     authors: Author;
     media: Media;
@@ -80,6 +93,7 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     pages: PagesSelect<false> | PagesSelect<true>;
+    docs: DocsSelect<false> | DocsSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     authors: AuthorsSelect<false> | AuthorsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -129,6 +143,36 @@ export interface UserAuthOperations {
  */
 export interface Page {
   id: string;
+  isRootPage?: boolean | null;
+  slug: string;
+  parent?: (string | null) | Page;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
+  title: string;
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "docs".
+ */
+export interface Doc {
+  id: string;
   title: string;
   slug: string;
   content?: {
@@ -146,6 +190,16 @@ export interface Page {
     };
     [k: string]: unknown;
   } | null;
+  keywords?: string[] | null;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+  };
+  ctaLabel?: string | null;
+  seo?: {
+    ogTitle?: string | null;
+    ogDescription?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -213,11 +267,16 @@ export interface User {
   id: string;
   updatedAt: string;
   createdAt: string;
+  enableAPIKey?: boolean | null;
+  apiKey?: string | null;
+  apiKeyIndex?: string | null;
+  hasAPIKey?: boolean | null;
   email: string;
   resetPasswordToken?: string | null;
   resetPasswordExpiration?: string | null;
   salt?: string | null;
   hash?: string | null;
+  resetPasswordRequestedAt?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
   sessions?:
@@ -257,6 +316,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pages';
         value: string | Page;
+      } | null)
+    | ({
+        relationTo: 'docs';
+        value: string | Doc;
       } | null)
     | ({
         relationTo: 'posts';
@@ -321,9 +384,48 @@ export interface PayloadMigration {
  * via the `definition` "pages_select".
  */
 export interface PagesSelect<T extends boolean = true> {
+  isRootPage?: T;
+  slug?: T;
+  parent?: T;
+  path?: T;
+  breadcrumbs?: T | BreadcrumbsSelect<T>;
+  title?: T;
+  content?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "Breadcrumbs_select".
+ */
+export interface BreadcrumbsSelect<T extends boolean = true> {
+  slug?: T;
+  path?: T;
+  label?: T;
+  id?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "docs_select".
+ */
+export interface DocsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
   content?: T;
+  keywords?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+      };
+  ctaLabel?: T;
+  seo?:
+    | T
+    | {
+        ogTitle?: T;
+        ogDescription?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -373,11 +475,16 @@ export interface MediaSelect<T extends boolean = true> {
 export interface UsersSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
+  enableAPIKey?: T;
+  apiKey?: T;
+  apiKeyIndex?: T;
+  hasAPIKey?: T;
   email?: T;
   resetPasswordToken?: T;
   resetPasswordExpiration?: T;
   salt?: T;
   hash?: T;
+  resetPasswordRequestedAt?: T;
   loginAttempts?: T;
   lockUntil?: T;
   sessions?:

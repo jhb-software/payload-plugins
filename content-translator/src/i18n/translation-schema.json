@@ -33,6 +33,10 @@
             "type": "string",
             "description": "Text shown while translation is in progress"
           },
+          "partialSuccessMessage": {
+            "type": "string",
+            "description": "Warning after a translation that left text passages in the source language, with their number as {{amount}}"
+          },
           "submitButtonLabelEmpty": {
             "type": "string",
             "description": "Label for button to translate only empty fields"
@@ -53,6 +57,7 @@
           "modalSourceLanguage",
           "modalTitle",
           "modalTranslating",
+          "partialSuccessMessage",
           "submitButtonLabelEmpty",
           "submitButtonLabelFull",
           "successMessage"

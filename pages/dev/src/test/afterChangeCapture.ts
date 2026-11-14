@@ -18,15 +18,16 @@ export const clearCapturedAfterChanges = () => {
  */
 export const getLastAfterChangeHookArgs = (): CapturedAfterChange => {
   if (capturedAfterChanges.length === 0) {
-    throw new Error('No afterChange hook invocations captured. Did you forget to clear first?')
+    throw new Error('No afterChange hook invocations captured. Did the mutation run?')
   }
   return capturedAfterChanges[capturedAfterChanges.length - 1]
 }
 
-export const captureAfterChangeDoc: CollectionAfterChangeHook = async ({
-  doc,
-  previousDoc,
-}) => {
-  capturedAfterChanges.push({ doc, previousDoc })
+export const captureAfterChangeDoc: CollectionAfterChangeHook = async ({ doc, previousDoc }) => {
+  // Snapshot the top level rather than holding a reference: `stripAutoSelectedFieldsAfterOperation`
+  // deletes the fields the plugin selected on its own behalf from this very object once the
+  // operation completes, so a reference would show the stripped state instead of what the hook
+  // was handed.
+  capturedAfterChanges.push({ doc: { ...doc }, previousDoc: { ...previousDoc } })
   return doc
 }

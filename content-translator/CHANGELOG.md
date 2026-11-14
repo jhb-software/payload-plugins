@@ -2,7 +2,61 @@
 
 ## Unreleased
 
+- fix: "Translate only empty fields" now translates `localized` fields inside rich text blocks when the target rich text is empty, instead of leaving them in the source language
+- fix: `localized` arrays and blocks inside a rich text block keep and translate their nested text and rich text, which were previously dropped from the saved document
+- fix: `beforeTranslate` on a field inside a rich text block receives `localeFrom` and `localeTo` instead of `undefined`
+- fix: a sentence containing a link is translated as one unit instead of being split at the link, so words can move across it and links and formatting move with their words. Autolink URLs are no longer sent for translation. A translation with damaged markers, or a link left empty or torn apart, keeps the source text of that block and logs a warning, instead of writing text into the wrong nodes.
+- fix: a rich text segment whose translation comes back with damaged markers is requested once more. If it stays damaged, the admin panel shows a warning with the number of segments left in the source language instead of a success message, the result reports it as `untranslatedSegments`, and the log names the document
+- fix: the translation prompt asks models to keep the spaces next to links and formatted text, and words a translation attaches to an autolink URL are separated from it, so they do not become part of the link
+
+## 0.6.1
+
+- fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
+- chore: require Payload `^3.90.1`, which ships critical security fixes
+- fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
+- fix: `i18n.translations` set by the project now override the plugin's own strings instead of being overridden by them
+
+## 0.6.0
+
+- fix: a named tab without source data no longer stops translation of the fields after it
+- fix: log traversal and config diagnostics through the Payload logger instead of `console`, so they respect the project's log level and formatting
+- **BREAKING**: `translateOperation`'s `data` argument and the `translatedData` it resolves with are typed `Record<string, unknown>` instead of `Record<string, any>`. Callers passing a value declared as an `interface` must widen it (e.g. `as Record<string, unknown>`) or declare it as a `type` alias.
+- feat: add `anthropicResolver`, a translation resolver for Claude (default `claude-opus-5`). A JSON schema requiring one translation per input index lets the provider reject a merged or dropped entry outright. Leave the optional `effort` unset for models that reject the field, such as `claude-haiku-4-5`.
+- feat: add `mistralResolver`, a translation resolver for Mistral's chat models (default `mistral-medium-latest`), taking the same `chunkLength` and `instructions` options as the OpenAI resolver
+- feat: export `createOpenAICompatibleResolver`, which builds a resolver for any provider serving OpenAI's `/v1/chat/completions` endpoint with JSON mode. `openAIResolver` and `mistralResolver` are thin wrappers around it.
+- change: resolver error messages and log entries name the provider they came from, so a `baseUrl` pointing elsewhere no longer reports failures as OpenAI's. The log key `openAIresponse` is now `response`.
+
+## 0.5.0
+
+- feat: export `createPromptResolver`, which builds a resolver for any LLM provider from a single `generate` function
+- feat: the OpenAI resolver's new `instructions` option appends project-specific rules (e.g. protected brand names) to the built-in ones, and may be async. The texts are sent as the user message, so customized instructions cannot alter them.
+- **BREAKING**: the OpenAI resolver's `prompt` option is replaced by `instructions`, which returns the instructions without the texts: `instructions: ({ defaultInstructions, localeFrom, localeTo }) => ...`. `OpenAIPrompt` is replaced by `TranslateInstructions`.
+- fix: restrict the translate endpoint to the collections and globals configured in the plugin options; requests targeting any other entity are now rejected with a 400 before any document is read or written or sent to the resolver
+
+## 0.4.0
+
+- feat: add a per-field `custom['content-translator']` config (typed via module augmentation) with orthogonal `skip`, `beforeTranslate`, and `afterTranslate` hooks, so a slug can either be derived from the translated title (skip + derive) or translated and then slugified (translate + normalize)
+- feat: the translate endpoint can now persist results via an `update` flag (and optional `draft` flag), enabling programmatic/agent translation over the REST API instead of only returning the translated data
+- feat: the `access` function now receives the parsed request body (e.g. `update`, `collectionSlug`), so persisting can be authorized separately from returning translations
+- fix: enforce the requesting user's read access on the source document during translation; previously the source read bypassed access control, so a user could translate and receive content from a document they could not read
+- **BREAKING**: the `custom.translatorSkip` flag is removed — move it to `custom: { 'content-translator': { skip: true } }`
+- **BREAKING**: serve the translate endpoint at `/api/content-translator/translate` (previously `/api/translator/translate`) so the endpoint prefix matches the plugin slug. Any API client calling the old path must be updated.
+
+## 0.3.0
+
+- fix: translate rich text block-level elements as one unit using segment markers so inline formatting spans stay aligned and word order can change across languages
+- fix: reconstruct OpenAI translations by input index so a merged, dropped, or reordered entry no longer shifts later translations into the wrong fields; missing entries keep their original text
+- fix: abort a translation when the resolver returns a different number of texts than were sent, and guard against non-string values reaching `he.decode`
+- fix: translate each entry of `hasMany` text fields individually so keyword/tag lists are translated instead of crashing
+- fix: translate fields inside unnamed (presentational) groups instead of throwing an "Unnamed groups are currently not supported" error
+- fix: skip fields and tabs named `__proto__`, `constructor`, or `prototype` during traversal to avoid prototype-polluting writes when a user-supplied Payload config contains such a name
+
+## 0.2.0
+
+- feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
+- style: standardize icons to use Geist icon set (16x16 filled)
 - feat: add configurable `access` option for the translate endpoint (defaults to requiring authentication)
+- fix: "translate empty fields" now populates localized fields nested inside groups and named tabs when the target locale has no value yet
 
 ## 0.1.2
 

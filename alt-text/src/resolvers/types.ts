@@ -16,6 +16,16 @@ export type AltTextResult = {
 export type AltTextResolverArgs = {
   /** Optional filename for additional context */
   filename?: string
+  /**
+   * The format served at `imageThumbnailUrl`, when the collection declares one
+   * via the plugin's `imageThumbnailMimeType` option. Undefined otherwise.
+   *
+   * Resolvers that hand the URL to the provider can ignore this. Resolvers that
+   * inline the bytes need it — Anthropic image blocks require `media_type`,
+   * Gemini's `inline_data` requires `mime_type`, and neither can be sniffed from
+   * a URL.
+   */
+  imageThumbnailMimeType?: string
   /** URL of the image thumbnail (must be publicly accessible) */
   imageThumbnailUrl: string
   /** Target locale for the generated alt text */
@@ -30,6 +40,11 @@ export type AltTextResolverArgs = {
 export type AltTextBulkResolverArgs = {
   /** Optional filename for additional context */
   filename?: string
+  /**
+   * The format served at `imageThumbnailUrl`, when the collection declares one
+   * via `imageThumbnailMimeType`. See {@link AltTextResolverArgs.imageThumbnailMimeType}.
+   */
+  imageThumbnailMimeType?: string
   /** URL of the image thumbnail (must be publicly accessible) */
   imageThumbnailUrl: string
   /** Target locales for the generated alt texts */
@@ -42,15 +57,13 @@ export type AltTextBulkResolverArgs = {
  * Response from single image alt text generation.
  */
 export type AltTextResolverResponse =
-  | { error?: string; success: false }
-  | { result: AltTextResult; success: true }
+  { error?: string; success: false } | { result: AltTextResult; success: true }
 
 /**
  * Response from bulk/multi-locale alt text generation.
  */
 export type AltTextBulkResolverResponse =
-  | { error?: string; success: false }
-  | { results: Record<string, AltTextResult>; success: true }
+  { error?: string; success: false } | { results: Record<string, AltTextResult>; success: true }
 
 /**
  * Alt text resolver interface.
@@ -63,4 +76,14 @@ export type AltTextResolver = {
   resolve: (args: AltTextResolverArgs) => Promise<AltTextResolverResponse>
   /** Generate alt text for a single image in multiple locales (bulk operation) */
   resolveBulk: (args: AltTextBulkResolverArgs) => Promise<AltTextBulkResolverResponse>
+  /**
+   * Formats the provider accepts for the bytes served at `imageThumbnailUrl`.
+   *
+   * When set, the endpoints reject documents whose stored `mimeType` is not in
+   * this list — a conservative proxy, since the resolver never sees the stored
+   * file. A project whose `getImageThumbnail` transcodes should declare the
+   * delivered format via the plugin's `imageThumbnailMimeType` option, which
+   * replaces the proxy with a one-time check against this list at config load.
+   */
+  supportedMimeTypes?: string[]
 }

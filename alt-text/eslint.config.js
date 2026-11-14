@@ -27,11 +27,29 @@ export default [
   {
     rules: {
       'no-restricted-exports': 'off',
-      'no-console': 'off', // TODO: remove this rule and use the Payload logger instead
+      complexity: ['error', 40],
+    },
+  },
+  {
+    // Test files use `vi.mock` to stub hooks like `useConfig`, `useLocale`, etc.
+    // The mock arrow functions share names with real hooks, so the rule flags them
+    // as "useless custom hooks" — but they are intentionally plain mocks.
+    files: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    rules: {
+      '@eslint-react/hooks-extra/no-useless-custom-hooks': 'off',
     },
   },
   {
     ignores: defaultESLintIgnores,
+  },
+  {
+    // Browser-side components have no access to the Payload logger (`payload.logger` is
+    // server-only). `console.error`/`console.warn` are the diagnostics channel there, and each
+    // call site pairs the log with a user-facing toast.
+    files: ['src/components/**/*.tsx'],
+    rules: {
+      'no-console': ['warn', { allow: ['error', 'warn'] }],
+    },
   },
   {
     languageOptions: {

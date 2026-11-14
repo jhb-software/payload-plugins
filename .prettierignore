@@ -1,5 +1,13 @@
 importMap.js
 payload-types.ts
 .vscode
-.d.ts
-.spec.ts
+*.d.ts
+*.spec.ts
+
+# Build output
+dist/
+.next/
+.astro/
+coverage/
+
+pnpm-lock.yaml

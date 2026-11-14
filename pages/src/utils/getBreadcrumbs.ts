@@ -1,31 +1,59 @@
-import type { CollectionSlug, PayloadRequest } from 'payload'
+import type { PayloadRequest } from 'payload'
+
+import { stringify } from 'qs-esm'
 
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
+import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
+import type { Ancestor } from './loadAncestors.js'
 
-import { fetchRestApi } from './fetchRestApi.js'
+import { loadAncestorChain } from './loadAncestors.js'
+import { rootPathFromPrefixes } from './localePrefix.js'
+import { resolveParentRef } from './parentRef.js'
 import { pathFromBreadcrumbs } from './pathFromBreadcrumbs.js'
 import { ROOT_PAGE_SLUG } from './setRootPageVirtualFields.js'
 
-/** Returns the breadcrumbs to the given document. */
-export async function getBreadcrumbs({
-  breadcrumbLabelField,
-  data,
-  locale,
-  locales,
-  parentCollection,
-  parentField,
-  req,
-}: {
-  breadcrumbLabelField: string
-  data: Record<string, any>
+type GetBreadcrumbsArgs = {
+  data: Record<string, unknown>
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
+  /** Each locale's path prefix. Without it every locale is prefixed with `/<locale>`. */
+  localePrefixes?: Record<Locale, string>
   locales: Locale[] | undefined
-  parentCollection: CollectionSlug
-  parentField: string
-  req: PayloadRequest | undefined // undefined when called from the client (e.g. when using the PathField)
-}): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
+  /** Page config of the collection `data` belongs to. Every ancestor resolves its own. */
+  pageConfig: PageCollectionConfigAttributes
+} & (
+  | {
+      /**
+       * Base URL of the Payload REST API (e.g. `${serverURL}${routes.api}`), used by the client
+       * path, which reads the parent's already computed breadcrumbs instead of resolving
+       * ancestors itself.
+       */
+      apiURL: string
+      draft?: never
+      req?: undefined
+    }
+  | {
+      apiURL?: never
+      /** Whether the ancestors resolve to their latest version. See `operationContext`. */
+      draft: boolean
+      req: PayloadRequest
+    }
+)
+
+/** Returns the breadcrumbs to the given document. */
+export async function getBreadcrumbs({
+  apiURL,
+  data,
+  draft,
+  locale,
+  localePrefixes,
+  locales,
+  pageConfig,
+  req,
+}: GetBreadcrumbsArgs): Promise<Breadcrumb[] | Record<Locale, Breadcrumb[]>> {
+  const breadcrumbLabelField = pageConfig.breadcrumbs.labelField
+  const parentField = pageConfig.parent.name
   const getCurrentDocBreadcrumb = (locale: Locale | undefined, parentBreadcrumbs: Breadcrumb[]) =>
     docToBreadcrumb(
       {
@@ -34,6 +62,7 @@ export async function getBreadcrumbs({
           additionalSlug: data.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(data.slug, locale),
           breadcrumbs: parentBreadcrumbs,
           locale,
+          localePrefixes,
         }),
       },
       locale,
@@ -51,46 +80,65 @@ export async function getBreadcrumbs({
     return [getCurrentDocBreadcrumb(locale, [])]
   }
 
-  // If the parent is set, fetch its breadcrumbs, add the breadcrumb of the current doc and return
-  const parentId =
-    typeof data[parentField] === 'string' || typeof data[parentField] === 'number'
-      ? data[parentField]
-      : data[parentField].id
+  // If the parent is set, fetch the ancestor chain, add the breadcrumb of the current doc and return
+  const parentRef = resolveParentRef(data[parentField], pageConfig)
 
-  if (!parentId) {
-    throw new Error('Parent ID not found for document with id ' + data.id)
+  if (!parentRef) {
+    throw new Error(`Parent ID not found for document with id ${String(data.id)}`)
   }
 
-  const parent = req
-    ? await findByIDCached({
-        id: parentId,
-        collection: parentCollection,
-        locale,
-        req,
-      })
-    : await fetchRestApi<{ breadcrumbs: Breadcrumb[]; id: number | string }>(
-        `/${parentCollection}/${parentId}`,
-        {
-          depth: 0,
-          locale,
-          select: {
-            breadcrumbs: true,
-          },
-        },
-      )
+  let parentBreadcrumbsFor: (locale: Locale | undefined) => Breadcrumb[]
 
-  if (!parent) {
-    // This can be the case, when the parent document got deleted.
-    throw new Error(
-      'Parent document with id ' + parentId + ' of document with id ' + data.id + ' not found.',
-    )
+  if (req) {
+    const ancestors = await loadAncestorChain({
+      id: parentRef.id,
+      collection: parentRef.collection,
+      docId: data.id,
+      draft,
+      locale,
+      req,
+    })
+
+    parentBreadcrumbsFor = (locale) =>
+      ancestorsToBreadcrumbs({ ancestors, draft, locale, localePrefixes })
+  } else {
+    // Client components have no `req`, so the parent's already-computed breadcrumbs are read
+    // through the REST API instead of walking the chain. The admin edits the latest version, so the
+    // parent is read as a draft: a published read has no trail for a locale the parent is only
+    // drafted in.
+    if (!apiURL) {
+      throw new Error('[Pages Plugin] getBreadcrumbs requires `apiURL` when called without `req`.')
+    }
+    const query = stringify({ depth: 0, draft: true, locale, select: { breadcrumbs: true } })
+    const response = await fetch(`${apiURL}/${parentRef.collection}/${parentRef.id}?${query}`, {
+      headers: { 'Content-Type': 'application/json' },
+      method: 'GET',
+    })
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch the parent document via the Payload REST API. ${response.statusText}`,
+      )
+    }
+    const parent = (await response.json()) as Record<string, unknown> | undefined
+
+    if (!parent) {
+      // This can be the case, when the parent document got deleted.
+      throw new Error(
+        `Parent document with id ${String(parentRef.id)} of document with id ${String(data.id)} not found.`,
+      )
+    }
+
+    parentBreadcrumbsFor = (locale) =>
+      (locale
+        ? ((parent.breadcrumbs as Record<Locale, Breadcrumb[]> | undefined)?.[locale] ??
+          (parent.breadcrumbs as Breadcrumb[] | undefined))
+        : (parent.breadcrumbs as Breadcrumb[] | undefined)) ?? []
   }
 
   if (locale === 'all' && locales) {
     const breadcrumbs: Record<Locale, Breadcrumb[]> = locales.reduce(
       (acc, locale) => {
-        const parentBreadcrumbs =
-          (parent?.breadcrumbs as Record<Locale, Breadcrumb[]>)?.[locale] ?? []
+        const parentBreadcrumbs = parentBreadcrumbsFor(locale)
 
         acc[locale] = [...parentBreadcrumbs, getCurrentDocBreadcrumb(locale, parentBreadcrumbs)]
         return acc
@@ -100,15 +148,57 @@ export async function getBreadcrumbs({
 
     return breadcrumbs
   } else {
-    const parentBreadcrumbs = (parent?.breadcrumbs as Breadcrumb[]) ?? []
+    const parentBreadcrumbs = parentBreadcrumbsFor(locale === 'all' ? undefined : locale)
 
     return [...parentBreadcrumbs, getCurrentDocBreadcrumb(locale, parentBreadcrumbs)]
   }
 }
 
+/**
+ * Assembles the breadcrumbs of an ancestor chain (ordered top-down) for a single locale.
+ *
+ * Each ancestor's path is built from the breadcrumbs above it, which is what the previous
+ * implementation achieved by reading each ancestor's own computed `breadcrumbs` field.
+ *
+ * An ancestor without a slug in the locale keeps an `undefined` slug, which leaves the document
+ * without a path in that locale (see `setPageDocumentVirtualFields`).
+ */
+function ancestorsToBreadcrumbs({
+  ancestors,
+  draft,
+  locale,
+  localePrefixes,
+}: {
+  ancestors: Ancestor[]
+  draft: boolean
+  locale: Locale | undefined
+  localePrefixes: Record<Locale, string> | undefined
+}): Breadcrumb[] {
+  const breadcrumbs: Breadcrumb[] = []
+
+  for (const ancestor of ancestors) {
+    const slug = ancestor.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(ancestor.slug, locale)!
+
+    // A root page is the site root of every locale — its path is the locale prefix (or `/`)
+    // rather than a path assembled from slugs, and it does not depend on the locale carrying
+    // a stored slug. Mirrors `setRootPageDocumentVirtualFields`.
+    const path = ancestor.isRootPage
+      ? rootPathFromPrefixes(localePrefixes, locale)
+      : pathFromBreadcrumbs({ additionalSlug: slug, breadcrumbs, locale, localePrefixes })
+
+    breadcrumbs.push({
+      slug,
+      label: pickFieldValue(ancestor.label, locale)!,
+      path: draft || ancestor.live[locale ?? ''] ? path : null,
+    })
+  }
+
+  return breadcrumbs
+}
+
 /** Converts a localized or unlocalized document to a breadcrumb item. */
 function docToBreadcrumb(
-  doc: Record<string, any>,
+  doc: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined,
   breadcrumbLabelField?: string,
@@ -116,89 +206,41 @@ function docToBreadcrumb(
   return {
     slug: doc.isRootPage ? ROOT_PAGE_SLUG : pickFieldValue(doc.slug, locale)!,
     label: breadcrumbLabelField
-      ? pickFieldValue(doc[breadcrumbLabelField], locale)
-      : typeof doc.breadcrumbs === 'object' && locale
-        ? doc.breadcrumbs?.[locale]?.at(-1)?.label
-        : doc.breadcrumbs?.at(-1)?.label,
+      ? pickFieldValue(doc[breadcrumbLabelField], locale)!
+      : lastBreadcrumbLabel(doc.breadcrumbs, locale)!,
     path: pickFieldValue(doc.path, locale)!,
   }
 }
 
 /** Picks the value of a localized or unlocalized field. */
-function pickFieldValue(field: any, locale: Locale | undefined): string | undefined {
+function pickFieldValue(field: unknown, locale: Locale | undefined): string | undefined {
   if (typeof field === 'string') {
     return field
   }
 
-  if (typeof field === 'object' && locale) {
-    return field[locale]
+  if (field && typeof field === 'object' && locale) {
+    const localized = (field as Record<string, unknown>)[locale]
+    return typeof localized === 'string' ? localized : undefined
   }
 
   return undefined
 }
 
-const ANCESTOR_CACHE_KEY = 'pagesPluginAncestorCache'
-
-/**
- * Fetches a parent document by ID with request-scoped caching to avoid redundant DB queries.
- *
- * The cache stores Promises rather than resolved values. This is important because Payload's
- * beforeRead hooks run concurrently (via Promise.all) for all docs in a list query. If we cached
- * the resolved value, every sibling would fire its own DB query before the first one resolves and
- * populates the cache. By caching the Promise immediately, all concurrent lookups for the same
- * ancestor receive the same in-flight Promise and only a single DB query is executed.
- */
-async function findByIDCached({
-  id,
-  collection,
-  locale,
-  req,
-}: {
-  collection: CollectionSlug
-  id: number | string
+/** The label of the deepest entry of a localized or unlocalized `breadcrumbs` field. */
+function lastBreadcrumbLabel(
+  breadcrumbs: unknown,
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  locale: 'all' | Locale | undefined
-  req: PayloadRequest
-}): Promise<null | Record<string, unknown>> {
-  // Note: The cache key does not include draft status because the cache is request-scoped
-  // and context.draft is constant within a single request — a draft and non-draft lookup
-  // for the same parent cannot collide in the same cache.
-  const cacheKey = `${collection}:${id}:${locale ?? ''}`
-  // Cache the Promise (not the resolved value) so that concurrent lookups for the same
-  // parent (e.g. beforeRead hooks running in parallel via Promise.all) share a single DB query.
-  const cache = (req.context[ANCESTOR_CACHE_KEY] ??= new Map()) as Map<
-    string,
-    Promise<null | Record<string, unknown>>
-  >
+  locale: 'all' | Locale | undefined,
+): string | undefined {
+  const entries =
+    breadcrumbs && typeof breadcrumbs === 'object' && locale
+      ? (breadcrumbs as Record<string, unknown>)[locale]
+      : breadcrumbs
 
-  let parentPromise = cache.get(cacheKey)
-
-  if (!parentPromise) {
-    parentPromise = req.payload
-      .findByID({
-        id,
-        collection,
-        depth: 0,
-        disableErrors: true,
-        draft: req.context.draft === true,
-        locale,
-        overrideAccess: true,
-        req: {
-          ...req,
-          context: { ...req.context, [ANCESTOR_CACHE_KEY]: cache },
-        },
-        select: {
-          breadcrumbs: true,
-        },
-      })
-      .then((result) => result ?? null)
-      .catch((error) => {
-        cache.delete(cacheKey)
-        throw error
-      })
-
-    cache.set(cacheKey, parentPromise)
+  if (!Array.isArray(entries)) {
+    return undefined
   }
 
-  return parentPromise
+  const label = (entries.at(-1) as Record<string, unknown> | undefined)?.label
+  return typeof label === 'string' ? label : undefined
 }

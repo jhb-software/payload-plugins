@@ -1,0 +1,189 @@
+# Vercel Deployments for Payload CMS
+
+A [Payload CMS](https://payloadcms.com/) plugin for managing Vercel deployments of static websites. When your website is statically built on Vercel for performance, content changes in the CMS require a rebuild and redeploy. This plugin provides both a dashboard widget and authenticated API endpoints to monitor and trigger those deployments.
+
+## Features
+
+- **Dashboard widget** showing active and latest production deployment status
+- **One-click redeploy** of the latest READY production deployment
+- **Real-time status polling** with live updates during builds
+- **Authenticated REST API endpoints** for triggering and monitoring deployments programmatically (e.g. from CI/CD pipelines, agents, or scripts)
+- **Multi-language support** (English and German included)
+- **Configurable widget size**
+
+## Requirements
+
+- Payload CMS 3.80.0 or higher
+- Next.js 15.4.x
+- A Vercel project with API access
+
+## Installation
+
+```bash
+pnpm add @jhb.software/payload-vercel-deployments
+```
+
+## Setup
+
+Add the plugin to your Payload config:
+
+```ts
+import { vercelDeploymentsPlugin } from '@jhb.software/payload-vercel-deployments'
+
+export default buildConfig({
+  plugins: [
+    vercelDeploymentsPlugin({
+      deploymentTarget: {
+        projectId: process.env.VERCEL_PROJECT_ID!,
+        websiteUrl: 'https://www.example.com', // Optional, shown as a link in the widget
+      },
+      vercel: {
+        apiToken: process.env.VERCEL_API_TOKEN!,
+        teamId: process.env.VERCEL_TEAM_ID, // Optional, required for team projects
+      },
+      widget: {
+        minWidth: 'medium', // Optional, default: 'medium'
+        maxWidth: 'full', // Optional, default: 'full'
+      },
+    }),
+  ],
+})
+```
+
+## Configuration
+
+### Plugin Options
+
+| Option                        | Type                                          | Required | Description                                                                                                                                                                     |
+| ----------------------------- | --------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deploymentTarget`            | `DeploymentTarget \| ResolveDeploymentTarget` | Yes      | The Vercel project to report on and deploy to, and the website it is served from. Pass a function to resolve it per request — see [Multi-tenant support](#multi-tenant-support) |
+| `deploymentTarget.projectId`  | `string \| undefined`                         | Yes      | Vercel Project ID to monitor. `undefined` means this request has no deployment target                                                                                           |
+| `deploymentTarget.websiteUrl` | `string`                                      | No       | URL of the frontend website, shown as a link in the widget                                                                                                                      |
+| `vercel.apiToken`             | `string`                                      | Yes      | Vercel API Bearer Token                                                                                                                                                         |
+| `vercel.teamId`               | `string`                                      | No       | Vercel Team ID (required for team projects)                                                                                                                                     |
+| `widget.minWidth`             | `WidgetWidth`                                 | No       | Minimum widget width (default: 'medium')                                                                                                                                        |
+| `widget.maxWidth`             | `WidgetWidth`                                 | No       | Maximum widget width (default: 'full')                                                                                                                                          |
+| `enabled`                     | `boolean`                                     | No       | Enable/disable the plugin (default: true)                                                                                                                                       |
+| `access`                      | `({ req }) => boolean \| Promise<boolean>`    | No       | Access control for the plugin's API endpoints and dashboard widget. Defaults to `({ req }) => !!req.user` (any authenticated user) — see [Authentication](#authentication)      |
+
+### Multi-tenant support
+
+Pass a function as `deploymentTarget` to resolve the project and website URL against the current request. It is called once per request, so a single lookup serves both values. In a setup where each tenant deploys to its own Vercel project, return the values of the tenant selected in the admin panel:
+
+```typescript
+import type { ResolveDeploymentTarget } from '@jhb.software/payload-vercel-deployments'
+
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
+
+const selectedTenantTarget: ResolveDeploymentTarget = async ({ req }) => {
+  const id = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+  if (!id) {
+    return { projectId: undefined }
+  }
+
+  const tenant = await req.payload.findByID({
+    id,
+    collection: 'tenants',
+    // A stale cookie can point at a deleted tenant — treat that as no target.
+    disableErrors: true,
+    depth: 0,
+    req,
+    // Select only the fields the widget needs.
+    select: { vercelProjectId: true, websiteUrl: true },
+  })
+
+  return {
+    projectId: tenant?.vercelProjectId ?? undefined,
+    websiteUrl: tenant?.websiteUrl ?? undefined,
+  }
+}
+
+vercelDeploymentsPlugin({
+  deploymentTarget: selectedTenantTarget,
+  vercel: { apiToken: process.env.VERCEL_API_TOKEN! },
+})
+```
+
+Returning a `projectId` of `undefined` means the request has no deployment target: the widget shows a hint ("No Vercel project selected.") instead of deployment rows and hides the deploy button, and both API endpoints answer `400`. A tenant that has not been deployed yet therefore needs no special casing. If the resolver throws, the widget shows the error instead of failing to render.
+
+To reword the hint for your setup, override its translation key in the Payload config:
+
+```ts
+i18n: {
+  translations: {
+    de: { 'vercel-dashboard': { deploymentInfoNoTarget: 'Keine Website ausgewählt.' } },
+    en: { 'vercel-dashboard': { deploymentInfoNoTarget: 'No website selected.' } },
+  },
+}
+```
+
+### WidgetWidth Values
+
+`'x-small'` | `'small'` | `'medium'` | `'large'` | `'x-large'` | `'full'`
+
+## API Endpoints
+
+| Method | Path                              | Description                                                                |
+| ------ | --------------------------------- | -------------------------------------------------------------------------- |
+| `GET`  | `/api/vercel-deployments`         | Returns the active (latest READY) and latest production deployment         |
+| `GET`  | `/api/vercel-deployments?id=<id>` | Returns the status of a specific deployment                                |
+| `POST` | `/api/vercel-deployments`         | Triggers a new production deployment by redeploying the latest READY build |
+
+### Authentication
+
+The endpoints require an authenticated request and respond with `401` otherwise. By default any authenticated Payload user (admin session or API key) is allowed:
+
+```ts
+;({ req }) => !!req.user
+```
+
+That default fits a setup where every Payload user is trusted staff. `POST /api/vercel-deployments` triggers a **production deployment**, so projects with public sign-up, customer-facing accounts, or editors who should not be able to publish the site must narrow it via the `access` option:
+
+```ts
+vercelDeploymentsPlugin({
+  // Only allow admins to trigger and monitor deployments
+  access: ({ req }) => req.user?.role === 'admin',
+  vercel: {/* … */},
+})
+```
+
+The same gate applies to the dashboard widget: a user it denies sees a notice instead of the deployment status, the website link, and the deploy button.
+
+### Example: Trigger a deployment via API
+
+```bash
+curl -X POST https://your-cms.com/api/vercel-deployments \
+  -H "Authorization: Bearer YOUR_PAYLOAD_API_KEY"
+```
+
+### Why redeploy instead of a new deployment?
+
+The plugin redeploys the latest READY production deployment rather than creating a fresh deployment. This rebuilds the site using the same git commit, picking up any new CMS content without requiring a code change or git push.
+
+> **Note:** If your project uses Vercel's [Ignored Build Step](https://vercel.com/docs/projects/overview#ignored-build-step) (e.g. a script that checks for code changes via `git diff`), it will still run on redeploys. Make sure your ignore build script accounts for CMS-triggered rebuilds, or the deployment may be skipped.
+
+## Getting Vercel API Token
+
+1. Go to your [Vercel Account Settings](https://vercel.com/account/tokens)
+2. Click "Create Token"
+3. Give it a descriptive name (e.g., "Payload CMS Deployments")
+4. Set appropriate scope (Full Account or specific project)
+5. Copy the token to your environment variables
+
+## Getting Vercel Project ID and Team ID
+
+1. Go to your Vercel project dashboard
+2. Navigate to Settings > General
+3. Find "Project ID" in the project settings
+4. If using a team, find "Team ID" in your team settings
+
+## Roadmap
+
+> **Warning**: This plugin is actively evolving and may undergo significant changes. While it is functional, please thoroughly test before using in production environments.
+
+Have a suggestion for the plugin? Any feedback is welcome!
+
+## Contributing
+
+We welcome contributions! Please open an issue to report bugs or suggest improvements, or submit a pull request with your changes.

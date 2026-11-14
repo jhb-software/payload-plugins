@@ -5,7 +5,8 @@ import { deepMerge } from 'payload/shared'
 import type { TranslatorConfig } from './types.js'
 
 import { CustomButton } from './client/components/CustomButton/index.js'
-import { translations } from './i18n/translations.js'
+import { PLUGIN_SLUG } from './constants.js'
+import { withLanguageFallbacks } from './i18n/withLanguageFallbacks.js'
 import { translateEndpoint } from './translate/endpoint.js'
 
 export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) => Plugin = (
@@ -17,10 +18,18 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
     }
 
     if (!config.localization || config.localization.locales.length < 2) {
-      console.warn(
-        'Translator plugin requires localization to be enabled and at least two locales.',
-      )
-      return config
+      // Deferred to `onInit`: no Payload instance — and therefore no logger — exists while the
+      // config is still being built.
+      return {
+        ...config,
+        onInit: async (payload) => {
+          payload.logger.warn(
+            'Translator plugin requires localization to be enabled and at least two locales.',
+          )
+
+          await config.onInit?.(payload)
+        },
+      }
     }
 
     const updatedConfig: Config = {
@@ -66,9 +75,10 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
         {
           handler: translateEndpoint(
             pluginConfig.access ?? (({ req }: { req: PayloadRequest }) => !!req.user),
+            { collections: pluginConfig.collections, globals: pluginConfig.globals },
           ),
           method: 'post',
-          path: '/translator/translate',
+          path: `/${PLUGIN_SLUG}/translate`,
         },
       ],
       globals:
@@ -94,9 +104,11 @@ export const payloadContentTranslatorPlugin: (pluginConfig: TranslatorConfig) =>
         }) ?? [],
       i18n: {
         ...config.i18n,
-        translations: {
-          ...deepMerge(config.i18n?.translations ?? {}, translations),
-        },
+        // The host's own strings win, so projects can override any of the plugin's.
+        translations: deepMerge(
+          withLanguageFallbacks(config.i18n),
+          config.i18n?.translations ?? {},
+        ),
       },
     }
 

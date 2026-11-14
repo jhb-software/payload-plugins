@@ -2,13 +2,13 @@
 
 [![NPM Version](https://img.shields.io/npm/v/%40jhb.software%2Fpayload-content-translator-plugin)](https://www.npmjs.com/package/@jhb.software/payload-content-translator-plugin)
 
-A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides a ready-to-use integration with OpenAI.
+A plugin that enables content translation directly within the [Payload CMS](https://payloadcms.com) admin panel, using any translation service you prefer. It supports custom translation resolvers and provides ready-to-use integrations with OpenAI, Anthropic and Mistral.
 
 ## Features
 
 - translate content in the Payload Admin UI between locales
 - supports any translation service using a resolver pattern (e.g. OpenAI, DeepL, etc.)
-- comes with a ready-to-use OpenAI resolver out of the box
+- comes with ready-to-use OpenAI, Anthropic and Mistral resolvers out of the box
 - seamless integration with Payload's localization system
 - review and edit translations before saving or publishing
 
@@ -46,18 +46,97 @@ export default buildConfig({
 
 ### Plugin Options
 
-| Option        | Type                | Required | Description                           |
-| ------------- | ------------------- | -------- | ------------------------------------- |
-| `collections` | `CollectionSlug[]`  | Yes      | Collections to enable translation for |
-| `globals`     | `GlobalSlug[]`      | Yes      | Globals to enable translation for     |
-| `resolver`    | `TranslateResolver` | Yes      | Translation resolver to use           |
-| `enabled`     | `boolean`           | No       | Whether to enable the plugin.         |
+| Option        | Type                                                    | Required | Description                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `collections` | `CollectionSlug[]`                                      | Yes      | Collections to enable translation for                                                                                                                                                      |
+| `globals`     | `GlobalSlug[]`                                          | Yes      | Globals to enable translation for                                                                                                                                                          |
+| `resolver`    | `TranslateResolver`                                     | Yes      | Translation resolver to use                                                                                                                                                                |
+| `enabled`     | `boolean`                                               | No       | Whether to enable the plugin.                                                                                                                                                              |
+| `access`      | `(args: { req } & body) => boolean \| Promise<boolean>` | No       | Access control for the translate endpoint. Receives the request plus the parsed body args (`update`, `collectionSlug`, …). Defaults to `({ req }) => !!req.user` (any authenticated user). |
+
+### Per-field control
+
+Any field can declare how the translator should treat it through a
+`content-translator` entry in its `custom` config. This is field-local and
+provider-agnostic: a field opts into special handling regardless of its name or
+type. The config is fully typed via module augmentation of Payload's
+`FieldCustom`, so the keys below autocomplete.
+
+| Key               | Type                                | Description                                                                                                                   |
+| ----------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `skip`            | `boolean`                           | Exclude the field from the resolver — its value is not translated. Use alone to let the app own it, or with `afterTranslate`. |
+| `beforeTranslate` | `(args) => string`                  | Transform the source string right before it is sent to the resolver. The translated result is written back as usual.          |
+| `afterTranslate`  | `(args) => unknown \| Promise<...>` | Post-process the field _after_ the rest of the document is translated. Runs independently of `skip`.                          |
+
+The three keys are orthogonal: `skip` decides whether the field is translated,
+`beforeTranslate` pre-processes what is sent, and `afterTranslate` post-processes
+the result (or derives a value from translated siblings).
+
+#### Translating slug fields
+
+A slug must never be stored with the raw output of an LLM — it has to stay
+URL-safe. There are two strategies, depending on whether the slug should mirror
+the title:
+
+**Derive from the title** — the slug always follows the title, so skip
+translation and re-slugify the already-translated title (e.g. "Travel Tips" →
+`reisetipps`):
+
+```ts
+{
+  name: 'slug',
+  type: 'text',
+  localized: true,
+  custom: {
+    'content-translator': {
+      skip: true,
+      afterTranslate: ({ siblingData }) => slugify(siblingData.title),
+    },
+  },
+  // validation and other field options...
+}
+```
+
+**Translate, then normalize** — for a slug intentionally different from the
+title, translate the slug text and then slugify it to strip any special
+characters the translation introduced:
+
+```ts
+{
+  name: 'slug',
+  type: 'text',
+  localized: true,
+  custom: {
+    'content-translator': {
+      // No `skip`: the slug is translated, then cleaned.
+      afterTranslate: ({ value }) => slugify(value),
+    },
+  },
+  // validation and other field options...
+}
+```
+
+`afterTranslate` receives the field's own (translated) `value`, the translated
+`siblingData`, the full translated `data`, `sourceValue`, `localeFrom`/`localeTo`,
+and `req`. Because it is field-local, this works for any derived or normalized
+field under any name — slugs, URL paths, computed keys.
+
+#### With the Pages plugin
+
+The [Pages plugin](https://www.npmjs.com/package/@jhb.software/payload-pages-plugin)
+injects the `slug` field into its page collections, so you attach the config with
+a small plugin that runs after `payloadPagesPlugin` and derives the slug from the
+translated title — normalized with the pages plugin's `formatSlug`, the same rule
+the slug field validates against, so the result is always accepted.
+
+See the runnable example: [`makeSlugTranslatable`](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/helpers/makeSlugTranslatable.ts)
+and [its wiring](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/payload.config.ts) in the dev app.
 
 ### Resolvers
 
 This plugin is designed to work seamlessly with various translation services by accepting a customizable translation resolver as a configuration option.
 
-An OpenAI resolver is provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
+OpenAI, Anthropic and Mistral resolvers are provided out of the box, but you can use any translation provider by creating your own resolver and specifying it in the plugin configuration.
 
 #### OpenAI Resolver
 
@@ -70,25 +149,205 @@ openAIResolver({
 })
 ```
 
-## Custom Resolver
+`baseUrl` (default `https://api.openai.com`) points the resolver at any other
+provider serving OpenAI's `/v1/chat/completions` endpoint.
 
-You can create your own resolver by implementing the `TranslateResolver` interface.
+#### Mistral Resolver
+
+```ts
+import { mistralResolver } from '@jhb.software/payload-content-translator-plugin'
+
+mistralResolver({
+  apiKey: process.env.MISTRAL_API_KEY,
+  model: 'mistral-medium-latest', // default; any Mistral chat model works
+})
+```
+
+The `-latest` aliases move as Mistral ships new revisions — pin a dated model id
+if you need the behaviour and pricing to stay put.
+
+Mistral serves OpenAI's chat completions shape, so this is the OpenAI resolver
+with Mistral's base URL and model default — it exists so a Mistral setup does not
+have to know that. It takes the same `chunkLength` and `instructions` options.
+
+#### Anthropic Resolver
+
+```ts
+import { anthropicResolver } from '@jhb.software/payload-content-translator-plugin'
+
+anthropicResolver({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  model: 'claude-opus-5', // default; `claude-sonnet-5` is cheaper for a large content base
+  effort: 'low', // optional; translating needs little thinking
+})
+```
+
+Unlike the OpenAI-compatible resolvers, this one constrains the response with a
+JSON schema requiring exactly one translation per input index, so a merged or
+dropped entry is rejected by the provider rather than reconstructed after the
+fact. That is also why it sends no response format instruction of its own —
+replacing the default instructions entirely stays safe here.
+
+| Option         | Type                                              | Required | Description                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`       | `string`                                          | Yes      | API key for authentication                                                                                                                                                                                           |
+| `model`        | `string`                                          | No       | Model to use (default: `claude-opus-5`). `claude-sonnet-5` is cheaper; `claude-haiku-4-5` works too, but only without `effort`                                                                                       |
+| `effort`       | `'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | No       | How long Claude thinks before answering. `low` is plenty for translating and keeps the spend down. Omitted, the field is not sent and Claude uses its default (`high`), so models without effort support stay usable |
+| `maxTokens`    | `number`                                          | No       | Token budget for one chunk, thinking included (default: `chunkLength * 250`, so the two cannot drift apart)                                                                                                          |
+| `chunkLength`  | `number`                                          | No       | How many texts to include into 1 request (default: `100`)                                                                                                                                                            |
+| `timeoutMs`    | `number`                                          | No       | Abort a chunk's request after this many milliseconds (default: `120000`)                                                                                                                                             |
+| `baseUrl`      | `string`                                          | No       | Base URL of the Anthropic API (default: `https://api.anthropic.com`)                                                                                                                                                 |
+| `instructions` | `function`                                        | No       | Customizes the prompt, see below                                                                                                                                                                                     |
+
+#### Customizing the instructions
+
+Applies to every bundled resolver; the examples below use `openAIResolver`.
+
+The texts are sent as the user message and the instructions as the system prompt, so customizing the instructions can never alter or drop the content to translate.
+
+The `instructions` option receives the `defaultInstructions` — the rules the plugin depends on — plus `localeFrom` and `localeTo`, and returns the instructions to send. It may be async, e.g. to load protected terms from the database.
+
+Appending protected terms, e.g. product names built from everyday words that would otherwise be translated:
+
+```ts
+openAIResolver({
+  apiKey: process.env.OPENAI_API_KEY,
+  instructions: ({ defaultInstructions }) =>
+    `${defaultInstructions}\n\nNever translate the following product names, keep them exactly as written in English: "Northern Light", "First Steps".`,
+})
+```
+
+Instructions that depend on the target locale:
+
+```ts
+openAIResolver({
+  apiKey: process.env.OPENAI_API_KEY,
+  instructions: ({ defaultInstructions, localeTo }) =>
+    `${defaultInstructions}\n\n${localeTo === 'de' ? 'Use the informal "du" form.' : 'Use a neutral, formal tone.'}`,
+})
+```
+
+The function is called once per translation, not once per chunk, and is available on any resolver built with [`createPromptResolver`](#custom-resolvers).
+
+When replacing the default instructions instead of extending them, keep their rules on segment markers and on translating each value independently — see [Custom Resolvers](#custom-resolvers). The resolver's response format instructions are appended either way, so a replacement cannot break the provider contract.
+
+#### Custom Resolvers
+
+For a prompt-based provider (any LLM), `createPromptResolver` builds the resolver from a single `generate` function, handling chunking, the instructions, the serialized texts and the reconstruction of the response:
+
+```ts
+import { createPromptResolver } from '@jhb.software/payload-content-translator-plugin'
+
+export const myResolver = ({ instructions }: { instructions?: TranslateInstructions } = {}) =>
+  createPromptResolver({
+    key: 'my-llm',
+    // Send the instructions as the system prompt and the input as the user
+    // message. Return the chunk's translations keyed by input index:
+    // { "0": "eins", "1": "zwei" }. Throwing fails the translation.
+    generate: async ({ input, instructions }) => await callTheModel({ input, instructions }),
+    instructions,
+  })
+```
+
+| Option                      | Type                              | Description                                                                                                                                  |
+| --------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                       | `string`                          | Identifies the resolver in the admin UI                                                                                                      |
+| `generate`                  | `(args) => GeneratedTranslations` | Sends one chunk to the provider and returns its translations. Receives `instructions`, `input`, `localeFrom`, `localeTo`, `texts` and `req`. |
+| `instructions`              | `TranslateInstructions`           | Pass through your own `instructions` option so users can customize the instructions as described above                                       |
+| `chunkLength`               | `number`                          | How many texts to include into 1 request (default `100`)                                                                                     |
+| `responseFormatInstruction` | `string`                          | How the provider should format the response. Appended after any customization. Omit it when the provider guarantees the shape.               |
+
+For a provider that already serves OpenAI's `/v1/chat/completions` endpoint with JSON mode, `createOpenAICompatibleResolver({ apiKey, baseUrl, key, label, model })` needs no `generate` at all.
+
+[`aiSdkResolver.ts`](https://github.com/jhb-software/payload-plugins/blob/main/content-translator/dev/src/resolvers/aiSdkResolver.ts) is a ready-made example built on the [Vercel AI SDK](https://ai-sdk.dev), usable with any provider it supports. Copy it into your project (it needs `ai`, `zod` and a provider package such as `@ai-sdk/openai`) and configure it from your Payload config — the file itself does not need to be edited.
+
+##### Implementing `TranslateResolver` directly
+
+A provider that translates without a prompt (e.g. DeepL) implements the interface itself — any object with a `key` and a `resolve` function:
 
 ```ts
 import type { TranslateResolver } from '@jhb.software/payload-content-translator-plugin'
 
-export const customResolver = (): TranslateResolver => ({
-  key: 'custom',
-  resolve: ({ localeTo, texts }) => {
-    const translatedTexts = texts.map((text) => {
-      /* your custom translation logic here */
-      return text
-    })
-
-    return { success: true, translatedTexts }
-  },
+export const myResolver = (): TranslateResolver => ({
+  key: 'my-service',
+  resolve: async ({ localeFrom, localeTo, req, texts }) => ({
+    success: true,
+    translatedTexts: await translate(texts, localeFrom, localeTo),
+  }),
 })
 ```
+
+Two rules the plugin relies on, regardless of the provider (both handled by `createPromptResolver`):
+
+- **Same length and same order.** `resolve` must return exactly one translation per input text, since each value is written back to the field it came from. The plugin aborts the translation otherwise.
+- **Preserve `⟦n⟧` segment markers.** Rich text arrives as one text per block, with markers such as `⟦0⟧`, `⟦1⟧` separating inline formatting spans and links. Each marker must survive exactly once, unchanged, in front of the words belonging to its span, with no text before the first marker. Markers may reorder together with their words, which moves the spans and links in the document; a link must keep some text and its markers must stay next to each other. Autolinks are sent as a `⟦url:n⟧` marker without their URL, marking only where the URL sits. A translation that breaks these rules is requested once more. If it breaks them again, that block keeps its source text, a warning naming the document is logged, and the result's `untranslatedSegments` counts it, which the admin panel shows as a warning.
+
+## API Endpoint
+
+The plugin registers a single REST endpoint that the admin UI calls to translate a document or global. By default it computes the translated values and returns them in the response without writing to the database, so changes go through Payload's normal save/publish flow. Programmatic callers (e.g. an agent) can opt in to persisting the result with the `update` flag.
+
+| Method | Path                                | Description                                                          |
+| ------ | ----------------------------------- | -------------------------------------------------------------------- |
+| `POST` | `/api/content-translator/translate` | Translates the given entity's fields and returns the translated data |
+
+#### Request body
+
+| Field            | Type               | Description                                                                                 |
+| ---------------- | ------------------ | ------------------------------------------------------------------------------------------- |
+| `collectionSlug` | `string`           | Slug of the collection to translate (omit for globals)                                      |
+| `globalSlug`     | `string`           | Slug of the global to translate (omit for collections)                                      |
+| `id`             | `string \| number` | Document id (required for collections)                                                      |
+| `locale`         | `string`           | Target locale to translate into                                                             |
+| `localeFrom`     | `string`           | Source locale to translate from                                                             |
+| `emptyOnly`      | `boolean`          | Only translate fields that are still empty in the target locale (default `false`)           |
+| `update`         | `boolean`          | Persist the translation to the target locale instead of only returning it (default `false`) |
+| `draft`          | `boolean`          | When `update` is `true`, save as a draft version instead of publishing (default `false`)    |
+
+#### Persisting translations (agents)
+
+With `update: true` the endpoint writes the translation to the target locale and returns the same payload. The write runs with `overrideAccess: false`, so the authenticated user (typically an API key) must hold `update` access on the target collection/global. Add `draft: true` to save as a draft for human review instead of publishing.
+
+```bash
+curl -X POST https://example.com/api/content-translator/translate \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: users API-Key <your-api-key>' \
+  -d '{
+    "collectionSlug": "pages",
+    "id": "123",
+    "localeFrom": "en",
+    "locale": "de",
+    "update": true,
+    "draft": true
+  }'
+```
+
+Source content is always read from the latest draft, so translations cover unpublished work-in-progress. Saving with `update: true` and `draft: false` therefore publishes content derived from the current draft — use `draft: true` if a review step before publishing is required.
+
+### Authentication
+
+The endpoint requires an authenticated request and responds with `401` otherwise. By default any authenticated Payload user (admin session or API key) is allowed:
+
+```ts
+;({ req }) => !!req.user
+```
+
+That default fits a setup where every Payload user is trusted staff. Translating spends money at the configured provider, so projects with public sign-up, customer-facing accounts, or any user tier that should not incur provider cost must narrow it. Override the `access` option to restrict who may translate content:
+
+```ts
+// Only allow admins to use the translate endpoint
+access: ({ req }) => req.user?.role === 'admin'
+```
+
+The access function also receives the parsed request body, so persisting (`update: true`) can be gated separately from returning translations:
+
+```ts
+// Anyone signed in may translate-and-return; only editors may persist
+access: ({ req, update }) => (update ? req.user?.role === 'editor' : !!req.user)
+```
+
+> **Security:** every field other than `req`/`req.user` is supplied by the caller. Grant access based on `req.user` and use the body args only to _restrict_ further (e.g. require a role for `update`); never _widen_ access based on a value the caller sent.
+
+Beyond this gate, the endpoint always reads and writes with `overrideAccess: false`, so each collection's and global's own access control still applies — a user can only translate entities they may read, and `update: true` only persists when they have update access. The endpoint never honors an `overrideAccess` value sent in the request body.
 
 ## Acknowledgements
 

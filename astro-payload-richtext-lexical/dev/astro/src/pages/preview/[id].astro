@@ -1,0 +1,95 @@
+---
+import RichTextLexical from '@jhb.software/astro-payload-richtext-lexical/RichTextLexical.astro'
+import LivePreviewRefresh from '../../components/LivePreviewRefresh.astro'
+import CustomBlock from '../../components/CustomBlock.astro'
+import CustomUpload from '../../components/CustomUpload.astro'
+import { resolveInternalLink } from '../../lib/resolveInternalLink'
+
+// Render on demand (not prerendered) so each preview re-fetches the latest
+// document — the id is dynamic and content changes as you edit in Payload.
+export const prerender = false
+
+// Base URL of the Payload app (see ../../../../payload). Override with PAYLOAD_URL.
+const payloadUrl = import.meta.env.PAYLOAD_URL ?? 'http://localhost:3000'
+
+const { id } = Astro.params
+
+type LexicalDocument = {
+  id: number | string
+  title: string
+  content?: { root?: { children?: any[] } }
+}
+
+let doc: LexicalDocument | null = null
+let error: string | null = null
+
+try {
+  const res = await fetch(`${payloadUrl}/api/documents/${id}?depth=2`)
+  if (res.status === 404) throw new Error(`No document with id ${id}`)
+  if (!res.ok) throw new Error(`Payload responded ${res.status}`)
+  doc = await res.json()
+} catch (e) {
+  error = e instanceof Error ? e.message : String(e)
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{doc ? `Preview: ${doc.title}` : 'Document preview'}</title>
+    <LivePreviewRefresh serverURL={payloadUrl} />
+    <style is:global>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 60rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      table {
+        border-collapse: collapse;
+        margin: 1rem 0 2rem;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 0.4rem 0.6rem;
+        text-align: left;
+      }
+      th {
+        background: #f3f3f3;
+      }
+      .error {
+        background: #fff4f4;
+        border: 1px solid #e0b4b4;
+        padding: 1rem;
+        border-radius: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    {
+      error ? (
+        <div class="error">
+          <strong>Could not load document:</strong> {error}.
+        </div>
+      ) : (
+        <>
+          <h1>{doc?.title}</h1>
+          {doc?.content?.root?.children ? (
+            <RichTextLexical
+              nodes={doc.content.root.children}
+              BlockRenderer={CustomBlock}
+              UploadRenderer={CustomUpload}
+              resolveInternalLink={resolveInternalLink}
+            />
+          ) : (
+            <p>
+              <em>No content.</em>
+            </p>
+          )}
+        </>
+      )
+    }
+  </body>
+</html>

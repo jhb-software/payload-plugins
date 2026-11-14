@@ -1,7 +1,7 @@
 name: pr-title
 
 on:
-  pull_request_target:
+  pull_request:
     types:
       - opened
       - edited
@@ -36,8 +36,10 @@ jobs:
             admin-search
             alt-text
             astro-payload-richtext-lexical
+            chat-agent
             cloudinary
             content-translator
             geocoding
             pages
+            vercel-deployments
           requireScope: false

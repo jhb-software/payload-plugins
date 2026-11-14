@@ -2,6 +2,7 @@ import type { PayloadHandler, PayloadRequest } from 'payload'
 
 import type { AltTextPluginConfig } from '../types/AltTextPluginConfig.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { ALT_TEXT_HEALTH_PLUGIN_SLUG, getAltTextHealth } from '../utilities/altTextHealth.js'
 
 export const altTextHealthEndpoint =
@@ -19,7 +20,7 @@ export const altTextHealthEndpoint =
       req.payload.logger.error({
         err: error,
         msg: 'Failed to build alt text health response.',
-        path: '/alt-text-plugin/health',
+        path: `/${PLUGIN_SLUG}/health`,
         plugin: ALT_TEXT_HEALTH_PLUGIN_SLUG,
       })
 

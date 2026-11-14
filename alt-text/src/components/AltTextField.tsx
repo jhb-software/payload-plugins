@@ -4,13 +4,27 @@ import type { TextareaFieldClientProps } from 'payload'
 
 import { FieldLabel, TextareaInput, useDocumentInfo, useField } from '@payloadcms/ui'
 
+import { matchesMimeType } from '../utilities/mimeTypes.js'
 import { GenerateAltTextButton } from './GenerateAltTextButton.js'
 
 export const AltTextField = (clientProps: TextareaFieldClientProps) => {
-  const { field, path } = clientProps
+  const { field, path, readOnly } = clientProps
+
+  const supportedMimeTypes = field.admin?.custom?.supportedMimeTypes as string[] | undefined
+  const trackedMimeTypes = field.admin?.custom?.trackedMimeTypes as string[] | undefined
 
   const { setValue, value } = useField<string>({ path })
   const { id } = useDocumentInfo()
+  const { value: mimeType } = useField<string>({ path: 'mimeType' })
+
+  const isTrackedMimeType =
+    !trackedMimeTypes ||
+    trackedMimeTypes.length === 0 ||
+    (!!mimeType && matchesMimeType(mimeType, trackedMimeTypes))
+
+  if (!isTrackedMimeType) {
+    return null
+  }
 
   // the field should be optional when the document is created
   // (since the alt text generation can only be used once the document is created and the image uploaded)
@@ -27,9 +41,12 @@ export const AltTextField = (clientProps: TextareaFieldClientProps) => {
 
       <div className="field-type__wrap">
         <TextareaInput
-          AfterInput={<GenerateAltTextButton />}
+          AfterInput={
+            readOnly ? undefined : <GenerateAltTextButton supportedMimeTypes={supportedMimeTypes} />
+          }
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
           path={path}
+          readOnly={readOnly}
           required={required}
           value={value}
         />

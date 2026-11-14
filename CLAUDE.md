@@ -1,5 +1,9 @@
 # Development Guidelines
 
+## Dev Servers
+
+Each plugin has a Next.js test app in its `dev/` directory. Start with `pnpm dev` from there (or use `PORT=<port> pnpm --filter <test-app-name> dev` from the root). Use different ports to run multiple plugins simultaneously.
+
 ## Conventional Commits
 
 All commit messages **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
@@ -13,6 +17,7 @@ All commit messages **must** follow the [Conventional Commits](https://www.conve
 - **Description**: lowercase, imperative mood, no period at the end
 
 Examples:
+
 - `feat(pages): add breadcrumb navigation`
 - `fix(cloudinary): handle missing API key gracefully`
 - `chore: update dependencies`
@@ -20,6 +25,71 @@ Examples:
 
 This is enforced by a `commit-msg` git hook via commitlint. PR titles follow the same format (enforced by CI).
 
+## Publishing
+
+Publishing is done via the `Release` GitHub Actions workflow (manual dispatch). Select the plugin and bump type (patch/minor/major). The workflow bumps the version in `package.json`, verifies the changelog has a matching `## <version>` heading, publishes to npm, commits the version bump, creates a git tag, and creates a GitHub release. Do not bump versions or publish manually — the changelog entry must be committed beforehand with the target version as the heading.
+
+## UI Components and Styling
+
+Plugin custom components should use Payload's built-in UI components (e.g. `Pill`, `Button` from `@payloadcms/ui`) and CSS variables (e.g. `var(--style-radius-m)`, `var(--theme-elevation-500)`) instead of custom styles wherever possible. This ensures visual consistency with the Payload admin panel.
+
+## Icons
+
+All icons used in custom Payload components must come from the [Geist icon set](https://github.com/jarvis394/geist-icons/tree/main/source). Copy the SVG markup from the source files, replace `fill="white"` with `fill="currentColor"`, and wrap it in a React component. Do not use custom or third-party icon SVGs.
+
+## Document ID Types
+
+Document IDs must always support both `string` and `number` (MongoDB uses strings, PostgreSQL uses numbers). Use `DefaultDocumentIDType` from `'payload'`, or `number | string` when `payload` is not a dependency.
+
 ## Test-Driven Fixes and Features
 
-For every new fix or feature, a failing test must be added **first** that succeeds once the fix/feature is in place. Do not add code changes without a corresponding test that proves the change is necessary.
+For every new fix or feature, add a failing test **first** that succeeds once the fix is in place. For bug fixes, it must reproduce the bug as a user would observe it (wrong response, wrong UI state, wrong DB row) — not merely exercise the line being changed.
+
+**Exception — environment-bound bugs**: when a bug is only observable inside an environment the test suite cannot host (a Next.js render scope, a real browser, a platform signal), drop the repro requirement, not the test. Instead: (1) write a contract test against a behavioral fake of that boundary — a stub that mirrors the environment's actual behavior (throws where it throws, defers where it defers), not a call recorder; (2) verify the fix manually in the plugin's dev app; and (3) state both in the PR. Skipping the test entirely is a last resort and must be called out in the PR with the reason.
+
+Every test must justify its existence by verifying meaningful behavior. A test earns its place only if **all** of these hold:
+
+- It describes a user- or API-visible behavior, not an implementation detail.
+- Inverting the implementation (flipping a branch, returning the opposite, deleting a guard) would make it fail.
+- It survives a reasonable refactor of the code under test.
+- It does not restate what TypeScript, a schema, or a constant already guarantees.
+
+**Do not add** tests that assert on mocks of close collaborators, smoke renders, prop passthroughs, or coverage padding.
+
+Default to integration tests against real Payload / real React rendering. Reach for unit tests only for pure logic with non-trivial branches. Only stub external boundaries: network, filesystem, time, randomness, LLM providers, third-party SDKs. If a test requires mocking the module under test's close collaborators, test at a higher level instead.
+
+Name each test by the behavior it protects in one sentence (_"rejects a confirmation when the tool call id is unknown"_), not by the method it calls (_"calls handleConfirm with false"_).
+
+## Changelog
+
+Every shipped `fix` or `feat` gets **one** line in the affected plugin's `CHANGELOG.md` describing the user-visible change. The unit is "the change", not "the commit": if a PR makes multiple commits to ship the same thing, edit the existing line rather than adding a new one. Internal-only commits (`chore`, `refactor`, `test`, `docs` that don't change behavior) don't earn a changelog entry.
+
+If there is no section for the upcoming version yet, add an `## Unreleased` heading at the top and list changes under it. Before dispatching the release workflow, rename `## Unreleased` to the target version (e.g. `## 0.9.0-beta.6`) in a `docs(<scope>): add <version> changelog heading` commit: the workflow only verifies that the first heading matches the bumped version and fails otherwise.
+
+## Breaking Changes
+
+A change that alters or removes existing public behavior — a renamed or removed endpoint path, a changed option name or default, an altered response shape, a removed or renamed export — is **breaking** and must ship with **all** of the following:
+
+- **Conventional Commits marker**: append `!` after the type/scope (e.g. `fix(alt-text)!: ...`) and/or add a `BREAKING CHANGE: <description>` footer, per the [Conventional Commits](https://www.conventionalcommits.org/) spec. The PR title carries the same marker.
+- **Changelog notice**: prefix the `CHANGELOG.md` entry with `**BREAKING**:` and state what changed and what callers must update.
+- **Version bump**: pick the bump Semantic Versioning assigns to a breaking change — `major` once the plugin is `>= 1.0.0`, or `minor` while it is still pre-1.0 (`0.x`). The bump happens through the `Release` workflow dispatch (see Publishing); do not hand-edit `package.json`.
+
+## Dev App Demonstrations
+
+Every new feature added to a plugin **must** be demonstrated in that plugin's `dev/` app with a minimal, runnable use case. Tests prove correctness; the dev app proves usability. The plugin author needs to be able to click through the feature in the admin panel (or trigger it via the dev app's runtime, depending on the feature) without writing extra code.
+
+Concretely:
+
+- A new collection, field, or admin component → wire it into `dev/src/payload.config.ts` so it appears in the local Payload admin.
+- A new endpoint, hook, or task → add a button, page, or seeded entry to the dev app that exercises it.
+- A new plugin option → set it in the dev app's plugin invocation with a realistic example value.
+
+Plans for new features must include a "Dev app demonstration" section that lists what gets added under `dev/` so reviewers can verify the feature end-to-end without scaffolding the example themselves. PRs that add a feature without a corresponding dev-app touchpoint should be sent back for revision.
+
+## Comment and Doc Voice
+
+No "we"/"us"/"our" in code comments, doc comments, or CHANGELOG entries. Use descriptive or imperative voice instead.
+
+## Removing Implemented Plans
+
+When a PR ships the feature described in a `plans/<NNN>-*.md` file, **delete that plan in the same PR** and update any cross-references in other plans / docs to point at the shipped artifact (README section, public API, etc.). A grep for the deleted plan's number across `plans/`, `README.md`, and `CHANGELOG.md` should return nothing. Plans are forward-looking design docs; once the feature exists the code, README, and CHANGELOG are authoritative, and leaving the plan around just invites drift.

@@ -1,0 +1,50 @@
+# Changelog
+
+## 0.4.1
+
+- fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
+- fix: apply the `access` option to the dashboard widget, which previously showed the deployment status, website link, and deploy button to users the option denies
+- chore: require Payload `^3.90.1`, which ships critical security fixes
+- fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
+- fix: clarify in the i18n labels that a deployment was started, not completed
+
+## 0.4.0
+
+- **BREAKING**: `vercel.projectId` and `widget.websiteUrl` moved into a single `deploymentTarget` option, which also accepts a function resolving them per request (e.g. from the selected tenant). Replace them with `deploymentTarget: { projectId, websiteUrl }`.
+- feat: when no project resolves, the widget hides the deploy button and shows a translated hint instead of deployments, and the endpoints answer `400`
+- fix: log endpoint errors through the Payload logger instead of `console`, so they respect the project's log level and formatting
+
+## 0.3.2
+
+- fix: validate the `id` query parameter on the deployments endpoint and encode it before building the Vercel API request path, so only well-formed deployment ids are accepted
+
+## 0.3.1
+
+- fix: stop the deployment widget skeleton from flashing again right after load — the first background poll no longer triggers a redundant refresh of already-rendered data
+- fix: deployment widget skeleton now reserves the same height as the loaded row, removing the layout shift when the deployment info appears
+
+## 0.3.0
+
+- feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
+- fix: respect a user-customized `routes.api` in the deployment poller and trigger button (the fetch previously hardcoded `/api/vercel-deployments`)
+
+## 0.2.1
+
+- style: standardize icons to use Geist icon set (16x16 filled)
+- style: use cloud icon for deployment widget title instead of info icon
+- refactor: improve widget translations (remove "Vercel" from title, simplify German translations)
+
+## 0.2.0
+
+- fix: prevent widget from refreshing when deployment data has not changed (fixes constant refresh in dashboard edit mode)
+- feat: display icon and title in same row with larger title using Payload CSS vars
+- feat: add optional `widget.websiteUrl` config to display a website link
+- feat: make widget description optional and configurable via `widget.description`
+- refactor: use i18next interpolation for translations
+
+## 0.1.0
+
+- feat: add Vercel deployment dashboard widget with deployment status, one-click redeploy, and real-time polling
+- feat: add authenticated REST API endpoints (`GET /api/vercel-deployments`, `POST /api/vercel-deployments`)
+- feat: add configurable `access` function for endpoint authorization
+- feat: add multi-language support (English and German)

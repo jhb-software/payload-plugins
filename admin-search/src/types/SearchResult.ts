@@ -2,7 +2,7 @@
 export interface SearchResultDocument {
   doc: {
     relationTo: string
-    value: string
+    value: number | string
   }
   id: string
   title: string

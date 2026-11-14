@@ -1,39 +1,68 @@
 'use client'
-import type { TextFieldClientComponent } from 'payload'
+import type { TextFieldClientProps } from 'payload'
 
 import {
+  FieldDescription,
   FieldLabel,
   TextInput,
   useConfig,
   useField,
   useFormFields,
   useLocale,
+  useTranslation,
 } from '@payloadcms/ui'
 
+import type {
+  PluginPagesTranslationKeys,
+  PluginPagesTranslations,
+} from '../../translations/index.js'
 import type { Breadcrumb } from '../../types/Breadcrumb.js'
 import type { Locale } from '../../types/Locale.js'
 
 import { getBreadcrumbs as getBreadcrumbsForDoc } from '../../utils/getBreadcrumbs.js'
+import { rootPathFromPrefixes } from '../../utils/localePrefix.js'
+import { parentRefKey, tryResolveParentRef } from '../../utils/parentRef.js'
 import { pathFromBreadcrumbs } from '../../utils/pathFromBreadcrumbs.js'
 import { useDidUpdateEffect } from '../../utils/useDidUpdateEffect.js'
 import { BreadcrumbsFieldModalButton } from './BreadcrumbsField.js'
 import { useBreadcrumbs } from './hooks/useBreadcrumbs.js'
 import { usePageCollectionConfigAttributes } from './hooks/usePageCollectionConfigAtrributes.js'
 
-export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) => {
+export type PathFieldProps = {
+  /** Each locale's path prefix, resolved on the server from the plugin's `localeRouting`. */
+  localePrefixes?: Record<Locale, string>
+}
+
+export const PathField = ({
+  field,
+  localePrefixes,
+  path: fieldPath,
+}: PathFieldProps & TextFieldClientProps) => {
   const { config } = useConfig()
+  const { t } = useTranslation<PluginPagesTranslations, PluginPagesTranslationKeys>()
+  const pageConfig = usePageCollectionConfigAttributes()
   const {
     breadcrumbs: { labelField: breadcrumbLabelFieldName },
-    parent: { name: parentField, collection: parentCollection },
-  } = usePageCollectionConfigAttributes()
+    parent: { name: parentField },
+  } = pageConfig
   const { code: locale } = useLocale() as unknown as { code: Locale | undefined }
   const { getBreadcrumbs, setBreadcrumbs } = useBreadcrumbs()
   const { setValue: setPathRaw, value: path } = useField<string>({ path: fieldPath })
   const { setValue: setSlugRaw, value: slug } = useField<string>({ path: 'slug' })
   const breadcrumbLabel = useFormFields(([fields, _]) => fields[breadcrumbLabelFieldName])
     ?.value as string | undefined
-  const parent = useFormFields(([fields, _]) => fields[parentField])?.value as string | undefined
+  const parent = useFormFields(([fields, _]) => fields[parentField])?.value
   const isRootPage = useFormFields(([fields, _]) => fields.isRootPage)?.value as boolean | undefined
+  // A value which does not name its collection cannot be turned into a path; the save is
+  // refused server-side, so the preview treats it as no parent rather than crashing the editor.
+  const parentRef = tryResolveParentRef(parent, pageConfig)
+  // A polymorphic parent's value is an object, whose identity changes on every render. The
+  // effects below must re-run when the parent actually changes, not on every render, so they
+  // depend on this key rather than on the value.
+  const parentKey = parentRef ? parentRefKey(parentRef) : ''
+  // Only an ancestor without a slug in the edited locale leaves a page with a slug and a parent
+  // without a path.
+  const hasAncestorWithoutSlug = Boolean(slug && parentRef && !path)
 
   /**
    * Sets the path, but only if the new path is different from the current path.
@@ -60,7 +89,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
    */
   async function fetchBreadcrumbs(): Promise<Breadcrumb[]> {
     // Construct the document with all necessary fields
-    const doc: Record<string, any> = {
+    const doc: Record<string, unknown> = {
       slug,
       isRootPage,
     }
@@ -68,15 +97,15 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
     doc[breadcrumbLabelFieldName] = breadcrumbLabel
 
     const fechtchedBreadcrumbs = (await getBreadcrumbsForDoc({
-      breadcrumbLabelField: breadcrumbLabelFieldName,
+      apiURL: `${config.serverURL ?? ''}${config.routes.api}`,
       data: doc,
       locale,
+      localePrefixes,
       locales:
         typeof config.localization === 'object' && config.localization.localeCodes
           ? config.localization.localeCodes
           : undefined,
-      parentCollection,
-      parentField,
+      pageConfig,
       req: undefined, // payload req is not available here
     })) as Breadcrumb[]
 
@@ -88,12 +117,13 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
   useDidUpdateEffect(() => {
     const fetchAndSetData = async () => {
       // the parent was added:
-      if (parent) {
+      if (parentRef) {
         const fechtchedBreadcrumbs = await fetchBreadcrumbs()
 
         const updatedPath = pathFromBreadcrumbs({
           breadcrumbs: fechtchedBreadcrumbs,
           locale,
+          localePrefixes,
         })
 
         setBreadcrumbs(fechtchedBreadcrumbs)
@@ -104,7 +134,11 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
 
         // remove all breadcrumbs except the last one of this doc if the parent was removed
         const updatedBreadcrumbs = breadcrumbs.length >= 2 ? breadcrumbs.slice(-1) : []
-        const updatedPath = pathFromBreadcrumbs({ breadcrumbs: updatedBreadcrumbs, locale })
+        const updatedPath = pathFromBreadcrumbs({
+          breadcrumbs: updatedBreadcrumbs,
+          locale,
+          localePrefixes,
+        })
 
         setPath(updatedPath)
         setBreadcrumbs(updatedBreadcrumbs)
@@ -113,7 +147,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
     void fetchAndSetData()
 
     // This effect should only be executed when the parent changes:
-  }, [parent])
+  }, [parentKey])
 
   // Update the breadcrumbs and path when
   //  - the slug changes
@@ -123,7 +157,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
       let breadcrumbs = getBreadcrumbs()
 
       if (!breadcrumbs || breadcrumbs.length === 0) {
-        if (parent) {
+        if (parentRef) {
           // Fetching the virtual breadcrumbs field in this case fixes the issue that when creating a localized version of an existing document
           // with a parent set, the breadcrumbs do not show the parent breadcrumbs in the UI when setting the slug.
           const fechtchedBreadcrumbs = await fetchBreadcrumbs()
@@ -159,6 +193,7 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
       const updatedPath = pathFromBreadcrumbs({
         breadcrumbs: updatedBreadcrumbsSlug,
         locale,
+        localePrefixes,
       })
 
       // update the path in the breadcrumbs
@@ -190,9 +225,10 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
   // - the page was set to be the root page
   useDidUpdateEffect(() => {
     if (isRootPage === true) {
+      const rootPath = rootPathFromPrefixes(localePrefixes, locale)
       setSlug('')
-      setPath('/' + locale + '/')
-      setBreadcrumbs([{ slug: '', label: breadcrumbLabel ?? '', path: '/' + (locale ?? '') }])
+      setPath(rootPath)
+      setBreadcrumbs([{ slug: '', label: breadcrumbLabel ?? '', path: rootPath }])
     }
 
     // this effect should only be executed when isRootPage changes:
@@ -216,6 +252,13 @@ export const PathField: TextFieldClientComponent = ({ field, path: fieldPath }) 
           <BreadcrumbsFieldModalButton />
         </div>
       </div>
+
+      {hasAncestorWithoutSlug && (
+        <FieldDescription
+          description={t('@jhb.software/payload-pages-plugin:noPathAncestorWithoutSlug')}
+          path={fieldPath}
+        />
+      )}
     </div>
   )
 }

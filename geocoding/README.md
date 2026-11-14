@@ -16,7 +16,7 @@ Add the plugin to your payload config with your Google Maps API key:
 plugins: [
   payloadGeocodingPlugin({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-  })
+  }),
 ]
 ```
 

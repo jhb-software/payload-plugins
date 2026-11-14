@@ -48,13 +48,19 @@ export const TranslatorModal = () => {
         >
           <svg
             className="close-icon"
-            fill="none"
-            height="24"
-            viewBox="0 0 24 24"
-            width="24"
-            xmlns="http://www.w3.org/2000/svg"
+            data-testid="geist-icon"
+            height="16"
+            strokeLinejoin="round"
+            style={{ color: 'currentcolor' }}
+            viewBox="0 0 16 16"
+            width="16"
           >
-            <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="2" />
+            <path
+              clipRule="evenodd"
+              d="M12.47 13.53l.53.53L14.06 13l-.53-.53L9.06 8l4.47-4.47.53-.53L13 1.94l-.53.53L8 6.94 3.53 2.47 3 1.94 1.94 3l.53.53L6.94 8l-4.47 4.47-.53.53L3 14.06l.53-.53L8 9.06l4.47 4.47z"
+              fill="currentColor"
+              fillRule="evenodd"
+            />
           </svg>
         </button>
 

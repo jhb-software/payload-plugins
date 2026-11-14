@@ -10,9 +10,8 @@ export const en: GenericTranslationsObject = {
 
     // Button labels
     generateAltText: 'Generate alt text',
-    generateAltTextFor: 'Generate alt text for',
-    image: 'image',
-    images: 'images',
+    generateAltTextFor_one: 'Generate alt text for {{count}} image',
+    generateAltTextFor_other: 'Generate alt text for {{count}} images',
 
     // Toast messages
     altTextGeneratedSuccess:
@@ -20,9 +19,17 @@ export const en: GenericTranslationsObject = {
     cannotGenerateMissingFields: 'Cannot generate alt text. Missing required fields.',
     errorGeneratingAltText: 'Error generating alt text. Please try again.',
     failedToGenerate: 'Failed to generate alt text. Please try again.',
-    failedToGenerateForXImages: 'Failed to generate alt text for {X} images.',
+    failedToGenerateForXImages_one: 'Failed to generate alt text for {{count}} image.',
+    failedToGenerateForXImages_other: 'Failed to generate alt text for {{count}} images.',
     noAltTextGenerated: 'No alt text generated. Please try again.',
-    xOfYImagesUpdated: '{X} of {Y} images updated.',
+    skippedNoAltTextNeeded_one: 'Skipped {{count}} file that does not need alt text.',
+    skippedNoAltTextNeeded_other: 'Skipped {{count}} files that do not need alt text.',
+    skippedUnsupportedFormat_one:
+      'Alt text cannot be generated for {{count}} file. Please write it by hand.',
+    skippedUnsupportedFormat_other:
+      'Alt text cannot be generated for {{count}} files. Please write it by hand.',
+    xOfYImagesUpdated_one: '{{updated}} of {{total}} image updated.',
+    xOfYImagesUpdated_other: '{{updated}} of {{total}} images updated.',
 
     // Help text
     altTextDescription:
@@ -35,19 +42,22 @@ export const en: GenericTranslationsObject = {
 
     // Tooltips
     pleaseSaveDocumentFirst: 'Please save the document first',
+    unsupportedMimeType: 'Alt text generation is not supported for {{mimeType}} files',
 
     // Validation messages
     theAlternateTextIsRequired: 'An alternate text is required.',
 
     // Dashboard widget
-    altTextHealthDescription: 'Alt text status across your upload collections.',
-    altTextHealthWidget: 'Alt text health',
-    collectionCheckFailed: 'Health check unavailable',
+    altTextHealthDescription: 'Alt text coverage across upload collections.',
+    altTextHealthWidget: 'Alt Texts',
+    collectionCheckFailed: 'Status unavailable',
     healthCheckPartialWarning: 'Some collections could not be checked right now.',
-    localeCount: '{count} locales',
+    localeCount_one: '{{count}} locale',
+    localeCount_other: '{{count}} locales',
     noImagesFound: 'No images found in the configured collections yet.',
     statusHealthy: 'All set',
-    statusUnhealthy: 'missing alt text',
-    totalImageCount: '{count} images',
+    statusUnhealthy: '{{count}} missing',
+    totalImageCount_one: '{{count}} image',
+    totalImageCount_other: '{{count}} images',
   },
 }

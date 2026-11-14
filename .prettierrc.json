@@ -1,12 +1,11 @@
 {
   "printWidth": 100,
-  "parser": "typescript",
   "semi": false,
   "singleQuote": true,
   "trailingComma": "all",
   "overrides": [
     {
-      "files": ["**/importMap.js", "**/payload-types.ts", "**/**.yaml"],
+      "files": ["**/importMap.js", "**/payload-types.ts", "**/**.yaml", "**/**.yml"],
       "options": {
         "requirePragma": true
       }

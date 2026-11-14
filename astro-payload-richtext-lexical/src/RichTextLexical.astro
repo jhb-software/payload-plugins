@@ -22,18 +22,8 @@ const {
 } = Astro.props
 ---
 
-{
-  className ? (
-    <div class={className}>
-      <RichTextNodes
-        nodes={nodes}
-        BlockRenderer={BlockRenderer}
-        UploadRenderer={UploadRenderer}
-        slugifyHeadingId={slugifyHeadingId}
-        resolveInternalLink={resolveInternalLink}
-      />
-    </div>
-  ) : (
+{className ? (
+  <div class={className}>
     <RichTextNodes
       nodes={nodes}
       BlockRenderer={BlockRenderer}
@@ -41,5 +31,13 @@ const {
       slugifyHeadingId={slugifyHeadingId}
       resolveInternalLink={resolveInternalLink}
     />
-  )
-}
+  </div>
+) : (
+  <RichTextNodes
+    nodes={nodes}
+    BlockRenderer={BlockRenderer}
+    UploadRenderer={UploadRenderer}
+    slugifyHeadingId={slugifyHeadingId}
+    resolveInternalLink={resolveInternalLink}
+  />
+)}

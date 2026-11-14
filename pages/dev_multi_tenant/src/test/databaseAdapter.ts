@@ -8,4 +8,3 @@ export const databaseAdapter = sqliteAdapter({
     url: process.env.SQLITE_URL!,
   },
 })
-

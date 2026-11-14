@@ -1,17 +1,25 @@
 import { adminSearchPlugin } from '@jhb.software/payload-admin-search'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { searchPlugin } from '@payloadcms/plugin-search'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
+import type { Where } from 'payload'
+
 import { buildConfig } from 'payload'
 import { de } from 'payload/i18n/de'
 import { en } from 'payload/i18n/en'
+import { fr } from 'payload/i18n/fr'
+// ru has no bundled plugin strings: switching the admin language to it exercises the English fallback (issue #220)
+import { ru } from 'payload/i18n/ru'
 import { fileURLToPath } from 'url'
 
 import { authorsSchema } from './collections/authors'
 import { mediaSchema } from './collections/media'
 import { pagesSchema } from './collections/pages'
 import { postsSchema } from './collections/posts'
+import { tenantsSchema } from './collections/tenants'
 import { seed } from './seed'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -22,6 +30,7 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    meta: { titleSuffix: '- Admin Search Dev' },
     user: 'users',
   },
   collections: [
@@ -29,6 +38,7 @@ export default buildConfig({
     postsSchema,
     authorsSchema,
     mediaSchema,
+    tenantsSchema,
     {
       slug: 'users',
       auth: true,
@@ -42,7 +52,7 @@ export default buildConfig({
   editor: lexicalEditor(),
 
   i18n: {
-    supportedLanguages: { de, en },
+    supportedLanguages: { de, en, fr, ru },
   },
 
   secret: process.env.PAYLOAD_SECRET || 'secret',
@@ -71,11 +81,45 @@ export default buildConfig({
   },
 
   plugins: [
-    adminSearchPlugin({ headerSearchComponentStyle: 'bar' }),
+    adminSearchPlugin({
+      // Restricts search results to the tenant selected in the admin panel. Switch tenants
+      // in the selector and the same query returns that tenant's documents only; with no
+      // tenant selected the search stays unscoped, matching what the tenant selector shows.
+      baseFilter: ({ req }): Where => {
+        const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+        if (!tenant) {
+          return {}
+        }
+
+        // Only `pages` and `posts` are tenant-scoped below, but `authors` and `media` are
+        // indexed too. The `exists: false` branch keeps those in the results; without it,
+        // picking a tenant makes every author and media item disappear from the search.
+        return { or: [{ tenant: { equals: tenant } }, { tenant: { exists: false } }] }
+      },
+      headerSearchComponentStyle: 'bar',
+    }),
+    multiTenantPlugin({
+      collections: { pages: {}, posts: {} },
+      userHasAccessToAllTenants: () => true,
+    }),
     searchPlugin({
+      // The `search` collection defaults to public read (`read: () => true`). This dev
+      // app restricts it to authenticated users; set access to match your app's needs.
+      searchOverrides: {
+        access: {
+          read: ({ req }) => Boolean(req.user),
+        },
+        // The base filter constrains `tenant`, so the search collection has to carry it.
+        fields: ({ defaultFields }) => [
+          ...defaultFields,
+          { name: 'tenant', type: 'relationship', index: true, relationTo: 'tenants' },
+        ],
+      },
       beforeSync: ({ originalDoc, searchDoc }) => {
         return {
           ...searchDoc,
+          tenant: originalDoc.tenant ?? null,
           title:
             searchDoc.doc.relationTo === 'authors'
               ? originalDoc.name

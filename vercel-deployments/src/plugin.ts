@@ -1,0 +1,68 @@
+import type { Config, Widget } from 'payload'
+
+import type { VercelDeploymentsPluginConfig } from './types.js'
+
+import { PLUGIN_SLUG } from './constants.js'
+import { getDeploymentsEndpoint } from './endpoints/getDeployments.js'
+import { triggerDeploymentEndpoint } from './endpoints/triggerDeployment.js'
+import { withLanguageFallbacks } from './translations/withLanguageFallbacks.js'
+import { deepMergeSimple } from './utilities/deepMergeSimple.js'
+
+export const vercelDeploymentsPlugin =
+  (pluginConfig: VercelDeploymentsPluginConfig) =>
+  (incomingConfig: Config): Config => {
+    const config = { ...incomingConfig }
+
+    // If the plugin is disabled, return the config without modifying it
+    if (pluginConfig.enabled === false) {
+      return config
+    }
+
+    const componentPath = '@jhb.software/payload-vercel-deployments/client#VercelDeploymentWidget'
+
+    return {
+      ...config,
+      admin: {
+        ...config.admin,
+        dashboard: {
+          ...config.admin?.dashboard,
+          widgets: [
+            ...(config.admin?.dashboard?.widgets ?? []),
+            {
+              slug: 'vercel-deployments',
+              // `Component` was renamed from `ComponentPath` in Payload 3.79.0. Set both for backward compatibility.
+              Component: componentPath,
+              ComponentPath: componentPath,
+              maxWidth: pluginConfig.widget?.maxWidth ?? 'full',
+              minWidth: pluginConfig.widget?.minWidth ?? 'medium',
+            } as { ComponentPath: string } & Widget,
+          ],
+        },
+      },
+      custom: {
+        ...config.custom,
+        // Make plugin config available for endpoint handlers
+        vercelDeploymentsPluginConfig: pluginConfig,
+      },
+      endpoints: [
+        ...(config.endpoints ?? []),
+        {
+          handler: getDeploymentsEndpoint,
+          method: 'get',
+          path: `/${PLUGIN_SLUG}`,
+        },
+        {
+          handler: triggerDeploymentEndpoint,
+          method: 'post',
+          path: `/${PLUGIN_SLUG}`,
+        },
+      ],
+      i18n: {
+        ...config.i18n,
+        translations: deepMergeSimple(
+          withLanguageFallbacks(config.i18n),
+          config.i18n?.translations ?? {},
+        ),
+      },
+    }
+  }

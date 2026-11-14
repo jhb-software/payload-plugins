@@ -13,6 +13,8 @@ export const de: GenericTranslationsObject = {
     creatingRedirect: 'Erstelle Weiterleitung...',
     isRootPage: 'ist Startseite',
     label: 'Beschriftung',
+    noPathAncestorWithoutSlug:
+      'Diese Seite hat in dieser Sprache keine URL: Eine übergeordnete Seite hat darin keinen Slug.',
     parent: 'Übergeordnete Seite',
     path: 'Pfad',
     redirectCreated: 'Weiterleitung erstellt',
@@ -22,8 +24,10 @@ export const de: GenericTranslationsObject = {
     revertSlug: 'Änderung verwerfen',
     rootPage: 'Startseite',
     showBreadcrumbs: 'Navigationspfade anzeigen',
+    slugCannotBeALocaleCode:
+      'Die URL-Endung "{{slug}}" ist reserviert: Sie ist ein Sprachcode, den Pfade als Sprach-Präfix verwenden.',
     slugWasChangedFromXToY:
-      'Die URL-Endung wurde von <code>{X}</code> zu <code>{Y}</code> geändert. Eine Weiterleitung vom alten zum neuen Pfad ist erforderlich.',
-    syncSlugWithX: 'Mit {X} synchronisieren',
+      'Die URL-Endung wurde von <code>{{from}}</code> zu <code>{{to}}</code> geändert. Eine Weiterleitung vom alten zum neuen Pfad ist erforderlich.',
+    syncSlugWithX: 'Mit {{field}} synchronisieren',
   },
 }

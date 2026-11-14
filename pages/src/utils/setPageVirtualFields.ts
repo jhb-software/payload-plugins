@@ -3,64 +3,96 @@ import type { PayloadRequest } from 'payload'
 import type { Breadcrumb } from '../types/Breadcrumb.js'
 import type { Locale } from '../types/Locale.js'
 import type { PageCollectionConfigAttributes } from '../types/PageCollectionConfigAttributes.js'
-import type { SeoMetadata } from '../types/SeoMetadata.js'
+import type { LocaleRouting } from '../types/PagesPluginConfig.js'
 
+import { type Collection, isPublishedInLocale } from '../queries/liveness.js'
+import { alternatePathsFor } from './alternatePaths.js'
 import { getBreadcrumbs } from './getBreadcrumbs.js'
+import { localePrefixMap } from './localePrefix.js'
 
-/** Sets the virtual fields (breadcrumbs, path, alternatePaths) of the given root page document. */
+/** Sets the virtual fields (breadcrumbs, path, alternatePaths) of the given page document. */
 export async function setPageDocumentVirtualFields({
+  collection,
   doc,
+  draft,
+  includeDraftLocales = false,
   locale,
   locales,
   pageConfigAttributes,
   req,
+  routing,
 }: {
-  doc: Record<string, any>
+  /** The collection `doc` belongs to; decides whether `_status` is judged per locale. */
+  collection: Collection
+  doc: Record<string, unknown>
+  /** Whether the ancestors the paths are built from resolve to their latest version. */
+  draft: boolean
+  /** Whether paths should include locales that only have a draft, regardless of publish state. */
+  includeDraftLocales?: boolean
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   locale: 'all' | Locale | undefined
   locales: Locale[] | undefined
   pageConfigAttributes: PageCollectionConfigAttributes
-  req: PayloadRequest | undefined
+  req: PayloadRequest
+  routing: LocaleRouting | undefined
 }) {
+  const localePrefixes = localePrefixMap(locales, routing)
+
   if (locales && locale) {
     const breadcrumbs = (await getBreadcrumbs({
-      breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
       data: doc,
+      draft,
+      localePrefixes,
       locales,
-      parentCollection: pageConfigAttributes.parent.collection,
-      parentField: pageConfigAttributes.parent.name,
+      pageConfig: pageConfigAttributes,
       req,
-      // For localized pages, we need to fetch the breadcrumbs for all locales in order to correctly set the alternate paths
+      // Localized pages need the breadcrumbs of every locale to build the alternate paths
       locale: 'all',
     })) as Record<Locale, Breadcrumb[]>
 
     const paths: Record<Locale, string> = locales.reduce(
-      (acc, locale) => {
-        // If the slug is not set for this locale, exclude the path to not generate a 404 path
+      (acc, localeCode) => {
+        // A published read must not expose a draft-only locale (localized `_status`) as a
+        // navigable or alternate path. Draft reads keep such paths for the preview being rendered.
+        // `afterChange` receives the slug flattened to its one requested locale. That value must
+        // not stand in for the other locales, whose slugs may differ.
+        const hasSlug =
+          (doc.slug &&
+            typeof doc.slug === 'object' &&
+            (doc.slug as Record<string, unknown>)[localeCode]) ||
+          (typeof doc.slug === 'string' && doc.slug && (locale === 'all' || locale === localeCode))
+
+        // An ancestor without a slug in the locale leaves no path to build: dropping its segment
+        // would yield another page's URL.
+        const ancestorsHaveSlugs = breadcrumbs[localeCode]
+          .slice(0, -1)
+          .every(({ slug }) => typeof slug === 'string')
+
         if (
-          (typeof doc.slug === 'object' && doc.slug[locale]) ||
-          (typeof doc.slug === 'string' && doc.slug)
+          hasSlug &&
+          ancestorsHaveSlugs &&
+          (includeDraftLocales || draft || isPublishedInLocale(doc, collection, localeCode))
         ) {
-          acc[locale] = breadcrumbs[locale].at(-1)!.path
+          acc[localeCode] = breadcrumbs[localeCode].at(-1)!.path!
         }
         return acc
       },
       {} as Record<Locale, string>,
     )
 
-    const alternatePaths: SeoMetadata['alternatePaths'] = Object.entries(paths).map(
-      ([locale, path]) => ({
-        hreflang: locale,
-        path,
-      }),
-    )
+    const alternatePaths = alternatePathsFor(paths, routing)
 
     if (locale === 'all') {
+      // Breadcrumbs follow `path`: a locale without a path gets no trail either.
+      const liveBreadcrumbs = Object.fromEntries(
+        Object.keys(paths).map((localeCode) => [localeCode, breadcrumbs[localeCode]]),
+      ) as Record<Locale, Breadcrumb[]>
+
       return {
         ...doc,
-        breadcrumbs,
+        breadcrumbs: liveBreadcrumbs,
         meta: {
-          ...doc.meta,
+          ...(doc.meta as Record<string, unknown> | undefined),
           alternatePaths,
         },
         path: paths,
@@ -68,9 +100,10 @@ export async function setPageDocumentVirtualFields({
     } else {
       return {
         ...doc,
-        breadcrumbs: breadcrumbs[locale],
+        // Breadcrumbs follow `path`: none without a path in the written locale.
+        breadcrumbs: paths[locale] ? breadcrumbs[locale] : undefined,
         meta: {
-          ...doc.meta,
+          ...(doc.meta as Record<string, unknown> | undefined),
           alternatePaths,
         },
         path: paths[locale],
@@ -78,19 +111,19 @@ export async function setPageDocumentVirtualFields({
     }
   } else {
     const breadcrumbs = (await getBreadcrumbs({
-      breadcrumbLabelField: pageConfigAttributes.breadcrumbs.labelField,
       data: doc,
+      draft,
       locale: undefined,
+      localePrefixes,
       locales,
-      parentCollection: pageConfigAttributes.parent.collection,
-      parentField: pageConfigAttributes.parent.name,
+      pageConfig: pageConfigAttributes,
       req,
     })) as Breadcrumb[]
 
     return {
       ...doc,
       breadcrumbs,
-      path: breadcrumbs.at(-1)!.path,
+      path: breadcrumbs.at(-1)!.path!,
     }
   }
 }

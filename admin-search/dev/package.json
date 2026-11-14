@@ -5,10 +5,10 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev",
+    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev --webpack",
     "dev:turbo": "pnpm dev --turbo",
     "dev:safe": "rm -rf .next && pnpm dev",
-    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build --webpack",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "format": "prettier --write src",
     "payload": "cross-env PAYLOAD_CONFIG_PATH=./src/payload.config.ts payload",
@@ -19,20 +19,24 @@
   },
   "dependencies": {
     "@jhb.software/payload-admin-search": "workspace:*",
-    "@payloadcms/db-mongodb": "^3.81.0",
-    "@payloadcms/next": "^3.81.0",
-    "@payloadcms/plugin-search": "^3.81.0",
-    "@payloadcms/richtext-lexical": "^3.81.0",
-    "@payloadcms/translations": "^3.81.0",
-    "@payloadcms/ui": "^3.81.0",
-    "next": "15.4.11",
-    "payload": "^3.81.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "@payloadcms/db-mongodb": "^3.93.0",
+    "@payloadcms/next": "^3.93.0",
+    "@payloadcms/plugin-multi-tenant": "^3.93.0",
+    "@payloadcms/plugin-search": "^3.93.0",
+    "@payloadcms/richtext-lexical": "^3.93.0",
+    "@payloadcms/translations": "^3.93.0",
+    "@payloadcms/ui": "^3.93.0",
+    "next": "16.4.6",
+    "payload": "^3.93.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "dotenv": "^17.4.1",
-    "tsx": "^4.21.0"
-  }
+    "tsx": "^4.23.15"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.8.0"
 }

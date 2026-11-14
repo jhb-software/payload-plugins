@@ -1,0 +1,68 @@
+name: Setup workspace
+description: Installs pnpm and Node.js, restores the pnpm store and installs dependencies.
+
+inputs:
+  scope:
+    description: >-
+      Which workspaces to install: `all` for every plugin, or a single plugin
+      directory name such as `pages`. Selects the `install:<scope>` script from
+      the root package.json, and keys the pnpm store cache so a job installing
+      one plugin never overwrites the entry a job installing all nine wrote.
+    required: false
+    default: all
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v6
+      with:
+        # Fetch one self-contained binary from the pnpm release instead of
+        # running `npm install` and then pnpm's own self-updater. Those extra
+        # registry round-trips have stalled for up to six minutes per job.
+        standalone: true
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '24'
+
+    - name: Resolve the pnpm store path
+      shell: bash
+      run: echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+
+    - name: Restore the pnpm store
+      id: pnpm-store
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.PNPM_STORE_PATH }}
+        # The scope belongs in the key: jobs run concurrently and a store built
+        # by `install:pages` holds a fraction of what `install:all` needs, so a
+        # single shared key lets whichever job finishes first decide what every
+        # later run restores.
+        #
+        # Every lockfile feeds the hash. The nine plugin lockfiles decide what
+        # the store holds, so hashing the root one alone (what setup-node's
+        # built-in `cache: pnpm` does) restores a stale store on any commit
+        # that leaves the root lockfile untouched -- and, because the key still
+        # hits, never writes the refreshed store back.
+        key: pnpm-store-${{ runner.os }}-${{ inputs.scope }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+        # A near miss still restores most of the store, leaving pnpm to fetch
+        # only the delta, and the exact key is saved afterwards.
+        restore-keys: pnpm-store-${{ runner.os }}-${{ inputs.scope }}-
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install:${{ inputs.scope }}
+
+    # `actions/cache` registers a post step that runs work proportional to the
+    # store size even when the primary key already hit and it saves nothing --
+    # measured at 42s per `install:all` job against 4-7s for the smaller pages
+    # store. Splitting restore from a save that only runs on a miss skips that
+    # entirely in the common case, which is every run where no lockfile moved.
+    - name: Save the pnpm store
+      if: steps.pnpm-store.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.PNPM_STORE_PATH }}
+        key: pnpm-store-${{ runner.os }}-${{ inputs.scope }}-${{ hashFiles('**/pnpm-lock.yaml') }}

@@ -1,6 +1,6 @@
 {
   "name": "@jhb.software/payload-content-translator-plugin",
-  "version": "0.1.2",
+  "version": "0.6.1",
   "description": "A Payload CMS plugin that adds a content translation feature to the admin UI.",
   "keywords": [
     "payload",
@@ -12,6 +12,7 @@
   ],
   "author": "JHB Software",
   "license": "MIT",
+  "repository": "https://github.com/jhb-software/payload-plugins",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -22,36 +23,39 @@
     "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
     "clean": "rimraf --glob {dist,*.tsbuildinfo}",
     "dev": "tsc -w",
-    "format": "prettier --write src",
+    "format": "prettier --write src \"*.{json,md,js,mjs,cjs}\"",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "prepublishOnly": "pnpm clean && pnpm build",
+    "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@payloadcms/translations": "^3.93.0",
     "bson-objectid": "^2.0.4",
-    "he": "^1.2.0"
+    "he": "^2.0.0"
   },
   "peerDependencies": {
-    "@payloadcms/translations": "^3.81.0",
-    "@payloadcms/ui": "^3.81.0",
-    "next": "15.4.11",
-    "payload": "^3.81.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "@payloadcms/ui": "^3.93.0",
+    "next": "^15.0.0 || ^16.0.0",
+    "payload": "^3.93.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
-    "@swc/cli": "^0.8.1",
-    "@swc/core": "^1.15.24",
+    "@swc/cli": "^0.8.2",
+    "@swc/core": "^1.16.22",
     "@types/he": "^1.2.3",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "copyfiles": "^2.4.1",
-    "eslint": "^9.0.0",
-    "prettier": "^3.8.1",
-    "rimraf": "^6.1.3",
-    "typescript": "^5.9.3"
+    "eslint": "^9.39.4",
+    "prettier": "3.10.1",
+    "rimraf": "^6.1.4",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.8"
   },
   "files": [
     "dist"
@@ -59,8 +63,6 @@
   "publishConfig": {
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
-    "registry": "https://registry.npmjs.org/",
-    "access": "public",
     "exports": {
       ".": {
         "import": "./dist/index.js",
@@ -81,6 +83,21 @@
         "import": "./dist/resolvers/openAI.js",
         "types": "./dist/resolvers/openAI.d.ts",
         "default": "./dist/resolvers/openAI.js"
+      },
+      "./resolvers/anthropic": {
+        "import": "./dist/resolvers/anthropic.js",
+        "types": "./dist/resolvers/anthropic.d.ts",
+        "default": "./dist/resolvers/anthropic.js"
+      },
+      "./resolvers/mistral": {
+        "import": "./dist/resolvers/mistral.js",
+        "types": "./dist/resolvers/mistral.d.ts",
+        "default": "./dist/resolvers/mistral.js"
+      },
+      "./resolvers/openAICompatible": {
+        "import": "./dist/resolvers/openAICompatible.js",
+        "types": "./dist/resolvers/openAICompatible.d.ts",
+        "default": "./dist/resolvers/openAICompatible.js"
       },
       "./client": {
         "import": "./dist/exports/client.js",
@@ -110,6 +127,21 @@
       "types": "./src/resolvers/openAI.ts",
       "default": "./src/resolvers/openAI.ts"
     },
+    "./resolvers/anthropic": {
+      "import": "./src/resolvers/anthropic.ts",
+      "types": "./src/resolvers/anthropic.ts",
+      "default": "./src/resolvers/anthropic.ts"
+    },
+    "./resolvers/mistral": {
+      "import": "./src/resolvers/mistral.ts",
+      "types": "./src/resolvers/mistral.ts",
+      "default": "./src/resolvers/mistral.ts"
+    },
+    "./resolvers/openAICompatible": {
+      "import": "./src/resolvers/openAICompatible.ts",
+      "types": "./src/resolvers/openAICompatible.ts",
+      "default": "./src/resolvers/openAICompatible.ts"
+    },
     "./client": {
       "import": "./src/exports/client.ts",
       "types": "./src/exports/client.ts",
@@ -117,6 +149,7 @@
     }
   },
   "engines": {
-    "node": "^18.20.2 || >=20.9.0"
-  }
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.8.0"
 }

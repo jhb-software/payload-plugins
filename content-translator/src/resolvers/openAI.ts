@@ -1,15 +1,14 @@
+import type { TranslateInstructions } from './createPromptResolver.js'
 import type { TranslateResolver } from './types.js'
 
-import { chunkArray } from '../utils/chunkArray.js'
-
-export type OpenAIPrompt = (args: {
-  localeFrom: string
-  localeTo: string
-  texts: string[]
-}) => string
+import { createOpenAICompatibleResolver } from './openAICompatible.js'
 
 export type OpenAIResolverConfig = {
   apiKey: string
+  /**
+   * Origin of an OpenAI-compatible API, without the `/v1/chat/completions` path.
+   * @default 'https://api.openai.com'
+   */
   baseUrl?: string
   /**
    * How many texts to include into 1 request
@@ -17,200 +16,33 @@ export type OpenAIResolverConfig = {
    */
   chunkLength?: number
   /**
+   * Builds the instructions from the default ones, e.g. to append protected
+   * terms. Sent as the system message, separately from the texts.
+   *
+   * @default ({ defaultInstructions }) => defaultInstructions
+   */
+  instructions?: TranslateInstructions
+  /**
    * @default "gpt-4o-mini"
    */
   model?: string
-  prompt?: OpenAIPrompt
-}
-
-type OpenAIResponse = {
-  choices: {
-    message: {
-      content: string
-    }
-  }[]
-}
-
-const defaultPrompt: OpenAIPrompt = ({ localeFrom, localeTo, texts }) => {
-  return `Translate the following array of strings from the language with ISO 639 code "${localeFrom}" to the language with ISO 639 code "${localeTo}".
-
-IMPORTANT: You must return ONLY a valid JSON object with a "translations" key containing the array of translated strings. The array must maintain the exact same length and order as the input. Properly escape all special characters including quotes, newlines, and backslashes according to JSON standards.
-
-Input array to translate:
-${JSON.stringify(texts, null, 2)}
-
-Expected response format:
-{
-  "translations": ["translated string 1", "translated string 2", ...]
-}`
 }
 
 export const openAIResolver = ({
   apiKey,
   baseUrl,
   chunkLength = 100,
+  instructions,
   model = 'gpt-4o-mini',
-  prompt = defaultPrompt,
-}: OpenAIResolverConfig): TranslateResolver => {
-  return {
+}: OpenAIResolverConfig): TranslateResolver =>
+  createOpenAICompatibleResolver({
+    apiKey,
+    // Falsy rather than nullish: a config written as `process.env.X || ''`
+    // has always fallen back to the default host, and still must.
+    baseUrl: baseUrl || 'https://api.openai.com',
+    chunkLength,
+    instructions,
     key: 'openai',
-    resolve: async ({ localeFrom, localeTo, req, texts }) => {
-      // ISO 639 language codes should always be lowercase
-      localeFrom = localeFrom.toLowerCase()
-      localeTo = localeTo.toLowerCase()
-      const apiUrl = `${baseUrl || 'https://api.openai.com'}/v1/chat/completions`
-
-      try {
-        const response: {
-          data: OpenAIResponse
-          success: boolean
-        }[] = await Promise.all(
-          chunkArray(texts, chunkLength).map(async (texts) => {
-            return fetch(apiUrl, {
-              body: JSON.stringify({
-                messages: [
-                  {
-                    content: prompt({ localeFrom, localeTo, texts }),
-                    role: 'user',
-                  },
-                ],
-                model,
-                response_format: { type: 'json_object' },
-              }),
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-              },
-              method: 'post',
-            }).then(async (res) => {
-              const data = await res.json()
-
-              if (!res.ok) {
-                req.payload.logger.info({
-                  message: 'An error occurred when trying to translate the data using OpenAI API',
-                  openAIresponse: data,
-                })
-              }
-
-              return {
-                data,
-                success: res.ok,
-              }
-            })
-          }),
-        )
-
-        const translated: string[] = []
-
-        for (const { data, success } of response) {
-          if (!success) {
-            return {
-              success: false as const,
-            }
-          }
-
-          const content = data?.choices?.[0]?.message?.content
-
-          if (!content) {
-            req.payload.logger.error(
-              'An error occurred when trying to translate the data using OpenAI API - missing content in the response',
-            )
-
-            return {
-              success: false as const,
-            }
-          }
-
-          let translatedChunk: string[] = []
-
-          try {
-            const parsedResponse = JSON.parse(content)
-
-            // Extract translations array from the response object
-            if (!parsedResponse || typeof parsedResponse !== 'object') {
-              req.payload.logger.error({
-                fullContent: content,
-                message:
-                  'An error occurred when trying to parse the content - response is not an object',
-              })
-
-              return {
-                success: false as const,
-              }
-            }
-
-            if (!parsedResponse.translations) {
-              req.payload.logger.error({
-                fullContent: content,
-                message:
-                  'An error occurred when trying to parse the content - missing "translations" key',
-                parsedResponse,
-              })
-
-              return {
-                success: false as const,
-              }
-            }
-
-            translatedChunk = parsedResponse.translations
-          } catch (e) {
-            req.payload.logger.error({
-              error: e instanceof Error ? e.message : String(e),
-              fullContent: content,
-              message: 'An error occurred when trying to parse the content - JSON parsing failed',
-            })
-
-            return {
-              success: false as const,
-            }
-          }
-
-          if (!Array.isArray(translatedChunk)) {
-            req.payload.logger.error({
-              data: translatedChunk,
-              fullContent: content,
-              message:
-                'An error occurred when trying to translate the data using OpenAI API - parsed content is not an array',
-            })
-
-            return {
-              success: false as const,
-            }
-          }
-
-          for (const text of translatedChunk) {
-            if (text && typeof text !== 'string') {
-              req.payload.logger.error({
-                chunkData: translatedChunk,
-                data: text,
-                fullContent: content,
-                message:
-                  'An error occurred when trying to translate the data using OpenAI API - parsed content is not a string',
-              })
-
-              return {
-                success: false as const,
-              }
-            }
-
-            translated.push(text)
-          }
-        }
-
-        return {
-          success: true as const,
-          translatedTexts: translated,
-        }
-      } catch (e) {
-        if (e instanceof Error) {
-          req.payload.logger.info({
-            message: 'An error occurred when trying to translate the data using OpenAI API',
-            originalErr: e.message,
-          })
-        }
-
-        return { success: false as const }
-      }
-    },
-  }
-}
+    label: 'OpenAI',
+    model,
+  })

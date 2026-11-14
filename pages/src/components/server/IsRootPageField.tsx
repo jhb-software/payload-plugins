@@ -36,7 +36,7 @@ export const IsRootPageField: CheckboxFieldServerComponent = async ({
     <IsRootPageStatus
       field={clientField}
       hasRootPage={hasRootPage}
-      path={(path as string | undefined) ?? field?.name}
+      path={path ?? field?.name}
       readOnly={isReadOnly}
     />
   )

@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
       hookTimeout: 30000, // Increase hook timeout to 30 seconds
       testTimeout: 30000, // Increase test timeout to 30 seconds
       setupFiles: [path.resolve(dirname, 'src/test/vitest.setup.ts')],
+      fileParallelism: false, // test files share one database
     },
   }
 })

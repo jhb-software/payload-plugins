@@ -11,9 +11,8 @@ export const de: GenericTranslationsObject = {
 
     // Button labels
     generateAltText: 'Alternativtext generieren',
-    generateAltTextFor: 'Alternativtext generieren für',
-    image: 'Bild',
-    images: 'Bilder',
+    generateAltTextFor_one: 'Alternativtext für {{count}} Bild generieren',
+    generateAltTextFor_other: 'Alternativtext für {{count}} Bilder generieren',
 
     // Toast messages
     altTextGeneratedSuccess:
@@ -24,9 +23,20 @@ export const de: GenericTranslationsObject = {
       'Fehler beim Generieren des Alternativtextes. Bitte versuchen Sie es erneut.',
     failedToGenerate:
       'Generierung des Alternativtextes fehlgeschlagen. Bitte versuchen Sie es erneut.',
-    failedToGenerateForXImages: 'Generierung des Alternativtextes für {X} Bilder fehlgeschlagen.',
+    failedToGenerateForXImages_one:
+      'Generierung des Alternativtextes für {{count}} Bild fehlgeschlagen.',
+    failedToGenerateForXImages_other:
+      'Generierung des Alternativtextes für {{count}} Bilder fehlgeschlagen.',
     noAltTextGenerated: 'Kein Alternativtext generiert. Bitte versuchen Sie es erneut.',
-    xOfYImagesUpdated: '{X} von {Y} Bildern aktualisiert.',
+    skippedNoAltTextNeeded_one: '{{count}} Datei übersprungen, die keinen Alternativtext benötigt.',
+    skippedNoAltTextNeeded_other:
+      '{{count}} Dateien übersprungen, die keinen Alternativtext benötigen.',
+    skippedUnsupportedFormat_one:
+      'Für {{count}} Datei kann kein Alternativtext generiert werden. Bitte manuell ergänzen.',
+    skippedUnsupportedFormat_other:
+      'Für {{count}} Dateien kann kein Alternativtext generiert werden. Bitte manuell ergänzen.',
+    xOfYImagesUpdated_one: '{{updated}} von {{total}} Bild aktualisiert.',
+    xOfYImagesUpdated_other: '{{updated}} von {{total}} Bildern aktualisiert.',
 
     // Help text
     altTextDescription:
@@ -39,19 +49,23 @@ export const de: GenericTranslationsObject = {
 
     // Tooltips
     pleaseSaveDocumentFirst: 'Bitte speichern Sie zuerst das Dokument',
+    unsupportedMimeType:
+      'Alternativtext-Generierung wird für {{mimeType}}-Dateien nicht unterstützt',
 
     // Validation messages
     theAlternateTextIsRequired: 'Der Alternativtext ist erforderlich.',
 
     // Dashboard widget
-    altTextHealthDescription: 'Status der Bilder mit gesetztem Alternativtext.',
-    altTextHealthWidget: 'Alternativtexte Zustand',
-    collectionCheckFailed: 'Prüfung nicht verfügbar',
+    altTextHealthDescription: 'Alternativtext Abdeckung in allen Upload-Sammlungen.',
+    altTextHealthWidget: 'Alternativtexte',
+    collectionCheckFailed: 'Status nicht verfügbar',
     healthCheckPartialWarning: 'Einige Sammlungen konnten gerade nicht geprüft werden.',
-    localeCount: '{count} Sprachen',
+    localeCount_one: '{{count}} Sprache',
+    localeCount_other: '{{count}} Sprachen',
     noImagesFound: 'In den konfigurierten Sammlungen wurden noch keine Bilder gefunden.',
-    statusHealthy: 'Alternativtexte vorhanden',
-    statusUnhealthy: 'fehlende Alternativtexte',
-    totalImageCount: '{count} Bilder',
+    statusHealthy: 'Alle vorhanden',
+    statusUnhealthy: '{{count}} fehlend',
+    totalImageCount_one: '{{count}} Bild',
+    totalImageCount_other: '{{count}} Bilder',
   },
 }

@@ -3,7 +3,7 @@ export const MAX_INVALID_DOC_IDS = 100
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const hasAltValue = (value: unknown): boolean =>
+export const hasAltValue = (value: unknown): boolean =>
   typeof value === 'string' && value.trim().length > 0
 
 const countFilledLocales = (altValue: unknown, localeCodes: string[]): number => {

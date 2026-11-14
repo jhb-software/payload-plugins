@@ -26,39 +26,37 @@ function getTextFormats(formatNumber: number) {
 }
 ---
 
-{
-  () => {
-    let domItem = node.style ? (
-      <span style={node.style} set:html={node.text ?? ''} />
-    ) : (
-      (node.text ?? '')
-    )
+{() => {
+  let domItem = node.style ? (
+    <span style={node.style} set:html={node.text ?? ''} />
+  ) : (
+    (node.text ?? '')
+  )
 
-    if (typeof node.format === 'number') {
-      const textFormat = getTextFormats(node.format)
-      if (textFormat.bold) {
-        domItem = <strong>{domItem}</strong>
-      }
-      if (textFormat.italic) {
-        domItem = <em>{domItem}</em>
-      }
-      if (textFormat.underline) {
-        domItem = <u>{domItem}</u>
-      }
-      if (textFormat.code) {
-        domItem = <code>{domItem}</code>
-      }
-      if (textFormat.strikethrough) {
-        domItem = <s>{domItem}</s>
-      }
-      if (textFormat.subscript) {
-        domItem = <sub>{domItem}</sub>
-      }
-      if (textFormat.superscript) {
-        domItem = <sup>{domItem}</sup>
-      }
+  if (typeof node.format === 'number') {
+    const textFormat = getTextFormats(node.format)
+    if (textFormat.bold) {
+      domItem = <strong>{domItem}</strong>
     }
-
-    return <>{domItem}</>
+    if (textFormat.italic) {
+      domItem = <em>{domItem}</em>
+    }
+    if (textFormat.underline) {
+      domItem = <u>{domItem}</u>
+    }
+    if (textFormat.code) {
+      domItem = <code>{domItem}</code>
+    }
+    if (textFormat.strikethrough) {
+      domItem = <s>{domItem}</s>
+    }
+    if (textFormat.subscript) {
+      domItem = <sub>{domItem}</sub>
+    }
+    if (textFormat.superscript) {
+      domItem = <sup>{domItem}</sup>
+    }
   }
-}
+
+  return <>{domItem}</>
+}}

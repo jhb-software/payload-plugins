@@ -91,28 +91,26 @@ const Tag = node.tag
 ---
 
 <Tag>
-  {
-    processedItems.map(({ content, nestedLists }) => (
-      <li>
-        {content.length > 0 && (
-          <RichTextRenderer
-            nodes={content}
-            BlockRenderer={BlockRenderer}
-            UploadRenderer={UploadRenderer}
-            slugifyHeadingId={slugifyHeadingId}
-            resolveInternalLink={resolveInternalLink}
-          />
-        )}
-        {nestedLists.map((nestedList) => (
-          <RichTextRenderer
-            nodes={[nestedList]}
-            BlockRenderer={BlockRenderer}
-            UploadRenderer={UploadRenderer}
-            slugifyHeadingId={slugifyHeadingId}
-            resolveInternalLink={resolveInternalLink}
-          />
-        ))}
-      </li>
-    ))
-  }
+  {processedItems.map(({ content, nestedLists }) => (
+    <li>
+      {content.length > 0 && (
+        <RichTextRenderer
+          nodes={content}
+          BlockRenderer={BlockRenderer}
+          UploadRenderer={UploadRenderer}
+          slugifyHeadingId={slugifyHeadingId}
+          resolveInternalLink={resolveInternalLink}
+        />
+      )}
+      {nestedLists.map((nestedList) => (
+        <RichTextRenderer
+          nodes={[nestedList]}
+          BlockRenderer={BlockRenderer}
+          UploadRenderer={UploadRenderer}
+          slugifyHeadingId={slugifyHeadingId}
+          resolveInternalLink={resolveInternalLink}
+        />
+      ))}
+    </li>
+  ))}
 </Tag>

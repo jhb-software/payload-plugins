@@ -1,9 +1,18 @@
 import type { CollectionAfterChangeHook, CollectionBeforeReadHook } from 'payload'
 
+import { hasDraftsEnabled } from 'payload/shared'
+
+import type { Locale } from '../types/Locale.js'
 import type { PageCollectionConfig } from '../types/PageCollectionConfig.js'
 
 import { localeFromRequest, localesFromRequest } from '../utils/localeFromRequest.js'
-import { asPageCollectionConfigOrThrow } from '../utils/pageCollectionConfigHelpers.js'
+import { operationDraft, virtualFieldsWanted } from '../utils/operationContext.js'
+import {
+  asPageCollectionConfigOrThrow,
+  pagesPluginConfigOf,
+} from '../utils/pageCollectionConfigHelpers.js'
+import { parentRefKey, tryResolveParentRef } from '../utils/parentRef.js'
+import { resolveLocaleRouting } from '../utils/resolveLocaleRouting.js'
 import { setPageDocumentVirtualFields } from '../utils/setPageVirtualFields.js'
 import { setRootPageDocumentVirtualFields } from '../utils/setRootPageVirtualFields.js'
 
@@ -16,6 +25,7 @@ export function dependentFields(collectionConfig: PageCollectionConfig): string[
     'slug',
     collectionConfig.page.parent.name,
     collectionConfig.page.breadcrumbs.labelField,
+    ...(hasDraftsEnabled(collectionConfig) ? ['_status'] : []),
   ]
 }
 
@@ -30,8 +40,9 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   doc,
   req,
 }) => {
-  // If the selectDependentFieldsBeforeOperation hook detected that no virtual fields are selected, return early.
-  if (context.generateVirtualFields !== true) {
+  // If the selectDependentFieldsBeforeOperation hook detected that no virtual fields are
+  // selected for this collection, return early.
+  if (!virtualFieldsWanted(context, collection.slug)) {
     return doc
   }
 
@@ -39,19 +50,32 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
 
   const locale = localeFromRequest(req)
   const locales = localesFromRequest(req)
+  const routing = await resolveLocaleRouting({
+    payload: req.payload,
+    pluginConfig: pagesPluginConfigOf(collection),
+    req,
+  })
 
   if (doc.isRootPage) {
     // Root pages don't need async lookups, so no try-catch needed
-    return setRootPageDocumentVirtualFields({
-      breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
-      doc,
-      locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
-      locales,
-    })
+    return withoutFallbackPaths(
+      setRootPageDocumentVirtualFields({
+        breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+        collection,
+        doc,
+        draft: operationDraft(context),
+        locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
+        locales,
+        routing,
+      }),
+      locale,
+    )
   }
 
-  // When the slug is not (yet) set, it is not possible to generate the virtual fields
-  if ((locale && locale !== 'all' && !doc.slug?.[locale]) || !doc.slug) {
+  // Without a slug in any locale there is nothing to build a path from. A slug missing in the
+  // requested locale alone is no reason to stop: the locales which do have one still get their
+  // `alternatePaths`.
+  if (!doc.slug) {
     return doc
   }
 
@@ -62,19 +86,47 @@ export const setVirtualFieldsBeforeRead: CollectionBeforeReadHook = async ({
   }
 
   try {
-    return await setPageDocumentVirtualFields({
-      doc,
-      locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
-      locales,
-      pageConfigAttributes: pageConfig.page,
-      req,
-    })
+    return withoutFallbackPaths(
+      await setPageDocumentVirtualFields({
+        collection,
+        doc,
+        draft: operationDraft(context),
+        locale: locales ? 'all' : undefined, // For localized pages, the CollectionBeforeReadHook should always return the field values for all locales
+        locales,
+        pageConfigAttributes: pageConfig.page,
+        req,
+        routing,
+      }),
+      locale,
+    )
   } catch (error) {
     req.payload.logger.error(
       { err: error },
       `Failed to compute virtual fields for doc (id: ${doc.id})`,
     )
     return doc
+  }
+}
+
+/**
+ * On a single-locale read of a locale without a path, replaces the `path` and `breadcrumbs` locale
+ * maps with `{}` so Payload's locale fallback cannot fill in another locale's URL and trail. A `null`
+ * entry would not stop it: Payload falls back on `null` too.
+ */
+function withoutFallbackPaths(
+  doc: Record<string, unknown>,
+  locale: ReturnType<typeof localeFromRequest>,
+): Record<string, unknown> {
+  const paths = doc.path as Record<Locale, string | undefined> | string | undefined
+
+  if (!locale || locale === 'all' || !paths || typeof paths !== 'object' || paths[locale]) {
+    return doc
+  }
+
+  return {
+    ...doc,
+    ...('breadcrumbs' in doc && { breadcrumbs: {} }),
+    path: {},
   }
 }
 
@@ -98,15 +150,24 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
 
   const pageConfig = asPageCollectionConfigOrThrow(collection)
   const parentField = pageConfig.page.parent.name
+  const draft = operationDraft(req.context)
+  const routing = await resolveLocaleRouting({
+    payload: req.payload,
+    pluginConfig: pagesPluginConfigOf(collection),
+    req,
+  })
 
   let docWithVirtualFields: Record<string, unknown>
 
   if (doc.isRootPage) {
     docWithVirtualFields = setRootPageDocumentVirtualFields({
       breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+      collection,
       doc,
+      draft,
       locale,
       locales,
+      routing,
     })
   } else if (!doc.slug) {
     // When the slug is not (yet) set, it is not possible to generate the path and breadcrumbs
@@ -114,11 +175,14 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   } else {
     try {
       docWithVirtualFields = await setPageDocumentVirtualFields({
+        collection,
         doc,
+        draft,
         locale,
         locales,
         pageConfigAttributes: pageConfig.page,
         req,
+        routing,
       })
     } catch (error) {
       req.payload.logger.error(
@@ -137,21 +201,34 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   // afterChange hooks can access the previous path (e.g. for ISR revalidation).
   // Wrapped in try-catch because previousDoc's parent may no longer exist.
   try {
+    // The parent comparison must be collection-qualified: with a polymorphic parent the same id
+    // can point at different collections, so bare ids are not enough to detect a re-parent.
+    const docParentRef = tryResolveParentRef(doc[parentField], pageConfig.page)
+    const previousParentRef = tryResolveParentRef(previousDoc[parentField], pageConfig.page)
+    const parentUnchanged =
+      docParentRef === null || previousParentRef === null
+        ? docParentRef === previousParentRef
+        : parentRefKey(docParentRef) === parentRefKey(previousParentRef)
+
+    // `_status` counts as well: an unpublish removes the written locale's path from `doc`, while
+    // `previousDoc` still has it for hooks revalidating the URL which just stopped resolving.
     const dependentFieldsUnchanged =
-      extractID(doc[parentField]) === extractID(previousDoc[parentField]) &&
+      parentUnchanged &&
       doc.slug === previousDoc.slug &&
-      doc.isRootPage === previousDoc.isRootPage
+      doc.isRootPage === previousDoc.isRootPage &&
+      doc._status === previousDoc._status
 
     if (dependentFieldsUnchanged) {
+      const meta = docWithVirtualFields.meta as { alternatePaths?: unknown } | undefined
       // Reuse the already-computed virtual fields to avoid redundant DB queries
       Object.assign(previousDoc, {
         breadcrumbs: docWithVirtualFields.breadcrumbs,
         path: docWithVirtualFields.path,
-        ...(docWithVirtualFields.meta?.alternatePaths
+        ...(meta?.alternatePaths
           ? {
               meta: {
                 ...previousDoc.meta,
-                alternatePaths: docWithVirtualFields.meta.alternatePaths,
+                alternatePaths: meta.alternatePaths,
               },
             }
           : {}),
@@ -159,18 +236,24 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
     } else if (previousDoc.isRootPage) {
       const result = setRootPageDocumentVirtualFields({
         breadcrumbLabelField: pageConfig.page.breadcrumbs.labelField,
+        collection,
         doc: previousDoc,
+        draft,
         locale,
         locales,
+        routing,
       })
       Object.assign(previousDoc, result)
     } else if (previousDoc.slug) {
       const result = await setPageDocumentVirtualFields({
+        collection,
         doc: previousDoc,
+        draft,
         locale,
         locales,
         pageConfigAttributes: pageConfig.page,
         req,
+        routing,
       })
       Object.assign(previousDoc, result)
     }
@@ -184,18 +267,4 @@ export const setVirtualFieldsAfterChange: CollectionAfterChangeHook = async ({
   }
 
   return docWithVirtualFields
-}
-
-/** Extracts a plain ID from a value that may be a raw ID or a populated document object. */
-function extractID(value: unknown): null | number | string | undefined {
-  if (value === null || value === undefined) {
-    return value
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    return value
-  }
-  if (typeof value === 'object' && 'id' in value) {
-    return (value as { id: number | string }).id
-  }
-  return undefined
 }

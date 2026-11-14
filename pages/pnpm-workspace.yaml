@@ -3,3 +3,41 @@ packages:
   - './dev'
   - './dev_unlocalized'
   - './dev_multi_tenant'
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
+  sharp: true
+
+minimumReleaseAgeExclude:
+  - '@payloadcms/translations@3.90.1'
+  - '@payloadcms/ui@3.90.1'
+  - payload@3.90.1
+  - '@payloadcms/db-mongodb@3.90.1'
+  - '@payloadcms/db-sqlite@3.90.1'
+  - '@payloadcms/next@3.90.1'
+  - '@payloadcms/plugin-multi-tenant@3.90.1'
+  - '@payloadcms/drizzle@3.90.1'
+  - '@payloadcms/graphql@3.90.1'
+
+overrides:
+  js-yaml: '^4.3.2'
+  mongoose: '^8.24.7'
+  dompurify: '^3.4.13'
+  prettier: '3.10.1'
+  '@eslint/plugin-kit': '^0.3.4'
+  esbuild: '^0.28.1'
+  next: '16.4.6'
+  'minimatch@>=7.0.0 <11.0.1': '^11.0.1'
+  'undici@>=7.0.0 <7.29.1': '^7.29.1'
+  'brace-expansion@<1.1.21': '^1.1.21'
+  '@typescript-eslint/utils': '^8.59.3'
+  '@typescript-eslint/eslint-plugin': '^8.59.3'
+  '@typescript-eslint/parser': '^8.59.3'
+  '@typescript-eslint/type-utils': '^8.59.3'
+  '@typescript-eslint/scope-manager': '^8.59.3'
+  '@typescript-eslint/types': '^8.59.3'
+  '@typescript-eslint/typescript-estree': '^8.59.3'
+  '@typescript-eslint/visitor-keys': '^8.59.3'
+  typescript-eslint: '^8.59.3'
+  eslint: '^9.39.4'
+  '@eslint/js': '^9.39.4'

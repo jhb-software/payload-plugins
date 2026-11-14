@@ -38,6 +38,6 @@ export function alternatePathsField(): Field {
         // The alternate paths are generated in the setVirtualFields collection hook
       ],
     },
-    validate: (_: any): true => true,
+    validate: (): true => true,
   }
 }

@@ -1,5 +1,6 @@
 import { de } from './de.js'
 import { en } from './en.js'
+import { fr } from './fr.js'
 
 // copied from https://github.com/payloadcms/payload/blob/main/packages/translations/src/types.ts
 export type GenericTranslationsObject = {
@@ -19,15 +20,14 @@ export type NestedKeysStripped<T> = T extends object
 
 // copied from https://github.com/payloadcms/payload/blob/main/packages/translations/src/types.ts
 export type StripCountVariants<TKey> = TKey extends
-  | `${infer Base}_many`
-  | `${infer Base}_one`
-  | `${infer Base}_other`
+  `${infer Base}_many` | `${infer Base}_one` | `${infer Base}_other`
   ? Base
   : TKey
 
 export const translations = {
   de,
   en,
+  fr,
 }
 
 export type PluginAdminSearchTranslations = GenericTranslationsObject

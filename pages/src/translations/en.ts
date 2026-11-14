@@ -13,6 +13,8 @@ export const en: GenericTranslationsObject = {
     creatingRedirect: 'Creating redirect...',
     isRootPage: 'is Root Page',
     label: 'Label',
+    noPathAncestorWithoutSlug:
+      'This page has no URL in this language: one of its parent pages has no slug in it.',
     parent: 'Parent Page',
     path: 'Path',
     redirectCreated: 'Redirect Created',
@@ -22,8 +24,10 @@ export const en: GenericTranslationsObject = {
     revertSlug: 'Revert change',
     rootPage: 'Root Page',
     showBreadcrumbs: 'Show Breadcrumbs',
+    slugCannotBeALocaleCode:
+      'The slug "{{slug}}" is reserved: it is a locale code, which paths use as the locale prefix.',
     slugWasChangedFromXToY:
-      'The slug was changed from <code>{X}</code> to <code>{Y}</code>. A redirect from the old to the new path is required.',
-    syncSlugWithX: 'Sync with {X}',
+      'The slug was changed from <code>{{from}}</code> to <code>{{to}}</code>. A redirect from the old to the new path is required.',
+    syncSlugWithX: 'Sync with {{field}}',
   },
 }

@@ -1,6 +1,14 @@
 'use client'
 
-import { Button, toast, useDocumentInfo, useField, useLocale, useTranslation } from '@payloadcms/ui'
+import {
+  Button,
+  toast,
+  useConfig,
+  useDocumentInfo,
+  useField,
+  useLocale,
+  useTranslation,
+} from '@payloadcms/ui'
 import { useTransition } from 'react'
 
 import type {
@@ -8,17 +16,34 @@ import type {
   PluginAltTextTranslations,
 } from '../translations/index.js'
 
+import { PLUGIN_SLUG } from '../constants.js'
 import { Lightning } from './icons/Lightning.js'
 import { Spinner } from './icons/Spinner.js'
 
-export function GenerateAltTextButton() {
+export function GenerateAltTextButton({ supportedMimeTypes }: { supportedMimeTypes?: string[] }) {
   const { t } = useTranslation<PluginAltTextTranslations, PluginAltTextTranslationKeys>()
-  const { id, collectionSlug } = useDocumentInfo()
+  const { id, collectionSlug, docPermissions } = useDocumentInfo()
   const locale = useLocale()
   const [isPending, startTransition] = useTransition()
+  const {
+    config: {
+      routes: { api: apiRoute },
+      serverURL,
+    },
+  } = useConfig()
 
   const { setValue: setKeywords } = useField<string>({ path: 'keywords' })
   const { setValue: setAltText } = useField<string>({ path: 'alt' })
+  const { value: mimeType } = useField<string>({ path: 'mimeType' })
+
+  const isUnsupportedMimeType =
+    !!mimeType && !!supportedMimeTypes && !supportedMimeTypes.includes(mimeType)
+
+  // Hide the generate button from users who cannot update the document — the
+  // generated alt text would not be persistable by them anyway.
+  if (!docPermissions?.update) {
+    return null
+  }
 
   const handleGenerateAltText = () => {
     if (!collectionSlug || !id) {
@@ -28,7 +53,7 @@ export function GenerateAltTextButton() {
 
     startTransition(async () => {
       try {
-        const response = await fetch('/api/alt-text-plugin/generate-alt-text', {
+        const response = await fetch(`${serverURL ?? ''}${apiRoute}/${PLUGIN_SLUG}/generate`, {
           body: JSON.stringify({
             id: id as string,
             collection: collectionSlug,
@@ -81,11 +106,15 @@ export function GenerateAltTextButton() {
       </div>
       <div style={{ alignItems: 'center', display: 'flex' }}>
         <Button
-          disabled={isPending || !id}
+          disabled={isPending || !id || isUnsupportedMimeType}
           icon={isPending ? <Spinner /> : <Lightning />}
           onClick={handleGenerateAltText}
           tooltip={
-            !id ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst') : undefined
+            isUnsupportedMimeType
+              ? t('@jhb.software/payload-alt-text-plugin:unsupportedMimeType', { mimeType })
+              : !id
+                ? t('@jhb.software/payload-alt-text-plugin:pleaseSaveDocumentFirst')
+                : undefined
           }
         >
           {t('@jhb.software/payload-alt-text-plugin:generateAltText')}

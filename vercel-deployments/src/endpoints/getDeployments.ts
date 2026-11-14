@@ -1,0 +1,145 @@
+import type { PayloadHandler, PayloadRequest } from 'payload'
+
+import type { VercelDeploymentsPluginConfig } from '../types.js'
+
+import { hasAccess } from '../utilities/hasAccess.js'
+import { resolveTarget } from '../utilities/resolveTarget.js'
+import { VercelApiClient } from '../utilities/vercelApiClient.js'
+
+export type DeploymentsInfo = {
+  lastReadyDeployment:
+    | {
+        inspectorUrl: null | string
+        readyAt: string
+        status: 'READY'
+        uid: string
+      }
+    | undefined
+
+  latestDeployment:
+    | {
+        createdAt: string
+        inspectorUrl: null | string
+        status: string
+        uid: string
+      }
+    | undefined
+}
+
+/**
+ * GET /vercel-deployments
+ *
+ * Without query params: returns the active (latest READY) and latest production deployment.
+ * With ?id=<deploymentId>: returns the status of a specific deployment.
+ *
+ * Requires authentication.
+ */
+export const getDeploymentsEndpoint: PayloadHandler = async (req: PayloadRequest) => {
+  const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
+    undefined | VercelDeploymentsPluginConfig
+
+  if (!pluginConfig) {
+    return Response.json({ error: 'Plugin config not found' }, { status: 500 })
+  }
+
+  if (!(await hasAccess({ pluginConfig, req }))) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const url = new URL(req.url!)
+  const id = url.searchParams.get('id')
+
+  // A Vercel deployment id is an opaque token (e.g. `dpl_…`). Reject anything
+  // that isn't, so a caller cannot pass path separators or `../` segments that
+  // would change which upstream Vercel API path gets requested.
+  if (id !== null && !/^[\w-]+$/.test(id)) {
+    return Response.json({ error: 'Invalid deployment id' }, { status: 400 })
+  }
+
+  try {
+    const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
+
+    // Single deployment lookup — the path the poller hits every 5s while a build runs.
+    //
+    // A deployment id addresses any deployment in the Vercel team, so it has to be checked
+    // against the project this request is scoped to; otherwise one tenant's admin could read
+    // the status of another tenant's deployment by guessing an id. The target is resolved
+    // alongside the Vercel call rather than before it, so the check costs no extra latency.
+    if (id) {
+      const [deployment, { projectId }] = await Promise.all([
+        vercelClient.getDeployment({
+          idOrUrl: id,
+          teamId: pluginConfig.vercel.teamId,
+        }),
+        resolveTarget({ pluginConfig, req }),
+      ])
+
+      // Answered as "not found" rather than "forbidden": whether a deployment id exists in
+      // another project is itself something this request has no business learning.
+      if (!projectId || deployment.projectId !== projectId) {
+        return Response.json({ error: 'Deployment not found' }, { status: 404 })
+      }
+
+      return Response.json({
+        id: deployment.id,
+        status: deployment.status,
+      })
+    }
+
+    const { projectId } = await resolveTarget({ pluginConfig, req })
+
+    if (!projectId) {
+      return Response.json(
+        { error: 'No Vercel project configured for this request' },
+        { status: 400 },
+      )
+    }
+
+    // List latest production deployments
+    const deploymentsResponse = await vercelClient.getDeployments({
+      limit: 10,
+      projectId,
+      target: 'production',
+      teamId: pluginConfig.vercel.teamId,
+    })
+
+    const lastReadyDeployment = deploymentsResponse.deployments.find(
+      (deployment) => deployment.state === 'READY',
+    )
+    const latestDeployment = deploymentsResponse.deployments.at(0)
+
+    const result: DeploymentsInfo = {
+      lastReadyDeployment: lastReadyDeployment
+        ? {
+            inspectorUrl: lastReadyDeployment.inspectorUrl,
+            readyAt: new Date(
+              typeof lastReadyDeployment.ready === 'number'
+                ? lastReadyDeployment.ready
+                : lastReadyDeployment.created,
+            ).toISOString(),
+            status: 'READY',
+            uid: lastReadyDeployment.uid,
+          }
+        : undefined,
+      latestDeployment:
+        latestDeployment && latestDeployment.state
+          ? {
+              createdAt: new Date(latestDeployment.created).toISOString(),
+              inspectorUrl: latestDeployment.inspectorUrl,
+              status: latestDeployment.state,
+              uid: latestDeployment.uid,
+            }
+          : undefined,
+    }
+
+    return Response.json(result)
+  } catch (error) {
+    req.payload.logger.error({ err: error }, 'Error fetching deployment info')
+    return Response.json(
+      {
+        error: `Error fetching deployment info: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      },
+      { status: 500 },
+    )
+  }
+}

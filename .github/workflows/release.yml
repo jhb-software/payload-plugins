@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: 'Plugin to release'
+        required: true
+        type: choice
+        options:
+          - admin-search
+          - alt-text
+          - astro-payload-richtext-lexical
+          - chat-agent
+          - cloudinary
+          - content-translator
+          - geocoding
+          - pages
+          - vercel-deployments
+      bump:
+        description: 'Version bump type (use "none" to publish the current version as-is)'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - beta
+          - none
+
+# Prevent concurrent releases to avoid race conditions when pushing to main
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          scope: ${{ inputs.plugin }}
+
+      - name: Bump version
+        id: version
+        run: |
+          cd ${{ inputs.plugin }}
+          if [ "${{ inputs.bump }}" = "beta" ]; then
+            CURRENT=$(node -p "require('./package.json').version")
+            # Starting a beta series from a stable release opens the next minor
+            # (0.8.0 -> 0.9.0-beta.0); a beta on top of an existing prerelease
+            # just increments the prerelease counter (0.9.0-beta.0 -> 0.9.0-beta.1).
+            if [[ "$CURRENT" == *-* ]]; then
+              npm version prerelease --preid=beta --no-git-tag-version
+            else
+              npm version preminor --preid=beta --no-git-tag-version
+            fi
+          elif [ "${{ inputs.bump }}" != "none" ]; then
+            npm version ${{ inputs.bump }} --no-git-tag-version
+          fi
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Verify changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHANGELOG="${{ inputs.plugin }}/CHANGELOG.md"
+          FIRST_H2=$(grep -m 1 "^## " "$CHANGELOG" | sed 's/^## //')
+          if [ "$FIRST_H2" != "$VERSION" ]; then
+            echo "::error::CHANGELOG.md first heading is '## ${FIRST_H2}' but expected '## ${VERSION}'. Please update the changelog before releasing."
+            exit 1
+          fi
+
+      # Commit and push BEFORE npm publish so that if push fails,
+      # we haven't published an irreversible npm release yet.
+      - name: Commit version bump and push
+        if: inputs.bump != 'none'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ inputs.plugin }}/package.json
+          git commit -m "release(${{ inputs.plugin }}): v${{ steps.version.outputs.version }}"
+          # Pull with rebase in case main advanced (e.g. from a merge) since checkout
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Publish to npm
+        run: |
+          cd ${{ inputs.plugin }}
+          # Beta prereleases (e.g. 0.1.0-beta.9) publish under the `beta` dist-tag
+          # so they don't move `latest`. Stable versions use latest.
+          if [[ "${{ steps.version.outputs.version }}" == *-beta.* ]]; then
+            pnpm publish --no-git-checks --provenance --access public --tag beta
+          else
+            pnpm publish --no-git-checks --provenance --access public
+          fi
+
+      # Tag and GitHub release happen after npm publish so the tag
+      # only exists when the package is actually on the registry.
+      - name: Create tag
+        run: |
+          git tag "${{ inputs.plugin }}@${{ steps.version.outputs.version }}"
+          git push origin "${{ inputs.plugin }}@${{ steps.version.outputs.version }}"
+
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHANGELOG="${{ inputs.plugin }}/CHANGELOG.md"
+          # Extract the section between the first ## heading and the next ## heading (or EOF)
+          BODY=$(awk '/^## /{if(found) exit; found=1; next} found{print}' "$CHANGELOG")
+          # Use a delimiter to handle multiline output
+          echo "body<<CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.plugin }}@${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.package_name }}@${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.body }}
+          # Mark prerelease versions (0.1.0-beta.0, 1.2.3-rc.1, etc.) as such
+          # on GitHub. Detected via the `-` separator in SemVer prerelease
+          # tags; stable versions never contain `-`.
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url'
 import { Articles } from './collection/articles'
 import { Pages } from './collection/pages'
 import { testEmailAdapter } from './emailAdapter'
-import { databaseAdapter } from './test/databaseAdapter'
+import { databaseAdapter } from './databaseAdapter'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -16,6 +16,7 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    meta: { titleSuffix: '- Geocoding Dev' },
     user: 'users',
   },
   collections: [

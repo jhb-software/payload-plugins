@@ -10,12 +10,14 @@
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "Breadcrumbs".
  */
-export type Breadcrumbs = {
-  slug: string;
-  path: string;
-  label: string;
-  id?: string | null;
-}[];
+export type Breadcrumbs =
+  | {
+      slug: string;
+      path?: string | null;
+      label: string;
+      id?: string | null;
+    }[]
+  | null;
 /**
  * Supported timezones in IANA format.
  *
@@ -78,6 +80,7 @@ export interface Config {
   blocks: {};
   collections: {
     pages: Page;
+    topics: Topic;
     authors: Author;
     blogposts: Blogpost;
     'blogpost-categories': BlogpostCategory;
@@ -93,6 +96,7 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     pages: PagesSelect<false> | PagesSelect<true>;
+    topics: TopicsSelect<false> | TopicsSelect<true>;
     authors: AuthorsSelect<false> | AuthorsSelect<true>;
     blogposts: BlogpostsSelect<false> | BlogpostsSelect<true>;
     'blogpost-categories': BlogpostCategoriesSelect<false> | BlogpostCategoriesSelect<true>;
@@ -148,12 +152,37 @@ export interface Page {
   isRootPage?: boolean | null;
   slug: string;
   parent?: (number | null) | Page;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   content: string;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "topics".
+ */
+export interface Topic {
+  id: number;
+  slug: string;
+  parent:
+    | {
+        relationTo: 'pages';
+        value: number | Page;
+      }
+    | {
+        relationTo: 'topics';
+        value: number | Topic;
+      };
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
+  title: string;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -164,8 +193,8 @@ export interface Author {
   id: number;
   slug: string;
   parent: number | Page;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   name: string;
   content: string;
   updatedAt: string;
@@ -179,8 +208,8 @@ export interface Blogpost {
   id: number;
   slug: string;
   author: number | Author;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   shortTitle: string;
   content: string;
@@ -219,8 +248,8 @@ export interface Country {
   id: number;
   slug: string;
   parent: number | Page;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   content: string;
   updatedAt: string;
@@ -235,8 +264,8 @@ export interface CountryTravelTip {
   id: number;
   slug: string;
   country: number | Country;
-  path: string;
-  breadcrumbs: Breadcrumbs;
+  path?: string | null;
+  breadcrumbs?: Breadcrumbs;
   title: string;
   content: string;
   updatedAt: string;
@@ -256,6 +285,7 @@ export interface User {
   resetPasswordExpiration?: string | null;
   salt?: string | null;
   hash?: string | null;
+  resetPasswordRequestedAt?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
   sessions?:
@@ -295,6 +325,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pages';
         value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'topics';
+        value: number | Topic;
       } | null)
     | ({
         relationTo: 'authors';
@@ -380,6 +414,7 @@ export interface PagesSelect<T extends boolean = true> {
   content?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -391,6 +426,21 @@ export interface BreadcrumbsSelect<T extends boolean = true> {
   path?: T;
   label?: T;
   id?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "topics_select".
+ */
+export interface TopicsSelect<T extends boolean = true> {
+  slug?: T;
+  parent?: T;
+  path?: T;
+  breadcrumbs?: T | BreadcrumbsSelect<T>;
+  title?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -485,6 +535,7 @@ export interface UsersSelect<T extends boolean = true> {
   resetPasswordExpiration?: T;
   salt?: T;
   hash?: T;
+  resetPasswordRequestedAt?: T;
   loginAttempts?: T;
   lockUntil?: T;
   sessions?:

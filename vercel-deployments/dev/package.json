@@ -1,0 +1,39 @@
+{
+  "name": "vercel-deployments-test-app",
+  "description": "Test app for Vercel Deployments plugin",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=\"${NODE_OPTIONS} --no-deprecation\" next dev --webpack",
+    "devturbo": "pnpm dev --turbo",
+    "devsafe": "rm -rf .next && pnpm dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build --webpack",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "format": "prettier --write src",
+    "payload": "payload",
+    "generate:types": "payload generate:types",
+    "generate:schema": "payload-graphql generate:schema",
+    "generate:importmap": "payload generate:importmap"
+  },
+  "dependencies": {
+    "@jhb.software/payload-vercel-deployments": "workspace:*",
+    "@payloadcms/db-mongodb": "^3.93.0",
+    "@payloadcms/next": "^3.93.0",
+    "@payloadcms/plugin-multi-tenant": "^3.93.0",
+    "@payloadcms/translations": "^3.93.0",
+    "@payloadcms/ui": "^3.93.0",
+    "next": "16.4.6",
+    "payload": "^3.93.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.8.0"
+}

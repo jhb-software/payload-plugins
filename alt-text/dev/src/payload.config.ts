@@ -1,15 +1,66 @@
-import { openAIResolver, payloadAltTextPlugin } from '@jhb.software/payload-alt-text-plugin'
+import {
+  anthropicResolver,
+  bulkGenerateAltTexts,
+  mistralResolver,
+  openAIResolver,
+  payloadAltTextPlugin,
+  validateAltText,
+} from '@jhb.software/payload-alt-text-plugin'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
+import { getTenantFromCookie } from '@payloadcms/plugin-multi-tenant/utilities'
 import { de } from '@payloadcms/translations/languages/de'
 import { en } from '@payloadcms/translations/languages/en'
+// ru has no bundled plugin strings: switching the admin language to it exercises the English fallback (issue #220)
+import { ru } from '@payloadcms/translations/languages/ru'
 import path from 'path'
+import type { Where } from 'payload'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Media } from './collections/Media'
 import { Images } from './collections/Images'
+import { MediaWithFolders } from './collections/MediaWithFolders'
+import { Tenants } from './collections/Tenants'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
+
+/**
+ * Stands in for the async work a signed CDN URL needs (S3 presigning, minting a
+ * short-lived token). The dev CDN route ignores the signature; the point is that
+ * `getImageThumbnail` is allowed to await.
+ */
+async function signThumbnailUrl(url: string): Promise<string> {
+  const expires = Date.now() + 60_000
+  return await Promise.resolve(`${url}?expires=${expires}`)
+}
+
+/**
+ * Whether the configured resolver downloads the thumbnail itself and sends the
+ * bytes. Decides which thumbnail URL is usable below.
+ */
+const resolverInlinesImageBytes = Boolean(
+  process.env.ANTHROPIC_API_KEY || process.env.MISTRAL_API_KEY,
+)
+
+/**
+ * A publicly hosted stand-in for the dev app's own thumbnails, sized down via
+ * Pexels' query parameters: the full-resolution file is 8 MB, above the raw-byte
+ * guard the Anthropic resolver derives from Claude's base64-measured 10 MB
+ * ceiling.
+ */
+const publicSampleImageUrl =
+  'https://images.pexels.com/photos/16981245/pexels-photo-16981245.jpeg?auto=compress&cs=tinysrgb&w=1200'
+
+/**
+ * A house style rule appended to the instructions every bundled resolver sends
+ * on its own. Deliberately observable in the output: an alt text generated with
+ * it names a dominant colour, one generated without it usually does not.
+ */
+const houseStyleInstructions = ({ defaultInstructions }: { defaultInstructions: string }) =>
+  `${defaultInstructions}\n\nAlways name the dominant colour of the main subject.`
 
 export default buildConfig({
   admin: {
@@ -17,15 +68,25 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    dashboard: {
+      defaultLayout: [{ widgetSlug: 'alt-text-health', width: 'full' }],
+    },
+    components: {
+      beforeDashboard: ['/src/components/FillMissingAltTexts#FillMissingAltTexts'],
+    },
+    meta: { titleSuffix: '- Alt Text Dev' },
     user: 'users',
   },
   localization: {
     locales: ['en', 'de'],
     defaultLocale: 'en',
-    fallback: true,
+    // `fallback: false` reproduces the folder-move scenario from #95:
+    // a doc with alt text only in `en` truly has empty alt in `de`, so the
+    // pre-fix validator rejected folder moves that didn't touch the alt field.
+    fallback: false,
   },
   i18n: {
-    supportedLanguages: { en, de },
+    supportedLanguages: { en, de, ru },
   },
   collections: [
     {
@@ -35,6 +96,28 @@ export default buildConfig({
     },
     Media,
     Images,
+    MediaWithFolders,
+    Tenants,
+  ],
+  endpoints: [
+    // Calls bulk generation in-process, the way a custom endpoint, a job or an
+    // MCP tool would, instead of going through `POST /api/alt-text/generate/bulk`.
+    // The plugin's `access` option is not applied here, so check it yourself.
+    {
+      path: '/fill-missing-alt-texts',
+      method: 'post',
+      handler: async (req) => {
+        if (!req.user) {
+          return Response.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const { collection } = (await req.json?.()) as { collection: string }
+
+        return Response.json(
+          await bulkGenerateAltTexts({ collection, limit: 5, onlyMissing: true, req }),
+        )
+      },
+    },
   ],
   db: mongooseAdapter({
     url: process.env.MONGODB_URL!,
@@ -44,16 +127,158 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   plugins: [
+    multiTenantPlugin({
+      collections: { images: {}, media: {} },
+      userHasAccessToAllTenants: () => true,
+    }),
     payloadAltTextPlugin({
-      collections: ['media', 'images'], // Specify which upload collections should have alt text fields
-      resolver: openAIResolver({
-        apiKey: process.env.OPENAI_API_KEY!,
-        model: 'gpt-4.1-mini',
-      }),
-      healthCheck: true,
-      getImageThumbnail: (doc: Record<string, unknown>) => {
-        // in a real application, you would use a function to get a thumbnail URL (e.g. from the sizes)
-        return doc.url as string
+      collections: [
+        // `media` accepts both images and videos — restrict alt text tracking to images only.
+        { slug: 'media', mimeTypes: ['image/*'] },
+        // Bare slug defaults to `['image/*']`.
+        'images',
+        // Demonstrates the per-collection `validate` option: skip the required-alt
+        // check when the request body does not touch `alt` (e.g. folder moves,
+        // partial API updates). Without this, folder moves on docs with empty
+        // locales fail validation under `localization.fallback: false`. See #95.
+        {
+          slug: 'media-with-folders',
+          // Not served through the image CDN below, so it opts out of the
+          // plugin-level `imageThumbnailMimeType` and is checked on each
+          // document's own mime type again.
+          imageThumbnailMimeType: null,
+          validate: (value, args) => {
+            const { req } = args
+            if (!req.data || !('alt' in req.data)) return true
+            return validateAltText(value, args)
+          },
+        },
+      ],
+      // Set ANTHROPIC_API_KEY or MISTRAL_API_KEY to exercise the resolvers that
+      // send the image bytes instead of handing the provider a URL — the case
+      // `imageThumbnailMimeType` below exists for, since a media type cannot be
+      // sniffed from a URL.
+      //
+      // Every resolver takes the same `instructions` extension point, so the
+      // house style rule below applies whichever one runs. Generate an alt text
+      // for the seeded sample image and the result names a colour — proof the
+      // appended rule reached the provider on top of the default instructions.
+      resolver: process.env.ANTHROPIC_API_KEY
+        ? anthropicResolver({
+            apiKey: process.env.ANTHROPIC_API_KEY,
+            instructions: houseStyleInstructions,
+            // `claude-sonnet-5` is the cheaper choice for a large library.
+            // `claude-haiku-4-5` works as well, but rejects `effort`, so drop
+            // the line below when switching to it.
+            model: 'claude-opus-5',
+            effort: 'low',
+          })
+        : process.env.MISTRAL_API_KEY
+          ? mistralResolver({
+              apiKey: process.env.MISTRAL_API_KEY,
+              instructions: houseStyleInstructions,
+              model: 'mistral-medium-latest',
+            })
+          : openAIResolver({
+              apiKey: process.env.OPENAI_API_KEY!,
+              instructions: houseStyleInstructions,
+              model: 'gpt-4.1-mini',
+              // Pointing `baseUrl` at another OpenAI-compatible provider? Declare
+              // the formats that provider accepts instead of inheriting OpenAI's
+              // list:
+              // supportedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+            }),
+      // Narrows generation and the health report to a tenant's locales. Switch
+      // the selector to Globex and the widget counts German alone, instead of
+      // reporting its images as permanently incomplete.
+      //
+      // During generation `doc` is the image, so its own tenant decides: bulk
+      // generate Acme and Globex images together (no tenant selected) and each
+      // is written in its tenant's locales only. The health report passes no
+      // `doc`, so it falls back to the tenant selected in the cookie.
+      filterLocales: async ({ doc, locales, req }) => {
+        const docTenant = doc?.tenant
+        const tenantId =
+          (docTenant && typeof docTenant === 'object'
+            ? (docTenant as { id: number | string }).id
+            : (docTenant as number | string | undefined)) ??
+          getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+        if (!tenantId) {
+          return locales
+        }
+
+        const tenant = await req.payload.findByID({
+          id: tenantId,
+          collection: 'tenants',
+          depth: 0,
+          req,
+          select: { locales: true },
+        })
+
+        return tenant?.locales?.length ? tenant.locales : locales
+      },
+      // Cap how many images a single bulk-generate request may process.
+      // Selecting more than this in the list view returns a 400 instead of
+      // fanning out into an unbounded number of paid resolver calls.
+      maxBulkGenerateIds: 25,
+      healthCheck: {
+        // Behind several instances without a shared cache handler, a write
+        // revalidates only the instance that handled it. Start the dev app
+        // with HEALTH_CHECK_CACHE=false to compute the report on every request.
+        cache: process.env.HEALTH_CHECK_CACHE !== 'false',
+        // Gates the collection-wide health report (endpoint and widget) more
+        // strictly than the per-document generate endpoints, which allow any
+        // authenticated user: here only the designated admin sees it.
+        access: ({ req }) => req.user?.email === 'dev@payloadcms.com',
+        // Counts only the images of the tenant selected in the admin panel.
+        // Switch tenants in the selector and the widget's numbers follow.
+        baseFilter: ({ collection, req }): Where => {
+          // `media-with-folders` is shared across tenants, so it carries no
+          // `tenant` field — scoping it would be an error. This is why the
+          // filter is resolved per collection.
+          if (collection === 'media-with-folders') {
+            return {}
+          }
+
+          const tenant = getTenantFromCookie(req.headers, req.payload.db.defaultIDType)
+
+          // No tenant selected: report every document, matching what the tenant
+          // selector shows.
+          return tenant ? { tenant: { equals: tenant } } : {}
+        },
+      },
+      // `media` and `images` are the website's images: they are served through
+      // an image CDN that always emits WebP, whatever was uploaded. Declaring
+      // that delivered format takes the stored mime type out of the decision
+      // entirely — upload an AVIF or HEIC image and the Generate button stays
+      // enabled and generation succeeds, even though neither resolver accepts
+      // those source formats.
+      imageThumbnailMimeType: 'image/webp',
+      // Async because real CDNs usually want a signed URL. `signThumbnailUrl`
+      // stands in for S3 presigning or a signed-CDN token here.
+      getImageThumbnail: async (doc, { collection }) => {
+        // The `collection` argument lets one function build a different URL per
+        // collection — here, the CDN for the website's images and the raw
+        // origin url for the collection that does not sit behind it.
+        if (collection === 'media-with-folders') {
+          return doc.url as string
+        }
+
+        // The CDN route below runs on this machine, so only a resolver that
+        // downloads the bytes itself can read it. `openAIResolver` hands the URL
+        // to OpenAI and lets OpenAI fetch it, which no localhost URL survives:
+        // their fetcher answers `Error while downloading file. Upstream status
+        // code: 407`. Point that resolver at a publicly hosted image instead.
+        //
+        // The generated alt text then describes that image rather than the
+        // uploaded file — which is the contract on display: a resolver sees what
+        // this function returns, not what was uploaded.
+        if (!resolverInlinesImageBytes) {
+          return publicSampleImageUrl
+        }
+
+        return await signThumbnailUrl(`${serverURL}/api/image-cdn/${collection}/${doc.id}`)
       },
     }),
   ],
@@ -71,6 +296,75 @@ export default buildConfig({
           password: 'test',
         },
       })
+    }
+
+    // Seeding a plugin-managed collection from `onInit` runs the plugin's
+    // `afterChange` hook — and with it the health cache revalidation — while
+    // the admin route is rendering. Deliberately no `disableRevalidate` in the
+    // context: this exercises the `after()`-deferred revalidation that keeps
+    // render-time writes from crashing with `revalidateTag … during render`.
+    const existingMedia = await payload.find({
+      collection: 'media',
+      limit: 1,
+    })
+
+    if (existingMedia.docs.length === 0) {
+      await payload.create({
+        collection: 'media',
+        data: {
+          alt: 'Sample image seeded from onInit',
+        },
+        filePath: path.resolve(dirname, '../seed/sample-image.png'),
+      })
+    }
+
+    // No resolver reads SVG: a bulk run over this collection reports it as
+    // skipped rather than failed. (`media` declares a thumbnail type, so only
+    // this collection still checks each document's own format.)
+    const existingLogo = await payload.find({
+      collection: 'media-with-folders',
+      limit: 1,
+    })
+
+    if (existingLogo.docs.length === 0) {
+      await payload.create({
+        collection: 'media-with-folders',
+        data: { alt: 'A logo an editor has to describe by hand' },
+        filePath: path.resolve(dirname, '../seed/sample-logo.svg'),
+      })
+    }
+
+    // Two tenants whose numbers differ when the tenant selector is switched:
+    // Acme serves both locales and has one image in English only (partial),
+    // Globex serves German alone and has one complete image and one empty.
+    const existingTenants = await payload.find({ collection: 'tenants', limit: 1 })
+
+    if (existingTenants.docs.length === 0) {
+      const seedImage = path.resolve(dirname, '../seed/sample-image.png')
+
+      const acme = await payload.create({
+        collection: 'tenants',
+        data: { name: 'Acme', locales: ['en', 'de'] },
+      })
+      const globex = await payload.create({
+        collection: 'tenants',
+        data: { name: 'Globex', locales: ['de'] },
+      })
+
+      const images: { alt: string; locale: 'de' | 'en'; tenant: string }[] = [
+        { alt: 'An Acme product photo', locale: 'en', tenant: acme.id as string },
+        { alt: 'Ein Globex Produktfoto', locale: 'de', tenant: globex.id as string },
+        { alt: '', locale: 'de', tenant: globex.id as string },
+      ]
+
+      for (const { alt, locale, tenant } of images) {
+        await payload.create({
+          collection: 'images',
+          data: { alt, tenant },
+          filePath: seedImage,
+          locale,
+        })
+      }
     }
   },
 })

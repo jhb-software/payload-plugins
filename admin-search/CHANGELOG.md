@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
+
+## 0.5.0
+
+- chore: require Payload `^3.90.1`, which ships critical security fixes
+- fix: admin languages the plugin ships no strings for fall back to the English strings instead of rendering raw translation keys
+- feat: add French translations
+- fix: the header search button no longer causes a hydration mismatch on macOS, where the server rendered the `Ctrl+K` tooltip and the browser `⌘K`, making React re-render the whole admin page on the client
+
+## 0.4.0
+
+- feat: add a `baseFilter` option restricting search results to a constraint resolved against the current request, e.g. the tenant selected in a multi-tenant admin panel. A filter that cannot be evaluated is logged and the search returns no results, rather than widening to the documents the filter was meant to hide
+- fix: the result list shown before anything is typed now honours the same five-result limit as a typed search, instead of listing ten
+- **BREAKING**: the header component moved from `@jhb.software/payload-admin-search/client#SearchWrapper` to `@jhb.software/payload-admin-search/rsc#SearchWrapper`, and `/client` now provides `SearchWrapperClient` in its place. **Run `payload generate:importmap` after upgrading**, otherwise the search disappears from the admin header.
+
+## 0.3.0
+
+- feat: broaden Next.js peer dependency to `^15.0.0 || ^16.0.0` so the plugin can be installed alongside Next.js 16
+- refactor: use i18next interpolation for translations
+
 ## 0.2.1
 
 - fix: use collection label instead of slug in document search result

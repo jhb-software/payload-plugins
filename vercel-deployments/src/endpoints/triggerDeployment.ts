@@ -1,0 +1,74 @@
+import type { PayloadHandler, PayloadRequest } from 'payload'
+
+import type { VercelDeploymentsPluginConfig } from '../types.js'
+
+import { hasAccess } from '../utilities/hasAccess.js'
+import { resolveTarget } from '../utilities/resolveTarget.js'
+import { VercelApiClient } from '../utilities/vercelApiClient.js'
+
+/**
+ * POST /vercel-deployments
+ * Triggers a new production deployment by redeploying the latest READY deployment.
+ * Requires authentication.
+ */
+export const triggerDeploymentEndpoint: PayloadHandler = async (req: PayloadRequest) => {
+  const pluginConfig = req.payload.config.custom?.vercelDeploymentsPluginConfig as
+    undefined | VercelDeploymentsPluginConfig
+
+  if (!pluginConfig) {
+    return Response.json({ error: 'Plugin config not found' }, { status: 500 })
+  }
+
+  if (!(await hasAccess({ pluginConfig, req }))) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const { projectId } = await resolveTarget({ pluginConfig, req })
+
+    if (!projectId) {
+      return Response.json(
+        { error: 'No Vercel project configured for this request' },
+        { status: 400 },
+      )
+    }
+
+    const vercelClient = new VercelApiClient(pluginConfig.vercel.apiToken)
+
+    // Find the latest READY production deployment to redeploy
+    const deploymentsResponse = await vercelClient.getDeployments({
+      limit: 1,
+      projectId,
+      state: 'READY',
+      target: 'production',
+      teamId: pluginConfig.vercel.teamId,
+    })
+
+    const latestReadyDeployment = deploymentsResponse.deployments.at(0)
+    if (!latestReadyDeployment) {
+      return Response.json(
+        { error: 'No READY production deployment found to redeploy' },
+        { status: 404 },
+      )
+    }
+
+    const deployment = await vercelClient.createDeployment({
+      requestBody: {
+        name: projectId,
+        deploymentId: latestReadyDeployment.uid,
+        target: 'production',
+      },
+      teamId: pluginConfig.vercel.teamId,
+    })
+
+    return Response.json({ id: deployment.id })
+  } catch (error) {
+    req.payload.logger.error({ err: error }, 'Error triggering deployment')
+    return Response.json(
+      {
+        error: `Error triggering deployment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      },
+      { status: 500 },
+    )
+  }
+}

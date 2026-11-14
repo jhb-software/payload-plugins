@@ -1,8 +1,13 @@
-import he from 'he'
+import { decode } from 'he'
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
 import type { TranslatorCustomConfig } from '../types.js'
-import type { TranslateArgs, TranslateResult, ValueToTranslate } from './types.js'
+import type {
+  AfterTranslateHook,
+  TranslateArgs,
+  TranslateResult,
+  ValueToTranslate,
+} from './types.js'
 
 import { findEntityWithConfig } from './findEntityWithConfig.js'
 import { traverseFields } from './traverseFields.js'
@@ -17,6 +22,21 @@ export type TranslateOperationArgs = (
     }
 ) &
   TranslateArgs
+
+type Rejection = { translated: unknown; value: ValueToTranslate }
+
+/** Writes the translations back and returns the values that rejected theirs. */
+const applyTranslations = (values: ValueToTranslate[], translatedTexts: unknown[]) =>
+  values.flatMap((value, index): Rejection[] => {
+    // decode() calls String.prototype.replace internally, so a
+    // non-string value (e.g. an array slipping through from a hasMany
+    // field) would throw "e.replace is not a function". Guard against it
+    // and pass non-strings through untouched.
+    const raw = translatedTexts[index]
+    const translated = typeof raw === 'string' ? decode(raw) : raw
+
+    return value.onTranslate(translated) === false ? [{ translated, value }] : []
+  })
 
 export const translateOperation = async (args: TranslateOperationArgs) => {
   const req: PayloadRequest =
@@ -33,6 +53,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     collectionSlug,
     globalSlug,
     locale: localeFrom,
+    overrideAccess,
     req,
   })
 
@@ -44,6 +65,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
   }
 
   const valuesToTranslate: ValueToTranslate[] = []
+  const afterTranslateHooks: AfterTranslateHook[] = []
 
   let translatedData = args.data
 
@@ -61,10 +83,14 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
   }
 
   traverseFields({
+    afterTranslateHooks,
     dataFrom,
     emptyOnly: args.emptyOnly ?? false,
     fields: config.fields,
+    localeFrom: args.localeFrom,
+    localeTo: args.locale,
     payloadConfig: req.payload.config,
+    req,
     translatedData,
     valuesToTranslate,
   })
@@ -73,7 +99,9 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     localeFrom: args.localeFrom,
     localeTo: args.locale,
     req,
-    texts: valuesToTranslate.map((each) => each.value),
+    // The traversal only collects string field values (`hasMany` arrays are pushed element by
+    // element), so the collected values match the resolver's `texts: string[]` contract.
+    texts: valuesToTranslate.map((each) => each.value as string),
   })
 
   let result: TranslateResult
@@ -82,12 +110,66 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     result = {
       success: false,
     }
-  } else {
-    resolveResult.translatedTexts.forEach((translated, index) => {
-      const formattedValue = he.decode(translated)
-
-      valuesToTranslate[index].onTranslate(formattedValue)
+  } else if (resolveResult.translatedTexts.length !== valuesToTranslate.length) {
+    // Defense in depth: the resolver must return exactly one translation per
+    // input value, in order. A count mismatch means index-based write-back
+    // would shift translations into the wrong fields, so fail instead.
+    req.payload.logger.error({
+      inputCount: valuesToTranslate.length,
+      message: 'Translation aborted: resolver returned a different number of texts than were sent',
+      outputCount: resolveResult.translatedTexts.length,
     })
+
+    result = {
+      success: false,
+    }
+  } else {
+    let rejected = applyTranslations(valuesToTranslate, resolveResult.translatedTexts)
+
+    // A model often gets the markers right on a second attempt. A failing retry must
+    // not lose the translations already accepted, so it only leaves the source text.
+    if (rejected.length > 0) {
+      try {
+        const retryResult = await resolver.resolve({
+          localeFrom: args.localeFrom,
+          localeTo: args.locale,
+          req,
+          texts: rejected.map((each) => each.value.value as string),
+        })
+
+        if (retryResult.success && retryResult.translatedTexts.length === rejected.length) {
+          rejected = applyTranslations(
+            rejected.map((each) => each.value),
+            retryResult.translatedTexts,
+          )
+        }
+      } catch (error) {
+        req.payload.logger.warn({ err: error, msg: 'Retrying rejected translations failed' })
+      }
+    }
+
+    for (const { translated, value } of rejected) {
+      req.payload.logger.warn({
+        id,
+        collectionSlug,
+        globalSlug,
+        locale,
+        msg: 'Keeping the source text of a rich text segment: the translation damaged its markers or links',
+        source: value.value,
+        translated,
+      })
+    }
+
+    // Derived fields (e.g. slugs) run after every translated sibling value has
+    // been written back, so they can read the final translated document.
+    for (const hook of afterTranslateHooks) {
+      await hook.apply({
+        data: translatedData,
+        localeFrom: args.localeFrom,
+        localeTo: args.locale,
+        req,
+      })
+    }
 
     if (args.update) {
       await updateEntity({
@@ -95,6 +177,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
         collectionSlug,
         data: translatedData,
         depth: 0,
+        draft: args.draft,
         globalSlug,
         locale,
         overrideAccess,
@@ -105,6 +188,7 @@ export const translateOperation = async (args: TranslateOperationArgs) => {
     result = {
       success: true,
       translatedData,
+      untranslatedSegments: rejected.length,
     }
   }
 

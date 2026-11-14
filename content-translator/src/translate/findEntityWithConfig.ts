@@ -59,7 +59,7 @@ export const findEntityWithConfig = async (
         depth: 0,
         draft: true,
         fallbackLocale: undefined,
-        locale: locale as any,
+        locale,
         overrideAccess,
         req,
       })
@@ -69,13 +69,13 @@ export const findEntityWithConfig = async (
         depth: 0,
         draft: true,
         fallbackLocale: undefined,
-        locale: locale as any,
+        locale,
         overrideAccess,
         req,
       })
 
   return {
     config: entityConfig,
-    doc: (await docPromise) as any,
+    doc: (await docPromise) as Record<string, unknown> & TypeWithID,
   }
 }

@@ -1,4 +1,4 @@
-import { payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
+import { findPageByPath, payloadPagesPlugin } from '@jhb.software/payload-pages-plugin'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -7,10 +7,14 @@ import { Blogposts } from './collections/blogposts'
 import { Countries } from './collections/countries'
 import { CountryTravelTips } from './collections/country-travel-tips'
 import { Pages } from './collections/pages'
+import { Topics } from './collections/topics'
+import { Announcements } from './collections/announcements'
 import { Redirects } from './collections/redirects'
 import { BlogpostCategories } from './collections/blogpost-categories'
 import { en } from 'payload/i18n/en'
 import { de } from 'payload/i18n/de'
+// ru has no bundled plugin strings: switching the admin language to it exercises the English fallback (issue #220)
+import { ru } from 'payload/i18n/ru'
 import { databaseAdapter } from './test/databaseAdapter'
 
 const filename = fileURLToPath(import.meta.url)
@@ -22,10 +26,13 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    meta: { titleSuffix: '- Pages Dev' },
     user: 'users',
   },
   collections: [
     Pages,
+    Topics,
+    Announcements,
     Authors,
     Blogposts,
     BlogpostCategories,
@@ -48,7 +55,7 @@ export default buildConfig({
     defaultLocale: 'de',
   },
   i18n: {
-    supportedLanguages: { en, de },
+    supportedLanguages: { en, de, ru },
   },
   plugins: [
     payloadPagesPlugin({
@@ -57,6 +64,45 @@ export default buildConfig({
           ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}${preview ? '/preview' : ''}${path}`
           : null,
     }),
+  ],
+  endpoints: [
+    {
+      // Demonstrates findPageByPath, e.g. http://localhost:3000/api/resolve-page?path=/de/blog
+      // Add `&draft=true` to resolve draft pages. The response includes the path cache status
+      // (`hit` on repeated lookups, `stale` after renaming/moving the page in the admin panel).
+      path: '/resolve-page',
+      method: 'get',
+      handler: async (req) => {
+        const path = typeof req.query.path === 'string' ? req.query.path : undefined
+
+        if (!path) {
+          return Response.json({ error: 'Missing `path` query parameter' }, { status: 400 })
+        }
+
+        let cacheStatus: string | undefined
+        const result = await findPageByPath({
+          draft: req.query.draft === 'true',
+          path,
+          req,
+          onCacheResult: ({ status }) => {
+            cacheStatus = status
+          },
+          // Defers cache maintenance writes off the critical path. The long-running dev server
+          // completes them anyway; on serverless runtimes pass the platform scheduler instead
+          // (e.g. `waitUntil` from `@vercel/functions`).
+          waitUntil: (promise) => void promise,
+        })
+
+        if (!result) {
+          return Response.json(
+            { cache: cacheStatus, error: `No page found for path ${path}` },
+            { status: 404 },
+          )
+        }
+
+        return Response.json({ cache: cacheStatus, ...result })
+      },
+    },
   ],
   async onInit(payload) {
     const existingUsers = await payload.find({
