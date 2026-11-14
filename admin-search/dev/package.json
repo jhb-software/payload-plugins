@@ -33,7 +33,6 @@
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "dotenv": "^18.0.10",
     "tsx": "^4.23.15"
   },
   "engines": {

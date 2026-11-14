@@ -30,9 +30,7 @@
     "sharp": "^0.35.5"
   },
   "devDependencies": {
-    "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
-    "dotenv": "^18.0.10",
     "typescript": "6.0.3"
   },
   "engines": {
