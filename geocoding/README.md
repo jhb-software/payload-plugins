@@ -41,6 +41,10 @@ plugins: [
 
 The server key is never sent to the browser. There is no fallback from the server key to the browser key, since Google refuses a referrer-restricted key for server-side requests.
 
+## Storing geocoding results
+
+Geocoding results are licensed by the provider, so how long they may be stored is set by the provider's terms, not by this plugin. Google's terms, for example, allow caching coordinates only for a limited time, while place IDs (kept in `{name}_meta.googlePlaceId`) may be stored. Complying with the provider's terms is the responsibility of the project using the plugin.
+
 ## Usage
 
 Wrap a point field with `geocodingField`:
@@ -195,7 +199,7 @@ const myGeocoder: Geocoder = async ({ address, country, language }) => {
 payloadGeocodingPlugin({ googleMapsApiKey, geocoder: myGeocoder })
 ```
 
-Check the provider's terms for how long you may store its results. Google's Maps Platform terms restrict caching of Geocoding API results, so review them before storing geocoded coordinates long term.
+Check the provider's terms for how long its results may be stored, see [Storing geocoding results](#storing-geocoding-results).
 
 ## Upgrading from 0.2
 
