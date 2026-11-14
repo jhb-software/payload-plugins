@@ -17,10 +17,11 @@ minimumReleaseAgeExclude:
 
 overrides:
   js-yaml: '^4.3.2'
+  mongoose: '^8.24.7'
   dompurify: '^3.4.13'
-  prettier: '3.9.9'
+  prettier: '3.10.1'
   '@eslint/plugin-kit': '^0.3.4'
-  next: '16.4.5'
+  next: '16.4.6'
   'minimatch@>=7.0.0 <11.0.1': '^11.0.1'
   'undici@>=7.0.0 <7.29.1': '^7.29.1'
   'brace-expansion@<1.1.21': '^1.1.21'
