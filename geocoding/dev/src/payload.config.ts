@@ -1,10 +1,13 @@
 import { payloadGeocodingPlugin } from '@jhb.software/payload-geocoding-plugin'
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
+import { Articles } from './collection/articles'
 import { Pages } from './collection/pages'
+import { Tours } from './collection/tours'
+import { Spots, Venues } from './collection/venues'
 import { testEmailAdapter } from './emailAdapter'
+import { databaseAdapter } from './databaseAdapter'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -15,6 +18,10 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    components: {
+      beforeDashboard: ['/components/GeocodingDemo#GeocodingDemo'],
+    },
+    importMap: { baseDir: dirname },
     meta: { titleSuffix: '- Geocoding Dev' },
     user: 'users',
   },
@@ -25,18 +32,27 @@ export default buildConfig({
       fields: [],
     },
     Pages,
+    Articles,
+    Venues,
+    Spots,
+    Tours,
   ],
-  db: mongooseAdapter({
-    url: process.env.DATABASE_URI!,
-  }),
+  localization: {
+    defaultLocale: 'en',
+    locales: ['en', 'de'],
+  },
+  db: databaseAdapter,
   email: testEmailAdapter,
-  secret: process.env.PAYLOAD_SECRET!,
+  secret: process.env.PAYLOAD_SECRET || 'test-secret-for-ci',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   plugins: [
     payloadGeocodingPlugin({
-      googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+      // Browser key for the admin autocomplete, restricted by HTTP referrer.
+      googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'test-api-key',
+      // Server key for the Geocoding API (the `_address` field, Venues and /api/geocoding/search).
+      googleServerApiKey: process.env.GOOGLE_MAPS_API_KEY,
     }),
   ],
   async onInit(payload) {

@@ -9,6 +9,12 @@
       "options": {
         "requirePragma": true
       }
+    },
+    {
+      "files": "*.md",
+      "options": {
+        "parser": "markdown"
+      }
     }
   ]
 }

@@ -69,6 +69,10 @@ export interface Config {
   collections: {
     users: User;
     pages: Page;
+    articles: Article;
+    venues: Venue;
+    spots: Spot;
+    tours: Tour;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -78,18 +82,22 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
+    articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    venues: VenuesSelect<false> | VenuesSelect<true>;
+    spots: SpotsSelect<false> | SpotsSelect<true>;
+    tours: ToursSelect<false> | ToursSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
   db: {
-    defaultIDType: string;
+    defaultIDType: number;
   };
-  fallbackLocale: null;
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'de') | ('en' | 'de')[];
   globals: {};
   globalsSelect: {};
-  locale: null;
+  locale: 'en' | 'de';
   widgets: {
     collections: CollectionsWidget;
   };
@@ -122,7 +130,7 @@ export interface UserAuthOperations {
  * via the `definition` "users".
  */
 export interface User {
-  id: string;
+  id: number;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -148,110 +156,156 @@ export interface User {
  * via the `definition` "pages".
  */
 export interface Page {
-  id: string;
+  id: number;
   title?: string | null;
-  location_googlePlacesData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  location_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location?: [number, number] | null;
-  location0_googlePlacesData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  /**
+   * Write an address here to set location on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  location_address?: string | null;
+  location0_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location0?: [number, number] | null;
-  location1_googlePlacesData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  /**
+   * Write an address here to set location0 on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  location0_address?: string | null;
+  location1_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location1: [number, number];
-  location2_googlePlacesData:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  /**
+   * Write an address here to set location1 on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  location1_address?: string | null;
+  location2_meta: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location2: [number, number];
-  location3_googlePlacesData?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  /**
+   * Write an address here to set location2 on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  location2_address?: string | null;
+  location3_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
   /**
    * @minItems 2
    * @maxItems 2
    */
   location3?: [number, number] | null;
+  /**
+   * Write an address here to set location3 on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  location3_address?: string | null;
+  lockedLocation_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  lockedLocation?: [number, number] | null;
+  /**
+   * Write an address here to set lockedLocation on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  lockedLocation_address?: string | null;
   locationGroup?: {
-    location_googlePlacesData?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    location_meta?: {
+      name: string;
+      formattedAddress: string;
+      googlePlaceId: string;
+      partialMatch?: boolean;
+      precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+      query?: string;
+      types: string[];
+    };
     /**
      * @minItems 2
      * @maxItems 2
      */
     location?: [number, number] | null;
+    /**
+     * Write an address here to set location on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+     */
+    location_address?: string | null;
   };
   locations?:
     | {
-        location_googlePlacesData?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
+        location_meta?: {
+          name: string;
+          formattedAddress: string;
+          googlePlaceId: string;
+          partialMatch?: boolean;
+          precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+          query?: string;
+          types: string[];
+        };
         /**
          * @minItems 2
          * @maxItems 2
          */
         location?: [number, number] | null;
+        /**
+         * Write an address here to set location on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+         */
+        location_address?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -260,10 +314,130 @@ export interface Page {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles".
+ */
+export interface Article {
+  id: number;
+  title: string;
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "venues".
+ */
+export interface Venue {
+  id: number;
+  name: string;
+  street?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  /**
+   * ISO 3166-1 alpha-2 code, e.g. DE
+   */
+  country?: string | null;
+  coordinates_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  coordinates?: [number, number] | null;
+  /**
+   * Write an address here to set coordinates on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  coordinates_address?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "spots".
+ */
+export interface Spot {
+  id: number;
+  name?: string | null;
+  street?: string | null;
+  city?: string | null;
+  country?: string | null;
+  location_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  location?: [number, number] | null;
+  /**
+   * Write an address here to set location on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  location_address?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tours".
+ */
+export interface Tour {
+  id: number;
+  title?: string | null;
+  meetingPoint_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  meetingPoint?: [number, number] | null;
+  /**
+   * Write an address here to set meetingPoint on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  meetingPoint_address?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
-  id: string;
+  id: number;
   key: string;
   data:
     | {
@@ -280,20 +454,36 @@ export interface PayloadKv {
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: string;
+  id: number;
   document?:
     | ({
         relationTo: 'users';
-        value: string | User;
+        value: number | User;
       } | null)
     | ({
         relationTo: 'pages';
-        value: string | Page;
+        value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'articles';
+        value: number | Article;
+      } | null)
+    | ({
+        relationTo: 'venues';
+        value: number | Venue;
+      } | null)
+    | ({
+        relationTo: 'spots';
+        value: number | Spot;
+      } | null)
+    | ({
+        relationTo: 'tours';
+        value: number | Tour;
       } | null);
   globalSlug?: string | null;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   updatedAt: string;
   createdAt: string;
@@ -303,10 +493,10 @@ export interface PayloadLockedDocument {
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: string;
+  id: number;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   key?: string | null;
   value?:
@@ -326,7 +516,7 @@ export interface PayloadPreference {
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: string;
+  id: number;
   name?: string | null;
   batch?: number | null;
   updatedAt: string;
@@ -361,29 +551,93 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
-  location_googlePlacesData?: T;
+  location_meta?: T;
   location?: T;
-  location0_googlePlacesData?: T;
+  location_address?: T;
+  location0_meta?: T;
   location0?: T;
-  location1_googlePlacesData?: T;
+  location0_address?: T;
+  location1_meta?: T;
   location1?: T;
-  location2_googlePlacesData?: T;
+  location1_address?: T;
+  location2_meta?: T;
   location2?: T;
-  location3_googlePlacesData?: T;
+  location2_address?: T;
+  location3_meta?: T;
   location3?: T;
+  location3_address?: T;
+  lockedLocation_meta?: T;
+  lockedLocation?: T;
+  lockedLocation_address?: T;
   locationGroup?:
     | T
     | {
-        location_googlePlacesData?: T;
+        location_meta?: T;
         location?: T;
+        location_address?: T;
       };
   locations?:
     | T
     | {
-        location_googlePlacesData?: T;
+        location_meta?: T;
         location?: T;
+        location_address?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles_select".
+ */
+export interface ArticlesSelect<T extends boolean = true> {
+  title?: T;
+  content?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "venues_select".
+ */
+export interface VenuesSelect<T extends boolean = true> {
+  name?: T;
+  street?: T;
+  postalCode?: T;
+  city?: T;
+  country?: T;
+  coordinates_meta?: T;
+  coordinates?: T;
+  coordinates_address?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "spots_select".
+ */
+export interface SpotsSelect<T extends boolean = true> {
+  name?: T;
+  street?: T;
+  city?: T;
+  country?: T;
+  location_meta?: T;
+  location?: T;
+  location_address?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tours_select".
+ */
+export interface ToursSelect<T extends boolean = true> {
+  title?: T;
+  meetingPoint_meta?: T;
+  meetingPoint?: T;
+  meetingPoint_address?: T;
   updatedAt?: T;
   createdAt?: T;
 }
