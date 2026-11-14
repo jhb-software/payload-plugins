@@ -18,7 +18,8 @@ interface LocationMeta {
 
 interface GeocodingFieldComponentProps {
   field: Pick<FieldBaseClient, 'label' | 'required'>
-  googleMapsApiKey: string
+  /** Without a key the field shows the stored place read-only instead of the address search. */
+  googleMapsApiKey?: string
   path: string
 }
 
@@ -35,7 +36,7 @@ export const GeocodingFieldClient = ({
   googleMapsApiKey,
   path,
 }: GeocodingFieldComponentProps) => {
-  const pointFieldPath = path.replace('_meta', '')
+  const pointFieldPath = path.endsWith('_meta') ? path.slice(0, -'_meta'.length) : path
 
   const { setValue: setLocationMeta, value: locationMeta } = useField<LocationMeta | null>({
     path,
@@ -49,6 +50,9 @@ export const GeocodingFieldClient = ({
   const debounceRef = useRef<null | ReturnType<typeof setTimeout>>(null)
 
   useEffect(() => {
+    if (!googleMapsApiKey) {
+      return
+    }
     let cancelled = false
     loadGoogleMapsPlaces(googleMapsApiKey).catch((e) => {
       if (!cancelled) {
@@ -136,7 +140,9 @@ export const GeocodingFieldClient = ({
         <FieldLabel label={field.label} path={path} required={field.required} />
         <FieldError path={path} />
       </div>
-      {error ? (
+      {!googleMapsApiKey ? (
+        <div>{locationMeta ? toSelectOption(locationMeta).label : '-'}</div>
+      ) : error ? (
         <div style={{ color: 'red' }}>{error}</div>
       ) : (
         <ReactSelect

@@ -74,6 +74,15 @@ export const Pages: CollectionConfig = {
       },
     }),
 
+    // A point nobody may set through the API (access control applies to its address too)
+    geocodingField({
+      pointField: {
+        name: 'lockedLocation',
+        type: 'point',
+        access: { create: () => false, update: () => false },
+      },
+    }),
+
     // Usage inside a group
     {
       name: 'locationGroup',

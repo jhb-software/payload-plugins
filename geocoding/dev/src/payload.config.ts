@@ -4,7 +4,8 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import { Articles } from './collection/articles'
 import { Pages } from './collection/pages'
-import { Venues } from './collection/venues'
+import { Tours } from './collection/tours'
+import { Spots, Venues } from './collection/venues'
 import { testEmailAdapter } from './emailAdapter'
 import { databaseAdapter } from './databaseAdapter'
 
@@ -17,6 +18,10 @@ export default buildConfig({
       email: 'dev@payloadcms.com',
       password: 'test',
     },
+    components: {
+      beforeDashboard: ['/components/GeocodingDemo#GeocodingDemo'],
+    },
+    importMap: { baseDir: dirname },
     meta: { titleSuffix: '- Geocoding Dev' },
     user: 'users',
   },
@@ -29,7 +34,13 @@ export default buildConfig({
     Pages,
     Articles,
     Venues,
+    Spots,
+    Tours,
   ],
+  localization: {
+    defaultLocale: 'en',
+    locales: ['en', 'de'],
+  },
   db: databaseAdapter,
   email: testEmailAdapter,
   secret: process.env.PAYLOAD_SECRET || 'test-secret-for-ci',

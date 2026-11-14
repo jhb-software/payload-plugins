@@ -17,19 +17,19 @@ plugins: [
   payloadGeocodingPlugin({
     // Browser key for the address autocomplete in the admin panel.
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-    // Server key for server-side geocoding. Defaults to googleMapsApiKey.
+    // Server key for server-side geocoding (agents, API clients, the `address` option).
     googleServerApiKey: process.env.GOOGLE_MAPS_API_KEY,
   }),
 ]
 ```
 
-| Option               | Description                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `googleMapsApiKey`   | Key for the admin autocomplete (Maps JavaScript API, Places API (New)). Required to render `geocodingField`. |
-| `googleServerApiKey` | Key for server-side geocoding (Geocoding API). Defaults to `googleMapsApiKey`.                               |
-| `geocoder`           | Replaces the bundled Google geocoder for server-side geocoding, see [Other providers](#other-providers).     |
-| `access`             | Who may call the search endpoint. Defaults to `({ req }) => Boolean(req.user)`.                              |
-| `enabled`            | Set to `false` to disable the plugin.                                                                        |
+| Option               | Description                                                                                                                         |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `googleMapsApiKey`   | Key for the admin address search (Maps JavaScript API, Places API (New)). Without it the field shows the stored place read-only.    |
+| `googleServerApiKey` | Key for server-side geocoding (Geocoding API). Without it (and without `geocoder`), server-side geocoding answers `not_configured`. |
+| `geocoder`           | Replaces the bundled Google geocoder for server-side geocoding, see [Other providers](#other-providers).                            |
+| `searchEndpoint`     | `{ access }` for `GET /api/geocoding/search` (default: users of the admin user collection), or `false` to not register it.          |
+| `enabled`            | Set to `false` to disable the plugin.                                                                                               |
 
 ### Google Maps API keys
 
@@ -39,7 +39,7 @@ plugins: [
    - a **browser key** (`googleMapsApiKey`) restricted by HTTP referrer to your admin domain, since it is sent to the browser
    - a **server key** (`googleServerApiKey`) restricted by IP address or to the Geocoding API. Google refuses referrer-restricted keys for server-side requests, which send no referrer.
 
-A single unrestricted key works for both, but exposes server-side quota to anyone who reads the admin page.
+The server key is never sent to the browser. There is no fallback from the server key to the browser key, since Google refuses a referrer-restricted key for server-side requests.
 
 ## Usage
 
@@ -57,7 +57,9 @@ geocodingField({
 This adds two fields next to the point:
 
 - `location_meta`, a JSON field holding the selected place: `name`, `formattedAddress`, `googlePlaceId`, `types`, and for server-side geocoding also `precision`, `partialMatch` and the geocoded `query`. In the admin panel it renders as an address autocomplete that fills both fields.
-- `location_address`, a hidden virtual text field for server-side geocoding (see below).
+- `location_address`, a text field hidden in the admin panel: an address written there is geocoded on save and then cleared (see [Usage with AI agents and the API](#usage-with-ai-agents-and-the-api)). It is a regular field, not a virtual one, so content tools and MCP servers that hide virtual fields still offer it. On Postgres and SQLite it adds an always-empty column.
+
+A localized point gets a localized `_meta` and `_address` too.
 
 Customize the meta field with `locationMetaOverride`:
 
@@ -94,11 +96,11 @@ geocodingField({
 | The address changes and the stored point was entered or picked | The point is kept                      |
 | No match, a match below `minPrecision`, or the provider failed | The point stays empty (see below)      |
 
-Pass `country` (ISO 3166-1 alpha-2) whenever it is known: without it, a street name that exists in several countries can resolve to the wrong one. The language defaults to the request locale.
+Pass `country` (ISO 3166-1 alpha-2) whenever it is known, either from `address` or with the field's `country` option (a code or a function of the document): without it, a street name that exists in several countries can resolve to the wrong one. The language defaults to the request locale. A save across all locales (`locale: 'all'`) does not geocode.
 
 `minPrecision` is the least exact result the field stores: `exact` (building), `interpolated` (between house numbers), `center` (street or area center) or `approximate` (city, postal code; the default). Anything stricter than `approximate` also refuses partial matches.
 
-When geocoding yields no usable point and the point is required, the save fails with the reason as the field's error, e.g. _Could not geocode "Hauptstraße 999, Berlin" exactly enough: the best match "Hauptstraße, 10827 Berlin, Germany" is a partial match, and this field needs interpolated. Add the house number or postal code, or set the coordinates directly._
+With `address`, a required point is enforced by the plugin rather than Payload, so the admin panel can submit a document whose point is still to be geocoded. When geocoding yields no usable point and the point is required, publishing fails with the reason as the field's error, e.g. _Could not geocode "Hauptstraße 999, Berlin" exactly enough: the best match "Hauptstraße, 10827 Berlin, Germany" is a partial match, and this field needs interpolated. Add the house number or postal code, or set the coordinates directly._
 
 ## Usage with AI agents and the API
 
@@ -106,14 +108,14 @@ The admin autocomplete needs a browser. Agents and API clients have three server
 
 ### Send an address with the document
 
-Every `geocodingField` has a hidden virtual `{name}_address` field. An address sent there is geocoded on save into the point and meta fields:
+Every `geocodingField` has a `{name}_address` field. An address written there is geocoded on save into the point and meta fields, then cleared:
 
 ```bash
 POST /api/pages
 { "title": "My Page", "location_address": "Alexanderplatz 1, 10178 Berlin" }
 ```
 
-This is an explicit request, so it replaces the point, and a failed lookup refuses the save whether or not the point is required. The error names the reason and what to do:
+Include the city and country in the address, or set the field's `country` option. This is an explicit request, so it replaces the point, and a failed lookup refuses the save, drafts included, whether or not the point is required. Writing it needs the same field access as writing the point. The error names the reason and what to do:
 
 ```json
 {
@@ -153,13 +155,13 @@ This is an explicit request, so it replaces the point, and a failed lookup refus
 }
 ```
 
-No match answers `{ "results": [], "message": "..." }`. Other failures answer an error status with `{ "errors": [{ "message" }], "reason" }`, where `reason` is one of `invalid_request` (400), `not_configured` (501), `denied` (502), `quota` or `unavailable` (503).
+No match answers `{ "results": [], "message": "..." }`. Other failures answer an error status with `{ "errors": [{ "message" }], "reason" }`, where `reason` is one of `invalid_request` (400), `not_configured` (501), `denied` (502), `quota` or `unavailable` (503). An anonymous caller gets 401, a user the `access` function refuses gets 403.
 
 A point field stores `[longitude, latitude]`, so write a result as `[location.lng, location.lat]`.
 
 ### Geocode in your own code
 
-`geocode()` uses the configured geocoder and never throws:
+`geocode()` uses the configured geocoder and never throws, even when a custom geocoder does:
 
 ```ts
 import { geocode } from '@jhb.software/payload-geocoding-plugin'
@@ -188,7 +190,23 @@ const myGeocoder: Geocoder = async ({ address, country, language }) => {
 payloadGeocodingPlugin({ googleMapsApiKey, geocoder: myGeocoder })
 ```
 
-Check the provider's terms for how long you may store its results: some providers only allow caching geocoded coordinates temporarily.
+Check the provider's terms for how long you may store its results. Google's Maps Platform terms restrict caching of Geocoding API results, so review them before storing geocoded coordinates long term.
+
+## Upgrading from 0.2
+
+`{name}_googlePlacesData` is now `{name}_meta`. On MongoDB, convert stored data in a migration:
+
+```ts
+import { migrateGeocodingDataToV03 } from '@jhb.software/payload-geocoding-plugin'
+
+export async function up({ payload }: MigrateUpArgs) {
+  await migrateGeocodingDataToV03(payload) // documents, versions and globals, at any depth
+}
+```
+
+On Postgres or SQLite, write a migration that reads each `*_google_places_data` column, converts it with `upgradeLegacyGeoData`, and writes it to the new `*_meta` column before the old one is dropped.
+
+Add a server key as `googleServerApiKey` to use server-side geocoding.
 
 ## About this plugin
 

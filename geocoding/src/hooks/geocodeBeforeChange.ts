@@ -1,30 +1,38 @@
 import type { FieldHook, PayloadRequest } from 'payload'
 
+import { ValidationError } from 'payload'
+
 import type { GeocodeQuery, GeocodingResult } from '../geocoder/types.js'
-import type { GeoCodingFieldConfig } from '../types/GeoCodingFieldConfig.js'
+import type { GeocodingAddressArgs, GeoCodingFieldConfig } from '../types/GeoCodingFieldConfig.js'
 import type { LocationMeta } from '../types/LocationMeta.js'
 
-import { PLUGIN_SLUG } from '../constants.js'
 import { geocode } from '../geocode.js'
 import { meetsPrecision } from '../geocoder/precision.js'
 
 type Point = [number, number]
 
-/** What both hooks of one geocoding field agree to write. `undefined` leaves a value as it is. */
+/** What the hooks of one geocoding field agree to write. `undefined` leaves a value as it is. */
 type Resolution = {
-  /** Why the point is empty, reported by the point field's validation. */
+  /** Why no point could be geocoded. */
   error?: string
+  /** Whether the error refuses the save. */
+  fatal?: boolean
   meta?: LocationMeta | null
   point?: null | Point
 }
 
 type HookArgs = Parameters<FieldHook>[0]
 
-type Names = { address: string; meta: string; point: string }
-
 const KEEP: Resolution = {}
 
-export function fieldNames(pointFieldName: string): Names {
+/**
+ * One resolution per geocoding field per sibling data object. Payload hands the same `siblingData`
+ * object to every field of one document, group, array row or block, and a fresh one to each
+ * operation, so two documents (or two blocks) never share a result, even within one request.
+ */
+const resolutions = new WeakMap<object, Map<string, Promise<Resolution>>>()
+
+export function fieldNames(pointFieldName: string) {
   return {
     address: `${pointFieldName}_address`,
     meta: `${pointFieldName}_meta`,
@@ -49,22 +57,33 @@ function samePoint(a: null | Point, b: null | Point): boolean {
   return a === b || (a !== null && b !== null && a[0] === b[0] && a[1] === b[1])
 }
 
+function sameQuery(a: GeocodeQuery | undefined, b: GeocodeQuery | undefined): boolean {
+  return (
+    a?.address === b?.address &&
+    (a?.country ?? '').toUpperCase() === (b?.country ?? '').toUpperCase() &&
+    a?.language === b?.language
+  )
+}
+
 function toQuery(value: GeocodeQuery | string | undefined): GeocodeQuery | undefined {
   const query = typeof value === 'string' ? { address: value } : value
-  return query && query.address.trim() !== ''
-    ? { ...query, address: query.address.trim() }
-    : undefined
+  if (!query || typeof query.address !== 'string' || query.address.trim() === '') {
+    return undefined
+  }
+  return { ...query, address: query.address.trim() }
 }
 
-/** Identifies one geocoding field of one document within a request (bulk updates share it). */
-export function resolutionKey(docId: unknown, path: readonly (number | string)[]): string {
-  const id = typeof docId === 'string' || typeof docId === 'number' ? docId : 'new'
-  return `${PLUGIN_SLUG}:${id}:${path.join('.')}`
+function isDraftSave(args: HookArgs): boolean {
+  return asRecord(args.data)._status === 'draft'
 }
 
-/** Error the point field's validation reports, keyed like the resolution. */
-export function errorKey(key: string): string {
-  return `${key}:error`
+function isAutosave(req: PayloadRequest): boolean {
+  const autosave = asRecord(req.query).autosave
+  return autosave === true || autosave === 'true'
+}
+
+function countryFor(config: GeoCodingFieldConfig, args: GeocodingAddressArgs): string | undefined {
+  return typeof config.country === 'function' ? config.country(args) : config.country
 }
 
 function toMeta(result: GeocodingResult, query: GeocodeQuery): LocationMeta {
@@ -83,7 +102,7 @@ async function geocodeTo(
   req: PayloadRequest,
   query: GeocodeQuery,
   config: GeoCodingFieldConfig,
-  onFailure: (message: string) => Resolution,
+  onFailure: (error: string) => Resolution,
 ): Promise<Resolution> {
   const outcome = await geocode({ req, ...query })
   if (!outcome.ok) {
@@ -100,27 +119,34 @@ async function geocodeTo(
   return { meta: toMeta(result, query), point: [result.location.lng, result.location.lat] }
 }
 
-/** Decides, once per field and document, whether and what to geocode. */
+/** Decides, once per field and sibling data object, whether and what to geocode. */
 async function resolve(args: HookArgs, config: GeoCodingFieldConfig): Promise<Resolution> {
   const names = fieldNames(config.pointField.name)
-  const siblingData =
-    args.siblingData && typeof args.siblingData === 'object' ? args.siblingData : {}
+  const siblingData = asRecord(args.siblingData)
   const previous = asRecord(args.previousSiblingDoc)
+  // Read before any await: the address field's hook clears it once the resolution exists.
+  const explicitAddress = siblingData[names.address]
 
-  // An address sent in `{name}_address` is an explicit request: geocode it, and fail loudly.
-  const explicit = toQuery(
-    typeof siblingData[names.address] === 'string'
-      ? (siblingData[names.address] as string)
-      : undefined,
-  )
-  if (explicit) {
-    // Consumed: inside a Lexical block the virtual field would otherwise be stored in the block's
-    // JSON and geocoded again on every later save.
-    delete siblingData[names.address]
-    return geocodeTo(args.req, explicit, config, (error) => ({ error }))
+  // A save across all locales carries locale-keyed objects instead of values.
+  if (args.req.locale === 'all') {
+    return KEEP
   }
 
-  if (!config.address) {
+  const current: GeocodingAddressArgs = {
+    data: asRecord(args.data),
+    req: args.req,
+    siblingData: { ...previous, ...siblingData },
+  }
+
+  // An address sent in `{name}_address` is an explicit request: geocode it, and refuse the save
+  // when that fails, drafts included, so the caller learns why.
+  const explicit = toQuery(typeof explicitAddress === 'string' ? explicitAddress : undefined)
+  if (explicit) {
+    const query = { ...explicit, country: countryFor(config, current) }
+    return geocodeTo(args.req, query, config, (error) => ({ error, fatal: true }))
+  }
+
+  if (!config.address || isAutosave(args.req)) {
     return KEEP
   }
 
@@ -132,58 +158,103 @@ async function resolve(args: HookArgs, config: GeoCodingFieldConfig): Promise<Re
     return KEEP
   }
 
-  const query = toQuery(
-    config.address({ data: asRecord(args.data), siblingData: { ...previous, ...siblingData } }),
-  )
+  const derive = (from: GeocodingAddressArgs): GeocodeQuery | undefined => {
+    const query = toQuery(config.address?.(from))
+    return query && { ...query, country: query.country ?? countryFor(config, from) }
+  }
+  const query = derive(current)
   if (!query) {
     return KEEP
   }
+  const previousQuery =
+    args.operation === 'update'
+      ? derive({ data: asRecord(args.originalDoc), req: args.req, siblingData: previous })
+      : undefined
+  const addressChanged = !sameQuery(query, previousQuery)
 
-  if (point === null) {
-    return geocodeTo(args.req, query, config, (error) => ({ error, meta: null, point: null }))
-  }
+  const geocodedBefore = typeof asRecord(previous[names.meta]).query === 'string'
+  const shouldGeocode =
+    point === null
+      ? // Fill an empty point on create, when the address changed, or when the caller cleared it.
+        // An unchanged address that failed before is not retried on every save.
+        args.operation === 'create' || addressChanged || previousPoint !== null
+      : // Refresh only a point the geocoder set, and only when its address changed.
+        geocodedBefore && addressChanged
 
-  // Re-geocode only a point the geocoder set (its meta remembers the query) whose address moved.
-  const previousQuery = asRecord(previous[names.meta]).query
-  if (typeof previousQuery === 'string' && previousQuery !== query.address) {
-    // The old pin belongs to the old address, so a failed refresh clears it.
-    return geocodeTo(args.req, query, config, (error) => ({ error, meta: null, point: null }))
+  if (!shouldGeocode) {
+    return KEEP
   }
-  return KEEP
+  // The old pin belongs to the old address, so a failed refresh clears it.
+  return geocodeTo(args.req, query, config, (error) => ({
+    error,
+    fatal: config.pointField.required === true && !isDraftSave(args),
+    meta: null,
+    point: null,
+  }))
 }
 
 function resolveOnce(args: HookArgs, config: GeoCodingFieldConfig): Promise<Resolution> {
-  // The meta and point hooks run in parallel (row fields), so both await one promise.
-  const key = resolutionKey(asRecord(args.originalDoc).id, pointPath(args, config))
-  const cached = args.req.context[key]
-  if (cached instanceof Promise) {
-    return cached as Promise<Resolution>
+  const siblingData = asRecord(args.siblingData)
+  let byField = resolutions.get(siblingData)
+  if (!byField) {
+    byField = new Map()
+    resolutions.set(siblingData, byField)
   }
-  const created = resolve(args, config)
-  args.req.context[key] = created
-  return created
+  let resolution = byField.get(config.pointField.name)
+  if (!resolution) {
+    resolution = resolve(args, config)
+    byField.set(config.pointField.name, resolution)
+  }
+  return resolution
 }
 
-/** The point field's path, whichever of the two fields' hooks is asking. */
-function pointPath(args: HookArgs, config: GeoCodingFieldConfig): (number | string)[] {
+function refuse(args: HookArgs, config: GeoCodingFieldConfig, message: string): never {
   const path = [...(args.path ?? [])]
   path[path.length - 1] = config.pointField.name
-  return path
+  throw new ValidationError({
+    collection: args.collection?.slug,
+    errors: [{ message, path: path.join('.') }],
+    global: args.global?.slug,
+    req: args.req,
+  })
 }
 
-/** beforeChange hook of the point field: writes the geocoded point and records any failure. */
+/**
+ * beforeChange hook of the point field: writes the geocoded point, refuses the save when an
+ * explicit address fails, and enforces `required` for fields with the `address` option (whose
+ * point Payload must not require before the hook had a chance to fill it).
+ */
 export const createPointBeforeChangeHook =
   (config: GeoCodingFieldConfig): FieldHook =>
   async (args) => {
     const resolution = await resolveOnce(args, config)
-    const key = resolutionKey(asRecord(args.originalDoc).id, pointPath(args, config))
-    args.req.context[errorKey(key)] = resolution.error
-    return resolution.point === undefined ? args.value : resolution.point
+    if (resolution.error && resolution.fatal) {
+      refuse(args, config, resolution.error)
+    }
+    const value = resolution.point === undefined ? args.value : resolution.point
+
+    const stored =
+      value === undefined ? asRecord(args.previousSiblingDoc)[config.pointField.name] : value
+    if (
+      config.address &&
+      config.pointField.required &&
+      asPoint(stored) === null &&
+      !isDraftSave(args) &&
+      args.req.locale !== 'all'
+    ) {
+      refuse(
+        args,
+        config,
+        resolution.error ??
+          `${config.pointField.name} is required: set the coordinates, or complete the address so they can be geocoded.`,
+      )
+    }
+    return value
   }
 
 /**
- * beforeChange hook of the meta field: writes the geocoded metadata, and drops the remembered
- * query when the caller replaced the point, so a later address change leaves their point alone.
+ * beforeChange hook of the meta field: writes the geocoded metadata, and clears metadata that
+ * describes a point the caller replaced without sending a new place.
  */
 export const createMetaBeforeChangeHook =
   (config: GeoCodingFieldConfig): FieldHook =>
@@ -200,13 +271,19 @@ export const createMetaBeforeChangeHook =
     const pointReplaced =
       incomingPoint !== undefined &&
       !samePoint(asPoint(incomingPoint), asPoint(previous[names.point]))
-    if (!pointReplaced) {
-      return args.value
-    }
-    const meta = asRecord(args.value ?? previous[names.meta])
-    if (typeof meta.query !== 'string') {
-      return args.value
-    }
-    const { query: _query, ...entered } = meta
-    return entered
+    const metaUnchanged =
+      args.value === undefined ||
+      JSON.stringify(args.value) === JSON.stringify(previous[names.meta])
+    return pointReplaced && metaUnchanged && previous[names.meta] ? null : args.value
+  }
+
+/**
+ * beforeChange hook of the address field: the address is an instruction, not content, so it is
+ * never stored (inside a Lexical block it would otherwise be geocoded again on every save).
+ */
+export const createAddressBeforeChangeHook =
+  (config: GeoCodingFieldConfig): FieldHook =>
+  async (args) => {
+    await resolveOnce(args, config)
+    return null
   }

@@ -1,13 +1,13 @@
 import type { PayloadRequest } from 'payload'
 
-import type { GeocodeOutcome, GeocodeQuery } from './geocoder/types.js'
+import type { GeocodeOutcome, GeocodeQuery, Geocoder } from './geocoder/types.js'
 
 import { PLUGIN_SLUG } from './constants.js'
 import { getPluginCustom } from './pluginCustom.js'
 
 const NOT_CONFIGURED: GeocodeOutcome = {
   message:
-    'No geocoder is configured. Pass `googleServerApiKey`, `googleMapsApiKey` or `geocoder` to payloadGeocodingPlugin.',
+    'No geocoder is configured. Pass `googleServerApiKey` or `geocoder` to payloadGeocodingPlugin.',
   ok: false,
   reason: 'not_configured',
 }
@@ -56,8 +56,30 @@ export function geocode(args: { req: PayloadRequest } & GeocodeQuery): Promise<G
   const key = JSON.stringify([query.address, query.country, query.language])
   let outcome = cache.get(key)
   if (!outcome) {
-    outcome = geocoder(query)
+    outcome = settle(geocoder, query)
     cache.set(key, outcome)
   }
   return outcome
+}
+
+/** Runs a geocoder so that a custom one that throws or answers an empty list still yields a value. */
+async function settle(geocoder: Geocoder, query: GeocodeQuery): Promise<GeocodeOutcome> {
+  try {
+    const outcome = await geocoder(query)
+    if (outcome.ok && outcome.results.length === 0) {
+      return {
+        message: `No place matches "${query.address}". Check the spelling, or add the postal code, city or country.`,
+        ok: false,
+        reason: 'no_results',
+      }
+    }
+    return outcome
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    return {
+      message: `The geocoder failed (${detail}). Retry later.`,
+      ok: false,
+      reason: 'unavailable',
+    }
+  }
 }

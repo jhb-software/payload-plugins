@@ -71,6 +71,8 @@ export interface Config {
     pages: Page;
     articles: Article;
     venues: Venue;
+    spots: Spot;
+    tours: Tour;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -82,6 +84,8 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
     venues: VenuesSelect<false> | VenuesSelect<true>;
+    spots: SpotsSelect<false> | SpotsSelect<true>;
+    tours: ToursSelect<false> | ToursSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -90,10 +94,10 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
-  fallbackLocale: null;
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'de') | ('en' | 'de')[];
   globals: {};
   globalsSelect: {};
-  locale: null;
+  locale: 'en' | 'de';
   widgets: {
     collections: CollectionsWidget;
   };
@@ -168,6 +172,9 @@ export interface Page {
    * @maxItems 2
    */
   location?: [number, number] | null;
+  /**
+   * Write an address here to set location on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
   location_address?: string | null;
   location0_meta?: {
     name: string;
@@ -183,6 +190,9 @@ export interface Page {
    * @maxItems 2
    */
   location0?: [number, number] | null;
+  /**
+   * Write an address here to set location0 on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
   location0_address?: string | null;
   location1_meta?: {
     name: string;
@@ -198,6 +208,9 @@ export interface Page {
    * @maxItems 2
    */
   location1: [number, number];
+  /**
+   * Write an address here to set location1 on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
   location1_address?: string | null;
   location2_meta: {
     name: string;
@@ -213,6 +226,9 @@ export interface Page {
    * @maxItems 2
    */
   location2: [number, number];
+  /**
+   * Write an address here to set location2 on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
   location2_address?: string | null;
   location3_meta?: {
     name: string;
@@ -228,7 +244,28 @@ export interface Page {
    * @maxItems 2
    */
   location3?: [number, number] | null;
+  /**
+   * Write an address here to set location3 on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
   location3_address?: string | null;
+  lockedLocation_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  lockedLocation?: [number, number] | null;
+  /**
+   * Write an address here to set lockedLocation on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  lockedLocation_address?: string | null;
   locationGroup?: {
     location_meta?: {
       name: string;
@@ -244,6 +281,9 @@ export interface Page {
      * @maxItems 2
      */
     location?: [number, number] | null;
+    /**
+     * Write an address here to set location on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+     */
     location_address?: string | null;
   };
   locations?:
@@ -262,6 +302,9 @@ export interface Page {
          * @maxItems 2
          */
         location?: [number, number] | null;
+        /**
+         * Write an address here to set location on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+         */
         location_address?: string | null;
         id?: string | null;
       }[]
@@ -321,8 +364,71 @@ export interface Venue {
    * @minItems 2
    * @maxItems 2
    */
-  coordinates: [number, number];
+  coordinates?: [number, number] | null;
+  /**
+   * Write an address here to set coordinates on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
   coordinates_address?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "spots".
+ */
+export interface Spot {
+  id: number;
+  name?: string | null;
+  street?: string | null;
+  city?: string | null;
+  country?: string | null;
+  location_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  location?: [number, number] | null;
+  /**
+   * Write an address here to set location on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  location_address?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tours".
+ */
+export interface Tour {
+  id: number;
+  title?: string | null;
+  meetingPoint_meta?: {
+    name: string;
+    formattedAddress: string;
+    googlePlaceId: string;
+    partialMatch?: boolean;
+    precision?: 'exact' | 'interpolated' | 'center' | 'approximate';
+    query?: string;
+    types: string[];
+  };
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  meetingPoint?: [number, number] | null;
+  /**
+   * Write an address here to set meetingPoint on save (geocoded, then cleared). Fails the save with the reason when the address cannot be geocoded.
+   */
+  meetingPoint_address?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -365,6 +471,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'venues';
         value: number | Venue;
+      } | null)
+    | ({
+        relationTo: 'spots';
+        value: number | Spot;
+      } | null)
+    | ({
+        relationTo: 'tours';
+        value: number | Tour;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -452,6 +566,9 @@ export interface PagesSelect<T extends boolean = true> {
   location3_meta?: T;
   location3?: T;
   location3_address?: T;
+  lockedLocation_meta?: T;
+  lockedLocation?: T;
+  lockedLocation_address?: T;
   locationGroup?:
     | T
     | {
@@ -493,6 +610,34 @@ export interface VenuesSelect<T extends boolean = true> {
   coordinates_meta?: T;
   coordinates?: T;
   coordinates_address?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "spots_select".
+ */
+export interface SpotsSelect<T extends boolean = true> {
+  name?: T;
+  street?: T;
+  city?: T;
+  country?: T;
+  location_meta?: T;
+  location?: T;
+  location_address?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tours_select".
+ */
+export interface ToursSelect<T extends boolean = true> {
+  title?: T;
+  meetingPoint_meta?: T;
+  meetingPoint?: T;
+  meetingPoint_address?: T;
   updatedAt?: T;
   createdAt?: T;
 }

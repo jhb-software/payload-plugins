@@ -40,7 +40,6 @@ export type GeocodingResult = {
  * Why geocoding produced no usable result:
  *
  * - `no_results`: the address matched nothing
- * - `imprecise`: the best match was less exact than the caller accepts
  * - `denied`: the provider refused the key (wrong key, API not enabled, referrer-restricted key)
  * - `quota`: the key is over its quota or rate limit
  * - `invalid_request`: the query was empty or malformed
@@ -48,13 +47,7 @@ export type GeocodingResult = {
  * - `not_configured`: no geocoder is configured
  */
 export type GeocodeFailureReason =
-  | 'denied'
-  | 'imprecise'
-  | 'invalid_request'
-  | 'no_results'
-  | 'not_configured'
-  | 'quota'
-  | 'unavailable'
+  'denied' | 'invalid_request' | 'no_results' | 'not_configured' | 'quota' | 'unavailable'
 
 /** The answer of a geocoder. Never thrown: a failure is a value the caller decides about. */
 export type GeocodeOutcome =

@@ -41,7 +41,6 @@ const FAILURE: Record<string, GeocodeFailureReason> = {
 const HINT: Record<GeocodeFailureReason, string> = {
   denied:
     'Google refused the API key. Use a key with the Geocoding API enabled that is not restricted by HTTP referrer (server-side requests send no referrer), e.g. via the plugin option `googleServerApiKey`.',
-  imprecise: '',
   invalid_request: 'Send a non-empty address.',
   no_results: 'Check the spelling, or add the postal code, city or country.',
   not_configured: '',
@@ -110,7 +109,7 @@ export function createGoogleGeocoder(options: { apiKey: string }): Geocoder {
     const detail =
       reason === 'no_results'
         ? `No place matches "${query.address}"${query.country ? ` in ${query.country}` : ''}.`
-        : `Google answered ${body.status}${body.error_message ? `: ${body.error_message.replace(/\.$/, '')}` : ''}.`
+        : `Google answered ${body.status}${body.error_message ? `: ${body.error_message.replace(/[.\s]+$/, '')}` : ''}.`
     return failure(reason, detail)
   }
 }

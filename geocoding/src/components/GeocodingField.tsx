@@ -11,13 +11,8 @@ import { GeocodingFieldClient } from './GeocodingFieldClient.js'
 export const GeocodingField: React.FC<
   ClientComponentProps & Pick<FieldPaths, 'path'> & ServerComponentProps
 > = ({ clientField, path, payload }) => {
+  // Without a browser key (e.g. a project geocoding only server-side), the field renders read-only.
   const googleMapsApiKey = getPluginCustom(payload.config)?.googleMapsApiKey
-
-  if (!googleMapsApiKey) {
-    throw new Error(
-      'The geocoding field needs a Google Maps API key for its address autocomplete. Pass googleMapsApiKey to payloadGeocodingPlugin.',
-    )
-  }
 
   return (
     <GeocodingFieldClient field={clientField} googleMapsApiKey={googleMapsApiKey} path={path} />

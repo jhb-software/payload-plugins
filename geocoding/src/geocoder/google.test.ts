@@ -36,7 +36,7 @@ describe('Google geocoder', () => {
   })
 
   test('passes on why Google refused the key, and how to fix it', async () => {
-    answer({ error_message: 'The provided API key is invalid.', status: 'REQUEST_DENIED' })
+    answer({ error_message: 'The provided API key is invalid. ', status: 'REQUEST_DENIED' })
     const outcome = await geocoder({ address: 'Berlin' })
     expect(outcome).toMatchObject({ ok: false, reason: 'denied' })
     expect(!outcome.ok && outcome.message).toBe(

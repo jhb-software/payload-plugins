@@ -10,6 +10,10 @@ export type {
   Geocoder,
   GeocodingResult,
 } from './geocoder/types.js'
+export {
+  migrateGeocodingDataToV03,
+  upgradeLegacyGeoData,
+} from './migrations/upgradeLegacyGeoData.js'
 export { payloadGeocodingPlugin } from './plugin.js'
 export type { GeocodingAddressArgs, GeoCodingFieldConfig } from './types/GeoCodingFieldConfig.js'
 export type {

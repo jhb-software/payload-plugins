@@ -29,9 +29,12 @@ export const payloadGeocodingPlugin =
       ...incomingConfig,
       // `custom` is server-only: the server key and geocoder never reach the browser.
       custom: { ...incomingConfig.custom, [PLUGIN_SLUG]: custom },
-      endpoints: [
-        ...(incomingConfig.endpoints ?? []),
-        createGeocodingSearchEndpoint({ access: pluginOptions.access }),
-      ],
+      endpoints:
+        pluginOptions.searchEndpoint === false
+          ? incomingConfig.endpoints
+          : [
+              ...(incomingConfig.endpoints ?? []),
+              createGeocodingSearchEndpoint({ access: pluginOptions.searchEndpoint?.access }),
+            ],
     }
   }

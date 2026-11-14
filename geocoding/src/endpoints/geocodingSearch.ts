@@ -7,7 +7,6 @@ import { geocode } from '../geocode.js'
 
 const STATUS = {
   denied: 502,
-  imprecise: 422,
   invalid_request: 400,
   no_results: 200,
   not_configured: 501,
@@ -29,12 +28,19 @@ export const createGeocodingSearchEndpoint = (options: {
   access?: GeocodingEndpointAccess
 }): Endpoint => ({
   handler: async (req) => {
-    const hasAccess = options.access ? await options.access({ req }) : Boolean(req.user)
+    const hasAccess = options.access
+      ? await options.access({ req })
+      : req.user?.collection === req.payload.config.admin.user
     if (!hasAccess) {
-      return Response.json(
-        { errors: [{ message: 'Log in, or call with an API key the access option allows.' }] },
-        { status: 401 },
-      )
+      return req.user
+        ? Response.json(
+            { errors: [{ message: 'This user may not use the geocoding search.' }] },
+            { status: 403 },
+          )
+        : Response.json(
+            { errors: [{ message: 'Log in, or authenticate with an API key, to search.' }] },
+            { status: 401 },
+          )
     }
 
     const params = new URL(req.url ?? '', 'http://localhost').searchParams
