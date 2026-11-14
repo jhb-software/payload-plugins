@@ -31,10 +31,9 @@
     "lint:fix": "eslint src --fix",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm prepublishOnly",
-    "prepublishOnly": "pnpm clean && pnpm build"
-  },
-  "dependencies": {
-    "react-google-places-autocomplete": "^4.1.0"
+    "prepublishOnly": "pnpm clean && pnpm build",
+    "test": "vitest run",
+    "test:integration": "cd dev && pnpm test"
   },
   "peerDependencies": {
     "@payloadcms/ui": "^3.93.0",
@@ -45,6 +44,7 @@
   },
   "devDependencies": {
     "@payloadcms/eslint-config": "^3.28.0",
+    "@types/google.maps": "^3.58.1",
     "@swc/cli": "^0.8.2",
     "@swc/core": "^1.16.22",
     "@types/react": "19.3.0",
@@ -53,7 +53,8 @@
     "eslint": "^9.39.4",
     "prettier": "3.10.1",
     "rimraf": "6.1.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
   },
   "publishConfig": {
     "main": "./dist/index.js",

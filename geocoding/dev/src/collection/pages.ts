@@ -50,18 +50,18 @@ export const Pages: CollectionConfig = {
         type: 'point',
         required: true,
       },
-      geoDataFieldOverride: {
+      locationMetaOverride: {
         required: true,
       },
     }),
 
-    // With geoDataFieldOverride
+    // With locationMetaOverride
     geocodingField({
       pointField: {
         name: 'location3',
         type: 'point',
       },
-      geoDataFieldOverride: {
+      locationMetaOverride: {
         label: 'Geodata (Custom label)',
         access: {
           read: () => true,
@@ -71,6 +71,15 @@ export const Pages: CollectionConfig = {
         admin: {
           readOnly: false,
         },
+      },
+    }),
+
+    // A point nobody may set through the API (access control applies to its address too)
+    geocodingField({
+      pointField: {
+        name: 'lockedLocation',
+        type: 'point',
+        access: { create: () => false, update: () => false },
       },
     }),
 

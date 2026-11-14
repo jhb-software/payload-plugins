@@ -53,7 +53,7 @@
     "install:geocoding": "cd ./geocoding && pnpm install --frozen-lockfile",
     "install:pages": "cd ./pages && pnpm install --frozen-lockfile",
     "install:vercel-deployments": "cd ./vercel-deployments && pnpm install --frozen-lockfile",
-    "test:all": "pnpm test:admin-search && pnpm test:alt-text && pnpm test:astro-payload-richtext-lexical && pnpm test:chat-agent && pnpm test:cloudinary && pnpm test:cloudinary:integration && pnpm test:content-translator && pnpm test:pages && pnpm test:vercel-deployments",
+    "test:all": "pnpm test:admin-search && pnpm test:alt-text && pnpm test:astro-payload-richtext-lexical && pnpm test:chat-agent && pnpm test:cloudinary && pnpm test:cloudinary:integration && pnpm test:content-translator && pnpm test:geocoding && pnpm test:geocoding:integration && pnpm test:pages && pnpm test:vercel-deployments",
     "test:admin-search": "cd ./admin-search && pnpm test",
     "test:alt-text": "cd ./alt-text && pnpm test",
     "test:astro-payload-richtext-lexical": "cd ./astro-payload-richtext-lexical && pnpm test",
@@ -61,6 +61,8 @@
     "test:cloudinary": "cd ./cloudinary && pnpm test",
     "test:cloudinary:integration": "cd ./cloudinary/dev && pnpm test",
     "test:content-translator": "cd ./content-translator && pnpm test",
+    "test:geocoding": "cd ./geocoding && pnpm test",
+    "test:geocoding:integration": "cd ./geocoding/dev && pnpm test",
     "test:pages": "cd ./pages && pnpm test",
     "test:vercel-deployments": "cd ./vercel-deployments && pnpm test",
     "prepare": "git config core.hooksPath .husky"

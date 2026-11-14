@@ -103,6 +103,9 @@ jobs:
       - name: Run tests (content-translator)
         run: cd content-translator && pnpm test
 
+      - name: Run tests (geocoding)
+        run: cd geocoding && pnpm test
+
       - name: Run tests (pages)
         run: cd pages && pnpm test:unit
 
@@ -127,6 +130,22 @@ jobs:
       # so no database service or .env file is needed.
       - name: Run integration tests
         run: pnpm test:cloudinary:integration
+
+  test-geocoding:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          scope: geocoding
+
+      # Runs on SQLite with fixed test values set in geocoding/dev/vitest.config.ts and a mocked
+      # fetch, so no database service, .env file or Google API key is needed.
+      - name: Run integration tests
+        run: pnpm test:geocoding:integration
 
   test-pages-localized:
     runs-on: ubuntu-latest
