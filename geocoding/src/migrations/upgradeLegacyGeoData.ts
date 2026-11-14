@@ -57,18 +57,23 @@ export function upgradeLegacyGeoData<T>(value: T): T {
   }
   let changed = false
   const next: Record<string, unknown> = {}
+  const legacyKeys: string[] = []
   for (const [key, child] of Object.entries(value)) {
     if (key.endsWith(LEGACY_SUFFIX)) {
-      changed = true
-      const metaKey = key.slice(0, -LEGACY_SUFFIX.length) + META_SUFFIX
-      if (!(metaKey in value)) {
-        next[metaKey] = toLocationMeta(child)
-      }
+      legacyKeys.push(key)
       continue
     }
     const upgraded = upgradeLegacyGeoData(child)
     changed ||= upgraded !== child
     next[key] = upgraded
+  }
+  // After the other keys, so an empty `_meta` (saved before the migration ran) is filled in.
+  for (const key of legacyKeys) {
+    changed = true
+    const metaKey = key.slice(0, -LEGACY_SUFFIX.length) + META_SUFFIX
+    if (next[metaKey] == null) {
+      next[metaKey] = toLocationMeta((value as Record<string, unknown>)[key])
+    }
   }
   return (changed ? next : value) as T
 }
@@ -122,7 +127,7 @@ export async function migrateGeocodingDataToV03(
         if (key.endsWith(LEGACY_SUFFIX)) {
           unset[key] = ''
           const metaKey = key.slice(0, -LEGACY_SUFFIX.length) + META_SUFFIX
-          if (!(metaKey in doc)) {
+          if (doc[metaKey] == null) {
             set[metaKey] = toLocationMeta(value)
           }
           continue

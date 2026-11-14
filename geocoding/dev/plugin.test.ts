@@ -500,6 +500,68 @@ describe('A point filled from the document address (address option)', () => {
     expect(await field.validate(undefined, { ...field, req } as never)).toBe(true)
   })
 
+  test('geocodes on publish an address the admin panel already autosaved', async () => {
+    const urls = stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
+    const draft = await payload.create({ collection: 'venues', data: { name: 'V' }, draft: true })
+    const autosaveReq = await createLocalReq({}, payload)
+    autosaveReq.query = { autosave: 'true' }
+    await payload.update({
+      collection: 'venues',
+      id: draft.id,
+      data: { street: 'Alexanderplatz 1', city: 'Berlin', country: 'DE' },
+      draft: true,
+      req: autosaveReq,
+    })
+    expect(urls).toHaveLength(0)
+
+    const published = await payload.update({
+      collection: 'venues',
+      id: draft.id,
+      data: { _status: 'published' },
+    })
+
+    expect(published.coordinates).toEqual([13.4132, 52.5219])
+  })
+
+  test('retries an empty point once Google is reachable again', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('fetch failed'))
+    const draft = await payload.create({ collection: 'venues', data: berlin, draft: true })
+    expect(draft.coordinates).toBeFalsy()
+    stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
+
+    const published = await payload.update({
+      collection: 'venues',
+      id: draft.id,
+      data: { _status: 'published' },
+    })
+
+    expect(published.coordinates).toEqual([13.4132, 52.5219])
+  })
+
+  test('keeps the pin when Google is down while the address changes', async () => {
+    stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ }))
+    const venue = await createVenue(berlin)
+    vi.restoreAllMocks()
+    stubGoogle(() => ({ status: 'OVER_QUERY_LIMIT' }))
+
+    const draft = await payload.update({
+      collection: 'venues',
+      id: venue.id,
+      data: { street: 'Marienplatz 1', city: 'München' },
+      draft: true,
+    })
+
+    expect(draft.coordinates).toEqual([13.4132, 52.5219])
+  })
+
+  test('restricts an address sent in {name}_address to the country of the document', async () => {
+    const urls = stubGoogle(byAddress({ Adlon: ALEXANDERPLATZ }))
+
+    await createVenue({ ...berlin, country: 'DE', coordinates_address: 'Hotel Adlon, Berlin' })
+
+    expect(urls[0].searchParams.get('components')).toBe('country:DE')
+  })
+
   test('geocodes each document of a bulk update with its own address', async () => {
     stubGoogle(byAddress({ Alexanderplatz: ALEXANDERPLATZ, Marienplatz: MARIENPLATZ }))
     const a = await createVenue({ ...berlin, name: 'A' })
@@ -529,7 +591,7 @@ describe('A point filled from the document address (address option)', () => {
 describe('An optional point filled from the document address', () => {
   beforeEach(async () => await deleteCollection('spots'))
 
-  test('stays empty when the address cannot be geocoded, and is not retried on unrelated saves', async () => {
+  test('stays empty when the address cannot be geocoded, without refusing the save', async () => {
     const urls = stubGoogle(byAddress({}))
 
     const spot = await payload.create({
@@ -538,8 +600,10 @@ describe('An optional point filled from the document address', () => {
     })
     await payload.update({ collection: 'spots', id: spot.id, data: { name: 'Renamed' } })
 
-    expect(spot.location).toBeFalsy()
-    expect(urls).toHaveLength(1)
+    const stored = await payload.findByID({ collection: 'spots', id: spot.id })
+    expect(stored.location).toBeFalsy()
+    expect(stored.name).toBe('Renamed')
+    expect(urls.length).toBeGreaterThan(0)
   })
 })
 

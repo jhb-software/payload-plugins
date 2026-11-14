@@ -17,7 +17,9 @@ export const payloadGeocodingPlugin =
       return incomingConfig
     }
 
-    const serverKey = pluginOptions.googleServerApiKey ?? pluginOptions.googleMapsApiKey
+    // No fallback to googleMapsApiKey: that key reaches the browser and is referrer-restricted,
+    // and Google refuses such keys server-side.
+    const serverKey = pluginOptions.googleServerApiKey
     const custom: PluginCustom = {
       geocoder:
         pluginOptions.geocoder ??

@@ -48,6 +48,10 @@ export const GeocodingFieldClient = ({
   const [error, setError] = useState<null | string>(null)
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null)
   const debounceRef = useRef<null | ReturnType<typeof setTimeout>>(null)
+  // Only the latest search may set the options: debounced requests can resolve out of order.
+  const searchRef = useRef(0)
+  // Loading Google Maps failed: nothing can be searched until the page reloads.
+  const [loadError, setLoadError] = useState<null | string>(null)
 
   useEffect(() => {
     if (!googleMapsApiKey) {
@@ -56,7 +60,7 @@ export const GeocodingFieldClient = ({
     let cancelled = false
     loadGoogleMapsPlaces(googleMapsApiKey).catch((e) => {
       if (!cancelled) {
-        setError(e instanceof Error ? e.message : 'Failed to load Google Maps')
+        setLoadError(e instanceof Error ? e.message : 'Failed to load Google Maps')
       }
     })
     return () => {
@@ -78,7 +82,9 @@ export const GeocodingFieldClient = ({
     }
 
     debounceRef.current = setTimeout(async () => {
+      const search = ++searchRef.current
       setIsLoading(true)
+      setError(null)
       try {
         if (!sessionTokenRef.current) {
           sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken()
@@ -90,6 +96,9 @@ export const GeocodingFieldClient = ({
             sessionToken: sessionTokenRef.current,
           })
 
+        if (search !== searchRef.current) {
+          return
+        }
         setOptions(
           suggestions
             .filter((s) => s.placePrediction != null)
@@ -98,10 +107,16 @@ export const GeocodingFieldClient = ({
               value: s.placePrediction!.placeId,
             })),
         )
-      } catch {
-        setOptions([])
+      } catch (e) {
+        if (search === searchRef.current) {
+          setOptions([])
+          // E.g. the Places API (New) is not enabled for the key: say so instead of "No options".
+          setError(`Address search failed: ${e instanceof Error ? e.message : String(e)}`)
+        }
       } finally {
-        setIsLoading(false)
+        if (search === searchRef.current) {
+          setIsLoading(false)
+        }
       }
     }, 300)
   }
@@ -114,6 +129,7 @@ export const GeocodingFieldClient = ({
     }
 
     const placeId = option.value as string
+    setError(null)
     new google.maps.places.Place({ id: placeId })
       .fetchFields({
         fields: ['displayName', 'formattedAddress', 'location', 'types'],
@@ -123,15 +139,20 @@ export const GeocodingFieldClient = ({
         sessionTokenRef.current = null
         if (place.location) {
           setPoint([place.location.lng(), place.location.lat()])
+          const formattedAddress = place.formattedAddress ?? place.displayName ?? ''
           setLocationMeta({
-            name: place.displayName,
-            formattedAddress: place.formattedAddress,
+            name: place.displayName ?? formattedAddress,
+            formattedAddress,
             googlePlaceId: placeId,
             types: place.types ?? [],
           })
         }
       })
-      .catch(() => setError('Failed to fetch place details'))
+      .catch((e) =>
+        setError(
+          `Could not load the selected place, pick it again: ${e instanceof Error ? e.message : String(e)}`,
+        ),
+      )
   }
 
   return (
@@ -142,8 +163,8 @@ export const GeocodingFieldClient = ({
       </div>
       {!googleMapsApiKey ? (
         <div>{locationMeta ? toSelectOption(locationMeta).label : '-'}</div>
-      ) : error ? (
-        <div style={{ color: 'red' }}>{error}</div>
+      ) : loadError ? (
+        <div style={{ color: 'var(--theme-error-500)' }}>{loadError}</div>
       ) : (
         <ReactSelect
           filterOption={() => true}
@@ -156,6 +177,11 @@ export const GeocodingFieldClient = ({
           placeholder="Search for a place..."
           value={locationMeta ? toSelectOption(locationMeta) : undefined}
         />
+      )}
+      {error && !loadError && (
+        <div style={{ color: 'var(--theme-error-500)', marginTop: 'calc(var(--base) / 4)' }}>
+          {error}
+        </div>
       )}
     </div>
   )

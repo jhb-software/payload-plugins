@@ -44,6 +44,12 @@ describe('upgradeLegacyGeoData', () => {
     })
   })
 
+  test('converts geodata next to an empty meta written after the 0.3 deploy', () => {
+    expect(
+      upgradeLegacyGeoData({ geoLocation_googlePlacesData: legacy, geoLocation_meta: null }),
+    ).toEqual({ geoLocation_meta: meta })
+  })
+
   test('leaves already upgraded documents untouched', () => {
     const upgraded = { geoLocation_meta: meta, list: [{ a: 1 }] }
     expect(upgradeLegacyGeoData(upgraded)).toBe(upgraded)

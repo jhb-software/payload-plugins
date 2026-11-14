@@ -11,7 +11,7 @@
 - feat: add `GET /api/geocoding/search?q=&country=&language=` for users of the admin user collection, configurable or disabled with the `searchEndpoint` option
 - feat: export `geocode()` for custom hooks and endpoints, and accept a `geocoder` option to use a provider other than Google
 - feat: add the `googleServerApiKey` option, required for server-side geocoding since Google refuses the referrer-restricted browser key there; without `googleMapsApiKey` the field shows the stored place read-only instead of the address search
-- feat: localize the `_meta` field together with a localized point field
+- **BREAKING**: `_meta` (and `_address`) are localized when the point field is localized, so a localized point's place is stored per locale; on such fields the stored meta reads as empty until each locale is saved again
 - fix: accept any React `^19.2.0` as a peer dependency instead of exactly `19.3.0`, which caused install warnings in projects on other 19.x versions
 - **BREAKING**: require Payload `^3.93.0`
 

@@ -2,7 +2,7 @@ import type { FieldHook, PayloadRequest } from 'payload'
 
 import { ValidationError } from 'payload'
 
-import type { GeocodeQuery, GeocodingResult } from '../geocoder/types.js'
+import type { GeocodeFailureReason, GeocodeQuery, GeocodingResult } from '../geocoder/types.js'
 import type { GeocodingAddressArgs, GeoCodingFieldConfig } from '../types/GeoCodingFieldConfig.js'
 import type { LocationMeta } from '../types/LocationMeta.js'
 
@@ -102,11 +102,11 @@ async function geocodeTo(
   req: PayloadRequest,
   query: GeocodeQuery,
   config: GeoCodingFieldConfig,
-  onFailure: (error: string) => Resolution,
+  onFailure: (error: string, reason: 'imprecise' | GeocodeFailureReason) => Resolution,
 ): Promise<Resolution> {
   const outcome = await geocode({ req, ...query })
   if (!outcome.ok) {
-    return onFailure(`Could not geocode "${query.address}": ${outcome.message}`)
+    return onFailure(`Could not geocode "${query.address}": ${outcome.message}`, outcome.reason)
   }
   const minPrecision = config.minPrecision ?? 'approximate'
   const result = outcome.results.find((candidate) => meetsPrecision(candidate, minPrecision))
@@ -114,6 +114,7 @@ async function geocodeTo(
     const best = outcome.results[0]
     return onFailure(
       `Could not geocode "${query.address}" exactly enough: the best match "${best.formattedAddress}" is ${best.partialMatch ? 'a partial match' : `only ${best.precision}`}, and this field needs ${minPrecision}. Add the house number or postal code, or set the coordinates directly.`,
+      'imprecise',
     )
   }
   return { meta: toMeta(result, query), point: [result.location.lng, result.location.lat] }
@@ -140,9 +141,25 @@ async function resolve(args: HookArgs, config: GeoCodingFieldConfig): Promise<Re
 
   // An address sent in `{name}_address` is an explicit request: geocode it, and refuse the save
   // when that fails, drafts included, so the caller learns why.
+  const derive = (from: GeocodingAddressArgs): GeocodeQuery | undefined => {
+    const query = toQuery(config.address?.(from))
+    return query && { ...query, country: query.country ?? countryFor(config, from) }
+  }
+  // Without a localized meta, a fixed language keeps the stored address in one language whichever
+  // locale the caller saves in.
+  const language = config.pointField.localized
+    ? undefined
+    : args.req.payload.config.localization
+      ? args.req.payload.config.localization.defaultLocale
+      : undefined
+
   const explicit = toQuery(typeof explicitAddress === 'string' ? explicitAddress : undefined)
   if (explicit) {
-    const query = { ...explicit, country: countryFor(config, current) }
+    const query = {
+      ...explicit,
+      country: derive(current)?.country ?? countryFor(config, current),
+      language,
+    }
     return geocodeTo(args.req, query, config, (error) => ({ error, fatal: true }))
   }
 
@@ -158,39 +175,38 @@ async function resolve(args: HookArgs, config: GeoCodingFieldConfig): Promise<Re
     return KEEP
   }
 
-  const derive = (from: GeocodingAddressArgs): GeocodeQuery | undefined => {
-    const query = toQuery(config.address?.(from))
-    return query && { ...query, country: query.country ?? countryFor(config, from) }
-  }
-  const query = derive(current)
-  if (!query) {
+  const derived = derive(current)
+  if (!derived) {
     return KEEP
   }
+  const query = { language, ...derived }
   const previousQuery =
     args.operation === 'update'
       ? derive({ data: asRecord(args.originalDoc), req: args.req, siblingData: previous })
       : undefined
+  if (previousQuery) {
+    previousQuery.language ??= language
+  }
   const addressChanged = !sameQuery(query, previousQuery)
 
   const geocodedBefore = typeof asRecord(previous[names.meta]).query === 'string'
-  const shouldGeocode =
-    point === null
-      ? // Fill an empty point on create, when the address changed, or when the caller cleared it.
-        // An unchanged address that failed before is not retried on every save.
-        args.operation === 'create' || addressChanged || previousPoint !== null
-      : // Refresh only a point the geocoder set, and only when its address changed.
-        geocodedBefore && addressChanged
-
+  // An empty point is filled on every save that is not an autosave: autosaves store the address
+  // without geocoding it, and a failure (an outage, a quota) must not stop later saves from trying.
+  // A set point is refreshed only when the geocoder set it and its address changed.
+  const shouldGeocode = point === null || (geocodedBefore && addressChanged)
   if (!shouldGeocode) {
     return KEEP
   }
-  // The old pin belongs to the old address, so a failed refresh clears it.
-  return geocodeTo(args.req, query, config, (error) => ({
-    error,
-    fatal: config.pointField.required === true && !isDraftSave(args),
-    meta: null,
-    point: null,
-  }))
+
+  return geocodeTo(args.req, query, config, (error, reason) => {
+    const transient = reason === 'unavailable' || reason === 'quota' || reason === 'denied'
+    const fatal = config.pointField.required === true && !isDraftSave(args)
+    // A temporary failure keeps a pin the next save can refresh; a definite one (no match, too
+    // imprecise) clears it, since the old pin belongs to the old address.
+    return transient && point !== null
+      ? { error, fatal }
+      : { error, fatal, meta: null, point: null }
+  })
 }
 
 function resolveOnce(args: HookArgs, config: GeoCodingFieldConfig): Promise<Resolution> {

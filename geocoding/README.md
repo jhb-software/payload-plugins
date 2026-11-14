@@ -61,6 +61,8 @@ This adds two fields next to the point:
 
 A localized point gets a localized `_meta` and `_address` too.
 
+Inside a Lexical block, give the point no `required`: Payload validates a block's fields before their hooks run, so a required point would be refused before `{name}_address` could fill it. Groups, arrays and blocks fields are not affected.
+
 Customize the meta field with `locationMetaOverride`:
 
 ```ts
@@ -88,15 +90,18 @@ geocodingField({
 })
 ```
 
-| Situation on save                                              | Result                                 |
-| -------------------------------------------------------------- | -------------------------------------- |
-| The point is empty and the address is complete                 | The point is geocoded                  |
-| The caller sets the point                                      | The point is kept; nothing is geocoded |
-| The address changes and the stored point came from geocoding   | The point is geocoded again            |
-| The address changes and the stored point was entered or picked | The point is kept                      |
-| No match, a match below `minPrecision`, or the provider failed | The point stays empty (see below)      |
+| Situation on save                                              | Result                                                     |
+| -------------------------------------------------------------- | ---------------------------------------------------------- |
+| The point is empty and the address is complete                 | The point is geocoded (again on every save until it fills) |
+| The caller sets the point                                      | The point is kept; nothing is geocoded                     |
+| The address changes and the stored point came from geocoding   | The point is geocoded again                                |
+| The address changes and the stored point was entered or picked | The point is kept                                          |
+| No match, or a match below `minPrecision`                      | The point is cleared (see below)                           |
+| The provider is down, over quota or refuses the key            | A stored point is kept; an empty one is tried next save    |
+| An autosave                                                    | Nothing is geocoded                                        |
+| A draft save                                                   | Failures do not refuse the save                            |
 
-Pass `country` (ISO 3166-1 alpha-2) whenever it is known, either from `address` or with the field's `country` option (a code or a function of the document): without it, a street name that exists in several countries can resolve to the wrong one. The language defaults to the request locale. A save across all locales (`locale: 'all'`) does not geocode.
+Pass `country` (ISO 3166-1 alpha-2) whenever it is known, either from `address` or with the field's `country` option (a code or a function of the document): without it, a street name that exists in several countries can resolve to the wrong one. The stored address is in the request locale for a localized point, and in the default locale otherwise. A save across all locales (`locale: 'all'`) does not geocode.
 
 `minPrecision` is the least exact result the field stores: `exact` (building), `interpolated` (between house numbers), `center` (street or area center) or `approximate` (city, postal code; the default). Anything stricter than `approximate` also refuses partial matches.
 
