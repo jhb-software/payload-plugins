@@ -30,12 +30,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@payloadcms/translations": "^3.93.0"
+    "@payloadcms/translations": "^3.94.0"
   },
   "peerDependencies": {
-    "@payloadcms/ui": "^3.93.0",
+    "@payloadcms/ui": "^3.94.0",
     "next": "^15.0.0 || ^16.0.0",
-    "payload": "^3.93.0",
+    "payload": "^3.94.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -47,12 +47,12 @@
     "@types/react-dom": "^19.3.0",
     "copyfiles": "^2.4.1",
     "eslint": "^9.39.4",
-    "payload": "^3.93.0",
+    "payload": "^3.94.0",
     "prettier": "3.10.1",
     "rimraf": "^6.1.4",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   },
   "files": [
     "dist"
