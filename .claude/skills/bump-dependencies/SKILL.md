@@ -64,6 +64,8 @@ Goal: bump the dependencies via the bundled script, then for every non-patch jum
 
    <repeat per dep>
 
+   Security audit: <"0 advisories"  |  fixed: <pkg> <GHSA ids> via <owner bump | override floor | direct pin>  |  unfixable (no patched release): <pkg> <GHSA id> — <reason>>
+
    Follow-ups: <list anything you couldn't verify, e.g. "vitest 4.1 → 4.2: changelog mentions snapshot format change; chat-agent has no snapshots, low risk but worth a CI run">
    ```
 
@@ -96,16 +98,22 @@ The script bumps `package.json` and `pnpm-lock.yaml` but never touches the `over
 
 ## Audit for vulnerabilities and fix them
 
-A version bump is the natural moment to clear advisories. Each plugin is its own workspace, so audit per lockfile and consolidate.
+**This is a required gate, not an optional extra.** Every run of this skill ends with zero _fixable_ advisories across every lockfile in the repo. A run that leaves a fixable advisory in place is unfinished: don't report success and don't open a PR until it's fixed. The only advisories allowed to remain are ones with no patched release yet (`fix` = `NO` in the table), and each of those gets listed in the report and PR with the reason (for example "4.3.1 is the newest release on npm, the advisory names 4.3.2"). The GitHub push banner ("GitHub found N vulnerabilities…") and Dependabot scan the same lockfiles. If they report alerts that the audit doesn't, the audit is missing a lockfile: find out why rather than ignoring the banner.
 
-1. **Run the consolidated audit.** The helper next to this skill runs `pnpm audit` in every folder with its own `pnpm-lock.yaml` and prints one deduplicated table (one row per advisory, with the count of affected plugins) — what a per-folder loop can't show:
+Each plugin is its own workspace, and the repo root has its own lockfile for the commit tooling (`@commitlint/*`, `lint-staged`, `prettier`), so audit each lockfile and consolidate.
+
+1. **Run the consolidated audit.** The helper next to this skill runs `pnpm audit` in the repo root and in every folder with its own `pnpm-lock.yaml`, and prints one deduplicated table (one row per advisory, with the workspaces it affects). A per-folder loop can't show this:
 
    ```sh
-   ./.claude/skills/bump-dependencies/audit-dependencies.sh           # any advisory → exit 1
-   ./.claude/skills/bump-dependencies/audit-dependencies.sh high      # CI gate: only high+ fails
+   ./.claude/skills/bump-dependencies/audit-dependencies.sh           # gate: exit 1 while any fixable advisory remains
+   ./.claude/skills/bump-dependencies/audit-dependencies.sh high      # only count high+
    ```
 
-   The same advisory usually spans many plugins (shared Payload/tooling deps), so fix it once per package, not once per plugin.
+   - Exit `0`: no fixable advisory remains. Any rows still printed are `fix` = `NO`; report them.
+   - Exit `1`: fixable advisories remain. Fix them with steps 2–4 below. A `fix` = `?` row has no patched range in the advisory data. Treat it as fixable until its vulnerable range proves otherwise: a `=3.1.6`-only advisory is cleared by moving to any other release.
+   - Exit `2`: an audit couldn't run or its output couldn't be parsed (network or registry error, broken lockfile). That means unknown, not clean. Re-run, and if it keeps failing, report it as a blocker.
+
+   The same advisory usually spans many plugins (shared Payload/tooling deps), so fix it once per package, not once per plugin. The root workspace is fixed in the root `package.json` / `pnpm-workspace.yaml` overrides, not in a plugin's.
 
 2. **Prefer the root-cause fix — update the owning dependency before reaching for an override.** Run `pnpm -C <plugin> why <pkg>` to find which direct/parent dependency pulls the vulnerable version. If a newer release of that owner requires the patched range, bumping the owner clears the advisory _and_ leaves no override behind — the cleanest fix, and it tracks upstream instead of pinning against it. The bump step (`bump-dependencies.sh` → `pnpm up --latest`) already does this for **direct** deps, so within the full flow the survivors are usually transitive-only with an already-current owner — those genuinely need step 3/4. Reach for an override only after confirming the owner can't move (already latest, or its range still spans the vulnerable version). An override is a forceful pin: it masks the real graph and accumulates, so it's the fallback, not the default.
 
@@ -113,7 +121,7 @@ A version bump is the natural moment to clear advisories. Each plugin is its own
 
 4. **When the override won't move a transitive, pin it as a direct devDependency.** pnpm applies overrides during _fresh_ resolution but will not re-resolve an already-locked transitive to satisfy a changed override — `install`, `install --force`, `dedupe`, and `update <pkg>` all leave it in place (the lockfile even records the new override next to the old resolved version). The reliable escape hatch is to add the package as a direct `devDependency` at the patched range in the plugin that pulls it; a direct dep always resolves to its declared range, and the transitive consumer dedupes onto it. Example: `vite` (pulled by `vitest`, peer `^6 || ^7 || ^8`) stayed on the vulnerable line under a `vite: '^8.0.16'` override, so `"vite": "^8.0.16"` went into chat-agent and vercel-deployments `devDependencies` next to `vitest`.
 
-5. **Reinstall, re-audit to zero, then verify the toolchain.** Forcing a build-tool version is exactly where things break — `esbuild` minors (`0.x` = breaking by convention) and a `vite` major shift the transform/bundle path. After the fix, re-run the audit _and_ `typecheck` + `test` for every plugin, plus `build` for any plugin that uses the tool directly (e.g. astro's `esbuild` + `vite-plugin-dts`). Don't claim the advisories are cleared until the audit is empty and the suites are green.
+5. **Reinstall, re-audit to zero, then verify the toolchain.** Forcing a build-tool version is exactly where things break — `esbuild` minors (`0.x` = breaking by convention) and a `vite` major shift the transform/bundle path. After the fix, re-run the audit _and_ `typecheck` + `test` for every plugin, plus `build` for any plugin that uses the tool directly (e.g. astro's `esbuild` + `vite-plugin-dts`). For a root-workspace fix, make one test commit so the `commit-msg` (commitlint) and `pre-commit` (lint-staged + prettier) hooks run. Don't claim the advisories are cleared until the audit exits `0` and the suites are green.
 
 ## Heuristics for what to read carefully vs skim
 
