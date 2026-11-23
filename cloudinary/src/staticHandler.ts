@@ -3,6 +3,7 @@ import type { StaticHandler } from '@payloadcms/plugin-cloud-storage/types'
 import { isXmlMimeType, UPLOAD_CONTENT_SECURITY_POLICY } from 'payload/internal'
 
 import type { VerifiedClientUploadContext } from './client/CloudinaryClientUploadHandler.js'
+import type { DeliveryType } from './types.js'
 
 import { generateCloudinaryUrl } from './utilities/generateCloudinaryUrl.js'
 
@@ -19,7 +20,15 @@ const forwardedHeaders = [
 // This is called:
 // - after the client upload is finished with the clientUploadContext
 // - whenever the file is requested from the api/[collection]/[filename] path
-export const getStaticHandler = ({ cloudName }: { cloudName: string }): StaticHandler => {
+export const getStaticHandler = ({
+  apiSecret,
+  cloudName,
+  deliveryType,
+}: {
+  apiSecret: string
+  cloudName: string
+  deliveryType?: DeliveryType
+}): StaticHandler => {
   return async (req, { doc, params }) => {
     try {
       type Params = {
@@ -62,8 +71,10 @@ export const getStaticHandler = ({ cloudName }: { cloudName: string }): StaticHa
             stored.url.startsWith(`https://res.cloudinary.com/${cloudName}/`)
               ? stored.url
               : generateCloudinaryUrl({
+                  apiSecret,
                   cloudinaryPublicId: stored.cloudinaryPublicId,
                   cloudName,
+                  deliveryType,
                   mimeType: typeof stored.mimeType === 'string' ? stored.mimeType : undefined,
                 })
         }
